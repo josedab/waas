@@ -1,0 +1,7 @@
+node_modules/
+*.exe
+*.dll
+*.so
+*.dylib
+.DS_Store
+backend/api-service

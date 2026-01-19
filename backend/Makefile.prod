@@ -1,0 +1,203 @@
+# Production Makefile for Webhook Service Platform
+
+# Configuration
+REGISTRY ?= your-registry.com
+PROJECT ?= webhook-platform
+VERSION ?= $(shell git rev-parse --short HEAD)
+NAMESPACE ?= webhook-platform
+
+# Colors
+GREEN := \033[0;32m
+YELLOW := \033[1;33m
+RED := \033[0;31m
+NC := \033[0m # No Color
+
+.PHONY: help build push deploy verify rollback clean health logs
+
+help: ## Show this help message
+	@echo "$(GREEN)Webhook Platform Production Operations$(NC)"
+	@echo ""
+	@echo "Available targets:"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(YELLOW)%-15s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+check-env: ## Check required environment variables
+	@echo "$(GREEN)Checking environment...$(NC)"
+	@if [ -z "$(REGISTRY)" ]; then echo "$(RED)ERROR: REGISTRY not set$(NC)"; exit 1; fi
+	@if [ -z "$(PROJECT)" ]; then echo "$(RED)ERROR: PROJECT not set$(NC)"; exit 1; fi
+	@echo "Registry: $(REGISTRY)"
+	@echo "Project: $(PROJECT)"
+	@echo "Version: $(VERSION)"
+	@echo "Namespace: $(NAMESPACE)"
+
+build: check-env ## Build production Docker images
+	@echo "$(GREEN)Building production images...$(NC)"
+	@DOCKER_REGISTRY=$(REGISTRY) PROJECT_NAME=$(PROJECT) VERSION=$(VERSION) ./scripts/build-images.sh build
+
+push: check-env ## Build and push production images to registry
+	@echo "$(GREEN)Building and pushing production images...$(NC)"
+	@DOCKER_REGISTRY=$(REGISTRY) PROJECT_NAME=$(PROJECT) VERSION=$(VERSION) ./scripts/build-images.sh push
+
+scan: check-env ## Scan images for vulnerabilities
+	@echo "$(GREEN)Scanning images for vulnerabilities...$(NC)"
+	@DOCKER_REGISTRY=$(REGISTRY) PROJECT_NAME=$(PROJECT) VERSION=$(VERSION) ./scripts/build-images.sh scan
+
+deploy: check-env ## Deploy to production
+	@echo "$(GREEN)Deploying to production...$(NC)"
+	@./scripts/deploy.sh deploy
+
+verify: ## Verify deployment
+	@echo "$(GREEN)Verifying deployment...$(NC)"
+	@./scripts/deploy.sh verify
+
+rollback: ## Rollback to previous version
+	@echo "$(YELLOW)Rolling back deployment...$(NC)"
+	@./scripts/deploy.sh rollback
+
+health: ## Check application health
+	@echo "$(GREEN)Checking application health...$(NC)"
+	@./scripts/deploy.sh health
+
+logs: ## Show application logs
+	@echo "$(GREEN)Showing application logs...$(NC)"
+	@kubectl logs -f deployment/api-service -n $(NAMESPACE) --tail=100
+
+logs-delivery: ## Show delivery engine logs
+	@echo "$(GREEN)Showing delivery engine logs...$(NC)"
+	@kubectl logs -f deployment/delivery-engine -n $(NAMESPACE) --tail=100
+
+logs-analytics: ## Show analytics service logs
+	@echo "$(GREEN)Showing analytics service logs...$(NC)"
+	@kubectl logs -f deployment/analytics-service -n $(NAMESPACE) --tail=100
+
+status: ## Show deployment status
+	@echo "$(GREEN)Deployment Status:$(NC)"
+	@kubectl get pods -n $(NAMESPACE)
+	@echo ""
+	@echo "$(GREEN)Services:$(NC)"
+	@kubectl get services -n $(NAMESPACE)
+	@echo ""
+	@echo "$(GREEN)HPA Status:$(NC)"
+	@kubectl get hpa -n $(NAMESPACE)
+
+scale-api: ## Scale API service (usage: make scale-api REPLICAS=5)
+	@echo "$(GREEN)Scaling API service to $(REPLICAS) replicas...$(NC)"
+	@kubectl scale deployment api-service --replicas=$(REPLICAS) -n $(NAMESPACE)
+
+scale-delivery: ## Scale delivery engine (usage: make scale-delivery REPLICAS=10)
+	@echo "$(GREEN)Scaling delivery engine to $(REPLICAS) replicas...$(NC)"
+	@kubectl scale deployment delivery-engine --replicas=$(REPLICAS) -n $(NAMESPACE)
+
+scale-analytics: ## Scale analytics service (usage: make scale-analytics REPLICAS=3)
+	@echo "$(GREEN)Scaling analytics service to $(REPLICAS) replicas...$(NC)"
+	@kubectl scale deployment analytics-service --replicas=$(REPLICAS) -n $(NAMESPACE)
+
+backup-db: ## Trigger manual database backup
+	@echo "$(GREEN)Triggering manual database backup...$(NC)"
+	@kubectl create job --from=cronjob/postgres-backup manual-backup-$(shell date +%Y%m%d-%H%M%S) -n $(NAMESPACE)
+
+backup-redis: ## Trigger manual Redis backup
+	@echo "$(GREEN)Triggering manual Redis backup...$(NC)"
+	@kubectl create job --from=cronjob/redis-backup manual-redis-backup-$(shell date +%Y%m%d-%H%M%S) -n $(NAMESPACE)
+
+migrate: ## Run database migrations
+	@echo "$(GREEN)Running database migrations...$(NC)"
+	@kubectl delete job db-migration -n $(NAMESPACE) --ignore-not-found=true
+	@kubectl apply -f k8s/migration-job.yaml
+	@kubectl wait --for=condition=complete job/db-migration -n $(NAMESPACE) --timeout=300s
+
+clean-images: ## Clean up local Docker images
+	@echo "$(GREEN)Cleaning up local images...$(NC)"
+	@./scripts/build-images.sh clean
+
+clean-jobs: ## Clean up completed jobs
+	@echo "$(GREEN)Cleaning up completed jobs...$(NC)"
+	@kubectl delete jobs --field-selector status.successful=1 -n $(NAMESPACE)
+
+restart-api: ## Restart API service
+	@echo "$(GREEN)Restarting API service...$(NC)"
+	@kubectl rollout restart deployment/api-service -n $(NAMESPACE)
+
+restart-delivery: ## Restart delivery engine
+	@echo "$(GREEN)Restarting delivery engine...$(NC)"
+	@kubectl rollout restart deployment/delivery-engine -n $(NAMESPACE)
+
+restart-analytics: ## Restart analytics service
+	@echo "$(GREEN)Restarting analytics service...$(NC)"
+	@kubectl rollout restart deployment/analytics-service -n $(NAMESPACE)
+
+restart-all: ## Restart all services
+	@echo "$(GREEN)Restarting all services...$(NC)"
+	@kubectl rollout restart deployment -n $(NAMESPACE)
+
+config-reload: ## Reload configuration
+	@echo "$(GREEN)Reloading configuration...$(NC)"
+	@kubectl apply -f k8s/configmap.yaml
+	@kubectl rollout restart deployment -n $(NAMESPACE)
+
+secrets-update: ## Update secrets (requires manual secret files)
+	@echo "$(GREEN)Updating secrets...$(NC)"
+	@kubectl apply -f k8s/secrets.yaml
+	@kubectl rollout restart deployment -n $(NAMESPACE)
+
+monitoring-deploy: ## Deploy monitoring stack
+	@echo "$(GREEN)Deploying monitoring stack...$(NC)"
+	@kubectl apply -f k8s/monitoring.yaml
+	@kubectl apply -f k8s/logging.yaml
+
+cert-status: ## Check SSL certificate status
+	@echo "$(GREEN)SSL Certificate Status:$(NC)"
+	@kubectl get certificate -n $(NAMESPACE)
+	@kubectl describe certificate webhook-platform-tls -n $(NAMESPACE)
+
+ingress-status: ## Check ingress status
+	@echo "$(GREEN)Ingress Status:$(NC)"
+	@kubectl get ingress -n $(NAMESPACE)
+	@kubectl describe ingress webhook-platform-ingress -n $(NAMESPACE)
+
+debug-api: ## Debug API service
+	@echo "$(GREEN)Debugging API service...$(NC)"
+	@kubectl describe deployment api-service -n $(NAMESPACE)
+	@kubectl get events --sort-by=.metadata.creationTimestamp -n $(NAMESPACE) | grep api-service
+
+debug-delivery: ## Debug delivery engine
+	@echo "$(GREEN)Debugging delivery engine...$(NC)"
+	@kubectl describe deployment delivery-engine -n $(NAMESPACE)
+	@kubectl get events --sort-by=.metadata.creationTimestamp -n $(NAMESPACE) | grep delivery-engine
+
+debug-analytics: ## Debug analytics service
+	@echo "$(GREEN)Debugging analytics service...$(NC)"
+	@kubectl describe deployment analytics-service -n $(NAMESPACE)
+	@kubectl get events --sort-by=.metadata.creationTimestamp -n $(NAMESPACE) | grep analytics-service
+
+port-forward-api: ## Port forward to API service (localhost:8080)
+	@echo "$(GREEN)Port forwarding to API service on localhost:8080...$(NC)"
+	@kubectl port-forward service/api-service 8080:80 -n $(NAMESPACE)
+
+port-forward-analytics: ## Port forward to analytics service (localhost:8082)
+	@echo "$(GREEN)Port forwarding to analytics service on localhost:8082...$(NC)"
+	@kubectl port-forward service/analytics-service 8082:80 -n $(NAMESPACE)
+
+port-forward-db: ## Port forward to database (localhost:5432)
+	@echo "$(GREEN)Port forwarding to database on localhost:5432...$(NC)"
+	@kubectl port-forward service/postgres 5432:5432 -n $(NAMESPACE)
+
+port-forward-redis: ## Port forward to Redis (localhost:6379)
+	@echo "$(GREEN)Port forwarding to Redis on localhost:6379...$(NC)"
+	@kubectl port-forward service/redis 6379:6379 -n $(NAMESPACE)
+
+# Full deployment pipeline
+deploy-full: build push deploy verify ## Full deployment pipeline (build, push, deploy, verify)
+	@echo "$(GREEN)Full deployment completed successfully!$(NC)"
+
+# Emergency procedures
+emergency-scale-down: ## Emergency scale down all services to 1 replica
+	@echo "$(YELLOW)EMERGENCY: Scaling down all services...$(NC)"
+	@kubectl scale deployment api-service --replicas=1 -n $(NAMESPACE)
+	@kubectl scale deployment delivery-engine --replicas=1 -n $(NAMESPACE)
+	@kubectl scale deployment analytics-service --replicas=1 -n $(NAMESPACE)
+
+emergency-scale-up: ## Emergency scale up all services to default replicas
+	@echo "$(GREEN)Scaling up all services to default replicas...$(NC)"
+	@kubectl scale deployment api-service --replicas=3 -n $(NAMESPACE)
+	@kubectl scale deployment delivery-engine --replicas=5 -n $(NAMESPACE)
+	@kubectl scale deployment analytics-service --replicas=2 -n $(NAMESPACE)
