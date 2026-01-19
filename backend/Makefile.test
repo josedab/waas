@@ -1,0 +1,227 @@
+# Webhook Platform Test Makefile
+# This Makefile provides comprehensive testing commands for the webhook platform
+
+.PHONY: help test test-unit test-integration test-e2e test-performance test-chaos test-all
+.PHONY: test-setup test-cleanup test-deps test-coverage test-race test-bench
+.PHONY: docker-test docker-test-setup docker-test-cleanup
+
+# Default target
+help: ## Show this help message
+	@echo "Webhook Platform Test Commands"
+	@echo "=============================="
+	@echo ""
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+# Test Environment Variables
+TEST_DATABASE_URL ?= postgres://postgres:password@localhost:5432/webhook_platform_test?sslmode=disable
+TEST_REDIS_URL ?= redis://localhost:6379/10
+COVERAGE_FILE ?= coverage.out
+COVERAGE_HTML ?= coverage.html
+
+# Test execution
+test: test-unit ## Run unit tests (default)
+
+test-unit: ## Run unit tests with coverage
+	@echo "Running unit tests..."
+	@go test -v -race -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./pkg/... ./internal/...
+	@echo "Unit tests completed."
+
+test-integration: test-deps ## Run integration tests
+	@echo "Running integration tests..."
+	@TEST_DATABASE_URL=$(TEST_DATABASE_URL) TEST_REDIS_URL=$(TEST_REDIS_URL) \
+		go test -v -race -timeout=10m ./test/integration/...
+	@echo "Integration tests completed."
+
+test-e2e: test-deps ## Run end-to-end tests
+	@echo "Running end-to-end tests..."
+	@TEST_DATABASE_URL=$(TEST_DATABASE_URL) TEST_REDIS_URL=$(TEST_REDIS_URL) \
+		go test -v -timeout=15m ./test/e2e/...
+	@echo "End-to-end tests completed."
+
+test-performance: test-deps ## Run performance and load tests
+	@echo "Running performance tests..."
+	@RUN_LOAD_TESTS=true TEST_DATABASE_URL=$(TEST_DATABASE_URL) TEST_REDIS_URL=$(TEST_REDIS_URL) \
+		go test -v -timeout=30m ./test/performance/...
+	@echo "Performance tests completed."
+
+test-chaos: test-deps ## Run chaos engineering tests
+	@echo "Running chaos engineering tests..."
+	@RUN_CHAOS_TESTS=true TEST_DATABASE_URL=$(TEST_DATABASE_URL) TEST_REDIS_URL=$(TEST_REDIS_URL) \
+		go test -v -timeout=20m ./test/chaos/...
+	@echo "Chaos tests completed."
+
+test-all: test-deps ## Run all test suites
+	@echo "Running all test suites..."
+	@RUN_ALL_TESTS=true go run test/runner/test_runner.go -suite=all -verbose
+	@echo "All tests completed."
+
+# Test utilities
+test-coverage: test-unit ## Generate and display test coverage report
+	@echo "Generating coverage report..."
+	@go tool cover -html=$(COVERAGE_FILE) -o $(COVERAGE_HTML)
+	@echo "Coverage report generated: $(COVERAGE_HTML)"
+	@go tool cover -func=$(COVERAGE_FILE) | grep total:
+
+test-race: ## Run tests with race detection
+	@echo "Running tests with race detection..."
+	@go test -race -short ./...
+
+test-bench: ## Run benchmark tests
+	@echo "Running benchmark tests..."
+	@go test -bench=. -benchmem ./...
+
+test-short: ## Run short tests only
+	@echo "Running short tests..."
+	@go test -short ./...
+
+# Test environment management
+test-deps: ## Check and install test dependencies
+	@echo "Checking test dependencies..."
+	@command -v docker >/dev/null 2>&1 || { echo "Docker is required but not installed. Aborting." >&2; exit 1; }
+	@command -v docker-compose >/dev/null 2>&1 || { echo "Docker Compose is required but not installed. Aborting." >&2; exit 1; }
+	@go mod download
+	@go mod tidy
+
+test-setup: ## Set up test environment (databases, etc.)
+	@echo "Setting up test environment..."
+	@docker-compose -f docker-compose.test.yml up -d postgres redis
+	@echo "Waiting for services to be ready..."
+	@sleep 10
+	@echo "Running database migrations..."
+	@DATABASE_URL=$(TEST_DATABASE_URL) go run cmd/migrate/main.go -up || true
+	@echo "Test environment ready."
+
+test-cleanup: ## Clean up test environment
+	@echo "Cleaning up test environment..."
+	@docker-compose -f docker-compose.test.yml down -v
+	@rm -f $(COVERAGE_FILE) $(COVERAGE_HTML)
+	@echo "Test environment cleaned up."
+
+# Docker-based testing
+docker-test: docker-test-setup ## Run all tests in Docker environment
+	@echo "Running tests in Docker..."
+	@docker-compose -f docker-compose.test.yml run --rm test-runner make test-all
+	@$(MAKE) docker-test-cleanup
+
+docker-test-setup: ## Set up Docker test environment
+	@echo "Setting up Docker test environment..."
+	@docker-compose -f docker-compose.test.yml build
+	@docker-compose -f docker-compose.test.yml up -d postgres redis
+
+docker-test-cleanup: ## Clean up Docker test environment
+	@echo "Cleaning up Docker test environment..."
+	@docker-compose -f docker-compose.test.yml down -v
+
+# Continuous Integration targets
+ci-test: test-deps ## Run tests suitable for CI environment
+	@echo "Running CI tests..."
+	@$(MAKE) test-unit
+	@$(MAKE) test-integration
+	@$(MAKE) test-e2e
+
+ci-test-full: test-deps ## Run full test suite for CI (including performance)
+	@echo "Running full CI test suite..."
+	@$(MAKE) test-unit
+	@$(MAKE) test-integration
+	@$(MAKE) test-e2e
+	@$(MAKE) test-performance
+
+# Test data and fixtures
+test-fixtures: ## Generate test fixtures and mock data
+	@echo "Generating test fixtures..."
+	@go run test/fixtures/generator.go
+
+# Linting and code quality (test-related)
+test-lint: ## Run linters on test code
+	@echo "Linting test code..."
+	@golangci-lint run ./test/...
+
+# Security testing
+test-security: ## Run security tests
+	@echo "Running security tests..."
+	@gosec ./...
+	@go run github.com/securecodewarrior/gosec/v2/cmd/gosec@latest ./...
+
+# Performance profiling
+test-profile-cpu: ## Run tests with CPU profiling
+	@echo "Running tests with CPU profiling..."
+	@go test -cpuprofile=cpu.prof -bench=. ./...
+
+test-profile-mem: ## Run tests with memory profiling
+	@echo "Running tests with memory profiling..."
+	@go test -memprofile=mem.prof -bench=. ./...
+
+# Test reporting
+test-report: ## Generate comprehensive test report
+	@echo "Generating test report..."
+	@mkdir -p reports
+	@go test -json ./... > reports/test-results.json
+	@go tool cover -html=$(COVERAGE_FILE) -o reports/coverage.html
+	@echo "Test report generated in reports/ directory"
+
+# Stress testing
+test-stress: ## Run stress tests
+	@echo "Running stress tests..."
+	@go test -stress -timeout=30m ./test/performance/...
+
+# Test specific packages
+test-pkg: ## Run tests for specific package (usage: make test-pkg PKG=./pkg/auth)
+	@echo "Running tests for package: $(PKG)"
+	@go test -v -race $(PKG)
+
+# Test with different Go versions (requires Docker)
+test-go-versions: ## Test with multiple Go versions
+	@echo "Testing with multiple Go versions..."
+	@for version in 1.21 1.22 1.23; do \
+		echo "Testing with Go $$version..."; \
+		docker run --rm -v $(PWD):/app -w /app golang:$$version go test ./...; \
+	done
+
+# Database-specific tests
+test-db-postgres: ## Run tests specifically for PostgreSQL
+	@echo "Running PostgreSQL-specific tests..."
+	@TEST_DATABASE_URL=$(TEST_DATABASE_URL) go test -v ./pkg/database/... ./pkg/repository/...
+
+test-db-redis: ## Run tests specifically for Redis
+	@echo "Running Redis-specific tests..."
+	@TEST_REDIS_URL=$(TEST_REDIS_URL) go test -v ./pkg/queue/... ./pkg/cache/...
+
+# Load testing with external tools
+test-load-external: ## Run load tests with external tools (k6, artillery, etc.)
+	@echo "Running external load tests..."
+	@command -v k6 >/dev/null 2>&1 && k6 run test/load/k6-script.js || echo "k6 not found, skipping"
+
+# Test environment validation
+test-env-check: ## Validate test environment setup
+	@echo "Validating test environment..."
+	@echo "Checking database connection..."
+	@psql $(TEST_DATABASE_URL) -c "SELECT 1;" >/dev/null 2>&1 && echo "✅ Database connection OK" || echo "❌ Database connection failed"
+	@echo "Checking Redis connection..."
+	@redis-cli -u $(TEST_REDIS_URL) ping >/dev/null 2>&1 && echo "✅ Redis connection OK" || echo "❌ Redis connection failed"
+
+# Test metrics and monitoring
+test-metrics: ## Collect test execution metrics
+	@echo "Collecting test metrics..."
+	@go test -json ./... | tee test-metrics.json
+	@echo "Test metrics saved to test-metrics.json"
+
+# Cleanup commands
+clean-test: ## Clean all test artifacts
+	@echo "Cleaning test artifacts..."
+	@rm -f $(COVERAGE_FILE) $(COVERAGE_HTML)
+	@rm -f cpu.prof mem.prof
+	@rm -f test-metrics.json
+	@rm -rf reports/
+	@echo "Test artifacts cleaned."
+
+# Help for test runner
+test-runner-help: ## Show test runner help
+	@go run test/runner/test_runner.go -list
+
+# Quick test commands for development
+quick-test: ## Run quick tests for development
+	@go test -short -race ./...
+
+watch-test: ## Watch for changes and run tests (requires entr)
+	@echo "Watching for changes... (requires 'entr' tool)"
+	@find . -name "*.go" | entr -c make quick-test
