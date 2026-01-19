@@ -1,0 +1,60 @@
+package queue
+
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// DeliveryMessage represents a webhook delivery message in the queue
+type DeliveryMessage struct {
+	DeliveryID   uuid.UUID         `json:"delivery_id"`
+	EndpointID   uuid.UUID         `json:"endpoint_id"`
+	TenantID     uuid.UUID         `json:"tenant_id"`
+	Payload      json.RawMessage   `json:"payload"`
+	Headers      map[string]string `json:"headers"`
+	AttemptNumber int              `json:"attempt_number"`
+	ScheduledAt  time.Time         `json:"scheduled_at"`
+	Signature    string            `json:"signature"`
+	MaxAttempts  int               `json:"max_attempts"`
+}
+
+// ToJSON serializes the message to JSON
+func (dm *DeliveryMessage) ToJSON() ([]byte, error) {
+	return json.Marshal(dm)
+}
+
+// FromJSON deserializes JSON to DeliveryMessage
+func (dm *DeliveryMessage) FromJSON(data []byte) error {
+	return json.Unmarshal(data, dm)
+}
+
+// DeliveryResult represents the result of a webhook delivery attempt
+type DeliveryResult struct {
+	DeliveryID    uuid.UUID `json:"delivery_id"`
+	Status        string    `json:"status"` // success, failed, retrying
+	HTTPStatus    *int      `json:"http_status,omitempty"`
+	ResponseBody  *string   `json:"response_body,omitempty"`
+	ErrorMessage  *string   `json:"error_message,omitempty"`
+	DeliveredAt   *time.Time `json:"delivered_at,omitempty"`
+	NextRetryAt   *time.Time `json:"next_retry_at,omitempty"`
+	AttemptNumber int       `json:"attempt_number"`
+}
+
+// QueueNames defines the Redis queue names
+const (
+	DeliveryQueue    = "webhook:delivery"
+	DeadLetterQueue  = "webhook:dlq"
+	RetryQueue       = "webhook:retry"
+	ProcessingQueue  = "webhook:processing"
+)
+
+// MessageStatus constants
+const (
+	StatusPending   = "pending"
+	StatusProcessing = "processing"
+	StatusSuccess   = "success"
+	StatusFailed    = "failed"
+	StatusRetrying  = "retrying"
+)
