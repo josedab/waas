@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS sent_notifications;
+DROP TABLE IF EXISTS notification_integrations;
+DROP TABLE IF EXISTS notification_preferences;
+DROP TABLE IF EXISTS activity_feed;
+DROP TABLE IF EXISTS change_request_comments;
+DROP TABLE IF EXISTS change_request_reviews;
+DROP TABLE IF EXISTS change_requests;
+DROP TABLE IF EXISTS config_versions;
+DROP TABLE IF EXISTS shared_configurations;
+DROP TABLE IF EXISTS team_members;
+DROP TABLE IF EXISTS teams;
