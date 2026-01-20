@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS idx_snapshot_deliveries_delivery_id;
+DROP INDEX IF EXISTS idx_replay_snapshots_expires_at;
+DROP INDEX IF EXISTS idx_replay_snapshots_tenant_id;
+DROP INDEX IF EXISTS idx_delivery_archives_created_at;
+DROP INDEX IF EXISTS idx_delivery_archives_status;
+DROP INDEX IF EXISTS idx_delivery_archives_endpoint_id;
+DROP INDEX IF EXISTS idx_delivery_archives_tenant_id;
+DROP TABLE IF EXISTS snapshot_deliveries;
+DROP TABLE IF EXISTS replay_snapshots;
+DROP TABLE IF EXISTS delivery_archives;

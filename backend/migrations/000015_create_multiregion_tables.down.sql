@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS idx_routing_policies_tenant;
+DROP INDEX IF EXISTS idx_replication_configs_source;
+DROP INDEX IF EXISTS idx_failover_events_started;
+DROP INDEX IF EXISTS idx_regions_active;
+DROP INDEX IF EXISTS idx_regions_code;
+DROP TABLE IF EXISTS routing_policies;
+DROP TABLE IF EXISTS replication_configs;
+DROP TABLE IF EXISTS failover_events;
+DROP TABLE IF EXISTS region_health;
+DROP TABLE IF EXISTS regions;

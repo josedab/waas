@@ -1,0 +1,11 @@
+DROP INDEX IF EXISTS idx_inbound_webhooks_event_type;
+DROP INDEX IF EXISTS idx_inbound_webhooks_created_at;
+DROP INDEX IF EXISTS idx_inbound_webhooks_provider_id;
+DROP INDEX IF EXISTS idx_inbound_webhooks_tenant_id;
+DROP INDEX IF EXISTS idx_gateway_routing_rules_priority;
+DROP INDEX IF EXISTS idx_gateway_routing_rules_provider_id;
+DROP INDEX IF EXISTS idx_gateway_routing_rules_tenant_id;
+DROP INDEX IF EXISTS idx_gateway_providers_tenant_id;
+DROP TABLE IF EXISTS inbound_webhooks;
+DROP TABLE IF EXISTS gateway_routing_rules;
+DROP TABLE IF EXISTS gateway_providers;

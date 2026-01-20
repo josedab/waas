@@ -1,0 +1,13 @@
+DROP INDEX IF EXISTS idx_anomaly_alerts_anomaly;
+DROP INDEX IF EXISTS idx_anomaly_alert_configs_tenant;
+DROP INDEX IF EXISTS idx_anomaly_detection_configs_tenant;
+DROP INDEX IF EXISTS idx_anomalies_detected_at;
+DROP INDEX IF EXISTS idx_anomalies_status;
+DROP INDEX IF EXISTS idx_anomalies_tenant;
+DROP INDEX IF EXISTS idx_anomaly_baselines_endpoint;
+DROP INDEX IF EXISTS idx_anomaly_baselines_tenant;
+DROP TABLE IF EXISTS anomaly_alerts;
+DROP TABLE IF EXISTS anomaly_alert_configs;
+DROP TABLE IF EXISTS anomaly_detection_configs;
+DROP TABLE IF EXISTS anomalies;
+DROP TABLE IF EXISTS anomaly_baselines;
