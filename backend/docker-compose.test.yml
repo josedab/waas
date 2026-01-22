@@ -13,7 +13,6 @@ services:
       - "5433:5432"  # Use different port to avoid conflicts
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d/
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d webhook_platform_test"]
       interval: 10s
