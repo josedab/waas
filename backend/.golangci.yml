@@ -1,0 +1,53 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gocritic
+    - gosec
+    - misspell
+    - unconvert
+    - unparam
+    - gofmt
+  disable:
+    - depguard
+
+linters-settings:
+  govet:
+    shadow: true
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+    disabled-checks:
+      - hugeParam
+  gosec:
+    excludes:
+      - G104 # unhandled errors - too noisy for early development
+  misspell:
+    locale: US
+
+issues:
+  exclude-dirs:
+    - vendor
+    - docs
+    - web
+    - sdk
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
+    - path: test/
+      linters:
+        - gosec
+        - errcheck
+  max-issues-per-linter: 50
+  max-same-issues: 5
