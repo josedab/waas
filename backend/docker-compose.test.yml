@@ -1,0 +1,140 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for testing
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: webhook_platform_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5433:5432"  # Use different port to avoid conflicts
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d webhook_platform_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # Redis for testing
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"  # Use different port to avoid conflicts
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # Test runner container
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - TEST_DATABASE_URL=postgres://postgres:password@postgres:5432/webhook_platform_test?sslmode=disable
+      - TEST_REDIS_URL=redis://redis:6379/0
+      - GO_ENV=test
+      - CGO_ENABLED=1  # Enable for race detection
+    volumes:
+      - .:/app
+      - go_mod_cache:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - test-network
+    command: ["make", "-f", "Makefile.test", "test-all"]
+
+  # Load testing with k6
+  k6:
+    image: grafana/k6:latest
+    volumes:
+      - ./test/load:/scripts
+    environment:
+      - K6_OUT=json=results.json
+    networks:
+      - test-network
+    profiles:
+      - load-testing
+
+  # Chaos engineering with Pumba
+  pumba:
+    image: gaiaadm/pumba:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["pumba", "--log-level=info", "help"]
+    networks:
+      - test-network
+    profiles:
+      - chaos-testing
+
+  # Monitoring during tests
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./test/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - test-network
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_test_data:/var/lib/grafana
+      - ./test/monitoring/grafana:/etc/grafana/provisioning
+    networks:
+      - test-network
+    profiles:
+      - monitoring
+
+  # Jaeger for distributed tracing during tests
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16687:16686"  # UI
+      - "14269:14268"  # HTTP collector
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - test-network
+    profiles:
+      - tracing
+
+volumes:
+  postgres_test_data:
+    driver: local
+  redis_test_data:
+    driver: local
+  grafana_test_data:
+    driver: local
+  go_mod_cache:
+    driver: local
+  go_build_cache:
+    driver: local
+
+networks:
+  test-network:
+    driver: bridge

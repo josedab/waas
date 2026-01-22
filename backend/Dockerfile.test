@@ -1,0 +1,92 @@
+# Multi-stage Dockerfile for testing environment
+FROM golang:1.24-alpine AS test-base
+
+# Install system dependencies for testing
+RUN apk add --no-cache \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    postgresql-client \
+    redis \
+    curl \
+    bash \
+    jq
+
+# Install additional testing tools
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+    go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest && \
+    go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
+    go install github.com/axw/gocov/gocov@latest && \
+    go install github.com/matm/gocov-html@latest
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application for testing
+RUN go build -race -o bin/api-service ./cmd/api-service && \
+    go build -race -o bin/delivery-engine ./cmd/delivery-engine && \
+    go build -race -o bin/analytics-service ./cmd/analytics-service
+
+# Create test stage
+FROM test-base AS test-runner
+
+# Set environment variables for testing
+ENV GO_ENV=test
+ENV CGO_ENABLED=1
+ENV GOOS=linux
+ENV GOARCH=amd64
+
+# Create directories for test artifacts
+RUN mkdir -p /app/reports /app/coverage /app/logs
+
+# Set up test database wait script
+COPY test/scripts/wait-for-services.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/wait-for-services.sh
+
+# Default command
+CMD ["make", "-f", "Makefile.test", "test-all"]
+
+# Performance testing stage
+FROM test-base AS performance-test
+
+# Install additional performance testing tools
+RUN apk add --no-cache wrk apache2-utils
+
+# Install k6 for load testing
+RUN wget -q -O - https://github.com/grafana/k6/releases/download/v0.47.0/k6-v0.47.0-linux-amd64.tar.gz | \
+    tar -xzf - --strip-components=1 -C /usr/local/bin k6-v0.47.0-linux-amd64/k6
+
+ENV RUN_LOAD_TESTS=true
+CMD ["make", "-f", "Makefile.test", "test-performance"]
+
+# Chaos testing stage
+FROM test-base AS chaos-test
+
+# Install chaos engineering tools
+RUN apk add --no-cache docker-cli
+
+ENV RUN_CHAOS_TESTS=true
+CMD ["make", "-f", "Makefile.test", "test-chaos"]
+
+# CI/CD optimized stage
+FROM test-base AS ci-test
+
+# Optimize for CI environment
+ENV GOCACHE=/tmp/go-cache
+ENV GOMODCACHE=/tmp/go-mod-cache
+
+# Pre-compile test binaries for faster execution
+RUN go test -c ./test/integration/... && \
+    go test -c ./test/e2e/... && \
+    go test -c ./pkg/... && \
+    go test -c ./internal/...
+
+CMD ["make", "-f", "Makefile.test", "ci-test"]
