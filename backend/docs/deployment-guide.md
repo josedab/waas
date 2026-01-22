@@ -1,0 +1,373 @@
+# Production Deployment Guide
+
+This guide covers the production deployment of the Webhook Service Platform using Kubernetes with security hardening, monitoring, and automated backup strategies.
+
+## Prerequisites
+
+### Infrastructure Requirements
+
+- Kubernetes cluster (v1.24+) with RBAC enabled
+- Container registry (Docker Hub, ECR, GCR, etc.)
+- Persistent storage with fast SSD storage class
+- Load balancer with SSL termination support
+- Monitoring stack (Prometheus, Grafana)
+- Logging stack (Elasticsearch, Kibana)
+
+### Tools Required
+
+- `kubectl` (v1.24+)
+- `docker` (v20.10+)
+- `helm` (v3.8+) - optional but recommended
+- `trivy` - for vulnerability scanning
+
+### Access Requirements
+
+- Kubernetes cluster admin access
+- Container registry push permissions
+- DNS management for domain configuration
+
+## Security Hardening Features
+
+### Container Security
+
+- **Distroless base images**: Minimal attack surface with no shell or package manager
+- **Non-root user**: All containers run as non-root user (UID 65532)
+- **Read-only root filesystem**: Prevents runtime modifications
+- **Security contexts**: Drops all capabilities, prevents privilege escalation
+- **Resource limits**: CPU and memory limits to prevent resource exhaustion
+
+### Network Security
+
+- **Network policies**: Restricts pod-to-pod communication
+- **TLS encryption**: All external traffic encrypted with Let's Encrypt certificates
+- **Service mesh ready**: Compatible with Istio for additional security layers
+
+### Data Security
+
+- **Secrets management**: Kubernetes secrets for sensitive data
+- **Encryption at rest**: Database and Redis data encrypted
+- **Audit logging**: All administrative operations logged
+
+## Deployment Process
+
+### Step 1: Prepare Environment
+
+1. **Set environment variables**:
+```bash
+export DOCKER_REGISTRY="your-registry.com"
+export PROJECT_NAME="webhook-platform"
+export VERSION="v1.0.0"
+export KUBECONFIG="/path/to/your/kubeconfig"
+```
+
+2. **Verify cluster access**:
+```bash
+kubectl cluster-info
+kubectl get nodes
+```
+
+### Step 2: Build and Push Images
+
+1. **Build production images**:
+```bash
+./scripts/build-images.sh build
+```
+
+2. **Scan for vulnerabilities and push**:
+```bash
+./scripts/build-images.sh push
+```
+
+This will:
+- Build hardened production images
+- Scan for security vulnerabilities
+- Push to container registry
+- Generate image manifest
+
+### Step 3: Deploy Infrastructure
+
+1. **Deploy the platform**:
+```bash
+./scripts/deploy.sh deploy
+```
+
+This automated script will:
+- Verify prerequisites
+- Deploy namespace and RBAC
+- Deploy PostgreSQL and Redis
+- Run database migrations
+- Deploy application services
+- Verify deployment health
+- Deploy monitoring and logging
+
+### Step 4: Configure DNS and SSL
+
+1. **Update DNS records**:
+```
+api.webhook-platform.com     -> Load Balancer IP
+analytics.webhook-platform.com -> Load Balancer IP
+```
+
+2. **Verify SSL certificates**:
+```bash
+kubectl get certificate -n webhook-platform
+```
+
+## Scaling Configuration
+
+### Horizontal Pod Autoscaling (HPA)
+
+The platform includes HPA configurations for automatic scaling:
+
+#### API Service
+- **Min replicas**: 3
+- **Max replicas**: 20
+- **CPU target**: 70%
+- **Memory target**: 80%
+
+#### Delivery Engine
+- **Min replicas**: 5
+- **Max replicas**: 50
+- **CPU target**: 70%
+- **Memory target**: 80%
+- **Custom metric**: Queue depth (target: 100 messages)
+
+#### Analytics Service
+- **Min replicas**: 2
+- **Max replicas**: 10
+- **CPU target**: 70%
+- **Memory target**: 80%
+
+### Vertical Pod Autoscaling (VPA)
+
+For VPA support, install the VPA controller and apply VPA resources:
+
+```bash
+kubectl apply -f k8s/vpa.yaml  # Create this file if needed
+```
+
+## Monitoring and Alerting
+
+### Metrics Collection
+
+- **Prometheus**: Scrapes metrics from all services
+- **Custom metrics**: Business metrics (delivery rates, queue depth)
+- **Infrastructure metrics**: CPU, memory, disk, network
+
+### Alert Rules
+
+Critical alerts configured:
+- High error rate (>10% for 5 minutes)
+- High latency (95th percentile >1 second)
+- Queue backlog (>1000 messages for 2 minutes)
+- Database connection issues
+- Pod crash loops
+- High memory usage (>90%)
+
+### Dashboards
+
+Grafana dashboards available for:
+- Application performance metrics
+- Infrastructure monitoring
+- Business KPIs
+- Error tracking and debugging
+
+## Backup and Recovery
+
+### Automated Backups
+
+#### PostgreSQL Backup
+- **Schedule**: Daily at 2:00 AM UTC
+- **Retention**: 7 days
+- **Format**: Compressed SQL dump
+- **Storage**: Persistent volume (100GB)
+
+#### Redis Backup
+- **Schedule**: Daily at 3:00 AM UTC
+- **Retention**: 7 days
+- **Format**: RDB snapshot
+- **Storage**: Same persistent volume as PostgreSQL
+
+### Recovery Procedures
+
+#### Database Recovery
+```bash
+# List available backups
+kubectl exec -n webhook-platform deployment/postgres -- ls -la /backups/
+
+# Restore from backup
+kubectl exec -n webhook-platform deployment/postgres -- \
+  psql $DATABASE_URL < /backups/backup-YYYYMMDD-HHMMSS.sql
+```
+
+#### Redis Recovery
+```bash
+# Stop Redis
+kubectl scale deployment redis --replicas=0 -n webhook-platform
+
+# Restore RDB file
+kubectl cp backup-file.rdb webhook-platform/redis-pod:/data/dump.rdb
+
+# Start Redis
+kubectl scale deployment redis --replicas=1 -n webhook-platform
+```
+
+## Deployment Verification
+
+### Automated Verification
+
+The deployment script includes automated verification:
+
+1. **Pod readiness**: All pods must be ready
+2. **Health checks**: HTTP health endpoints must respond
+3. **Database connectivity**: Services can connect to databases
+4. **Queue connectivity**: Message queue is accessible
+
+### Manual Verification
+
+```bash
+# Check deployment status
+./scripts/deploy.sh verify
+
+# Run health checks
+./scripts/deploy.sh health
+
+# Check specific service
+kubectl get pods -n webhook-platform
+kubectl logs -f deployment/api-service -n webhook-platform
+```
+
+## Rollback Procedures
+
+### Automatic Rollback
+
+If deployment verification fails, automatic rollback is triggered:
+
+```bash
+# Automatic rollback on failure
+./scripts/deploy.sh deploy  # Will rollback if verification fails
+```
+
+### Manual Rollback
+
+```bash
+# Manual rollback to previous version
+./scripts/deploy.sh rollback
+
+# Rollback specific service
+kubectl rollout undo deployment/api-service -n webhook-platform
+```
+
+### Rollback Verification
+
+After rollback:
+1. Verify all pods are running
+2. Run health checks
+3. Check application functionality
+4. Monitor error rates and performance
+
+## Troubleshooting
+
+### Common Issues
+
+#### Pod Startup Issues
+```bash
+# Check pod status
+kubectl describe pod <pod-name> -n webhook-platform
+
+# Check logs
+kubectl logs <pod-name> -n webhook-platform --previous
+```
+
+#### Database Connection Issues
+```bash
+# Test database connectivity
+kubectl run db-test --image=postgres:15-alpine --rm -i --restart=Never -n webhook-platform -- \
+  psql $DATABASE_URL -c "SELECT 1"
+```
+
+#### Performance Issues
+```bash
+# Check resource usage
+kubectl top pods -n webhook-platform
+kubectl top nodes
+
+# Check HPA status
+kubectl get hpa -n webhook-platform
+```
+
+### Emergency Procedures
+
+#### Scale Down Services
+```bash
+# Emergency scale down
+kubectl scale deployment api-service --replicas=1 -n webhook-platform
+kubectl scale deployment delivery-engine --replicas=1 -n webhook-platform
+```
+
+#### Database Maintenance Mode
+```bash
+# Put system in maintenance mode
+kubectl patch ingress webhook-platform-ingress -n webhook-platform \
+  --type='json' -p='[{"op": "add", "path": "/metadata/annotations/nginx.ingress.kubernetes.io~1default-backend", "value": "maintenance-page"}]'
+```
+
+## Security Considerations
+
+### Regular Security Tasks
+
+1. **Update base images**: Rebuild images monthly with latest security patches
+2. **Rotate secrets**: Rotate database passwords and API keys quarterly
+3. **Review access**: Audit RBAC permissions monthly
+4. **Scan vulnerabilities**: Run security scans weekly
+
+### Security Monitoring
+
+- Monitor failed authentication attempts
+- Track unusual API usage patterns
+- Alert on privilege escalation attempts
+- Monitor network policy violations
+
+## Performance Optimization
+
+### Database Optimization
+
+- Connection pooling configured
+- Query optimization with indexes
+- Regular VACUUM and ANALYZE operations
+- Monitoring slow queries
+
+### Application Optimization
+
+- HTTP/2 enabled for better performance
+- Gzip compression for API responses
+- Connection keep-alive for webhook delivery
+- Batch processing for analytics
+
+### Infrastructure Optimization
+
+- Node affinity for database pods
+- Pod disruption budgets for high availability
+- Resource requests and limits tuned
+- Network policies optimized for performance
+
+## Maintenance Windows
+
+### Planned Maintenance
+
+- **Schedule**: Monthly, first Sunday 2:00-4:00 AM UTC
+- **Duration**: Maximum 2 hours
+- **Notification**: 48 hours advance notice
+- **Rollback plan**: Always prepared
+
+### Maintenance Checklist
+
+1. Notify users of maintenance window
+2. Create database backup
+3. Scale down non-critical services
+4. Apply updates with rolling deployment
+5. Verify functionality
+6. Scale services back up
+7. Monitor for issues
+
+This deployment guide ensures a secure, scalable, and maintainable production deployment of the Webhook Service Platform.

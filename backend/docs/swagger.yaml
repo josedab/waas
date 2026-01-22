@@ -1,0 +1,1396 @@
+schemes:
+- http
+- https
+swagger: '2.0'
+info:
+  description: A comprehensive webhook-as-a-service platform that enables companies
+    to reliably send, receive, and manage webhooks without building their own infrastructure.
+  title: Webhook Service Platform API
+  termsOfService: http://swagger.io/terms/
+  contact:
+    name: Webhook Platform Team
+    url: http://www.webhook-platform.com
+    email: support@webhook-platform.com
+  license:
+    name: MIT
+    url: http://opensource.org/licenses/MIT
+  version: 1.0.0
+host: localhost:8080
+basePath: /api/v1
+paths:
+  /tenant:
+    get:
+      security:
+      - ApiKeyAuth: []
+      description: Get information about the currently authenticated tenant
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - tenants
+      summary: Get tenant info
+      responses:
+        '200':
+          description: Tenant information
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+    put:
+      security:
+      - ApiKeyAuth: []
+      description: Update information for the currently authenticated tenant
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - tenants
+      summary: Update tenant
+      parameters:
+      - description: Tenant update request
+        name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.UpdateTenantRequest'
+      responses:
+        '200':
+          description: Tenant updated successfully
+          schema:
+            type: object
+            additionalProperties: true
+        '400':
+          description: Invalid request format or validation error
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /tenant/regenerate-key:
+    post:
+      security:
+      - ApiKeyAuth: []
+      description: Generate a new API key for the currently authenticated tenant (invalidates
+        the old key)
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - tenants
+      summary: Regenerate API key
+      responses:
+        '200':
+          description: New API key generated successfully
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /tenants:
+    post:
+      description: Register a new tenant account and receive an API key for authentication
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - tenants
+      summary: Create tenant
+      parameters:
+      - description: Tenant creation request
+        name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.CreateTenantRequest'
+      responses:
+        '201':
+          description: Tenant created successfully with API key
+          schema:
+            $ref: '#/definitions/internal_api_handlers.CreateTenantResponse'
+        '400':
+          description: Invalid request format or validation error
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /webhooks/deliveries:
+    get:
+      security:
+      - ApiKeyAuth: []
+      description: Get paginated webhook delivery history with optional filtering
+        by endpoint, status, and date range
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - monitoring
+      summary: Get delivery history
+      parameters:
+      - type: array
+        items:
+          type: string
+        collectionFormat: csv
+        description: Filter by endpoint IDs (comma-separated)
+        name: endpoint_ids
+        in: query
+      - type: array
+        items:
+          type: string
+        collectionFormat: csv
+        description: Filter by delivery statuses (comma-separated)
+        name: statuses
+        in: query
+      - type: string
+        description: Filter deliveries after this date (RFC3339 format)
+        name: start_date
+        in: query
+      - type: string
+        description: Filter deliveries before this date (RFC3339 format)
+        name: end_date
+        in: query
+      - type: integer
+        default: 50
+        description: Number of results to return (max 100)
+        name: limit
+        in: query
+      - type: integer
+        default: 0
+        description: Number of results to skip
+        name: offset
+        in: query
+      responses:
+        '200':
+          description: Delivery history with pagination
+          schema:
+            $ref: '#/definitions/internal_api_handlers.DeliveryHistoryResponse'
+        '400':
+          description: Invalid request parameters
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /webhooks/deliveries/{id}:
+    get:
+      security:
+      - ApiKeyAuth: []
+      description: Get detailed information about a specific webhook delivery including
+        all attempts and timeline
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - monitoring
+      summary: Get delivery details
+      parameters:
+      - type: string
+        format: uuid
+        description: Delivery ID
+        name: id
+        in: path
+        required: true
+      responses:
+        '200':
+          description: Detailed delivery information
+          schema:
+            $ref: '#/definitions/internal_api_handlers.DeliveryDetailResponse'
+        '400':
+          description: Invalid delivery ID format
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '404':
+          description: Delivery not found
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /webhooks/deliveries/{id}/inspect:
+    get:
+      security:
+      - ApiKeyAuth: []
+      description: Get detailed debugging information about a webhook delivery including
+        request/response details and error analysis
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - testing
+      summary: Inspect delivery
+      parameters:
+      - type: string
+        format: uuid
+        description: Delivery ID
+        name: id
+        in: path
+        required: true
+      responses:
+        '200':
+          description: Detailed delivery inspection information
+          schema:
+            $ref: '#/definitions/internal_api_handlers.DeliveryInspectionResponse'
+        '400':
+          description: Invalid delivery ID format
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '404':
+          description: Delivery not found
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /webhooks/endpoints:
+    get:
+      security:
+      - ApiKeyAuth: []
+      description: Get a paginated list of webhook endpoints for the authenticated
+        tenant
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - webhooks
+      summary: List webhook endpoints
+      parameters:
+      - type: integer
+        default: 50
+        description: Number of results to return (max 100)
+        name: limit
+        in: query
+      - type: integer
+        default: 0
+        description: Number of results to skip
+        name: offset
+        in: query
+      responses:
+        '200':
+          description: List of webhook endpoints with pagination info
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+    post:
+      security:
+      - ApiKeyAuth: []
+      description: Create a new webhook endpoint for receiving webhook notifications
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - webhooks
+      summary: Create webhook endpoint
+      parameters:
+      - description: Webhook endpoint creation request
+        name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.CreateWebhookEndpointRequest'
+      responses:
+        '201':
+          description: Webhook endpoint created successfully
+          schema:
+            $ref: '#/definitions/internal_api_handlers.WebhookEndpointResponse'
+        '400':
+          description: Invalid request format or validation error
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /webhooks/endpoints/{id}:
+    get:
+      security:
+      - ApiKeyAuth: []
+      description: Get details of a specific webhook endpoint by its ID
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - webhooks
+      summary: Get webhook endpoint
+      parameters:
+      - type: string
+        format: uuid
+        description: Webhook endpoint ID
+        name: id
+        in: path
+        required: true
+      responses:
+        '200':
+          description: Webhook endpoint details
+          schema:
+            $ref: '#/definitions/internal_api_handlers.WebhookEndpointResponse'
+        '400':
+          description: Invalid endpoint ID format
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '403':
+          description: Forbidden - access denied to this endpoint
+          schema:
+            type: object
+            additionalProperties: true
+        '404':
+          description: Webhook endpoint not found
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+    put:
+      security:
+      - ApiKeyAuth: []
+      description: Update configuration of an existing webhook endpoint
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - webhooks
+      summary: Update webhook endpoint
+      parameters:
+      - type: string
+        format: uuid
+        description: Webhook endpoint ID
+        name: id
+        in: path
+        required: true
+      - description: Webhook endpoint update request
+        name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.UpdateWebhookEndpointRequest'
+      responses:
+        '200':
+          description: Webhook endpoint updated successfully
+          schema:
+            $ref: '#/definitions/internal_api_handlers.WebhookEndpointResponse'
+        '400':
+          description: Invalid request format or validation error
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '403':
+          description: Forbidden - access denied to this endpoint
+          schema:
+            type: object
+            additionalProperties: true
+        '404':
+          description: Webhook endpoint not found
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+    delete:
+      security:
+      - ApiKeyAuth: []
+      description: Delete a webhook endpoint and stop all future deliveries to it
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - webhooks
+      summary: Delete webhook endpoint
+      parameters:
+      - type: string
+        format: uuid
+        description: Webhook endpoint ID
+        name: id
+        in: path
+        required: true
+      responses:
+        '204':
+          description: Webhook endpoint deleted successfully
+        '400':
+          description: Invalid endpoint ID format
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '403':
+          description: Forbidden - access denied to this endpoint
+          schema:
+            type: object
+            additionalProperties: true
+        '404':
+          description: Webhook endpoint not found
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /webhooks/send:
+    post:
+      security:
+      - ApiKeyAuth: []
+      description: Send a webhook payload to a specific endpoint or all active endpoints
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - webhooks
+      summary: Send webhook
+      parameters:
+      - description: Webhook send request
+        name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.SendWebhookRequest'
+      responses:
+        '202':
+          description: Webhook queued for delivery successfully
+          schema:
+            $ref: '#/definitions/internal_api_handlers.SendWebhookResponse'
+        '400':
+          description: Invalid request format, payload too large, or no active endpoints
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '403':
+          description: Forbidden - access denied to specified endpoint
+          schema:
+            type: object
+            additionalProperties: true
+        '404':
+          description: Webhook endpoint not found
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /webhooks/send/batch:
+    post:
+      security:
+      - ApiKeyAuth: []
+      description: Send a webhook payload to multiple endpoints in a single request
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - webhooks
+      summary: Batch send webhook
+      parameters:
+      - description: Batch webhook send request
+        name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.BatchSendWebhookRequest'
+      responses:
+        '202':
+          description: Webhooks queued for delivery successfully
+          schema:
+            $ref: '#/definitions/internal_api_handlers.BatchSendWebhookResponse'
+        '400':
+          description: Invalid request format, payload too large, or no active endpoints
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /webhooks/test:
+    post:
+      security:
+      - ApiKeyAuth: []
+      description: Send a test webhook to any URL with custom payload and headers
+        for immediate testing
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - testing
+      summary: Test webhook endpoint
+      parameters:
+      - description: Webhook test request
+        name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.TestWebhookRequest'
+      responses:
+        '200':
+          description: Webhook test result
+          schema:
+            $ref: '#/definitions/internal_api_handlers.TestWebhookResponse'
+        '400':
+          description: Invalid request format or validation error
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /webhooks/test/endpoints:
+    post:
+      security:
+      - ApiKeyAuth: []
+      description: Create a temporary webhook endpoint that can receive test webhooks
+        for debugging
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      tags:
+      - testing
+      summary: Create test endpoint
+      parameters:
+      - description: Test endpoint creation request
+        name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handlers.CreateTestEndpointRequest'
+      responses:
+        '201':
+          description: Test endpoint created successfully
+          schema:
+            $ref: '#/definitions/internal_api_handlers.TestEndpointResponse'
+        '400':
+          description: Invalid request format
+          schema:
+            type: object
+            additionalProperties: true
+        '401':
+          description: Unauthorized - invalid or missing API key
+          schema:
+            type: object
+            additionalProperties: true
+        '500':
+          description: Internal server error
+          schema:
+            type: object
+            additionalProperties: true
+  /flows:
+    get:
+      tags:
+      - flows
+      summary: List flows
+      description: Get a list of flows for the tenant
+      produces:
+      - application/json
+      security:
+      - ApiKeyAuth: []
+      parameters:
+      - name: limit
+        in: query
+        type: integer
+        default: 20
+      - name: offset
+        in: query
+        type: integer
+        default: 0
+      responses:
+        '200':
+          description: List of flows
+    post:
+      tags:
+      - flows
+      summary: Create a new flow
+      description: Create a new visual workflow for webhook processing
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Flow created
+  /flows/{id}:
+    get:
+      tags:
+      - flows
+      summary: Get flow details
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Flow details
+    put:
+      tags:
+      - flows
+      summary: Update a flow
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Flow updated
+    delete:
+      tags:
+      - flows
+      summary: Delete a flow
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '204':
+          description: Flow deleted
+  /costing/usage:
+    get:
+      tags:
+      - costing
+      summary: Get usage summary
+      description: Get usage summary for the tenant
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Usage summary
+    post:
+      tags:
+      - costing
+      summary: Record usage
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Usage recorded
+  /costing/budgets:
+    get:
+      tags:
+      - costing
+      summary: List budgets
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of budgets
+    post:
+      tags:
+      - costing
+      summary: Create budget
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Budget created
+  /embed/config:
+    get:
+      tags:
+      - embed
+      summary: Get embed config
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Embed configuration
+    post:
+      tags:
+      - embed
+      summary: Create embed config
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Config created
+  /georouting/endpoints/{id}:
+    get:
+      tags:
+      - georouting
+      summary: Get endpoint routing
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Endpoint routing config
+    post:
+      tags:
+      - georouting
+      summary: Create endpoint routing
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Routing created
+  /meta-events/subscriptions:
+    get:
+      tags:
+      - meta-events
+      summary: List meta-event subscriptions
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of subscriptions
+    post:
+      tags:
+      - meta-events
+      summary: Create subscription
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Subscription created
+  /mocking/endpoints/{id}/mock:
+    get:
+      tags:
+      - mocking
+      summary: Get mock config
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Mock configuration
+    post:
+      tags:
+      - mocking
+      summary: Create mock
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Mock created
+  /otel/config:
+    get:
+      tags:
+      - otel
+      summary: Get OTEL config
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: OTEL configuration
+    post:
+      tags:
+      - otel
+      summary: Create OTEL config
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Config created
+  /protocols/configs:
+    get:
+      tags:
+      - protocols
+      summary: List protocol configs
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of protocol configs
+    post:
+      tags:
+      - protocols
+      summary: Create protocol config
+      security:
+      - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Config created
+definitions:
+  internal_api_handlers.BatchSendWebhookRequest:
+    type: object
+    required:
+    - payload
+    properties:
+      endpoint_ids:
+        description: If empty, send to all active endpoints
+        type: array
+        items:
+          type: string
+      headers:
+        type: object
+        additionalProperties:
+          type: string
+      payload:
+        type: array
+        items:
+          type: integer
+  internal_api_handlers.BatchSendWebhookResponse:
+    type: object
+    properties:
+      deliveries:
+        type: array
+        items:
+          $ref: '#/definitions/internal_api_handlers.SendWebhookResponse'
+      failed:
+        type: integer
+      queued:
+        type: integer
+      total:
+        type: integer
+  internal_api_handlers.CreateTenantRequest:
+    type: object
+    required:
+    - name
+    - subscription_tier
+    properties:
+      monthly_quota:
+        type: integer
+      name:
+        type: string
+        maxLength: 255
+        minLength: 1
+      rate_limit_per_minute:
+        type: integer
+      subscription_tier:
+        type: string
+        enum:
+        - free
+        - basic
+        - premium
+        - enterprise
+  internal_api_handlers.CreateTenantResponse:
+    type: object
+    properties:
+      api_key:
+        type: string
+      tenant:
+        $ref: '#/definitions/webhook-platform_pkg_models.Tenant'
+  internal_api_handlers.CreateTestEndpointRequest:
+    type: object
+    properties:
+      description:
+        type: string
+      headers:
+        type: object
+        additionalProperties:
+          type: string
+      name:
+        type: string
+      ttl:
+        description: seconds, defaults to 3600 (1 hour)
+        type: integer
+  internal_api_handlers.CreateWebhookEndpointRequest:
+    type: object
+    required:
+    - url
+    properties:
+      custom_headers:
+        type: object
+        additionalProperties:
+          type: string
+      retry_config:
+        $ref: '#/definitions/internal_api_handlers.RetryConfigRequest'
+      url:
+        type: string
+  internal_api_handlers.DeliveryAttemptResponse:
+    type: object
+    properties:
+      attempt_number:
+        type: integer
+      created_at:
+        type: string
+      delivered_at:
+        type: string
+      endpoint_id:
+        type: string
+      error_message:
+        type: string
+      http_status:
+        type: integer
+      id:
+        type: string
+      payload_hash:
+        type: string
+      payload_size:
+        type: integer
+      response_body:
+        type: string
+      scheduled_at:
+        type: string
+      status:
+        type: string
+  internal_api_handlers.DeliveryDetailResponse:
+    type: object
+    properties:
+      attempts:
+        type: array
+        items:
+          $ref: '#/definitions/internal_api_handlers.DeliveryAttemptResponse'
+      delivery_id:
+        type: string
+      summary:
+        $ref: '#/definitions/internal_api_handlers.DeliverySummary'
+  internal_api_handlers.DeliveryErrorDetails:
+    type: object
+    properties:
+      error_message:
+        type: string
+      error_type:
+        type: string
+      http_status:
+        type: integer
+      next_retry_at:
+        type: string
+      retry_count:
+        type: integer
+      suggestions:
+        type: array
+        items:
+          type: string
+  internal_api_handlers.DeliveryHistoryResponse:
+    type: object
+    properties:
+      deliveries:
+        type: array
+        items:
+          $ref: '#/definitions/internal_api_handlers.DeliveryAttemptResponse'
+      pagination:
+        $ref: '#/definitions/internal_api_handlers.PaginationResponse'
+  internal_api_handlers.DeliveryInspectionResponse:
+    type: object
+    properties:
+      attempt_number:
+        type: integer
+      delivery_id:
+        type: string
+      endpoint_id:
+        type: string
+      error_details:
+        $ref: '#/definitions/internal_api_handlers.DeliveryErrorDetails'
+      request:
+        $ref: '#/definitions/internal_api_handlers.DeliveryRequestDetails'
+      response:
+        $ref: '#/definitions/internal_api_handlers.DeliveryResponseDetails'
+      status:
+        type: string
+      timeline:
+        type: array
+        items:
+          $ref: '#/definitions/internal_api_handlers.DeliveryTimelineEvent'
+  internal_api_handlers.DeliveryRequestDetails:
+    type: object
+    properties:
+      headers:
+        type: object
+        additionalProperties:
+          type: string
+      method:
+        type: string
+      payload_hash:
+        type: string
+      payload_size:
+        type: integer
+      scheduled_at:
+        type: string
+      signature:
+        type: string
+      url:
+        type: string
+  internal_api_handlers.DeliveryResponseDetails:
+    type: object
+    properties:
+      body:
+        type: string
+      body_size:
+        type: integer
+      delivered_at:
+        type: string
+      headers:
+        type: object
+        additionalProperties:
+          type: string
+      http_status:
+        type: integer
+      latency_ms:
+        type: integer
+  internal_api_handlers.DeliverySummary:
+    type: object
+    properties:
+      final_error_message:
+        type: string
+      final_http_status:
+        type: integer
+      first_attempt_at:
+        type: string
+      last_attempt_at:
+        type: string
+      next_retry_at:
+        type: string
+      status:
+        type: string
+      total_attempts:
+        type: integer
+  internal_api_handlers.DeliveryTimelineEvent:
+    type: object
+    properties:
+      description:
+        type: string
+      details:
+        type: object
+        additionalProperties: true
+      event:
+        type: string
+      timestamp:
+        type: string
+  internal_api_handlers.PaginationResponse:
+    type: object
+    properties:
+      has_more:
+        type: boolean
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+  internal_api_handlers.RetryConfigRequest:
+    type: object
+    properties:
+      backoff_multiplier:
+        type: integer
+      initial_delay_ms:
+        type: integer
+      max_attempts:
+        type: integer
+      max_delay_ms:
+        type: integer
+  internal_api_handlers.SendWebhookRequest:
+    type: object
+    required:
+    - payload
+    properties:
+      endpoint_id:
+        type: string
+      headers:
+        type: object
+        additionalProperties:
+          type: string
+      payload:
+        type: array
+        items:
+          type: integer
+  internal_api_handlers.SendWebhookResponse:
+    type: object
+    properties:
+      delivery_id:
+        type: string
+      endpoint_id:
+        type: string
+      scheduled_at:
+        type: string
+      status:
+        type: string
+  internal_api_handlers.TestEndpointResponse:
+    type: object
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      expires_at:
+        type: string
+      headers:
+        type: object
+        additionalProperties:
+          type: string
+      id:
+        type: string
+      name:
+        type: string
+      url:
+        type: string
+  internal_api_handlers.TestWebhookRequest:
+    type: object
+    required:
+    - payload
+    - url
+    properties:
+      headers:
+        type: object
+        additionalProperties:
+          type: string
+      method:
+        description: defaults to POST
+        type: string
+      payload:
+        type: array
+        items:
+          type: integer
+      timeout:
+        description: seconds, defaults to 30
+        type: integer
+      url:
+        type: string
+  internal_api_handlers.TestWebhookResponse:
+    type: object
+    properties:
+      error_message:
+        type: string
+      http_status:
+        type: integer
+      latency_ms:
+        type: integer
+      request_id:
+        type: string
+      response_body:
+        type: string
+      status:
+        type: string
+      test_id:
+        type: string
+      tested_at:
+        type: string
+      url:
+        type: string
+  internal_api_handlers.UpdateTenantRequest:
+    type: object
+    properties:
+      monthly_quota:
+        type: integer
+      name:
+        type: string
+      rate_limit_per_minute:
+        type: integer
+      subscription_tier:
+        type: string
+  internal_api_handlers.UpdateWebhookEndpointRequest:
+    type: object
+    properties:
+      custom_headers:
+        type: object
+        additionalProperties:
+          type: string
+      is_active:
+        type: boolean
+      retry_config:
+        $ref: '#/definitions/internal_api_handlers.RetryConfigRequest'
+      url:
+        type: string
+  internal_api_handlers.WebhookEndpointResponse:
+    type: object
+    properties:
+      created_at:
+        type: string
+      custom_headers:
+        type: object
+        additionalProperties:
+          type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      retry_config:
+        $ref: '#/definitions/webhook-platform_pkg_models.RetryConfiguration'
+      secret:
+        description: Only returned on creation
+        type: string
+      updated_at:
+        type: string
+      url:
+        type: string
+  webhook-platform_pkg_models.RetryConfiguration:
+    type: object
+    properties:
+      backoff_multiplier:
+        type: integer
+      initial_delay_ms:
+        type: integer
+      max_attempts:
+        type: integer
+      max_delay_ms:
+        type: integer
+  webhook-platform_pkg_models.Tenant:
+    type: object
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      monthly_quota:
+        type: integer
+      name:
+        type: string
+      rate_limit_per_minute:
+        type: integer
+      subscription_tier:
+        type: string
+      updated_at:
+        type: string
+securityDefinitions:
+  ApiKeyAuth:
+    description: API key for authentication. Get your API key by creating a tenant
+      account.
+    type: apiKey
+    name: X-API-Key
+    in: header
+tags:
+- name: flows
+  description: Flows operations
+- name: costing
+  description: Costing operations
+- name: embed
+  description: Embed operations
+- name: georouting
+  description: Georouting operations
+- name: meta-events
+  description: Meta-events operations
+- name: mocking
+  description: Mocking operations
+- name: otel
+  description: Otel operations
+- name: protocols
+  description: Protocols operations
