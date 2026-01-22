@@ -3,8 +3,8 @@ package database
 import (
 	"os"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 )
 
 // NewSQLxConnection creates a new sqlx database connection
@@ -15,7 +15,7 @@ func NewSQLxConnection() (*sqlx.DB, error) {
 		databaseURL = "postgres://postgres:password@localhost:5432/webhook_platform?sslmode=disable"
 	}
 
-	db, err := sqlx.Connect("postgres", databaseURL)
+	db, err := sqlx.Connect("pgx", databaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func NewTestSQLxConnection() (*sqlx.DB, error) {
 		databaseURL = "postgres://postgres:password@localhost:5432/webhook_platform_test?sslmode=disable"
 	}
 
-	db, err := sqlx.Connect("postgres", databaseURL)
+	db, err := sqlx.Connect("pgx", databaseURL)
 	if err != nil {
 		return nil, err
 	}

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // Service provides CDC functionality
@@ -255,13 +255,8 @@ func (s *Service) TestConnection(ctx context.Context, tenantID string, req *Test
 
 	dsn := buildDSN(req.Type, &req.ConnectionConfig)
 
-	var driverName string
-	switch req.Type {
-	case ConnectorPostgreSQL:
-		driverName = "postgres"
-	case ConnectorMySQL:
-		driverName = "mysql"
-	default:
+	driverName := getDriverName(req.Type)
+	if driverName == "" {
 		result.Message = "Unsupported connector type"
 		return result, nil
 	}
@@ -571,7 +566,7 @@ func buildDSN(connType ConnectorType, cfg *ConnectionConfig) string {
 func getDriverName(connType ConnectorType) string {
 	switch connType {
 	case ConnectorPostgreSQL:
-		return "postgres"
+		return "pgx"
 	case ConnectorMySQL:
 		return "mysql"
 	default:
