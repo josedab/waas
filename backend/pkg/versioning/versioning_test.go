@@ -5,6 +5,7 @@ import (
 )
 
 func TestSemanticVersion_String(t *testing.T) {
+	t.Parallel()
 	v := SemanticVersion{Major: 1, Minor: 2, Patch: 3}
 	if s := v.String(); s != "1.2.3" {
 		t.Errorf("String() = %q, want %q", s, "1.2.3")
@@ -12,6 +13,7 @@ func TestSemanticVersion_String(t *testing.T) {
 }
 
 func TestSemanticVersion_Compare(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		a, b SemanticVersion
 		want int
@@ -35,6 +37,7 @@ func TestSemanticVersion_Compare(t *testing.T) {
 }
 
 func TestSemanticVersion_Bump(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    SemanticVersion
 		bumpType string
@@ -56,6 +59,7 @@ func TestSemanticVersion_Bump(t *testing.T) {
 }
 
 func TestVersion_Status(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		status VersionStatus
 		want   bool
@@ -79,6 +83,7 @@ func TestVersion_Status(t *testing.T) {
 }
 
 func TestVersionStatus_Constants(t *testing.T) {
+	t.Parallel()
 	statuses := []VersionStatus{VersionDraft, VersionActive, VersionDeprecated, VersionSunset}
 	for _, s := range statuses {
 		if s == "" {

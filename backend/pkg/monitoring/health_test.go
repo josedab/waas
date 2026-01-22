@@ -16,6 +16,7 @@ import (
 
 
 func TestHealthChecker_HealthCheckHandler(t *testing.T) {
+	t.Parallel()
 	logger := utils.NewLogger("test")
 	hc := NewHealthChecker(nil, nil, logger, "test")
 
@@ -43,6 +44,7 @@ func TestHealthChecker_HealthCheckHandler(t *testing.T) {
 }
 
 func TestHealthChecker_ReadinessHandler(t *testing.T) {
+	t.Parallel()
 	logger := utils.NewLogger("test")
 	hc := NewHealthChecker(nil, nil, logger, "test")
 
@@ -61,6 +63,7 @@ func TestHealthChecker_ReadinessHandler(t *testing.T) {
 }
 
 func TestHealthChecker_LivenessHandler(t *testing.T) {
+	t.Parallel()
 	logger := utils.NewLogger("test")
 	hc := NewHealthChecker(nil, nil, logger, "test")
 
@@ -85,6 +88,7 @@ func TestHealthChecker_LivenessHandler(t *testing.T) {
 }
 
 func TestHealthChecker_checkDatabase(t *testing.T) {
+	t.Parallel()
 	logger := utils.NewLogger("test")
 	hc := NewHealthChecker(nil, nil, logger, "test")
 
@@ -98,6 +102,7 @@ func TestHealthChecker_checkDatabase(t *testing.T) {
 }
 
 func TestHealthChecker_determineOverallStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		components map[string]ComponentHealth

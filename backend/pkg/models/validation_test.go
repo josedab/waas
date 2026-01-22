@@ -8,6 +8,7 @@ import (
 )
 
 func TestValidateTenant(t *testing.T) {
+	t.Parallel()
 	t.Run("valid tenant", func(t *testing.T) {
 		tenant := &Tenant{
 			Name:               "Valid Tenant",
@@ -99,6 +100,7 @@ func TestValidateTenant(t *testing.T) {
 }
 
 func TestValidateWebhookEndpoint(t *testing.T) {
+	t.Parallel()
 	t.Run("valid endpoint", func(t *testing.T) {
 		endpoint := &WebhookEndpoint{
 			TenantID:   uuid.New(),
@@ -185,6 +187,7 @@ func TestValidateWebhookEndpoint(t *testing.T) {
 }
 
 func TestValidateRetryConfiguration(t *testing.T) {
+	t.Parallel()
 	t.Run("valid configuration", func(t *testing.T) {
 		config := &RetryConfiguration{
 			MaxAttempts:       5,
@@ -258,6 +261,7 @@ func TestValidateRetryConfiguration(t *testing.T) {
 }
 
 func TestValidateDeliveryAttempt(t *testing.T) {
+	t.Parallel()
 	t.Run("valid attempt", func(t *testing.T) {
 		attempt := &DeliveryAttempt{
 			EndpointID:    uuid.New(),
@@ -363,6 +367,7 @@ func TestValidateDeliveryAttempt(t *testing.T) {
 }
 
 func TestContainsHelper(t *testing.T) {
+	t.Parallel()
 	t.Run("contains existing item", func(t *testing.T) {
 		slice := []string{"a", "b", "c"}
 		assert.True(t, contains(slice, "b"))

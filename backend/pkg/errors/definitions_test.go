@@ -9,6 +9,7 @@ import (
 )
 
 func TestPredefinedErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		err      *WebhookError
@@ -216,6 +217,7 @@ func TestPredefinedErrors(t *testing.T) {
 }
 
 func TestNewValidationError(t *testing.T) {
+	t.Parallel()
 	field := "email"
 	reason := "invalid format"
 	
@@ -229,6 +231,7 @@ func TestNewValidationError(t *testing.T) {
 }
 
 func TestNewPayloadTooLargeError(t *testing.T) {
+	t.Parallel()
 	actualSize := 2048
 	maxSize := 1024
 	
@@ -242,6 +245,7 @@ func TestNewPayloadTooLargeError(t *testing.T) {
 }
 
 func TestNewRateLimitError(t *testing.T) {
+	t.Parallel()
 	retryAfter := 60
 	
 	err := NewRateLimitError(retryAfter)
@@ -253,6 +257,7 @@ func TestNewRateLimitError(t *testing.T) {
 }
 
 func TestNewQuotaExceededError(t *testing.T) {
+	t.Parallel()
 	currentUsage := 1500
 	limit := 1000
 	
@@ -266,6 +271,7 @@ func TestNewQuotaExceededError(t *testing.T) {
 }
 
 func TestNewDeliveryError(t *testing.T) {
+	t.Parallel()
 	endpointID := "endpoint_123"
 	deliveryID := "delivery_456"
 	httpStatus := 500
@@ -283,6 +289,7 @@ func TestNewDeliveryError(t *testing.T) {
 }
 
 func TestNewDeliveryError_TruncatesLongResponseBody(t *testing.T) {
+	t.Parallel()
 	endpointID := "endpoint_123"
 	deliveryID := "delivery_456"
 	httpStatus := 500
@@ -301,6 +308,7 @@ func TestNewDeliveryError_TruncatesLongResponseBody(t *testing.T) {
 }
 
 func TestWrapError(t *testing.T) {
+	t.Parallel()
 	originalErr := errors.New("original error")
 	code := "WRAPPED_ERROR"
 	message := "Wrapped error message"
@@ -317,6 +325,7 @@ func TestWrapError(t *testing.T) {
 }
 
 func TestFromValidationError(t *testing.T) {
+	t.Parallel()
 	originalErr := errors.New("validation failed")
 	
 	err := FromValidationError(originalErr)
@@ -330,6 +339,7 @@ func TestFromValidationError(t *testing.T) {
 }
 
 func TestFromDatabaseError(t *testing.T) {
+	t.Parallel()
 	originalErr := errors.New("database connection failed")
 	
 	err := FromDatabaseError(originalErr)
@@ -343,6 +353,7 @@ func TestFromDatabaseError(t *testing.T) {
 }
 
 func TestFromQueueError(t *testing.T) {
+	t.Parallel()
 	originalErr := errors.New("queue operation failed")
 	
 	err := FromQueueError(originalErr)
@@ -356,6 +367,7 @@ func TestFromQueueError(t *testing.T) {
 }
 
 func TestPredefinedErrorsHaveDocumentation(t *testing.T) {
+	t.Parallel()
 	errorsWithDocs := []*WebhookError{
 		ErrUnauthorized,
 		ErrInvalidAPIKey,
@@ -379,6 +391,7 @@ func TestPredefinedErrorsHaveDocumentation(t *testing.T) {
 }
 
 func TestPredefinedErrorsHaveDebuggingHints(t *testing.T) {
+	t.Parallel()
 	allPredefinedErrors := []*WebhookError{
 		ErrUnauthorized,
 		ErrInvalidAPIKey,

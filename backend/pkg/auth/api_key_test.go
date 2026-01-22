@@ -9,6 +9,7 @@ import (
 )
 
 func TestGenerateAPIKey(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 	}{
@@ -30,6 +31,7 @@ func TestGenerateAPIKey(t *testing.T) {
 }
 
 func TestGenerateAPIKeyUniqueness(t *testing.T) {
+	t.Parallel()
 	// Generate multiple API keys and ensure they're unique
 	keys := make(map[string]bool)
 	for i := 0; i < 100; i++ {
@@ -43,6 +45,7 @@ func TestGenerateAPIKeyUniqueness(t *testing.T) {
 }
 
 func TestHashAPIKey(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		apiKey string
@@ -69,6 +72,7 @@ func TestHashAPIKey(t *testing.T) {
 }
 
 func TestValidateAPIKey(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		apiKey   string
@@ -113,6 +117,7 @@ func TestValidateAPIKey(t *testing.T) {
 }
 
 func TestGenerateAPIKeyHash(t *testing.T) {
+	t.Parallel()
 	apiKey, hash, err := GenerateAPIKeyHash()
 	
 	require.NoError(t, err)
@@ -126,6 +131,7 @@ func TestGenerateAPIKeyHash(t *testing.T) {
 }
 
 func TestExtractTenantFromAPIKey(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		apiKey string
@@ -155,6 +161,7 @@ func TestExtractTenantFromAPIKey(t *testing.T) {
 }
 
 func TestExtractTenantFromAPIKeyUniqueness(t *testing.T) {
+	t.Parallel()
 	// Different API keys should produce different tenant IDs
 	apiKey1 := "wh_key_1"
 	apiKey2 := "wh_key_2"
@@ -166,6 +173,7 @@ func TestExtractTenantFromAPIKeyUniqueness(t *testing.T) {
 }
 
 func TestIsValidAPIKeyFormat(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		apiKey   string

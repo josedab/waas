@@ -5,6 +5,7 @@ import (
 )
 
 func TestClassifier_Classify(t *testing.T) {
+	t.Parallel()
 	classifier := NewClassifier()
 
 	tests := []struct {
@@ -93,6 +94,7 @@ func TestClassifier_Classify(t *testing.T) {
 }
 
 func TestClassifier_GetSuggestions(t *testing.T) {
+	t.Parallel()
 	classifier := NewClassifier()
 
 	tests := []struct {
@@ -129,6 +131,7 @@ func TestClassifier_GetSuggestions(t *testing.T) {
 }
 
 func TestClassifier_NormalizeError(t *testing.T) {
+	t.Parallel()
 	classifier := NewClassifier()
 
 	tests := []struct {

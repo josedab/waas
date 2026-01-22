@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewWebhookError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		code       string
@@ -51,6 +52,7 @@ func TestNewWebhookError(t *testing.T) {
 }
 
 func TestWebhookError_Error(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		err      *WebhookError
@@ -88,6 +90,7 @@ func TestWebhookError_Error(t *testing.T) {
 }
 
 func TestWebhookError_Unwrap(t *testing.T) {
+	t.Parallel()
 	cause := errors.New("underlying error")
 	err := &WebhookError{
 		Code:    "TEST_ERROR",
@@ -99,6 +102,7 @@ func TestWebhookError_Unwrap(t *testing.T) {
 }
 
 func TestWebhookError_WithDetails(t *testing.T) {
+	t.Parallel()
 	err := &WebhookError{
 		Code:    "TEST_ERROR",
 		Message: "Test error message",
@@ -127,6 +131,7 @@ func TestWebhookError_WithDetails(t *testing.T) {
 }
 
 func TestWebhookError_WithRequestID(t *testing.T) {
+	t.Parallel()
 	err := &WebhookError{
 		Code:    "TEST_ERROR",
 		Message: "Test error message",
@@ -140,6 +145,7 @@ func TestWebhookError_WithRequestID(t *testing.T) {
 }
 
 func TestWebhookError_WithTraceID(t *testing.T) {
+	t.Parallel()
 	err := &WebhookError{
 		Code:    "TEST_ERROR",
 		Message: "Test error message",
@@ -153,6 +159,7 @@ func TestWebhookError_WithTraceID(t *testing.T) {
 }
 
 func TestWebhookError_WithCause(t *testing.T) {
+	t.Parallel()
 	err := &WebhookError{
 		Code:    "TEST_ERROR",
 		Message: "Test error message",
@@ -166,6 +173,7 @@ func TestWebhookError_WithCause(t *testing.T) {
 }
 
 func TestWebhookError_WithDebuggingHints(t *testing.T) {
+	t.Parallel()
 	err := &WebhookError{
 		Code:    "TEST_ERROR",
 		Message: "Test error message",
@@ -185,6 +193,7 @@ func TestWebhookError_WithDebuggingHints(t *testing.T) {
 }
 
 func TestWebhookError_WithDocumentation(t *testing.T) {
+	t.Parallel()
 	err := &WebhookError{
 		Code:    "TEST_ERROR",
 		Message: "Test error message",
@@ -198,6 +207,7 @@ func TestWebhookError_WithDocumentation(t *testing.T) {
 }
 
 func TestWebhookError_IsRetryable(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		category ErrorCategory
@@ -267,6 +277,7 @@ func TestWebhookError_IsRetryable(t *testing.T) {
 }
 
 func TestWebhookError_ShouldAlert(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		severity ErrorSeverity
@@ -306,6 +317,7 @@ func TestWebhookError_ShouldAlert(t *testing.T) {
 }
 
 func TestWebhookError_GetHTTPStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		category   ErrorCategory
@@ -388,6 +400,7 @@ func TestWebhookError_GetHTTPStatus(t *testing.T) {
 }
 
 func TestGenerateRequestID(t *testing.T) {
+	t.Parallel()
 	id1 := GenerateRequestID()
 	id2 := GenerateRequestID()
 	
@@ -399,6 +412,7 @@ func TestGenerateRequestID(t *testing.T) {
 }
 
 func TestGenerateTraceID(t *testing.T) {
+	t.Parallel()
 	id1 := GenerateTraceID()
 	id2 := GenerateTraceID()
 	
@@ -410,6 +424,7 @@ func TestGenerateTraceID(t *testing.T) {
 }
 
 func TestErrorResponse(t *testing.T) {
+	t.Parallel()
 	err := NewWebhookError(
 		"TEST_ERROR",
 		"Test error message",
@@ -424,6 +439,7 @@ func TestErrorResponse(t *testing.T) {
 }
 
 func TestWebhookErrorChaining(t *testing.T) {
+	t.Parallel()
 	// Test method chaining
 	err := NewWebhookError(
 		"TEST_ERROR",

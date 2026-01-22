@@ -6,6 +6,7 @@ import (
 )
 
 func TestEngine_Transform_Simple(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine(DefaultEngineConfig())
 	ctx := context.Background()
 
@@ -44,6 +45,7 @@ func TestEngine_Transform_Simple(t *testing.T) {
 }
 
 func TestEngine_Transform_WithHelpers(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine(DefaultEngineConfig())
 	ctx := context.Background()
 
@@ -82,6 +84,7 @@ func TestEngine_Transform_WithHelpers(t *testing.T) {
 }
 
 func TestEngine_Transform_Timeout(t *testing.T) {
+	t.Parallel()
 	config := DefaultEngineConfig()
 	config.TimeoutMs = 100 // Very short timeout
 	engine := NewEngine(config)
@@ -110,6 +113,7 @@ func TestEngine_Transform_Timeout(t *testing.T) {
 }
 
 func TestEngine_Transform_ConsoleLog(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine(DefaultEngineConfig())
 	ctx := context.Background()
 
@@ -137,6 +141,7 @@ func TestEngine_Transform_ConsoleLog(t *testing.T) {
 }
 
 func TestEngine_ValidateScript_Valid(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine(DefaultEngineConfig())
 
 	validScripts := []string{
@@ -155,6 +160,7 @@ func TestEngine_ValidateScript_Valid(t *testing.T) {
 }
 
 func TestEngine_ValidateScript_Invalid(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine(DefaultEngineConfig())
 
 	invalidScripts := []string{
@@ -173,6 +179,7 @@ func TestEngine_ValidateScript_Invalid(t *testing.T) {
 }
 
 func TestEngine_TransformJSON(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine(DefaultEngineConfig())
 	ctx := context.Background()
 

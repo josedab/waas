@@ -255,6 +255,7 @@ func TestAbortWithPayloadTooLarge(t *testing.T) {
 }
 
 func TestHandleRepositoryError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		err            error
@@ -345,6 +346,7 @@ func TestHandleRepositoryError(t *testing.T) {
 }
 
 func TestHandleValidationError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		err   error
@@ -382,6 +384,7 @@ func TestHandleValidationError(t *testing.T) {
 }
 
 func TestHandleHTTPError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		statusCode     int
@@ -454,6 +457,7 @@ func TestHandleHTTPError(t *testing.T) {
 }
 
 func TestHandleHTTPError_TruncatesLongResponseBody(t *testing.T) {
+	t.Parallel()
 	// Create a response body longer than 1000 characters
 	longResponseBody := ""
 	for i := 0; i < 1200; i++ {
@@ -468,6 +472,7 @@ func TestHandleHTTPError_TruncatesLongResponseBody(t *testing.T) {
 }
 
 func TestHandleNetworkError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		err            error
@@ -555,6 +560,7 @@ func TestHandleNetworkError(t *testing.T) {
 }
 
 func TestIsRetryableError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		err      error
@@ -616,6 +622,7 @@ func TestIsRetryableError(t *testing.T) {
 }
 
 func TestGetErrorSeverity(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		err      error
@@ -642,6 +649,7 @@ func TestGetErrorSeverity(t *testing.T) {
 }
 
 func TestGetErrorCategory(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		err      error
@@ -668,6 +676,7 @@ func TestGetErrorCategory(t *testing.T) {
 }
 
 func TestWithContext(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		err         *WebhookError

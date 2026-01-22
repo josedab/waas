@@ -7,6 +7,7 @@ import (
 )
 
 func TestGenerateRandomString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		length int
@@ -30,6 +31,7 @@ func TestGenerateRandomString(t *testing.T) {
 }
 
 func TestGenerateRandomStringUniqueness(t *testing.T) {
+	t.Parallel()
 	// Generate multiple random strings and ensure they're all different
 	strings := make(map[string]bool)
 	iterations := 100
@@ -48,6 +50,7 @@ func TestGenerateRandomStringUniqueness(t *testing.T) {
 }
 
 func TestGenerateRandomBytes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		length int
@@ -70,6 +73,7 @@ func TestGenerateRandomBytes(t *testing.T) {
 }
 
 func TestGenerateRandomBytesUniqueness(t *testing.T) {
+	t.Parallel()
 	// Generate multiple random byte arrays and ensure they're all different
 	byteArrays := make(map[string]bool)
 	iterations := 100
@@ -91,6 +95,7 @@ func TestGenerateRandomBytesUniqueness(t *testing.T) {
 }
 
 func TestGenerateRandomStringZeroLength(t *testing.T) {
+	t.Parallel()
 	result, err := GenerateRandomString(0)
 	
 	assert.NoError(t, err)
@@ -98,6 +103,7 @@ func TestGenerateRandomStringZeroLength(t *testing.T) {
 }
 
 func TestGenerateRandomBytesZeroLength(t *testing.T) {
+	t.Parallel()
 	result, err := GenerateRandomBytes(0)
 	
 	assert.NoError(t, err)
@@ -106,6 +112,7 @@ func TestGenerateRandomBytesZeroLength(t *testing.T) {
 }
 
 func TestHashPayload(t *testing.T) {
+	t.Parallel()
 	payload1 := []byte(`{"event": "test", "data": {"id": 123}}`)
 	payload2 := []byte(`{"event": "test", "data": {"id": 456}}`)
 	

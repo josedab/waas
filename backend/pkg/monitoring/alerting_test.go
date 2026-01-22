@@ -27,6 +27,7 @@ func (m *MockAlertNotifier) GetName() string {
 }
 
 func TestAlertManager_EvaluateMetric(t *testing.T) {
+	t.Parallel()
 	logger := utils.NewLogger("test")
 	am := NewAlertManager(logger)
 
@@ -104,6 +105,7 @@ func TestAlertManager_EvaluateMetric(t *testing.T) {
 }
 
 func TestAlertManager_AlertResolution(t *testing.T) {
+	t.Parallel()
 	logger := utils.NewLogger("test")
 	am := NewAlertManager(logger)
 
@@ -148,6 +150,7 @@ func TestAlertManager_AlertResolution(t *testing.T) {
 }
 
 func TestAlertManager_AddRemoveRule(t *testing.T) {
+	t.Parallel()
 	logger := utils.NewLogger("test")
 	am := NewAlertManager(logger)
 
@@ -170,6 +173,7 @@ func TestAlertManager_AddRemoveRule(t *testing.T) {
 }
 
 func TestAlertManager_evaluateCondition(t *testing.T) {
+	t.Parallel()
 	am := &AlertManager{}
 
 	tests := []struct {
@@ -202,6 +206,7 @@ func TestAlertManager_evaluateCondition(t *testing.T) {
 }
 
 func TestAlertManager_GetAlertHistory(t *testing.T) {
+	t.Parallel()
 	logger := utils.NewLogger("test")
 	am := NewAlertManager(logger)
 
@@ -249,6 +254,7 @@ func TestAlertManager_GetAlertHistory(t *testing.T) {
 }
 
 func TestAlertManager_DefaultRules(t *testing.T) {
+	t.Parallel()
 	logger := utils.NewLogger("test")
 	am := NewAlertManager(logger)
 

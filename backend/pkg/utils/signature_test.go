@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewSignatureGenerator(t *testing.T) {
+	t.Parallel()
 	config := SignatureConfig{
 		Algorithm: SHA256,
 		Secrets:   []string{"secret1", "secret2"},
@@ -22,6 +23,7 @@ func TestNewSignatureGenerator(t *testing.T) {
 }
 
 func TestGenerateSignature(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		algorithm SignatureAlgorithm
@@ -75,6 +77,7 @@ func TestGenerateSignature(t *testing.T) {
 }
 
 func TestVerifySignature(t *testing.T) {
+	t.Parallel()
 	config := SignatureConfig{
 		Algorithm: SHA256,
 		Secrets:   []string{"secret1", "secret2"},
@@ -145,6 +148,7 @@ func TestVerifySignature(t *testing.T) {
 }
 
 func TestVerifySignatureWithMultipleSecrets(t *testing.T) {
+	t.Parallel()
 	// Test signature verification with multiple secrets (rotation scenario)
 	config1 := SignatureConfig{
 		Algorithm: SHA256,
@@ -183,6 +187,7 @@ func TestVerifySignatureWithMultipleSecrets(t *testing.T) {
 }
 
 func TestGenerateSignatureWithTimestamp(t *testing.T) {
+	t.Parallel()
 	config := SignatureConfig{
 		Algorithm: SHA256,
 		Secrets:   []string{"test-secret"},
@@ -199,6 +204,7 @@ func TestGenerateSignatureWithTimestamp(t *testing.T) {
 }
 
 func TestVerifySignatureWithTimestamp(t *testing.T) {
+	t.Parallel()
 	config := SignatureConfig{
 		Algorithm: SHA256,
 		Secrets:   []string{"test-secret"},
@@ -263,6 +269,7 @@ func TestVerifySignatureWithTimestamp(t *testing.T) {
 }
 
 func TestSecretManagement(t *testing.T) {
+	t.Parallel()
 	config := SignatureConfig{
 		Algorithm: SHA256,
 		Secrets:   []string{"secret1"},
@@ -289,6 +296,7 @@ func TestSecretManagement(t *testing.T) {
 }
 
 func TestValidateAlgorithm(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		algorithm SignatureAlgorithm
 		want      bool
@@ -309,6 +317,7 @@ func TestValidateAlgorithm(t *testing.T) {
 }
 
 func TestGenerateSecret(t *testing.T) {
+	t.Parallel()
 	secret, err := GenerateSecret()
 	
 	assert.NoError(t, err)
@@ -322,6 +331,7 @@ func TestGenerateSecret(t *testing.T) {
 }
 
 func TestSignatureConsistency(t *testing.T) {
+	t.Parallel()
 	// Test that the same payload and secret always generate the same signature
 	config := SignatureConfig{
 		Algorithm: SHA256,
@@ -340,6 +350,7 @@ func TestSignatureConsistency(t *testing.T) {
 }
 
 func TestDifferentAlgorithmsProduceDifferentSignatures(t *testing.T) {
+	t.Parallel()
 	payload := []byte("test payload")
 	secret := "test-secret"
 
@@ -367,6 +378,7 @@ func TestDifferentAlgorithmsProduceDifferentSignatures(t *testing.T) {
 }
 
 func TestEmptyPayloadSignature(t *testing.T) {
+	t.Parallel()
 	config := SignatureConfig{
 		Algorithm: SHA256,
 		Secrets:   []string{"test-secret"},

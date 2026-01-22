@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewEncryptionService(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		keyLen  int
@@ -50,6 +51,7 @@ func TestNewEncryptionService(t *testing.T) {
 }
 
 func TestEncryptDecrypt(t *testing.T) {
+	t.Parallel()
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
 	require.NoError(t, err)
@@ -108,6 +110,7 @@ func TestEncryptDecrypt(t *testing.T) {
 }
 
 func TestEncryptionDeterminism(t *testing.T) {
+	t.Parallel()
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
 	require.NoError(t, err)
@@ -138,6 +141,7 @@ func TestEncryptionDeterminism(t *testing.T) {
 }
 
 func TestDecryptInvalidData(t *testing.T) {
+	t.Parallel()
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
 	require.NoError(t, err)
