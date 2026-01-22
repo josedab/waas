@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Pre-commit hook for WaaS platform
+# Install with: make install-hooks
+
+set -e
+
+# Only check staged Go files
+STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
+
+if [ -z "$STAGED_GO_FILES" ]; then
+    exit 0
+fi
+
+echo "pre-commit: checking staged Go files..."
+
+# Check formatting
+UNFORMATTED=$(gofmt -l $STAGED_GO_FILES)
+if [ -n "$UNFORMATTED" ]; then
+    echo "pre-commit: these files are not gofmt'd:"
+    echo "$UNFORMATTED"
+    echo ""
+    echo "Run 'gofmt -w <file>' to fix, then re-stage."
+    exit 1
+fi
+
+# Run go vet on packages containing staged files
+PACKAGES=$(echo "$STAGED_GO_FILES" | xargs -n1 dirname | sort -u | sed 's|^|./|')
+if ! go vet $PACKAGES 2>&1; then
+    echo "pre-commit: go vet found issues. Fix them before committing."
+    exit 1
+fi
+
+echo "pre-commit: all checks passed."
