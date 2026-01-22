@@ -52,6 +52,12 @@ console.log(`Status: ${status.status}`);
 - Full API coverage (endpoints, deliveries, analytics, transformations, testing)
 - ESM and CommonJS support
 
+## Examples
+
+See [`examples/basic_usage.ts`](examples/basic_usage.ts) for a complete walkthrough: create a tenant, register an endpoint, send a webhook, and list endpoints — all against a local WaaS instance.
+
+Run it with: `npx tsx examples/basic_usage.ts`
+
 ## Documentation
 
 For full documentation, visit [docs.waas-platform.com/sdks/nodejs](https://docs.waas-platform.com/sdks/nodejs)

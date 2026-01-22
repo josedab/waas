@@ -62,6 +62,10 @@ asyncio.run(main())
 - Automatic retries with exponential backoff
 - Comprehensive error handling
 
+## Examples
+
+See [`examples/basic_usage.py`](examples/basic_usage.py) for a complete walkthrough: create a tenant, register an endpoint, send a webhook, and list endpoints — all against a local WaaS instance.
+
 ## Documentation
 
 For full documentation, visit [docs.waas-platform.com/sdks/python](https://docs.waas-platform.com/sdks/python)
