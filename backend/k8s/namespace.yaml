@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: webhook-platform
+  labels:
+    name: webhook-platform
+    environment: production
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: webhook-platform-quota
+  namespace: webhook-platform
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    persistentvolumeclaims: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: webhook-platform-limits
+  namespace: webhook-platform
+spec:
+  limits:
+  - default:
+      cpu: "1"
+      memory: "1Gi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+    type: Container

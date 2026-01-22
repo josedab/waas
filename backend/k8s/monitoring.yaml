@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: webhook-platform-metrics
+  namespace: webhook-platform
+  labels:
+    app: webhook-platform
+spec:
+  selector:
+    matchLabels:
+      app: api-service
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: delivery-engine-metrics
+  namespace: webhook-platform
+  labels:
+    app: webhook-platform
+spec:
+  selector:
+    matchLabels:
+      app: delivery-engine
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: analytics-service-metrics
+  namespace: webhook-platform
+  labels:
+    app: webhook-platform
+spec:
+  selector:
+    matchLabels:
+      app: analytics-service
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: webhook-platform-alerts
+  namespace: webhook-platform
+  labels:
+    app: webhook-platform
+spec:
+  groups:
+  - name: webhook-platform.rules
+    rules:
+    - alert: HighErrorRate
+      expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate detected"
+        description: "Error rate is above 10% for 5 minutes"
+    
+    - alert: HighLatency
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High latency detected"
+        description: "95th percentile latency is above 1 second"
+    
+    - alert: DeliveryQueueBacklog
+      expr: webhook_queue_depth > 1000
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Webhook delivery queue backlog"
+        description: "Queue depth is above 1000 for 2 minutes"
+    
+    - alert: DatabaseConnectionsHigh
+      expr: pg_stat_activity_count > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High database connection count"
+        description: "Database connections are above 80"
+    
+    - alert: PodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod is crash looping"
+        description: "Pod {{ $labels.pod }} is restarting frequently"
+    
+    - alert: PodMemoryUsageHigh
+      expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pod memory usage high"
+        description: "Pod {{ $labels.pod }} memory usage is above 90%"

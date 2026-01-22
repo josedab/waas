@@ -1,0 +1,136 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: webhook-platform
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: postgres-backup
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            fsGroup: 65532
+          containers:
+          - name: postgres-backup
+            image: postgres:15-alpine
+            command:
+            - sh
+            - -c
+            - |
+              BACKUP_FILE="/backups/backup-$(date +%Y%m%d-%H%M%S).sql.gz"
+              echo "Creating backup: $BACKUP_FILE"
+              
+              pg_dump $DATABASE_URL | gzip > $BACKUP_FILE
+              
+              if [ $? -eq 0 ]; then
+                echo "Backup created successfully: $BACKUP_FILE"
+                # Keep only last 7 days of backups
+                find /backups -name "backup-*.sql.gz" -mtime +7 -delete
+                echo "Old backups cleaned up"
+              else
+                echo "Backup failed"
+                exit 1
+              fi
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: webhook-platform-secrets
+                  key: DATABASE_URL
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              runAsNonRoot: true
+              runAsUser: 65532
+              capabilities:
+                drop:
+                - ALL
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: backup-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-pvc
+  namespace: webhook-platform
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: standard
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: redis-backup
+  namespace: webhook-platform
+spec:
+  schedule: "0 3 * * *"  # Daily at 3 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: redis-backup
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            fsGroup: 65532
+          containers:
+          - name: redis-backup
+            image: redis:7-alpine
+            command:
+            - sh
+            - -c
+            - |
+              BACKUP_FILE="/backups/redis-backup-$(date +%Y%m%d-%H%M%S).rdb"
+              echo "Creating Redis backup: $BACKUP_FILE"
+              
+              redis-cli -h redis -p 6379 --rdb $BACKUP_FILE
+              
+              if [ $? -eq 0 ]; then
+                echo "Redis backup created successfully: $BACKUP_FILE"
+                # Keep only last 7 days of backups
+                find /backups -name "redis-backup-*.rdb" -mtime +7 -delete
+                echo "Old Redis backups cleaned up"
+              else
+                echo "Redis backup failed"
+                exit 1
+              fi
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              runAsNonRoot: true
+              runAsUser: 65532
+              capabilities:
+                drop:
+                - ALL
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: backup-pvc
