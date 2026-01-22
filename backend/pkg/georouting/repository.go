@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
+	"webhook-platform/pkg/database"
 )
 
 // Repository defines the interface for geo-routing storage
@@ -58,7 +58,7 @@ func (r *PostgresRepository) CreateEndpointRouting(ctx context.Context, routing 
 
 	_, err := r.db.ExecContext(ctx, query,
 		routing.ID, routing.EndpointID, routing.TenantID, routing.Mode,
-		routing.PrimaryRegion, pq.Array(regions), routing.DataResidency,
+		routing.PrimaryRegion, database.StringArray(regions), routing.DataResidency,
 		routing.FailoverEnabled, routing.LatencyBased,
 		routing.CreatedAt, routing.UpdatedAt,
 	)
@@ -79,7 +79,7 @@ func (r *PostgresRepository) GetEndpointRouting(ctx context.Context, tenantID, e
 
 	err := r.db.QueryRowContext(ctx, query, endpointID, tenantID).Scan(
 		&routing.ID, &routing.EndpointID, &routing.TenantID, &routing.Mode,
-		&routing.PrimaryRegion, pq.Array(&regions), &routing.DataResidency,
+		&routing.PrimaryRegion, (*database.StringArray)(&regions), &routing.DataResidency,
 		&routing.FailoverEnabled, &routing.LatencyBased,
 		&routing.CreatedAt, &routing.UpdatedAt,
 	)
@@ -114,7 +114,7 @@ func (r *PostgresRepository) UpdateEndpointRouting(ctx context.Context, routing 
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
-		routing.Mode, routing.PrimaryRegion, pq.Array(regions), routing.DataResidency,
+		routing.Mode, routing.PrimaryRegion, database.StringArray(regions), routing.DataResidency,
 		routing.FailoverEnabled, routing.LatencyBased, routing.UpdatedAt,
 		routing.ID, routing.TenantID,
 	)

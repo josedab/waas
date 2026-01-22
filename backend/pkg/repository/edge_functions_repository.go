@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lib/pq"
+	"webhook-platform/pkg/database"
 	"webhook-platform/pkg/models"
 )
 
@@ -103,7 +103,7 @@ func (r *PostgresEdgeFunctionsRepository) CreateFunction(ctx context.Context, fn
 
 	return r.pool.QueryRow(ctx, query,
 		fn.TenantID, fn.Name, fn.Description, fn.Runtime, fn.Code, fn.EntryPoint,
-		fn.Status, fn.TimeoutMs, fn.MemoryMb, envVarsJSON, pq.Array(fn.Dependencies), metadataJSON,
+		fn.Status, fn.TimeoutMs, fn.MemoryMb, envVarsJSON, database.StringArray(fn.Dependencies), metadataJSON,
 	).Scan(&fn.ID, &fn.Version, &fn.CreatedAt, &fn.UpdatedAt)
 }
 
@@ -118,7 +118,7 @@ func (r *PostgresEdgeFunctionsRepository) GetFunction(ctx context.Context, id uu
 	var envVarsJSON, metadataJSON []byte
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&fn.ID, &fn.TenantID, &fn.Name, &fn.Description, &fn.Runtime, &fn.Code, &fn.EntryPoint,
-		&fn.Version, &fn.Status, &fn.TimeoutMs, &fn.MemoryMb, &envVarsJSON, pq.Array(&fn.Dependencies),
+		&fn.Version, &fn.Status, &fn.TimeoutMs, &fn.MemoryMb, &envVarsJSON, (*database.StringArray)(&fn.Dependencies),
 		&metadataJSON, &fn.CreatedAt, &fn.UpdatedAt, &fn.DeployedAt,
 	)
 	if err != nil {
@@ -141,7 +141,7 @@ func (r *PostgresEdgeFunctionsRepository) GetFunctionByName(ctx context.Context,
 	var envVarsJSON, metadataJSON []byte
 	err := r.pool.QueryRow(ctx, query, tenantID, name).Scan(
 		&fn.ID, &fn.TenantID, &fn.Name, &fn.Description, &fn.Runtime, &fn.Code, &fn.EntryPoint,
-		&fn.Version, &fn.Status, &fn.TimeoutMs, &fn.MemoryMb, &envVarsJSON, pq.Array(&fn.Dependencies),
+		&fn.Version, &fn.Status, &fn.TimeoutMs, &fn.MemoryMb, &envVarsJSON, (*database.StringArray)(&fn.Dependencies),
 		&metadataJSON, &fn.CreatedAt, &fn.UpdatedAt, &fn.DeployedAt,
 	)
 	if err != nil {
@@ -172,7 +172,7 @@ func (r *PostgresEdgeFunctionsRepository) GetFunctionsByTenant(ctx context.Conte
 		var envVarsJSON, metadataJSON []byte
 		if err := rows.Scan(
 			&fn.ID, &fn.TenantID, &fn.Name, &fn.Description, &fn.Runtime, &fn.Code, &fn.EntryPoint,
-			&fn.Version, &fn.Status, &fn.TimeoutMs, &fn.MemoryMb, &envVarsJSON, pq.Array(&fn.Dependencies),
+			&fn.Version, &fn.Status, &fn.TimeoutMs, &fn.MemoryMb, &envVarsJSON, (*database.StringArray)(&fn.Dependencies),
 			&metadataJSON, &fn.CreatedAt, &fn.UpdatedAt, &fn.DeployedAt,
 		); err != nil {
 			return nil, err
@@ -204,7 +204,7 @@ func (r *PostgresEdgeFunctionsRepository) GetActiveFunctions(ctx context.Context
 		var envVarsJSON, metadataJSON []byte
 		if err := rows.Scan(
 			&fn.ID, &fn.TenantID, &fn.Name, &fn.Description, &fn.Runtime, &fn.Code, &fn.EntryPoint,
-			&fn.Version, &fn.Status, &fn.TimeoutMs, &fn.MemoryMb, &envVarsJSON, pq.Array(&fn.Dependencies),
+			&fn.Version, &fn.Status, &fn.TimeoutMs, &fn.MemoryMb, &envVarsJSON, (*database.StringArray)(&fn.Dependencies),
 			&metadataJSON, &fn.CreatedAt, &fn.UpdatedAt, &fn.DeployedAt,
 		); err != nil {
 			return nil, err
@@ -230,7 +230,7 @@ func (r *PostgresEdgeFunctionsRepository) UpdateFunction(ctx context.Context, fn
 
 	return r.pool.QueryRow(ctx, query,
 		fn.ID, fn.Code, fn.EntryPoint, fn.TimeoutMs, fn.MemoryMb,
-		envVarsJSON, pq.Array(fn.Dependencies),
+		envVarsJSON, database.StringArray(fn.Dependencies),
 	).Scan(&fn.Version, &fn.UpdatedAt)
 }
 
@@ -523,8 +523,8 @@ func (r *PostgresEdgeFunctionsRepository) CreateTrigger(ctx context.Context, tri
 		RETURNING id, created_at, updated_at`
 
 	return r.pool.QueryRow(ctx, query,
-		trigger.FunctionID, trigger.TriggerType, pq.Array(trigger.EventTypes),
-		pq.Array(trigger.EndpointIDs), conditionsJSON, trigger.Priority, trigger.Enabled,
+		trigger.FunctionID, trigger.TriggerType, database.StringArray(trigger.EventTypes),
+		database.UUIDArray(trigger.EndpointIDs), conditionsJSON, trigger.Priority, trigger.Enabled,
 	).Scan(&trigger.ID, &trigger.CreatedAt, &trigger.UpdatedAt)
 }
 
@@ -537,8 +537,8 @@ func (r *PostgresEdgeFunctionsRepository) GetTrigger(ctx context.Context, id uui
 	t := &models.EdgeFunctionTrigger{}
 	var conditionsJSON []byte
 	err := r.pool.QueryRow(ctx, query, id).Scan(
-		&t.ID, &t.FunctionID, &t.TriggerType, pq.Array(&t.EventTypes),
-		pq.Array(&t.EndpointIDs), &conditionsJSON, &t.Priority, &t.Enabled,
+		&t.ID, &t.FunctionID, &t.TriggerType, (*database.StringArray)(&t.EventTypes),
+		(*database.UUIDArray)(&t.EndpointIDs), &conditionsJSON, &t.Priority, &t.Enabled,
 		&t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
@@ -566,8 +566,8 @@ func (r *PostgresEdgeFunctionsRepository) GetTriggersByFunction(ctx context.Cont
 		t := &models.EdgeFunctionTrigger{}
 		var conditionsJSON []byte
 		if err := rows.Scan(
-			&t.ID, &t.FunctionID, &t.TriggerType, pq.Array(&t.EventTypes),
-			pq.Array(&t.EndpointIDs), &conditionsJSON, &t.Priority, &t.Enabled,
+			&t.ID, &t.FunctionID, &t.TriggerType, (*database.StringArray)(&t.EventTypes),
+			(*database.UUIDArray)(&t.EndpointIDs), &conditionsJSON, &t.Priority, &t.Enabled,
 			&t.CreatedAt, &t.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -601,8 +601,8 @@ func (r *PostgresEdgeFunctionsRepository) GetMatchingTriggers(ctx context.Contex
 		t := &models.EdgeFunctionTrigger{}
 		var conditionsJSON []byte
 		if err := rows.Scan(
-			&t.ID, &t.FunctionID, &t.TriggerType, pq.Array(&t.EventTypes),
-			pq.Array(&t.EndpointIDs), &conditionsJSON, &t.Priority, &t.Enabled,
+			&t.ID, &t.FunctionID, &t.TriggerType, (*database.StringArray)(&t.EventTypes),
+			(*database.UUIDArray)(&t.EndpointIDs), &conditionsJSON, &t.Priority, &t.Enabled,
 			&t.CreatedAt, &t.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -624,8 +624,8 @@ func (r *PostgresEdgeFunctionsRepository) UpdateTrigger(ctx context.Context, tri
 		WHERE id = $1`
 
 	_, err := r.pool.Exec(ctx, query,
-		trigger.ID, trigger.TriggerType, pq.Array(trigger.EventTypes),
-		pq.Array(trigger.EndpointIDs), conditionsJSON, trigger.Priority, trigger.Enabled,
+		trigger.ID, trigger.TriggerType, database.StringArray(trigger.EventTypes),
+		database.UUIDArray(trigger.EndpointIDs), conditionsJSON, trigger.Priority, trigger.Enabled,
 	)
 	return err
 }

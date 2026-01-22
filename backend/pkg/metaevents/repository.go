@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
+	"webhook-platform/pkg/database"
 )
 
 // Repository defines the interface for meta-events storage
@@ -60,7 +60,7 @@ func (r *PostgresRepository) CreateSubscription(ctx context.Context, sub *Subscr
 
 	_, err := r.db.ExecContext(ctx, query,
 		sub.ID, sub.TenantID, sub.Name, sub.URL, sub.Secret,
-		pq.Array(eventTypes), filtersJSON, sub.IsActive, headersJSON, retryPolicyJSON,
+		database.StringArray(eventTypes), filtersJSON, sub.IsActive, headersJSON, retryPolicyJSON,
 		sub.CreatedAt, sub.UpdatedAt,
 	)
 
@@ -81,7 +81,7 @@ func (r *PostgresRepository) GetSubscription(ctx context.Context, tenantID, subI
 
 	err := r.db.QueryRowContext(ctx, query, subID, tenantID).Scan(
 		&sub.ID, &sub.TenantID, &sub.Name, &sub.URL, &sub.Secret,
-		pq.Array(&eventTypes), &filtersJSON, &sub.IsActive, &headersJSON, &retryPolicyJSON,
+		(*database.StringArray)(&eventTypes), &filtersJSON, &sub.IsActive, &headersJSON, &retryPolicyJSON,
 		&sub.CreatedAt, &sub.UpdatedAt,
 	)
 
@@ -133,7 +133,7 @@ func (r *PostgresRepository) ListSubscriptions(ctx context.Context, tenantID str
 
 		if err := rows.Scan(
 			&sub.ID, &sub.TenantID, &sub.Name, &sub.URL, &sub.Secret,
-			pq.Array(&eventTypes), &filtersJSON, &sub.IsActive, &headersJSON, &retryPolicyJSON,
+			(*database.StringArray)(&eventTypes), &filtersJSON, &sub.IsActive, &headersJSON, &retryPolicyJSON,
 			&sub.CreatedAt, &sub.UpdatedAt,
 		); err != nil {
 			return nil, 0, err
@@ -172,7 +172,7 @@ func (r *PostgresRepository) UpdateSubscription(ctx context.Context, sub *Subscr
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
-		sub.Name, sub.URL, sub.Secret, pq.Array(eventTypes), filtersJSON,
+		sub.Name, sub.URL, sub.Secret, database.StringArray(eventTypes), filtersJSON,
 		sub.IsActive, headersJSON, retryPolicyJSON, sub.UpdatedAt,
 		sub.ID, sub.TenantID,
 	)
@@ -209,7 +209,7 @@ func (r *PostgresRepository) GetSubscriptionsByEventType(ctx context.Context, te
 
 		if err := rows.Scan(
 			&sub.ID, &sub.TenantID, &sub.Name, &sub.URL, &sub.Secret,
-			pq.Array(&eventTypes), &filtersJSON, &sub.IsActive, &headersJSON, &retryPolicyJSON,
+			(*database.StringArray)(&eventTypes), &filtersJSON, &sub.IsActive, &headersJSON, &retryPolicyJSON,
 			&sub.CreatedAt, &sub.UpdatedAt,
 		); err != nil {
 			return nil, err

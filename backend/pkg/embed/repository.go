@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
+	"webhook-platform/pkg/database"
 )
 
 // Repository defines the interface for embed token storage
@@ -63,8 +63,8 @@ func (r *PostgresRepository) CreateToken(ctx context.Context, token *EmbedToken)
 
 	_, err := r.db.ExecContext(ctx, query,
 		token.ID, token.TenantID, token.Name, token.Token,
-		pq.Array(permissions), scopesJSON, themeJSON,
-		token.ExpiresAt, pq.Array(token.AllowedOrigins), metadataJSON,
+		database.StringArray(permissions), scopesJSON, themeJSON,
+		token.ExpiresAt, database.StringArray(token.AllowedOrigins), metadataJSON,
 		token.IsActive, token.CreatedAt, token.UpdatedAt,
 	)
 
@@ -101,8 +101,8 @@ func (r *PostgresRepository) scanToken(ctx context.Context, query string, args .
 
 	err := r.db.QueryRowContext(ctx, query, args...).Scan(
 		&token.ID, &token.TenantID, &token.Name, &token.Token,
-		pq.Array(&permissions), &scopesJSON, &themeJSON,
-		&expiresAt, pq.Array(&token.AllowedOrigins), &metadataJSON,
+		(*database.StringArray)(&permissions), &scopesJSON, &themeJSON,
+		&expiresAt, (*database.StringArray)(&token.AllowedOrigins), &metadataJSON,
 		&token.IsActive, &token.CreatedAt, &token.UpdatedAt,
 	)
 
@@ -158,8 +158,8 @@ func (r *PostgresRepository) ListTokens(ctx context.Context, tenantID string, li
 
 		if err := rows.Scan(
 			&token.ID, &token.TenantID, &token.Name, &token.Token,
-			pq.Array(&permissions), &scopesJSON, &themeJSON,
-			&expiresAt, pq.Array(&token.AllowedOrigins), &metadataJSON,
+			(*database.StringArray)(&permissions), &scopesJSON, &themeJSON,
+			&expiresAt, (*database.StringArray)(&token.AllowedOrigins), &metadataJSON,
 			&token.IsActive, &token.CreatedAt, &token.UpdatedAt,
 		); err != nil {
 			return nil, 0, err
@@ -201,8 +201,8 @@ func (r *PostgresRepository) UpdateToken(ctx context.Context, token *EmbedToken)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
-		token.Name, token.Token, pq.Array(permissions), scopesJSON, themeJSON,
-		token.ExpiresAt, pq.Array(token.AllowedOrigins), metadataJSON,
+		token.Name, token.Token, database.StringArray(permissions), scopesJSON, themeJSON,
+		token.ExpiresAt, database.StringArray(token.AllowedOrigins), metadataJSON,
 		token.IsActive, token.UpdatedAt,
 		token.ID, token.TenantID,
 	)

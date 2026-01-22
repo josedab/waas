@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lib/pq"
+	"webhook-platform/pkg/database"
 	"webhook-platform/pkg/models"
 )
 
@@ -323,8 +323,8 @@ func (r *PostgresFederatedMeshRepository) CreateTenantRegion(ctx context.Context
 		RETURNING id, created_at, updated_at`
 
 	return r.pool.QueryRow(ctx, query,
-		tr.TenantID, tr.PrimaryRegionID, pq.Array(tr.AllowedRegions),
-		tr.DataResidencyPolicy, tr.ReplicationMode, pq.Array(tr.ComplianceFrameworks),
+		tr.TenantID, tr.PrimaryRegionID, database.UUIDArray(tr.AllowedRegions),
+		tr.DataResidencyPolicy, tr.ReplicationMode, database.StringArray(tr.ComplianceFrameworks),
 	).Scan(&tr.ID, &tr.CreatedAt, &tr.UpdatedAt)
 }
 
@@ -337,8 +337,8 @@ func (r *PostgresFederatedMeshRepository) GetTenantRegion(ctx context.Context, t
 
 	tr := &models.MeshTenantRegion{}
 	err := r.pool.QueryRow(ctx, query, tenantID).Scan(
-		&tr.ID, &tr.TenantID, &tr.PrimaryRegionID, pq.Array(&tr.AllowedRegions),
-		&tr.DataResidencyPolicy, &tr.ReplicationMode, pq.Array(&tr.ComplianceFrameworks),
+		&tr.ID, &tr.TenantID, &tr.PrimaryRegionID, (*database.UUIDArray)(&tr.AllowedRegions),
+		&tr.DataResidencyPolicy, &tr.ReplicationMode, (*database.StringArray)(&tr.ComplianceFrameworks),
 		&tr.CreatedAt, &tr.UpdatedAt,
 	)
 	if err != nil {
@@ -357,8 +357,8 @@ func (r *PostgresFederatedMeshRepository) UpdateTenantRegion(ctx context.Context
 		WHERE tenant_id = $1`
 
 	_, err := r.pool.Exec(ctx, query,
-		tr.TenantID, tr.PrimaryRegionID, pq.Array(tr.AllowedRegions),
-		tr.DataResidencyPolicy, tr.ReplicationMode, pq.Array(tr.ComplianceFrameworks),
+		tr.TenantID, tr.PrimaryRegionID, database.UUIDArray(tr.AllowedRegions),
+		tr.DataResidencyPolicy, tr.ReplicationMode, database.StringArray(tr.ComplianceFrameworks),
 	)
 	return err
 }
@@ -375,7 +375,7 @@ func (r *PostgresFederatedMeshRepository) CreateRoutingRule(ctx context.Context,
 
 	return r.pool.QueryRow(ctx, query,
 		rule.TenantID, rule.Name, rule.Description, rule.RuleType, rule.Priority,
-		pq.Array(rule.SourceRegions), rule.TargetRegionID, conditionsJSON, rule.Enabled,
+		database.UUIDArray(rule.SourceRegions), rule.TargetRegionID, conditionsJSON, rule.Enabled,
 	).Scan(&rule.ID, &rule.CreatedAt, &rule.UpdatedAt)
 }
 
@@ -390,7 +390,7 @@ func (r *PostgresFederatedMeshRepository) GetRoutingRule(ctx context.Context, id
 	var conditionsJSON []byte
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&rule.ID, &rule.TenantID, &rule.Name, &rule.Description, &rule.RuleType,
-		&rule.Priority, pq.Array(&rule.SourceRegions), &rule.TargetRegionID,
+		&rule.Priority, (*database.UUIDArray)(&rule.SourceRegions), &rule.TargetRegionID,
 		&conditionsJSON, &rule.Enabled, &rule.CreatedAt, &rule.UpdatedAt,
 	)
 	if err != nil {
@@ -420,7 +420,7 @@ func (r *PostgresFederatedMeshRepository) GetRoutingRulesByTenant(ctx context.Co
 		var conditionsJSON []byte
 		if err := rows.Scan(
 			&rule.ID, &rule.TenantID, &rule.Name, &rule.Description, &rule.RuleType,
-			&rule.Priority, pq.Array(&rule.SourceRegions), &rule.TargetRegionID,
+			&rule.Priority, (*database.UUIDArray)(&rule.SourceRegions), &rule.TargetRegionID,
 			&conditionsJSON, &rule.Enabled, &rule.CreatedAt, &rule.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -451,7 +451,7 @@ func (r *PostgresFederatedMeshRepository) GetEnabledRoutingRules(ctx context.Con
 		var conditionsJSON []byte
 		if err := rows.Scan(
 			&rule.ID, &rule.TenantID, &rule.Name, &rule.Description, &rule.RuleType,
-			&rule.Priority, pq.Array(&rule.SourceRegions), &rule.TargetRegionID,
+			&rule.Priority, (*database.UUIDArray)(&rule.SourceRegions), &rule.TargetRegionID,
 			&conditionsJSON, &rule.Enabled, &rule.CreatedAt, &rule.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -475,7 +475,7 @@ func (r *PostgresFederatedMeshRepository) UpdateRoutingRule(ctx context.Context,
 
 	_, err := r.pool.Exec(ctx, query,
 		rule.ID, rule.Name, rule.Description, rule.RuleType, rule.Priority,
-		pq.Array(rule.SourceRegions), rule.TargetRegionID, conditionsJSON, rule.Enabled,
+		database.UUIDArray(rule.SourceRegions), rule.TargetRegionID, conditionsJSON, rule.Enabled,
 	)
 	return err
 }
