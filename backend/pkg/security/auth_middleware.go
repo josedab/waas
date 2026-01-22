@@ -1,7 +1,6 @@
 package security
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"webhook-platform/pkg/auth"
@@ -72,8 +71,7 @@ func (sam *SecureAuthMiddleware) RequireAuth() gin.HandlerFunc {
 		}
 
 		// Find tenant by API key
-		ctx := context.Background()
-		tenant, err := sam.tenantRepo.FindByAPIKey(ctx, apiKey)
+		tenant, err := sam.tenantRepo.FindByAPIKey(c.Request.Context(), apiKey)
 		if err != nil {
 			sam.logAuthFailure(c, nil, "invalid_api_key", "API key is invalid or expired", clientIP, userAgent)
 			c.JSON(http.StatusUnauthorized, gin.H{
