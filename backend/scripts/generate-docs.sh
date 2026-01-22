@@ -5,11 +5,21 @@
 
 set -e
 
-echo "🔧 Generating API documentation..."
+echo "Generating API documentation..."
+
+# Locate swag binary
+if command -v swag >/dev/null 2>&1; then
+    SWAG_BIN="swag"
+elif [ -x "$(go env GOPATH)/bin/swag" ]; then
+    SWAG_BIN="$(go env GOPATH)/bin/swag"
+else
+    echo "ERROR: swag not found. Install: go install github.com/swaggo/swag/cmd/swag@latest"
+    exit 1
+fi
 
 # Generate Swagger documentation
-echo "📝 Generating Swagger/OpenAPI specification..."
-~/go/bin/swag init -g cmd/api-service/main.go -o docs --parseDependency --parseInternal
+echo "Generating Swagger/OpenAPI specification..."
+$SWAG_BIN init -g cmd/api-service/main.go -o docs --parseDependency --parseInternal
 
 # Validate the generated documentation
 echo "✅ Validating generated documentation..."
