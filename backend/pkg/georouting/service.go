@@ -179,3 +179,133 @@ func isValidRegion(r Region) bool {
 	}
 	return false
 }
+
+// CreateGeoRegion registers a new geo region
+func (s *Service) CreateGeoRegion(ctx context.Context, region *GeoRegion) error {
+	if region.ID == uuid.Nil {
+		region.ID = uuid.New()
+	}
+	if region.Status == "" {
+		region.Status = "active"
+	}
+	region.CreatedAt = time.Now()
+	return s.repo.CreateGeoRegion(ctx, region)
+}
+
+// ListGeoRegions returns all geo regions with health status
+func (s *Service) ListGeoRegions(ctx context.Context) ([]GeoRegion, error) {
+	return s.repo.ListGeoRegions(ctx)
+}
+
+// CreateGeoRoutingPolicy creates a new geo routing policy for a tenant
+func (s *Service) CreateGeoRoutingPolicy(ctx context.Context, tenantID uuid.UUID, policy *GeoRoutingPolicy) error {
+	if policy.ID == uuid.Nil {
+		policy.ID = uuid.New()
+	}
+	policy.TenantID = tenantID
+	policy.Active = true
+	policy.CreatedAt = time.Now()
+	return s.repo.CreateGeoRoutingPolicy(ctx, policy)
+}
+
+// GetGeoRoutingPolicy returns the active routing policy for a tenant
+func (s *Service) GetGeoRoutingPolicy(ctx context.Context, tenantID uuid.UUID) (*GeoRoutingPolicy, error) {
+	return s.repo.GetGeoRoutingPolicy(ctx, tenantID)
+}
+
+// ListGeoRoutingPolicies lists all routing policies for a tenant
+func (s *Service) ListGeoRoutingPolicies(ctx context.Context, tenantID uuid.UUID) ([]GeoRoutingPolicy, error) {
+	return s.repo.ListGeoRoutingPolicies(ctx, tenantID)
+}
+
+// UpdateGeoRoutingPolicy updates an existing routing policy
+func (s *Service) UpdateGeoRoutingPolicy(ctx context.Context, policy *GeoRoutingPolicy) error {
+	return s.repo.UpdateGeoRoutingPolicy(ctx, policy)
+}
+
+// RouteEvent determines the best region and records the decision
+func (s *Service) RouteEvent(ctx context.Context, tenantID, endpointID uuid.UUID, eventPayload []byte) (*GeoRoutingDecision, error) {
+	decision, err := s.router.RouteDeliveryEnhanced(ctx, tenantID, endpointID, eventPayload)
+	if err != nil {
+		return nil, err
+	}
+	// Persist the decision
+	_ = s.repo.RecordGeoRoutingDecision(ctx, decision)
+	return decision, nil
+}
+
+// GetRoutingHistory returns recent routing decisions for a tenant
+func (s *Service) GetRoutingHistory(ctx context.Context, tenantID uuid.UUID, limit int) ([]GeoRoutingDecision, error) {
+	return s.repo.ListGeoRoutingDecisions(ctx, tenantID, limit)
+}
+
+// ConfigureEndpointRegion sets region preferences for an endpoint
+func (s *Service) ConfigureEndpointRegion(ctx context.Context, endpointID uuid.UUID, config *EndpointRegionConfig) error {
+	config.EndpointID = endpointID
+	return s.repo.SaveEndpointRegionConfig(ctx, config)
+}
+
+// SimulateRouting simulates a routing decision without persisting
+func (s *Service) SimulateRouting(ctx context.Context, tenantID uuid.UUID, sourceIP string) (*GeoRoutingDecision, error) {
+	policy, err := s.repo.GetGeoRoutingPolicy(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get routing policy: %w", err)
+	}
+	if policy == nil {
+		return &GeoRoutingDecision{
+			EventID:        uuid.New(),
+			SelectedRegion: string(RegionUSEast),
+			Reason:         "default (no policy)",
+		}, nil
+	}
+
+	selected, err := s.router.SelectRegion(ctx, policy, sourceIP)
+	if err != nil {
+		return nil, err
+	}
+
+	decision := &GeoRoutingDecision{
+		EventID:        uuid.New(),
+		SelectedRegion: selected,
+		Reason:         fmt.Sprintf("simulated-%s", policy.Strategy),
+	}
+
+	// Collect alternatives
+	regions, _ := s.repo.ListGeoRegions(ctx)
+	for _, rg := range regions {
+		if rg.Name != selected && (rg.Status == "active" || rg.Status == "degraded") {
+			decision.AlternativeRegions = append(decision.AlternativeRegions, rg.Name)
+		}
+		if rg.Name == selected {
+			decision.Latency = rg.AvgLatency
+		}
+	}
+
+	return decision, nil
+}
+
+// GetGeoDashboard returns dashboard data for the geo-routing overview
+func (s *Service) GetGeoDashboard(ctx context.Context) (*GeoDashboardData, error) {
+	regions, err := s.repo.ListGeoRegions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	healthList, _ := s.router.healthTracker.GetAllRegionHealthStatus(ctx)
+
+	loadDist := make(map[string]float64)
+	latencyMap := make(map[string]int)
+	for _, rg := range regions {
+		if rg.Capacity > 0 {
+			loadDist[rg.Name] = float64(rg.CurrentLoad) / float64(rg.Capacity) * 100.0
+		}
+		latencyMap[rg.Name] = rg.AvgLatency
+	}
+
+	return &GeoDashboardData{
+		Regions:          regions,
+		Health:           healthList,
+		LoadDistribution: loadDist,
+		LatencyMap:       latencyMap,
+	}, nil
+}

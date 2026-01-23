@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // Handler provides HTTP handlers for geo-routing
@@ -22,7 +23,16 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	geo := router.Group("/geo")
 	{
 		geo.GET("/regions", h.GetRegions)
+		geo.POST("/regions", h.CreateGeoRegion)
 		geo.GET("/regions/health", h.GetRegionHealth)
+		geo.GET("/regions/:name/health", h.GetRegionHealthByName)
+		geo.POST("/policies", h.CreateGeoRoutingPolicy)
+		geo.GET("/policies", h.ListGeoRoutingPolicies)
+		geo.PUT("/policies/:id", h.UpdateGeoRoutingPolicy)
+		geo.POST("/endpoints/:id/region", h.ConfigureEndpointRegion)
+		geo.POST("/simulate", h.SimulateRouting)
+		geo.GET("/routing-history", h.GetRoutingHistory)
+		geo.GET("/dashboard", h.GetDashboard)
 	}
 
 	routing := router.Group("/endpoints")
@@ -269,4 +279,319 @@ func (h *Handler) GetStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// CreateGeoRegion godoc
+//
+//	@Summary		Create a geo region
+//	@Description	Register a new geographic region (admin)
+//	@Tags			geo-routing
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		GeoRegion	true	"Region"
+//	@Success		201		{object}	GeoRegion
+//	@Failure		400		{object}	map[string]interface{}
+//	@Security		ApiKeyAuth
+//	@Router			/geo/regions [post]
+func (h *Handler) CreateGeoRegion(c *gin.Context) {
+	var region GeoRegion
+	if err := c.ShouldBindJSON(&region); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	if err := h.service.CreateGeoRegion(c.Request.Context(), &region); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, region)
+}
+
+// GetRegionHealthByName godoc
+//
+//	@Summary		Get region health by name
+//	@Description	Get health status for a specific region
+//	@Tags			geo-routing
+//	@Produce		json
+//	@Param			name	path		string	true	"Region name"
+//	@Success		200		{object}	GeoRegionHealth
+//	@Failure		404		{object}	map[string]interface{}
+//	@Security		ApiKeyAuth
+//	@Router			/geo/regions/{name}/health [get]
+func (h *Handler) GetRegionHealthByName(c *gin.Context) {
+	name := c.Param("name")
+	health, err := h.service.GetRouter().healthTracker.CheckRegionHealth(c.Request.Context(), name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, health)
+}
+
+// CreateGeoRoutingPolicy godoc
+//
+//	@Summary		Create routing policy
+//	@Description	Create a geo-routing policy for the tenant
+//	@Tags			geo-routing
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		CreateGeoRoutingPolicyRequest	true	"Policy"
+//	@Success		201		{object}	GeoRoutingPolicy
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		401		{object}	map[string]interface{}
+//	@Security		ApiKeyAuth
+//	@Router			/geo/policies [post]
+func (h *Handler) CreateGeoRoutingPolicy(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req CreateGeoRoutingPolicyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
+
+	policy := &GeoRoutingPolicy{
+		Name:             req.Name,
+		Strategy:         req.Strategy,
+		DataResidencyReq: req.DataResidency,
+		PreferredRegions: req.PreferredRegions,
+		FailoverOrder:    req.FailoverOrder,
+		Weights:          req.Weights,
+	}
+
+	if err := h.service.CreateGeoRoutingPolicy(c.Request.Context(), tid, policy); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, policy)
+}
+
+// ListGeoRoutingPolicies godoc
+//
+//	@Summary		List routing policies
+//	@Description	Get routing policies for the tenant
+//	@Tags			geo-routing
+//	@Produce		json
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Security		ApiKeyAuth
+//	@Router			/geo/policies [get]
+func (h *Handler) ListGeoRoutingPolicies(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
+
+	policies, err := h.service.ListGeoRoutingPolicies(c.Request.Context(), tid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"policies": policies})
+}
+
+// UpdateGeoRoutingPolicy godoc
+//
+//	@Summary		Update routing policy
+//	@Description	Update a geo-routing policy
+//	@Tags			geo-routing
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string							true	"Policy ID"
+//	@Param			request	body		CreateGeoRoutingPolicyRequest	true	"Policy update"
+//	@Success		200		{object}	GeoRoutingPolicy
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		401		{object}	map[string]interface{}
+//	@Security		ApiKeyAuth
+//	@Router			/geo/policies/{id} [put]
+func (h *Handler) UpdateGeoRoutingPolicy(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	policyID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid policy ID"})
+		return
+	}
+
+	var req CreateGeoRoutingPolicyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	existing, err := h.service.repo.GetGeoRoutingPolicyByID(c.Request.Context(), policyID)
+	if err != nil || existing == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "policy not found"})
+		return
+	}
+
+	existing.Name = req.Name
+	existing.Strategy = req.Strategy
+	existing.DataResidencyReq = req.DataResidency
+	existing.PreferredRegions = req.PreferredRegions
+	existing.FailoverOrder = req.FailoverOrder
+	existing.Weights = req.Weights
+
+	if err := h.service.UpdateGeoRoutingPolicy(c.Request.Context(), existing); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, existing)
+}
+
+// ConfigureEndpointRegion godoc
+//
+//	@Summary		Configure endpoint region
+//	@Description	Set region preferences for an endpoint
+//	@Tags			geo-routing
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string							true	"Endpoint ID"
+//	@Param			request	body		ConfigureEndpointRegionRequest	true	"Region config"
+//	@Success		200		{object}	EndpointRegionConfig
+//	@Failure		400		{object}	map[string]interface{}
+//	@Security		ApiKeyAuth
+//	@Router			/geo/endpoints/{id}/region [post]
+func (h *Handler) ConfigureEndpointRegion(c *gin.Context) {
+	endpointID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid endpoint ID"})
+		return
+	}
+
+	var req ConfigureEndpointRegionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	config := &EndpointRegionConfig{
+		PrimaryRegion:   req.PrimaryRegion,
+		FailoverRegions: req.FailoverRegions,
+		DataResidencyRq: req.DataResidency,
+	}
+
+	if err := h.service.ConfigureEndpointRegion(c.Request.Context(), endpointID, config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, config)
+}
+
+// SimulateRouting godoc
+//
+//	@Summary		Simulate routing
+//	@Description	Simulate a routing decision without actually sending
+//	@Tags			geo-routing
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		SimulateRoutingRequest	true	"Simulation request"
+//	@Success		200		{object}	GeoRoutingDecision
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		401		{object}	map[string]interface{}
+//	@Security		ApiKeyAuth
+//	@Router			/geo/simulate [post]
+func (h *Handler) SimulateRouting(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
+
+	var req SimulateRoutingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		return
+	}
+
+	decision, err := h.service.SimulateRouting(c.Request.Context(), tid, req.SourceIP)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, decision)
+}
+
+// GetRoutingHistory godoc
+//
+//	@Summary		Get routing history
+//	@Description	Get recent routing decision history
+//	@Tags			geo-routing
+//	@Produce		json
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Security		ApiKeyAuth
+//	@Router			/geo/routing-history [get]
+func (h *Handler) GetRoutingHistory(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
+
+	history, err := h.service.GetRoutingHistory(c.Request.Context(), tid, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"history": history})
+}
+
+// GetDashboard godoc
+//
+//	@Summary		Get geo-routing dashboard
+//	@Description	Get dashboard data with latency map and load distribution
+//	@Tags			geo-routing
+//	@Produce		json
+//	@Success		200	{object}	GeoDashboardData
+//	@Security		ApiKeyAuth
+//	@Router			/geo/dashboard [get]
+func (h *Handler) GetDashboard(c *gin.Context) {
+	dashboard, err := h.service.GetGeoDashboard(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dashboard)
 }

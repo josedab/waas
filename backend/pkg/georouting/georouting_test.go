@@ -5,6 +5,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func TestHaversineDistanceNew(t *testing.T) {
@@ -384,4 +386,56 @@ func (m *mockGeoRepoNew) GetRoutingStats(ctx context.Context, tenantID, period s
 
 func (m *mockGeoRepoNew) RecordRoutingDecision(ctx context.Context, decision *RoutingDecision) error {
 	return nil
+}
+
+func (m *mockGeoRepoNew) CreateGeoRegion(ctx context.Context, region *GeoRegion) error {
+	return nil
+}
+
+func (m *mockGeoRepoNew) GetGeoRegion(ctx context.Context, name string) (*GeoRegion, error) {
+	return nil, nil
+}
+
+func (m *mockGeoRepoNew) ListGeoRegions(ctx context.Context) ([]GeoRegion, error) {
+	return nil, nil
+}
+
+func (m *mockGeoRepoNew) UpdateGeoRegion(ctx context.Context, region *GeoRegion) error {
+	return nil
+}
+
+func (m *mockGeoRepoNew) CreateGeoRoutingPolicy(ctx context.Context, policy *GeoRoutingPolicy) error {
+	return nil
+}
+
+func (m *mockGeoRepoNew) GetGeoRoutingPolicy(ctx context.Context, tenantID uuid.UUID) (*GeoRoutingPolicy, error) {
+	return nil, nil
+}
+
+func (m *mockGeoRepoNew) GetGeoRoutingPolicyByID(ctx context.Context, id uuid.UUID) (*GeoRoutingPolicy, error) {
+	return nil, nil
+}
+
+func (m *mockGeoRepoNew) UpdateGeoRoutingPolicy(ctx context.Context, policy *GeoRoutingPolicy) error {
+	return nil
+}
+
+func (m *mockGeoRepoNew) ListGeoRoutingPolicies(ctx context.Context, tenantID uuid.UUID) ([]GeoRoutingPolicy, error) {
+	return nil, nil
+}
+
+func (m *mockGeoRepoNew) GetEndpointRegionConfig(ctx context.Context, endpointID uuid.UUID) (*EndpointRegionConfig, error) {
+	return nil, nil
+}
+
+func (m *mockGeoRepoNew) SaveEndpointRegionConfig(ctx context.Context, config *EndpointRegionConfig) error {
+	return nil
+}
+
+func (m *mockGeoRepoNew) RecordGeoRoutingDecision(ctx context.Context, decision *GeoRoutingDecision) error {
+	return nil
+}
+
+func (m *mockGeoRepoNew) ListGeoRoutingDecisions(ctx context.Context, tenantID uuid.UUID, limit int) ([]GeoRoutingDecision, error) {
+	return nil, nil
 }

@@ -191,3 +191,126 @@ func (h *HealthTracker) IsHealthy(regionID string) bool {
 	}
 	return true // Assume healthy if no data
 }
+
+// CheckRegionHealth returns detailed health for a specific region
+func (h *HealthTracker) CheckRegionHealth(ctx context.Context, regionName string) (*GeoRegionHealth, error) {
+	h.mu.RLock()
+	rh, ok := h.health[regionName]
+	h.mu.RUnlock()
+
+	result := &GeoRegionHealth{
+		RegionName:  regionName,
+		LastChecked: time.Now(),
+	}
+
+	if ok && rh != nil {
+		result.AvgLatency = rh.AvgLatencyMs
+		result.LastChecked = rh.LastCheck
+		if rh.IsHealthy {
+			result.Status = "active"
+			result.SuccessRate = 100.0 - rh.ErrorRate
+		} else {
+			result.Status = "offline"
+			result.SuccessRate = 0
+		}
+	} else {
+		// Try from repo
+		dbHealth, err := h.repo.GetRegionHealth(ctx, regionName)
+		if err != nil || dbHealth == nil {
+			result.Status = "unknown"
+			return result, nil
+		}
+		result.AvgLatency = dbHealth.AvgLatencyMs
+		result.LastChecked = dbHealth.LastCheck
+		if dbHealth.IsHealthy {
+			result.Status = "active"
+			result.SuccessRate = 100.0 - dbHealth.ErrorRate
+		} else {
+			result.Status = "offline"
+		}
+	}
+
+	return result, nil
+}
+
+// GetAllRegionHealthStatus returns health status for all tracked regions
+func (h *HealthTracker) GetAllRegionHealthStatus(ctx context.Context) ([]GeoRegionHealth, error) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	var result []GeoRegionHealth
+	for name, rh := range h.health {
+		grh := GeoRegionHealth{
+			RegionName:  name,
+			AvgLatency:  rh.AvgLatencyMs,
+			LastChecked: rh.LastCheck,
+		}
+		if rh.IsHealthy {
+			grh.Status = "active"
+			grh.SuccessRate = 100.0 - rh.ErrorRate
+		} else {
+			grh.Status = "offline"
+			grh.SuccessRate = 0
+		}
+		result = append(result, grh)
+	}
+	return result, nil
+}
+
+// UpdateRegionMetrics updates latency and success metrics for a region
+func (h *HealthTracker) UpdateRegionMetrics(ctx context.Context, regionName string, latency int, success bool) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	rh, ok := h.health[regionName]
+	if !ok {
+		rh = &RegionHealth{
+			RegionID:  regionName,
+			IsHealthy: true,
+		}
+		h.health[regionName] = rh
+	}
+
+	rh.LastCheck = time.Now()
+	rh.AvgLatencyMs = (rh.AvgLatencyMs + latency) / 2
+
+	if success {
+		rh.ConsecutiveOK++
+		rh.ConsecutiveFail = 0
+		if rh.ConsecutiveOK >= 2 {
+			rh.IsHealthy = true
+		}
+	} else {
+		rh.ConsecutiveFail++
+		rh.ConsecutiveOK = 0
+		if rh.ConsecutiveFail >= 3 {
+			rh.IsHealthy = false
+		}
+	}
+
+	return nil
+}
+
+// DetectDegradedRegions returns health info for regions that are degraded or offline
+func (h *HealthTracker) DetectDegradedRegions(ctx context.Context) ([]GeoRegionHealth, error) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	var degraded []GeoRegionHealth
+	for name, rh := range h.health {
+		if !rh.IsHealthy || rh.ConsecutiveFail > 0 {
+			status := "degraded"
+			if !rh.IsHealthy {
+				status = "offline"
+			}
+			degraded = append(degraded, GeoRegionHealth{
+				RegionName:  name,
+				Status:      status,
+				AvgLatency:  rh.AvgLatencyMs,
+				SuccessRate: 100.0 - rh.ErrorRate,
+				LastChecked: rh.LastCheck,
+			})
+		}
+	}
+	return degraded, nil
+}

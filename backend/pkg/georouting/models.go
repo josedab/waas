@@ -2,6 +2,8 @@ package georouting
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Region represents a geographic region
@@ -182,4 +184,90 @@ func GetRegionInfo() []RegionInfo {
 		{Region: RegionAPSouth, Name: "Asia Pacific (Mumbai)", Location: "Mumbai, India", Continent: "Asia", Compliant: []string{"SOC2"}},
 		{Region: RegionAPEast, Name: "Asia Pacific (Tokyo)", Location: "Tokyo, Japan", Continent: "Asia", Compliant: []string{"SOC2"}},
 	}
+}
+
+// GeoRegion represents a geographic region with full metadata
+type GeoRegion struct {
+	ID          uuid.UUID `json:"id" db:"id"`
+	Name        string    `json:"name" db:"name"`
+	DisplayName string    `json:"display_name" db:"display_name"`
+	Provider    string    `json:"provider" db:"provider"`
+	Latitude    float64   `json:"latitude" db:"latitude"`
+	Longitude   float64   `json:"longitude" db:"longitude"`
+	Status      string    `json:"status" db:"status"`
+	Capacity    int       `json:"capacity" db:"capacity"`
+	CurrentLoad int       `json:"current_load" db:"current_load"`
+	AvgLatency  int       `json:"avg_latency_ms" db:"avg_latency_ms"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}
+
+// GeoRoutingPolicy defines how events are routed geographically
+type GeoRoutingPolicy struct {
+	ID               uuid.UUID      `json:"id" db:"id"`
+	TenantID         uuid.UUID      `json:"tenant_id" db:"tenant_id"`
+	Name             string         `json:"name" db:"name"`
+	Strategy         string         `json:"strategy" db:"strategy"`
+	DataResidencyReq []string       `json:"data_residency" db:"data_residency"`
+	PreferredRegions []string       `json:"preferred_regions" db:"preferred_regions"`
+	FailoverOrder    []string       `json:"failover_order" db:"failover_order"`
+	Weights          map[string]int `json:"weights" db:"weights"`
+	Active           bool           `json:"active" db:"active"`
+	CreatedAt        time.Time      `json:"created_at" db:"created_at"`
+}
+
+// EndpointRegionConfig defines per-endpoint region preferences
+type EndpointRegionConfig struct {
+	EndpointID      uuid.UUID `json:"endpoint_id" db:"endpoint_id"`
+	PrimaryRegion   string    `json:"primary_region" db:"primary_region"`
+	FailoverRegions []string  `json:"failover_regions" db:"failover_regions"`
+	DataResidencyRq string    `json:"data_residency" db:"data_residency"`
+}
+
+// GeoRoutingDecision captures how and why a routing decision was made
+type GeoRoutingDecision struct {
+	EventID            uuid.UUID `json:"event_id"`
+	SelectedRegion     string    `json:"selected_region"`
+	Reason             string    `json:"reason"`
+	Latency            int       `json:"estimated_latency_ms"`
+	AlternativeRegions []string  `json:"alternative_regions"`
+}
+
+// GeoRegionHealth represents enriched health data for a region
+type GeoRegionHealth struct {
+	RegionName  string    `json:"region_name"`
+	Status      string    `json:"status"`
+	AvgLatency  int       `json:"avg_latency_ms"`
+	SuccessRate float64   `json:"success_rate"`
+	Load        float64   `json:"load_percentage"`
+	LastChecked time.Time `json:"last_checked"`
+}
+
+// GeoDashboardData provides an overview for the geo-routing dashboard
+type GeoDashboardData struct {
+	Regions          []GeoRegion       `json:"regions"`
+	Health           []GeoRegionHealth `json:"health"`
+	LoadDistribution map[string]float64 `json:"load_distribution"`
+	LatencyMap       map[string]int     `json:"latency_map"`
+}
+
+// CreateGeoRoutingPolicyRequest is the request body for creating a routing policy
+type CreateGeoRoutingPolicyRequest struct {
+	Name             string         `json:"name" binding:"required"`
+	Strategy         string         `json:"strategy" binding:"required"`
+	DataResidency    []string       `json:"data_residency"`
+	PreferredRegions []string       `json:"preferred_regions"`
+	FailoverOrder    []string       `json:"failover_order"`
+	Weights          map[string]int `json:"weights"`
+}
+
+// SimulateRoutingRequest is the request body for routing simulation
+type SimulateRoutingRequest struct {
+	SourceIP string `json:"source_ip" binding:"required"`
+}
+
+// ConfigureEndpointRegionRequest is the request body for endpoint region configuration
+type ConfigureEndpointRegionRequest struct {
+	PrimaryRegion   string   `json:"primary_region" binding:"required"`
+	FailoverRegions []string `json:"failover_regions"`
+	DataResidency   string   `json:"data_residency"`
 }

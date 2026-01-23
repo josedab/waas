@@ -27,6 +27,24 @@ type Repository interface {
 
 	GetRoutingStats(ctx context.Context, tenantID, period string) (*RoutingStats, error)
 	RecordRoutingDecision(ctx context.Context, decision *RoutingDecision) error
+
+	// Enhanced geo-routing methods
+	CreateGeoRegion(ctx context.Context, region *GeoRegion) error
+	GetGeoRegion(ctx context.Context, name string) (*GeoRegion, error)
+	ListGeoRegions(ctx context.Context) ([]GeoRegion, error)
+	UpdateGeoRegion(ctx context.Context, region *GeoRegion) error
+
+	CreateGeoRoutingPolicy(ctx context.Context, policy *GeoRoutingPolicy) error
+	GetGeoRoutingPolicy(ctx context.Context, tenantID uuid.UUID) (*GeoRoutingPolicy, error)
+	GetGeoRoutingPolicyByID(ctx context.Context, id uuid.UUID) (*GeoRoutingPolicy, error)
+	UpdateGeoRoutingPolicy(ctx context.Context, policy *GeoRoutingPolicy) error
+	ListGeoRoutingPolicies(ctx context.Context, tenantID uuid.UUID) ([]GeoRoutingPolicy, error)
+
+	GetEndpointRegionConfig(ctx context.Context, endpointID uuid.UUID) (*EndpointRegionConfig, error)
+	SaveEndpointRegionConfig(ctx context.Context, config *EndpointRegionConfig) error
+
+	RecordGeoRoutingDecision(ctx context.Context, decision *GeoRoutingDecision) error
+	ListGeoRoutingDecisions(ctx context.Context, tenantID uuid.UUID, limit int) ([]GeoRoutingDecision, error)
 }
 
 // PostgresRepository implements Repository using PostgreSQL
@@ -324,4 +342,277 @@ func (r *PostgresRepository) RecordRoutingDecision(ctx context.Context, decision
 	)
 
 	return err
+}
+
+// CreateGeoRegion creates a new geo region
+func (r *PostgresRepository) CreateGeoRegion(ctx context.Context, region *GeoRegion) error {
+	query := `
+		INSERT INTO geo_regions (id, name, display_name, provider, latitude, longitude, status, capacity, current_load, avg_latency_ms, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		region.ID, region.Name, region.DisplayName, region.Provider,
+		region.Latitude, region.Longitude, region.Status,
+		region.Capacity, region.CurrentLoad, region.AvgLatency, region.CreatedAt,
+	)
+	return err
+}
+
+// GetGeoRegion retrieves a geo region by name
+func (r *PostgresRepository) GetGeoRegion(ctx context.Context, name string) (*GeoRegion, error) {
+	query := `
+		SELECT id, name, display_name, provider, latitude, longitude, status, capacity, current_load, avg_latency_ms, created_at
+		FROM geo_regions WHERE name = $1
+	`
+	var region GeoRegion
+	err := r.db.QueryRowContext(ctx, query, name).Scan(
+		&region.ID, &region.Name, &region.DisplayName, &region.Provider,
+		&region.Latitude, &region.Longitude, &region.Status,
+		&region.Capacity, &region.CurrentLoad, &region.AvgLatency, &region.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &region, nil
+}
+
+// ListGeoRegions lists all geo regions
+func (r *PostgresRepository) ListGeoRegions(ctx context.Context) ([]GeoRegion, error) {
+	query := `
+		SELECT id, name, display_name, provider, latitude, longitude, status, capacity, current_load, avg_latency_ms, created_at
+		FROM geo_regions ORDER BY name ASC
+	`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var regions []GeoRegion
+	for rows.Next() {
+		var region GeoRegion
+		if err := rows.Scan(
+			&region.ID, &region.Name, &region.DisplayName, &region.Provider,
+			&region.Latitude, &region.Longitude, &region.Status,
+			&region.Capacity, &region.CurrentLoad, &region.AvgLatency, &region.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		regions = append(regions, region)
+	}
+	return regions, rows.Err()
+}
+
+// UpdateGeoRegion updates a geo region
+func (r *PostgresRepository) UpdateGeoRegion(ctx context.Context, region *GeoRegion) error {
+	query := `
+		UPDATE geo_regions SET display_name=$1, provider=$2, latitude=$3, longitude=$4, status=$5,
+		capacity=$6, current_load=$7, avg_latency_ms=$8
+		WHERE id = $9
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		region.DisplayName, region.Provider, region.Latitude, region.Longitude, region.Status,
+		region.Capacity, region.CurrentLoad, region.AvgLatency, region.ID,
+	)
+	return err
+}
+
+// CreateGeoRoutingPolicy creates a geo routing policy
+func (r *PostgresRepository) CreateGeoRoutingPolicy(ctx context.Context, policy *GeoRoutingPolicy) error {
+	dataResJSON, _ := json.Marshal(policy.DataResidencyReq)
+	prefJSON, _ := json.Marshal(policy.PreferredRegions)
+	foJSON, _ := json.Marshal(policy.FailoverOrder)
+	wJSON, _ := json.Marshal(policy.Weights)
+
+	query := `
+		INSERT INTO geo_routing_policies (id, tenant_id, name, strategy, data_residency, preferred_regions, failover_order, weights, active, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		policy.ID, policy.TenantID, policy.Name, policy.Strategy,
+		dataResJSON, prefJSON, foJSON, wJSON, policy.Active, policy.CreatedAt,
+	)
+	return err
+}
+
+// GetGeoRoutingPolicy retrieves a geo routing policy by tenant ID
+func (r *PostgresRepository) GetGeoRoutingPolicy(ctx context.Context, tenantID uuid.UUID) (*GeoRoutingPolicy, error) {
+	query := `
+		SELECT id, tenant_id, name, strategy, data_residency, preferred_regions, failover_order, weights, active, created_at
+		FROM geo_routing_policies WHERE tenant_id = $1 AND active = true LIMIT 1
+	`
+	var policy GeoRoutingPolicy
+	var dataRes, pref, fo, w []byte
+	err := r.db.QueryRowContext(ctx, query, tenantID).Scan(
+		&policy.ID, &policy.TenantID, &policy.Name, &policy.Strategy,
+		&dataRes, &pref, &fo, &w, &policy.Active, &policy.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal(dataRes, &policy.DataResidencyReq)
+	json.Unmarshal(pref, &policy.PreferredRegions)
+	json.Unmarshal(fo, &policy.FailoverOrder)
+	json.Unmarshal(w, &policy.Weights)
+	return &policy, nil
+}
+
+// GetGeoRoutingPolicyByID retrieves a geo routing policy by its ID
+func (r *PostgresRepository) GetGeoRoutingPolicyByID(ctx context.Context, id uuid.UUID) (*GeoRoutingPolicy, error) {
+	query := `
+		SELECT id, tenant_id, name, strategy, data_residency, preferred_regions, failover_order, weights, active, created_at
+		FROM geo_routing_policies WHERE id = $1
+	`
+	var policy GeoRoutingPolicy
+	var dataRes, pref, fo, w []byte
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&policy.ID, &policy.TenantID, &policy.Name, &policy.Strategy,
+		&dataRes, &pref, &fo, &w, &policy.Active, &policy.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal(dataRes, &policy.DataResidencyReq)
+	json.Unmarshal(pref, &policy.PreferredRegions)
+	json.Unmarshal(fo, &policy.FailoverOrder)
+	json.Unmarshal(w, &policy.Weights)
+	return &policy, nil
+}
+
+// UpdateGeoRoutingPolicy updates a geo routing policy
+func (r *PostgresRepository) UpdateGeoRoutingPolicy(ctx context.Context, policy *GeoRoutingPolicy) error {
+	dataResJSON, _ := json.Marshal(policy.DataResidencyReq)
+	prefJSON, _ := json.Marshal(policy.PreferredRegions)
+	foJSON, _ := json.Marshal(policy.FailoverOrder)
+	wJSON, _ := json.Marshal(policy.Weights)
+
+	query := `
+		UPDATE geo_routing_policies SET name=$1, strategy=$2, data_residency=$3, preferred_regions=$4,
+		failover_order=$5, weights=$6, active=$7
+		WHERE id = $8
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		policy.Name, policy.Strategy, dataResJSON, prefJSON, foJSON, wJSON, policy.Active, policy.ID,
+	)
+	return err
+}
+
+// ListGeoRoutingPolicies lists geo routing policies for a tenant
+func (r *PostgresRepository) ListGeoRoutingPolicies(ctx context.Context, tenantID uuid.UUID) ([]GeoRoutingPolicy, error) {
+	query := `
+		SELECT id, tenant_id, name, strategy, data_residency, preferred_regions, failover_order, weights, active, created_at
+		FROM geo_routing_policies WHERE tenant_id = $1 ORDER BY created_at DESC
+	`
+	rows, err := r.db.QueryContext(ctx, query, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var policies []GeoRoutingPolicy
+	for rows.Next() {
+		var policy GeoRoutingPolicy
+		var dataRes, pref, fo, w []byte
+		if err := rows.Scan(
+			&policy.ID, &policy.TenantID, &policy.Name, &policy.Strategy,
+			&dataRes, &pref, &fo, &w, &policy.Active, &policy.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		json.Unmarshal(dataRes, &policy.DataResidencyReq)
+		json.Unmarshal(pref, &policy.PreferredRegions)
+		json.Unmarshal(fo, &policy.FailoverOrder)
+		json.Unmarshal(w, &policy.Weights)
+		policies = append(policies, policy)
+	}
+	return policies, rows.Err()
+}
+
+// GetEndpointRegionConfig retrieves endpoint region config
+func (r *PostgresRepository) GetEndpointRegionConfig(ctx context.Context, endpointID uuid.UUID) (*EndpointRegionConfig, error) {
+	query := `
+		SELECT endpoint_id, primary_region, failover_regions, data_residency
+		FROM endpoint_region_configs WHERE endpoint_id = $1
+	`
+	var config EndpointRegionConfig
+	var foRegions []byte
+	err := r.db.QueryRowContext(ctx, query, endpointID).Scan(
+		&config.EndpointID, &config.PrimaryRegion, &foRegions, &config.DataResidencyRq,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal(foRegions, &config.FailoverRegions)
+	return &config, nil
+}
+
+// SaveEndpointRegionConfig saves endpoint region config (upsert)
+func (r *PostgresRepository) SaveEndpointRegionConfig(ctx context.Context, config *EndpointRegionConfig) error {
+	foJSON, _ := json.Marshal(config.FailoverRegions)
+	query := `
+		INSERT INTO endpoint_region_configs (endpoint_id, primary_region, failover_regions, data_residency)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (endpoint_id) DO UPDATE SET
+			primary_region = EXCLUDED.primary_region,
+			failover_regions = EXCLUDED.failover_regions,
+			data_residency = EXCLUDED.data_residency
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		config.EndpointID, config.PrimaryRegion, foJSON, config.DataResidencyRq,
+	)
+	return err
+}
+
+// RecordGeoRoutingDecision records a geo routing decision
+func (r *PostgresRepository) RecordGeoRoutingDecision(ctx context.Context, decision *GeoRoutingDecision) error {
+	altJSON, _ := json.Marshal(decision.AlternativeRegions)
+	query := `
+		INSERT INTO geo_routing_decisions (event_id, selected_region, reason, estimated_latency_ms, alternative_regions)
+		VALUES ($1, $2, $3, $4, $5)
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		decision.EventID, decision.SelectedRegion, decision.Reason,
+		decision.Latency, altJSON,
+	)
+	return err
+}
+
+// ListGeoRoutingDecisions lists recent geo routing decisions
+func (r *PostgresRepository) ListGeoRoutingDecisions(ctx context.Context, tenantID uuid.UUID, limit int) ([]GeoRoutingDecision, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	query := `
+		SELECT event_id, selected_region, reason, estimated_latency_ms, alternative_regions
+		FROM geo_routing_decisions ORDER BY event_id DESC LIMIT $1
+	`
+	rows, err := r.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var decisions []GeoRoutingDecision
+	for rows.Next() {
+		var d GeoRoutingDecision
+		var alt []byte
+		if err := rows.Scan(&d.EventID, &d.SelectedRegion, &d.Reason, &d.Latency, &alt); err != nil {
+			return nil, err
+		}
+		json.Unmarshal(alt, &d.AlternativeRegions)
+		decisions = append(decisions, d)
+	}
+	return decisions, rows.Err()
 }

@@ -7,6 +7,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Router handles geographic routing decisions
@@ -302,4 +304,270 @@ func (p *DefaultGeoIPProvider) Lookup(ipStr string) (*GeoLocation, error) {
 		Latitude:  39.0438,
 		Longitude: -77.4874,
 	}, nil
+}
+
+// RouterConfig holds configuration for the enhanced router
+type RouterConfig struct {
+	MaxLatencyThreshold int
+	FailoverEnabled     bool
+	DataResidencyStrict bool
+	HealthCheckInterval time.Duration
+}
+
+// DefaultRouterConfig returns sensible defaults
+func DefaultRouterConfig() RouterConfig {
+	return RouterConfig{
+		MaxLatencyThreshold: 500,
+		FailoverEnabled:     true,
+		DataResidencyStrict: true,
+		HealthCheckInterval: 30 * time.Second,
+	}
+}
+
+// CalculateDistance calculates the Haversine distance (km) between two lat/lon points
+func CalculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
+	return haversine(lat1, lon1, lat2, lon2)
+}
+
+// GetClosestRegion returns the GeoRegion closest to the given coordinates
+func GetClosestRegion(lat, lon float64, regions []GeoRegion) *GeoRegion {
+	if len(regions) == 0 {
+		return nil
+	}
+
+	var closest *GeoRegion
+	minDist := math.MaxFloat64
+
+	for i := range regions {
+		d := haversine(lat, lon, regions[i].Latitude, regions[i].Longitude)
+		if d < minDist {
+			minDist = d
+			closest = &regions[i]
+		}
+	}
+	return closest
+}
+
+// GetLowestLatencyRegion returns the GeoRegion with the lowest average latency
+func GetLowestLatencyRegion(regions []GeoRegion) *GeoRegion {
+	if len(regions) == 0 {
+		return nil
+	}
+
+	var best *GeoRegion
+	minLat := math.MaxInt32
+
+	for i := range regions {
+		if regions[i].Status != "active" {
+			continue
+		}
+		if regions[i].AvgLatency < minLat {
+			minLat = regions[i].AvgLatency
+			best = &regions[i]
+		}
+	}
+
+	if best == nil && len(regions) > 0 {
+		best = &regions[0]
+	}
+	return best
+}
+
+// ApplyFailover returns the first healthy region from the failover order.
+// If the primary is healthy it is returned; otherwise the first healthy alternative is used.
+func (r *Router) ApplyFailover(ctx context.Context, primaryRegion string, failoverOrder []string) (string, error) {
+	if r.healthTracker.IsHealthy(primaryRegion) {
+		return primaryRegion, nil
+	}
+
+	for _, region := range failoverOrder {
+		if r.healthTracker.IsHealthy(region) {
+			return region, nil
+		}
+	}
+	return "", fmt.Errorf("no healthy region available in failover order")
+}
+
+// EnforceDataResidency validates that the selected region satisfies the policy's data residency constraints.
+func EnforceDataResidency(policy *GeoRoutingPolicy, selectedRegion string) error {
+	if len(policy.DataResidencyReq) == 0 {
+		return nil
+	}
+	for _, allowed := range policy.DataResidencyReq {
+		if allowed == selectedRegion {
+			return nil
+		}
+	}
+	return fmt.Errorf("region %s violates data residency policy; allowed regions: %v", selectedRegion, policy.DataResidencyReq)
+}
+
+// SelectRegion picks the best region given a routing policy and optional target IP
+func (r *Router) SelectRegion(ctx context.Context, policy *GeoRoutingPolicy, targetIP string) (string, error) {
+	regions, err := r.repo.ListGeoRegions(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to list regions: %w", err)
+	}
+
+	// Filter to active regions only
+	var active []GeoRegion
+	for _, rg := range regions {
+		if rg.Status == "active" || rg.Status == "degraded" {
+			active = append(active, rg)
+		}
+	}
+	if len(active) == 0 {
+		return "", fmt.Errorf("no active regions available")
+	}
+
+	var selected string
+
+	switch policy.Strategy {
+	case "latency":
+		best := GetLowestLatencyRegion(active)
+		if best != nil {
+			selected = best.Name
+		}
+	case "geo-proximity":
+		if r.geoIP != nil && targetIP != "" {
+			loc, err := r.geoIP.Lookup(targetIP)
+			if err == nil {
+				closest := GetClosestRegion(loc.Latitude, loc.Longitude, active)
+				if closest != nil {
+					selected = closest.Name
+				}
+			}
+		}
+		if selected == "" && len(policy.PreferredRegions) > 0 {
+			selected = policy.PreferredRegions[0]
+		}
+	case "failover":
+		if len(policy.FailoverOrder) > 0 {
+			primary := policy.FailoverOrder[0]
+			rest := policy.FailoverOrder[1:]
+			result, err := r.ApplyFailover(ctx, primary, rest)
+			if err == nil {
+				selected = result
+			}
+		}
+	case "round-robin":
+		if len(active) > 0 {
+			r.mu.Lock()
+			idx := r.regionLatency[Region("_rr_idx")]
+			r.regionLatency[Region("_rr_idx")] = (idx + 1) % len(active)
+			r.mu.Unlock()
+			selected = active[idx%len(active)].Name
+		}
+	case "weighted":
+		selected = selectWeightedRegion(active, policy.Weights)
+	default:
+		if len(policy.PreferredRegions) > 0 {
+			selected = policy.PreferredRegions[0]
+		} else if len(active) > 0 {
+			selected = active[0].Name
+		}
+	}
+
+	if selected == "" {
+		return "", fmt.Errorf("could not select a region for strategy %s", policy.Strategy)
+	}
+
+	// Enforce data residency if set
+	if err := EnforceDataResidency(policy, selected); err != nil {
+		// Try to find a compliant region
+		for _, rg := range active {
+			if EnforceDataResidency(policy, rg.Name) == nil {
+				return rg.Name, nil
+			}
+		}
+		return "", err
+	}
+
+	return selected, nil
+}
+
+// selectWeightedRegion picks a region using weight distribution
+func selectWeightedRegion(regions []GeoRegion, weights map[string]int) string {
+	if len(weights) == 0 && len(regions) > 0 {
+		return regions[0].Name
+	}
+
+	totalWeight := 0
+	for _, rg := range regions {
+		if w, ok := weights[rg.Name]; ok {
+			totalWeight += w
+		}
+	}
+	if totalWeight == 0 && len(regions) > 0 {
+		return regions[0].Name
+	}
+
+	// Deterministic mid-point selection for simplicity
+	target := totalWeight / 2
+	cumulative := 0
+	for _, rg := range regions {
+		if w, ok := weights[rg.Name]; ok {
+			cumulative += w
+			if cumulative > target {
+				return rg.Name
+			}
+		}
+	}
+
+	if len(regions) > 0 {
+		return regions[0].Name
+	}
+	return ""
+}
+
+// RouteDeliveryEnhanced makes an enhanced routing decision using GeoRoutingPolicy
+func (r *Router) RouteDeliveryEnhanced(ctx context.Context, tenantID, endpointID uuid.UUID, payload []byte) (*GeoRoutingDecision, error) {
+	policy, err := r.repo.GetGeoRoutingPolicy(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get routing policy: %w", err)
+	}
+
+	// Check endpoint-level config
+	epConfig, _ := r.repo.GetEndpointRegionConfig(ctx, endpointID)
+
+	decision := &GeoRoutingDecision{
+		EventID: uuid.New(),
+	}
+
+	if policy == nil {
+		// No policy; use endpoint config or default
+		if epConfig != nil && epConfig.PrimaryRegion != "" {
+			decision.SelectedRegion = epConfig.PrimaryRegion
+			decision.Reason = "endpoint-config"
+		} else {
+			decision.SelectedRegion = string(RegionUSEast)
+			decision.Reason = "default"
+		}
+		return decision, nil
+	}
+
+	selected, err := r.SelectRegion(ctx, policy, "")
+	if err != nil {
+		return nil, err
+	}
+
+	decision.SelectedRegion = selected
+	decision.Reason = policy.Strategy
+
+	// Collect alternatives
+	regions, _ := r.repo.ListGeoRegions(ctx)
+	for _, rg := range regions {
+		if rg.Name != selected && (rg.Status == "active" || rg.Status == "degraded") {
+			decision.AlternativeRegions = append(decision.AlternativeRegions, rg.Name)
+		}
+	}
+
+	// Estimate latency
+	for _, rg := range regions {
+		if rg.Name == selected {
+			decision.Latency = rg.AvgLatency
+			break
+		}
+	}
+
+	return decision, nil
 }
