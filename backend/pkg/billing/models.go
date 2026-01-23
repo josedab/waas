@@ -3,10 +3,12 @@ package billing
 import (
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
-// UsageRecord represents webhook usage
-type UsageRecord struct {
+// CostUsageRecord represents webhook usage
+type CostUsageRecord struct {
 	ID            string    `json:"id"`
 	TenantID      string    `json:"tenant_id"`
 	WebhookID     string    `json:"webhook_id,omitempty"`
@@ -217,8 +219,8 @@ const (
 	OptStatusImplemented OptimizationStatus = "implemented"
 )
 
-// Invoice represents a billing invoice
-type Invoice struct {
+// CostInvoice represents a billing cost invoice
+type CostInvoice struct {
 	ID            string        `json:"id"`
 	TenantID      string        `json:"tenant_id"`
 	Number        string        `json:"number"`
@@ -255,8 +257,8 @@ type LineItem struct {
 	Amount       float64 `json:"amount"`
 }
 
-// PricingTier defines pricing tiers
-type PricingTier struct {
+// ServiceTier defines service pricing tiers
+type ServiceTier struct {
 	ID           string                  `json:"id"`
 	Name         string                  `json:"name"`
 	Description  string                  `json:"description"`
@@ -267,8 +269,8 @@ type PricingTier struct {
 	Features     []string                `json:"features"`
 }
 
-// UsageSummary summarizes usage
-type UsageSummary struct {
+// CostUsageSummary summarizes cost-based usage
+type CostUsageSummary struct {
 	TenantID      string             `json:"tenant_id"`
 	Period        string             `json:"period"`
 	TotalRequests int64              `json:"total_requests"`
@@ -375,3 +377,119 @@ func GetResourceTypes() []string {
 		"workflow_executions",
 	}
 }
+
+// PricingPlan represents a subscription pricing plan
+type PricingPlan struct {
+	ID              uuid.UUID     `json:"id" db:"id"`
+	Name            string        `json:"name" db:"name"`
+	DisplayName     string        `json:"display_name" db:"display_name"`
+	PricingModel    string        `json:"pricing_model" db:"pricing_model"`
+	BasePrice       int64         `json:"base_price_cents" db:"base_price_cents"`
+	IncludedEvents  int64         `json:"included_events" db:"included_events"`
+	OveragePrice    int64         `json:"overage_price_cents" db:"overage_price_cents"`
+	Tiers           []PricingTier `json:"tiers"`
+	Features        PlanFeatures  `json:"features"`
+	StripeProductID string        `json:"stripe_product_id,omitempty" db:"stripe_product_id"`
+	StripePriceID   string        `json:"stripe_price_id,omitempty" db:"stripe_price_id"`
+	Active          bool          `json:"active" db:"active"`
+	CreatedAt       time.Time     `json:"created_at" db:"created_at"`
+}
+
+// PricingTier represents a tier within tiered pricing
+type PricingTier struct {
+	UpTo         int64 `json:"up_to"`
+	PricePerUnit int64 `json:"price_per_unit_cents"`
+}
+
+// PlanFeatures represents features available in a plan
+type PlanFeatures struct {
+	MaxEndpoints     int    `json:"max_endpoints"`
+	MaxRetries       int    `json:"max_retries"`
+	CustomTransforms bool   `json:"custom_transforms"`
+	Analytics        bool   `json:"analytics"`
+	SLA              bool   `json:"sla"`
+	Support          string `json:"support"`
+}
+
+// Subscription represents a tenant's subscription
+type Subscription struct {
+	ID                 uuid.UUID `json:"id" db:"id"`
+	TenantID           uuid.UUID `json:"tenant_id" db:"tenant_id"`
+	PlanID             uuid.UUID `json:"plan_id" db:"plan_id"`
+	StripeSubID        string    `json:"stripe_subscription_id,omitempty" db:"stripe_subscription_id"`
+	StripeCustomerID   string    `json:"stripe_customer_id,omitempty" db:"stripe_customer_id"`
+	Status             string    `json:"status" db:"status"`
+	CurrentPeriodStart time.Time `json:"current_period_start" db:"current_period_start"`
+	CurrentPeriodEnd   time.Time `json:"current_period_end" db:"current_period_end"`
+	CancelAtPeriodEnd  bool      `json:"cancel_at_period_end" db:"cancel_at_period_end"`
+	CreatedAt          time.Time `json:"created_at" db:"created_at"`
+}
+
+// UsageRecord represents usage tracking for a billing period
+type UsageRecord struct {
+	ID          uuid.UUID `json:"id" db:"id"`
+	TenantID    uuid.UUID `json:"tenant_id" db:"tenant_id"`
+	PeriodStart time.Time `json:"period_start" db:"period_start"`
+	PeriodEnd   time.Time `json:"period_end" db:"period_end"`
+	EventCount  int64     `json:"event_count" db:"event_count"`
+	RetryCount  int64     `json:"retry_count" db:"retry_count"`
+	DataBytes   int64     `json:"data_bytes" db:"data_bytes"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}
+
+// Invoice represents a billing invoice
+type Invoice struct {
+	ID              uuid.UUID         `json:"id" db:"id"`
+	TenantID        uuid.UUID         `json:"tenant_id" db:"tenant_id"`
+	SubscriptionID  uuid.UUID         `json:"subscription_id" db:"subscription_id"`
+	StripeInvoiceID string            `json:"stripe_invoice_id,omitempty" db:"stripe_invoice_id"`
+	PeriodStart     time.Time         `json:"period_start" db:"period_start"`
+	PeriodEnd       time.Time         `json:"period_end" db:"period_end"`
+	Subtotal        int64             `json:"subtotal_cents" db:"subtotal_cents"`
+	Tax             int64             `json:"tax_cents" db:"tax_cents"`
+	Total           int64             `json:"total_cents" db:"total_cents"`
+	Status          string            `json:"status" db:"status"`
+	LineItems       []InvoiceLineItem `json:"line_items"`
+	PaidAt          *time.Time        `json:"paid_at,omitempty" db:"paid_at"`
+	CreatedAt       time.Time         `json:"created_at" db:"created_at"`
+}
+
+// InvoiceLineItem represents a line item on an invoice
+type InvoiceLineItem struct {
+	Description string `json:"description"`
+	Quantity    int64  `json:"quantity"`
+	UnitPrice   int64  `json:"unit_price_cents"`
+	Amount      int64  `json:"amount_cents"`
+}
+
+// UsageSummary represents current usage summary for a tenant
+type UsageSummary struct {
+	TenantID       uuid.UUID `json:"tenant_id"`
+	PlanName       string    `json:"plan_name"`
+	EventsUsed     int64     `json:"events_used"`
+	EventsIncluded int64     `json:"events_included"`
+	OverageEvents  int64     `json:"overage_events"`
+	CurrentCost    int64     `json:"current_cost_cents"`
+	ProjectedCost  int64     `json:"projected_cost_cents"`
+	PeriodStart    time.Time `json:"period_start"`
+	PeriodEnd      time.Time `json:"period_end"`
+	UsagePercent   float64   `json:"usage_percent"`
+}
+
+// BillingDashboard represents the billing dashboard data
+type BillingDashboard struct {
+	Subscription  *Subscription `json:"subscription"`
+	Plan          *PricingPlan  `json:"plan"`
+	Usage         *UsageSummary `json:"usage"`
+	RecentInvoices []Invoice    `json:"recent_invoices"`
+}
+
+// StripeInvoice represents a simplified Stripe invoice for the client interface
+type StripeInvoice struct {
+	ID     string `json:"id"`
+	Amount int64  `json:"amount"`
+	Status string `json:"status"`
+}
+
+// Ensure uuid is used
+var _ = uuid.New

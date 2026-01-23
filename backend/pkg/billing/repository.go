@@ -13,9 +13,9 @@ import (
 // Repository defines billing data access
 type Repository interface {
 	// Usage records
-	RecordUsage(ctx context.Context, record *UsageRecord) error
-	GetUsageSummary(ctx context.Context, tenantID, period string) (*UsageSummary, error)
-	GetUsageByResource(ctx context.Context, tenantID, resourceType, period string) ([]UsageRecord, error)
+	RecordUsage(ctx context.Context, record *CostUsageRecord) error
+	GetUsageSummary(ctx context.Context, tenantID, period string) (*CostUsageSummary, error)
+	GetUsageByResource(ctx context.Context, tenantID, resourceType, period string) ([]CostUsageRecord, error)
 
 	// Spend tracking
 	GetSpendTracker(ctx context.Context, tenantID string, period BillingPeriod) (*SpendTracker, error)
@@ -40,9 +40,9 @@ type Repository interface {
 	UpdateOptimizationStatus(ctx context.Context, optID string, status OptimizationStatus) error
 
 	// Invoices
-	SaveInvoice(ctx context.Context, invoice *Invoice) error
-	GetInvoice(ctx context.Context, tenantID, invoiceID string) (*Invoice, error)
-	ListInvoices(ctx context.Context, tenantID string) ([]Invoice, error)
+	SaveInvoice(ctx context.Context, invoice *CostInvoice) error
+	GetInvoice(ctx context.Context, tenantID, invoiceID string) (*CostInvoice, error)
+	ListInvoices(ctx context.Context, tenantID string) ([]CostInvoice, error)
 
 	// Alert config
 	SaveAlertConfig(ctx context.Context, config *AlertConfig) error
@@ -60,7 +60,7 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 }
 
 // RecordUsage records a usage event
-func (r *PostgresRepository) RecordUsage(ctx context.Context, record *UsageRecord) error {
+func (r *PostgresRepository) RecordUsage(ctx context.Context, record *CostUsageRecord) error {
 	query := `
 		INSERT INTO billing_usage (
 			id, tenant_id, webhook_id, resource_type, quantity,
@@ -76,8 +76,8 @@ func (r *PostgresRepository) RecordUsage(ctx context.Context, record *UsageRecor
 }
 
 // GetUsageSummary retrieves usage summary for a period
-func (r *PostgresRepository) GetUsageSummary(ctx context.Context, tenantID, period string) (*UsageSummary, error) {
-	summary := &UsageSummary{
+func (r *PostgresRepository) GetUsageSummary(ctx context.Context, tenantID, period string) (*CostUsageSummary, error) {
+	summary := &CostUsageSummary{
 		TenantID:   tenantID,
 		Period:     period,
 		Currency:   "USD",
@@ -147,7 +147,7 @@ func (r *PostgresRepository) GetUsageSummary(ctx context.Context, tenantID, peri
 }
 
 // GetUsageByResource retrieves usage for a specific resource type
-func (r *PostgresRepository) GetUsageByResource(ctx context.Context, tenantID, resourceType, period string) ([]UsageRecord, error) {
+func (r *PostgresRepository) GetUsageByResource(ctx context.Context, tenantID, resourceType, period string) ([]CostUsageRecord, error) {
 	query := `
 		SELECT id, tenant_id, webhook_id, resource_type, quantity,
 			   unit_cost, total_cost, currency, billing_period, recorded_at
@@ -161,9 +161,9 @@ func (r *PostgresRepository) GetUsageByResource(ctx context.Context, tenantID, r
 	}
 	defer rows.Close()
 
-	var records []UsageRecord
+	var records []CostUsageRecord
 	for rows.Next() {
-		var r UsageRecord
+		var r CostUsageRecord
 		var webhookID sql.NullString
 		if err := rows.Scan(&r.ID, &r.TenantID, &webhookID, &r.ResourceType,
 			&r.Quantity, &r.UnitCost, &r.TotalCost, &r.Currency,
@@ -583,7 +583,7 @@ func (r *PostgresRepository) UpdateOptimizationStatus(ctx context.Context, optID
 }
 
 // SaveInvoice saves an invoice
-func (r *PostgresRepository) SaveInvoice(ctx context.Context, invoice *Invoice) error {
+func (r *PostgresRepository) SaveInvoice(ctx context.Context, invoice *CostInvoice) error {
 	lineItemsJSON, _ := json.Marshal(invoice.LineItems)
 
 	query := `
@@ -605,14 +605,14 @@ func (r *PostgresRepository) SaveInvoice(ctx context.Context, invoice *Invoice) 
 }
 
 // GetInvoice retrieves an invoice
-func (r *PostgresRepository) GetInvoice(ctx context.Context, tenantID, invoiceID string) (*Invoice, error) {
+func (r *PostgresRepository) GetInvoice(ctx context.Context, tenantID, invoiceID string) (*CostInvoice, error) {
 	query := `
 		SELECT id, tenant_id, number, status, period, subtotal, discount,
 			   tax, total, currency, line_items, due_date, paid_at, created_at
 		FROM billing_invoices
 		WHERE tenant_id = $1 AND id = $2`
 
-	var invoice Invoice
+	var invoice CostInvoice
 	var lineItemsJSON []byte
 	var paidAt sql.NullTime
 
@@ -638,7 +638,7 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, tenantID, invoiceID
 }
 
 // ListInvoices lists invoices
-func (r *PostgresRepository) ListInvoices(ctx context.Context, tenantID string) ([]Invoice, error) {
+func (r *PostgresRepository) ListInvoices(ctx context.Context, tenantID string) ([]CostInvoice, error) {
 	query := `
 		SELECT id, tenant_id, number, status, period, subtotal, discount,
 			   tax, total, currency, line_items, due_date, paid_at, created_at
@@ -652,9 +652,9 @@ func (r *PostgresRepository) ListInvoices(ctx context.Context, tenantID string) 
 	}
 	defer rows.Close()
 
-	var invoices []Invoice
+	var invoices []CostInvoice
 	for rows.Next() {
-		var invoice Invoice
+		var invoice CostInvoice
 		var lineItemsJSON []byte
 		var paidAt sql.NullTime
 
