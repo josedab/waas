@@ -1,11 +1,15 @@
 package billing
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // Handler handles billing HTTP requests
@@ -22,11 +26,29 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 	billing := r.Group("/billing")
 	{
+		// Pricing Plans
+		billing.GET("/plans", h.ListPricingPlans)
+		billing.POST("/plans", h.CreatePricingPlan)
+
+		// Subscriptions
+		billing.POST("/subscribe", h.Subscribe)
+		billing.GET("/subscription", h.GetSubscription)
+		billing.PUT("/subscription", h.ChangeSubscription)
+		billing.DELETE("/subscription", h.CancelSubscription)
+
 		// Usage
 		billing.GET("/usage", h.GetUsageSummary)
 		billing.GET("/usage/:resource_type", h.GetUsageByResource)
 		billing.GET("/spend", h.GetCurrentSpend)
 		billing.GET("/forecast", h.ForecastSpend)
+
+		// Invoices
+		billing.GET("/invoices", h.ListInvoices)
+		billing.GET("/invoices/:id", h.GetInvoice)
+
+		// Dashboard & Projection
+		billing.GET("/dashboard", h.GetDashboard)
+		billing.GET("/projection", h.GetProjection)
 
 		// Budgets
 		billing.POST("/budgets", h.CreateBudget)
@@ -47,13 +69,12 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		billing.POST("/optimizations/:id/implement", h.ImplementOptimization)
 		billing.POST("/optimizations/:id/dismiss", h.DismissOptimization)
 
-		// Invoices
-		billing.GET("/invoices", h.ListInvoices)
-		billing.GET("/invoices/:id", h.GetInvoice)
-
 		// Anomaly detection
 		billing.GET("/anomalies", h.DetectAnomaly)
 	}
+
+	// Stripe webhooks (public, no auth)
+	r.POST("/billing/webhooks/stripe", h.HandleStripeWebhook)
 }
 
 // GetUsageSummary godoc
@@ -63,7 +84,7 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 // @Accept json
 // @Produce json
 // @Param period query string false "Billing period (YYYY-MM)"
-// @Success 200 {object} UsageSummary
+// @Success 200 {object} CostUsageSummary
 // @Router /billing/usage [get]
 func (h *Handler) GetUsageSummary(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
@@ -89,7 +110,7 @@ func (h *Handler) GetUsageSummary(c *gin.Context) {
 // @Produce json
 // @Param resource_type path string true "Resource type"
 // @Param period query string false "Billing period (YYYY-MM)"
-// @Success 200 {array} UsageRecord
+// @Success 200 {array} CostUsageRecord
 // @Router /billing/usage/{resource_type} [get]
 func (h *Handler) GetUsageByResource(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
@@ -520,3 +541,227 @@ func parseIntParam(c *gin.Context, name string) (int, error) {
 	_, err := fmt.Sscanf(val, "%d", &i)
 	return i, err
 }
+
+// --- Subscription Billing Handlers ---
+
+// ListPricingPlans lists available pricing plans
+// @Summary List pricing plans
+// @Tags Billing
+// @Produce json
+// @Success 200 {array} PricingPlan
+// @Router /billing/plans [get]
+func (h *Handler) ListPricingPlans(c *gin.Context) {
+	plans, err := h.service.ListPricingPlans(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"plans": plans})
+}
+
+// CreatePricingPlan creates a new pricing plan (admin)
+// @Summary Create pricing plan
+// @Tags Billing
+// @Accept json
+// @Produce json
+// @Param request body PricingPlan true "Plan details"
+// @Success 201 {object} PricingPlan
+// @Router /billing/plans [post]
+func (h *Handler) CreatePricingPlan(c *gin.Context) {
+	var plan PricingPlan
+	if err := c.ShouldBindJSON(&plan); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.service.CreatePricingPlan(c.Request.Context(), &plan)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, result)
+}
+
+// SubscribeRequest represents a subscription request
+type SubscribeRequest struct {
+	PlanID string `json:"plan_id" binding:"required"`
+}
+
+// Subscribe subscribes a tenant to a plan
+// @Summary Subscribe to plan
+// @Tags Billing
+// @Accept json
+// @Produce json
+// @Param request body SubscribeRequest true "Subscription request"
+// @Success 201 {object} Subscription
+// @Router /billing/subscribe [post]
+func (h *Handler) Subscribe(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var req SubscribeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	planID, err := uuid.Parse(req.PlanID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid plan_id"})
+		return
+	}
+
+	tid, _ := uuid.Parse(tenantID)
+	sub, err := h.service.CreateSubscriptionForTenant(c.Request.Context(), tid, planID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, sub)
+}
+
+// GetSubscription gets the current subscription
+// @Summary Get subscription
+// @Tags Billing
+// @Produce json
+// @Success 200 {object} Subscription
+// @Router /billing/subscription [get]
+func (h *Handler) GetSubscription(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, _ := uuid.Parse(tenantID)
+
+	sub, err := h.service.GetSubscriptionForTenant(c.Request.Context(), tid)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, sub)
+}
+
+// ChangeSubscription changes the subscription plan
+// @Summary Change subscription plan
+// @Tags Billing
+// @Accept json
+// @Produce json
+// @Param request body SubscribeRequest true "New plan"
+// @Success 200 {object} Subscription
+// @Router /billing/subscription [put]
+func (h *Handler) ChangeSubscription(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var req SubscribeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	planID, err := uuid.Parse(req.PlanID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid plan_id"})
+		return
+	}
+
+	tid, _ := uuid.Parse(tenantID)
+	sub, err := h.service.ChangeSubscription(c.Request.Context(), tid, planID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, sub)
+}
+
+// CancelSubscription cancels the subscription
+// @Summary Cancel subscription
+// @Tags Billing
+// @Produce json
+// @Success 200
+// @Router /billing/subscription [delete]
+func (h *Handler) CancelSubscription(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, _ := uuid.Parse(tenantID)
+
+	if err := h.service.CancelSubscriptionForTenant(c.Request.Context(), tid); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "cancelled"})
+}
+
+// GetDashboard returns billing dashboard data
+// @Summary Get billing dashboard
+// @Tags Billing
+// @Produce json
+// @Success 200 {object} BillingDashboard
+// @Router /billing/dashboard [get]
+func (h *Handler) GetDashboard(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, _ := uuid.Parse(tenantID)
+
+	dashboard, err := h.service.GetBillingDashboard(c.Request.Context(), tid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, dashboard)
+}
+
+// GetProjection returns cost projection
+// @Summary Get cost projection
+// @Tags Billing
+// @Produce json
+// @Param days query int false "Days to project" default(30)
+// @Success 200 {object} UsageSummary
+// @Router /billing/projection [get]
+func (h *Handler) GetProjection(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, _ := uuid.Parse(tenantID)
+	days := 30
+	if d, err := strconv.Atoi(c.Query("days")); err == nil && d > 0 {
+		days = d
+	}
+
+	projection, err := h.service.ProjectCost(c.Request.Context(), tid, days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, projection)
+}
+
+// HandleStripeWebhook processes Stripe webhook events (public, no auth)
+// @Summary Handle Stripe webhook
+// @Tags Billing
+// @Accept json
+// @Produce json
+// @Success 200
+// @Router /billing/webhooks/stripe [post]
+func (h *Handler) HandleStripeWebhook(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot read body"})
+		return
+	}
+
+	var event struct {
+		Type string                 `json:"type"`
+		Data map[string]interface{} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &event); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
+		return
+	}
+
+	if err := h.service.HandleStripeWebhook(c.Request.Context(), event.Type, event.Data); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"received": true})
+}
+
+// Ensure imports are used
+var (
+	_ = strconv.Atoi
+	_ = json.Unmarshal
+	_ = io.ReadAll
+	_ = time.Now
+	_ = uuid.New
+)
