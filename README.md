@@ -1,6 +1,6 @@
 # WaaS — Webhook as a Service
 
-[![CI](https://github.com/josedab/waas/actions/workflows/test.yml/badge.svg)](https://github.com/josedab/waas/actions/workflows/test.yml)
+[![CI](https://github.com/josedab/waas/actions/workflows/ci.yml/badge.svg)](https://github.com/josedab/waas/actions/workflows/ci.yml)
 ![Go 1.24+](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -28,6 +28,19 @@ curl -s -X POST http://localhost:8080/api/v1/tenants \
 
 # Browse interactive API docs
 open http://localhost:8080/docs/
+```
+
+## Key Commands
+
+```bash
+make help              # Show all available commands
+make run-all           # Run API + delivery engine + analytics
+make run-dashboard     # Run React dashboard (http://localhost:5173)
+make test              # Run core tests with coverage
+make test-integration  # Run integration tests in Docker
+make smoke-test        # Quick smoke test against running API
+make lint              # Run golangci-lint
+make validate-setup    # Check prerequisites
 ```
 
 ## Architecture
@@ -83,15 +96,18 @@ open http://localhost:8080/docs/
 | Ruby | [`sdk/ruby`](backend/sdk/ruby) | Available |
 | PHP | [`sdk/php`](backend/sdk/php) | Available |
 
+> **Note:** SDKs are bundled in the monorepo. See each SDK's README for local installation instructions.
+
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Full README](backend/README.md) | Detailed setup, commands, environment variables |
-| [Architecture](backend/ARCHITECTURE.md) | System design and package structure |
-| [API Docs](backend/docs/README.md) | REST API reference with request/response examples |
-| [Contributing](backend/CONTRIBUTING.md) | Development workflow and guidelines |
-| [Deployment](backend/docs/deployment-guide.md) | Production Kubernetes deployment |
+| Document | What You'll Find |
+|----------|-----------------|
+| [**Setup & Commands**](backend/README.md) | Environment variables, all `make` targets, prerequisites, troubleshooting |
+| [**Architecture**](backend/ARCHITECTURE.md) | System design, package tiers (core/standard/enterprise), FAQ for contributors |
+| [**API Reference**](backend/docs/README.md) | REST endpoints, request/response examples, authentication |
+| [**Contributing**](backend/CONTRIBUTING.md) | Development workflow, commit conventions, PR guidelines |
+| [**Deployment**](backend/docs/deployment-guide.md) | Production Kubernetes deployment with Helm and Terraform |
+| [**Dashboard**](backend/web/dashboard/README.md) | React frontend development |
 
 ## Prerequisites
 

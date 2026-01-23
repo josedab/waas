@@ -4,8 +4,14 @@ Official Python SDK for the WAAS (Webhook-as-a-Service) Platform.
 
 ## Installation
 
+Since WaaS is self-hosted, the SDK is bundled with the repository under `backend/sdk/python/`.
+
 ```bash
-pip install waas-sdk
+# Install from local source
+pip install -e /path/to/waas/backend/sdk/python
+
+# Or copy the package into your project
+cp -r /path/to/waas/backend/sdk/python/waas_sdk ./your-project/
 ```
 
 ## Quick Start

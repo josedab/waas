@@ -118,12 +118,15 @@ make smoke-test
 ### Database Migrations
 
 ```bash
-make migrate-up     # Apply all migrations (core + enterprise features)
-make migrate-core   # Apply core-only migrations (tenants, endpoints, deliveries, analytics, quotas)
-make migrate-down   # Rollback migrations
+make migrate-up       # Apply all migrations (core + enterprise features)
+make migrate-core     # Apply core-only migrations (tenants, endpoints, deliveries, analytics, quotas)
+make migrate-down     # Rollback ALL migrations (caution: destructive)
+make migrate-status   # Show current migration version
 ```
 
 > **Tip:** `migrate-core` runs only the first 5 migrations — enough for the core webhook workflow. Use `migrate-up` when you need enterprise features (transformations, billing, etc.).
+>
+> **Rollback safety:** `migrate-down` rolls back **all** migrations, not just the last one. There are 83 migrations total. To roll back a single step, use `migrate -path migrations -database "$DATABASE_URL" down 1` directly.
 
 ### Building
 
@@ -193,3 +196,83 @@ See [`.env.example`](.env.example) for the full list with defaults. Key variable
 - [Contributing](CONTRIBUTING.md) - Development workflow and guidelines
 - [SDK Development](sdk/CONTRIBUTING.md) - Building and maintaining SDKs
 - [Dashboard](web/dashboard/README.md) - Frontend development
+
+## Troubleshooting
+
+<details>
+<summary><strong>PostgreSQL fails to start or <code>pg_isready</code> hangs</strong></summary>
+
+Port 5432 may already be in use by another PostgreSQL instance.
+
+```bash
+# Check what's using the port
+lsof -i :5432
+
+# Stop existing containers and retry
+docker-compose down && docker-compose up -d
+```
+</details>
+
+<details>
+<summary><strong>API returns 401 Unauthorized</strong></summary>
+
+You need a valid API key. Create a tenant first:
+
+```bash
+curl -s -X POST http://localhost:8080/api/v1/tenants \
+  -H "Content-Type: application/json" \
+  -d '{"name": "my-tenant", "email": "me@example.com"}'
+```
+
+The response includes your `api_key`. Pass it via the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: YOUR_KEY_HERE" http://localhost:8080/api/v1/endpoints
+```
+</details>
+
+<details>
+<summary><strong><code>make migrate-up</code> fails with "connection refused"</strong></summary>
+
+PostgreSQL may not be ready yet. Wait a few seconds after `docker-compose up -d`:
+
+```bash
+docker-compose exec postgres pg_isready -U postgres
+# Once it reports "accepting connections", retry:
+make migrate-up
+```
+</details>
+
+<details>
+<summary><strong><code>make dev-setup</code> shows "migrate: not found"</strong></summary>
+
+This is expected — the Makefile automatically falls back to a Docker-based migration. If you see actual migration errors, ensure Docker is running:
+
+```bash
+docker info >/dev/null 2>&1 && echo "Docker OK" || echo "Docker not running"
+```
+</details>
+
+<details>
+<summary><strong><code>make lint</code> fails with "golangci-lint not found"</strong></summary>
+
+Install golangci-lint:
+
+```bash
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+```
+
+Ensure `$GOPATH/bin` (usually `~/go/bin`) is in your `PATH`.
+</details>
+
+<details>
+<summary><strong>Tests fail with "database does not exist"</strong></summary>
+
+Integration tests need a separate test database. Run:
+
+```bash
+make -f Makefile.test test-setup
+```
+
+This creates the test database and applies migrations using `docker-compose.test.yml`.
+</details>

@@ -9,7 +9,16 @@ Official Java SDK for the WAAS (Webhook-as-a-Service) Platform.
 
 ## Installation
 
-### Maven
+Since WaaS is self-hosted, the SDK is bundled with the repository under `backend/sdk/java/`.
+
+### Maven (local install)
+
+```bash
+cd /path/to/waas/backend/sdk/java
+mvn install
+```
+
+Then add to your project's `pom.xml`:
 
 ```xml
 <dependency>
@@ -22,7 +31,7 @@ Official Java SDK for the WAAS (Webhook-as-a-Service) Platform.
 ### Gradle
 
 ```groovy
-implementation 'com.waas:waas-sdk:1.0.0'
+implementation files('/path/to/waas/backend/sdk/java/build/libs/waas-sdk-1.0.0.jar')
 ```
 
 ## Quick Start

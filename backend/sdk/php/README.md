@@ -9,7 +9,11 @@ Official PHP SDK for the WAAS (Webhook-as-a-Service) Platform.
 
 ## Installation
 
+Since WaaS is self-hosted, the SDK is bundled with the repository under `backend/sdk/php/`.
+
 ```bash
+# Add as a local repository in your composer.json:
+composer config repositories.waas path /path/to/waas/backend/sdk/php
 composer require waas/waas-sdk
 ```
 

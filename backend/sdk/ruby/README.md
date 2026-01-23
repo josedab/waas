@@ -8,16 +8,19 @@ Official Ruby SDK for the WAAS (Webhook-as-a-Service) Platform.
 
 ## Installation
 
-Add to your Gemfile:
+Since WaaS is self-hosted, the SDK is bundled with the repository under `backend/sdk/ruby/`.
 
 ```ruby
-gem 'waas-sdk'
+# In your Gemfile, point to the local path:
+gem 'waas-sdk', path: '/path/to/waas/backend/sdk/ruby'
 ```
 
-Or install directly:
+Or install directly from the local gemspec:
 
 ```bash
-gem install waas-sdk
+cd /path/to/waas/backend/sdk/ruby
+gem build waas-sdk.gemspec
+gem install waas-sdk-*.gem
 ```
 
 ## Quick Start

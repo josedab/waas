@@ -4,12 +4,13 @@ Official Node.js/TypeScript SDK for the WAAS (Webhook-as-a-Service) Platform.
 
 ## Installation
 
+Since WaaS is self-hosted, the SDK is bundled with the repository under `backend/sdk/nodejs/`.
+
 ```bash
-npm install @waas/sdk
+# Install from local source
+npm install /path/to/waas/backend/sdk/nodejs
 # or
-yarn add @waas/sdk
-# or
-pnpm add @waas/sdk
+pnpm add /path/to/waas/backend/sdk/nodejs
 ```
 
 ## Quick Start

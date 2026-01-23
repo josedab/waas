@@ -4,8 +4,23 @@ The official Go SDK for the Webhook Service Platform API.
 
 ## Installation
 
+Since WaaS is self-hosted, the SDK is bundled with the repository under `backend/sdk/go/`.
+
+**Option 1: Copy into your project**
 ```bash
-go get github.com/webhook-platform/go-sdk
+cp -r /path/to/waas/backend/sdk/go/client ./your-project/waas-client
+```
+
+**Option 2: Go workspace (for local development against the WaaS source)**
+```bash
+go work init
+go work use . /path/to/waas/backend/sdk/go
+```
+
+**Option 3: Replace directive in go.mod**
+```
+require github.com/webhook-platform/go-sdk v0.0.0
+replace github.com/webhook-platform/go-sdk => /path/to/waas/backend/sdk/go
 ```
 
 ## Quick Start

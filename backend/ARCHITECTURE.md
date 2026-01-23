@@ -129,7 +129,9 @@ Reusable packages imported by services. Organized into three tiers:
 
 #### 🟡 Enterprise (advanced / optional features)
 
-These packages provide enterprise-grade capabilities. They are not required for the core webhook workflow.
+These packages provide enterprise-grade capabilities. They are not required for the core webhook workflow. Most are loaded unconditionally in `server.go` but function independently — you can safely ignore them when working on core webhook features.
+
+> **Tip:** If you're fixing a bug or adding a feature, you almost certainly only need packages from the 🟢 Core and 🔵 Standard tiers. Enterprise packages are additive and won't affect core webhook delivery.
 
 **Observability & Analytics:**
 - `otel` - OpenTelemetry integration
@@ -179,6 +181,24 @@ PostgreSQL 15 with migrations managed by golang-migrate.
 **Supporting tables:** `analytics_*`, `quotas`, `secrets`, `audit_logs`, `transformations`, `idempotency_keys`, `schemas`
 
 Migrations live in `migrations/` and are applied via `make migrate-up`.
+
+## Common Questions for New Contributors
+
+**Q: There are 75+ packages — which ones do I need to understand?**
+Start with `internal/api`, `pkg/models`, `pkg/repository`, and `pkg/queue`. These handle 90% of the core webhook workflow. Enterprise packages (🟡 tier) are additive features that don't affect core delivery.
+
+**Q: What's the difference between `pkg/billing`, `pkg/monetization`, and `pkg/costing`?**
+- `billing` — Stripe integration and subscription management
+- `monetization` — Usage metering and pricing tier enforcement
+- `costing` — Internal cost tracking and resource attribution
+
+**Q: Do I need to wire my new package into `server.go`?**
+Yes. All services are initialized in `internal/api/server.go`'s `NewServer()` function and routes are registered in `setupRoutes()`. Follow the existing pattern: add an import, a struct field, service initialization, and route registration.
+
+**Q: How do I run just the tests for my package?**
+```bash
+make -f Makefile.test test-pkg PKG=./pkg/your-package
+```
 
 ## Technology Stack
 
