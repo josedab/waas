@@ -7,23 +7,32 @@ import (
 	"webhook-platform/pkg/blockchain"
 	"webhook-platform/pkg/cdc"
 	"webhook-platform/pkg/chaos"
+	"webhook-platform/pkg/cloud"
+	"webhook-platform/pkg/cloudctl"
 	"webhook-platform/pkg/compliancecenter"
+	"webhook-platform/pkg/contracts"
 	"webhook-platform/pkg/costing"
 	"webhook-platform/pkg/database"
+	"webhook-platform/pkg/debugger"
 	"webhook-platform/pkg/edge"
 	"webhook-platform/pkg/embed"
+	"webhook-platform/pkg/eventmesh"
+	"webhook-platform/pkg/fanout"
 	"webhook-platform/pkg/federation"
 	"webhook-platform/pkg/flow"
 	"webhook-platform/pkg/georouting"
 	"webhook-platform/pkg/graphqlsub"
+	"webhook-platform/pkg/marketplacetpl"
 	"webhook-platform/pkg/metaevents"
 	"webhook-platform/pkg/metrics"
 	"webhook-platform/pkg/mocking"
 	"webhook-platform/pkg/monetization"
 	"webhook-platform/pkg/monitoring"
+	"webhook-platform/pkg/mtls"
 	"webhook-platform/pkg/multicloud"
 	"webhook-platform/pkg/observability"
 	"webhook-platform/pkg/otel"
+	"webhook-platform/pkg/portal"
 	"webhook-platform/pkg/prediction"
 	"webhook-platform/pkg/protocols"
 	"webhook-platform/pkg/pushbridge"
@@ -32,8 +41,23 @@ import (
 	"webhook-platform/pkg/repository"
 	"webhook-platform/pkg/schema"
 	"webhook-platform/pkg/signatures"
+	"webhook-platform/pkg/sla"
 	"webhook-platform/pkg/smartlimit"
 	"webhook-platform/pkg/streaming"
+	"webhook-platform/pkg/tfprovider"
+	"webhook-platform/pkg/tracing"
+	"webhook-platform/pkg/canary"
+	"webhook-platform/pkg/autoremediation"
+	"webhook-platform/pkg/schemaregistry"
+	"webhook-platform/pkg/catalog"
+	"webhook-platform/pkg/sandbox"
+	"webhook-platform/pkg/protocolgw"
+	"webhook-platform/pkg/analyticsembed"
+	"webhook-platform/pkg/costengine"
+	"webhook-platform/pkg/gitops"
+	"webhook-platform/pkg/inbound"
+	"webhook-platform/pkg/livemigration"
+	"webhook-platform/pkg/mobilesdk"
 	"webhook-platform/pkg/utils"
 	"webhook-platform/pkg/versioning"
 	"webhook-platform/pkg/workflow"
@@ -87,6 +111,35 @@ type Server struct {
 	graphqlsubService     *graphqlsub.Service
 	monetizationService   *monetization.Service
 	multicloudService     *multicloud.FederationService
+	// Next-gen features v4
+	slaService            *sla.Service
+	mtlsService           *mtls.Service
+	contractsService      *contracts.Service
+	marketplaceService    *marketplacetpl.Service
+	eventmeshService      *eventmesh.Service
+	debuggerService       *debugger.Service
+	cloudService          *cloud.BillingService
+	cloudTeamService      *cloud.TeamService
+	cloudAuditService     *cloud.AuditService
+	cloudOnboardService   *cloud.OnboardingService
+	cloudctlService       *cloudctl.Service
+	tfproviderService     *tfprovider.Service
+	portalService         *portal.Service
+	// Next-gen features v5
+	tracingService        *tracing.Service
+	canaryService         *canary.Service
+	autoremediationService *autoremediation.Service
+	schemaregistryService *schemaregistry.Service
+	catalogService        *catalog.Service
+	sandboxService        *sandbox.Service
+	protocolgwService     *protocolgw.Service
+	analyticsembedService *analyticsembed.Service
+	costengineService     *costengine.Service
+	gitopsService         *gitops.Service
+	livemigrationService  *livemigration.Service
+	inboundService        *inbound.Service
+	fanoutService         *fanout.Service
+	mobilesdkService      *mobilesdk.Service
 }
 
 func NewServer() *Server {
@@ -212,6 +265,37 @@ func NewServer() *Server {
 	graphqlsubService := graphqlsub.NewService(nil, graphqlsub.DefaultConnectionConfig())
 	monetizationService := monetization.NewService(nil, monetization.DefaultServiceConfig())
 	multicloudService := multicloud.NewFederationService(nil, nil, multicloud.DefaultFederationConfig())
+
+	// Initialize next-gen features v4
+	slaService := sla.NewService(nil)
+	mtlsService := mtls.NewService(nil)
+	contractsService := contracts.NewService(nil)
+	marketplaceService := marketplacetpl.NewService(nil)
+	eventmeshService := eventmesh.NewService(nil)
+	debuggerService := debugger.NewService(nil)
+	cloudctlService := cloudctl.NewService(nil)
+	cloudBillingService := cloud.NewBillingService(nil, nil)
+	cloudTeamService := cloud.NewTeamService(nil)
+	cloudAuditService := cloud.NewAuditService(nil)
+	cloudOnboardService := cloud.NewOnboardingService(nil, nil, nil)
+	tfproviderService := tfprovider.NewService(nil)
+	portalService := portal.NewService(nil)
+
+	// Initialize next-gen features v5
+	tracingService := tracing.NewService(nil)
+	canaryService := canary.NewService(nil)
+	autoremediationService := autoremediation.NewService(nil)
+	schemaregistryService := schemaregistry.NewService(nil)
+	catalogService := catalog.NewService(nil)
+	sandboxService := sandbox.NewService(nil)
+	protocolgwService := protocolgw.NewService(nil)
+	analyticsembedService := analyticsembed.NewService(nil)
+	costengineService := costengine.NewService(nil)
+	gitopsService := gitops.NewService(nil)
+	livemigrationService := livemigration.NewService(nil)
+	inboundService := inbound.NewService(nil)
+	fanoutService := fanout.NewService(nil)
+	mobilesdkService := mobilesdk.NewService()
 	
 	// Setup Gin with monitoring middleware
 	router := gin.New()
@@ -257,6 +341,33 @@ func NewServer() *Server {
 		graphqlsubService:    graphqlsubService,
 		monetizationService:  monetizationService,
 		multicloudService:    multicloudService,
+		slaService:           slaService,
+		mtlsService:          mtlsService,
+		contractsService:     contractsService,
+		marketplaceService:   marketplaceService,
+		eventmeshService:     eventmeshService,
+		debuggerService:      debuggerService,
+		cloudService:          cloudBillingService,
+		cloudTeamService:      cloudTeamService,
+		cloudAuditService:     cloudAuditService,
+		cloudOnboardService:   cloudOnboardService,
+		cloudctlService:      cloudctlService,
+		tfproviderService:    tfproviderService,
+		portalService:        portalService,
+		tracingService:       tracingService,
+		canaryService:        canaryService,
+		autoremediationService: autoremediationService,
+		schemaregistryService: schemaregistryService,
+		catalogService:        catalogService,
+		sandboxService:       sandboxService,
+		protocolgwService:    protocolgwService,
+		analyticsembedService: analyticsembedService,
+		costengineService:    costengineService,
+		gitopsService:        gitopsService,
+		livemigrationService: livemigrationService,
+		inboundService:       inboundService,
+		fanoutService:        fanoutService,
+		mobilesdkService:    mobilesdkService,
 	}
 
 	server.setupRoutes()
@@ -320,6 +431,13 @@ func (s *Server) setupRoutes() {
 		testEndpoints.GET("/:endpoint_id/receives", testEndpointHandler.GetTestEndpointReceives)
 		testEndpoints.GET("/:endpoint_id/receives/:receive_id", testEndpointHandler.GetTestEndpointReceive)
 		testEndpoints.DELETE("/:endpoint_id/receives", testEndpointHandler.ClearTestEndpointReceives)
+	}
+
+	// Inbound webhook receiver (no auth - called by external providers)
+	inboundPublic := s.router.Group("/api/v1")
+	{
+		inboundPublicHandler := inbound.NewHandler(s.inboundService)
+		inboundPublicHandler.RegisterPublicRoutes(inboundPublic)
 	}
 	
 	// Protected endpoints (require authentication and rate limiting)
@@ -469,6 +587,114 @@ func (s *Server) setupRoutes() {
 		// Multi-Cloud Federation
 		multicloudHandler := multicloud.NewFederationHandler(s.multicloudService)
 		multicloudHandler.RegisterFederationRoutes(protected)
+
+		// ==========================================
+		// Next-Gen Feature Routes v4
+		// ==========================================
+
+		// SLA Dashboard & Alerting
+		slaHandler := sla.NewHandler(s.slaService)
+		slaHandler.RegisterRoutes(protected)
+
+		// mTLS Certificate Management
+		mtlsHandler := mtls.NewHandler(s.mtlsService)
+		mtlsHandler.RegisterRoutes(protected)
+
+		// Webhook Contract Testing
+		contractsHandler := contracts.NewHandler(s.contractsService)
+		contractsHandler.RegisterRoutes(protected)
+
+		// Webhook Marketplace & Templates
+		marketplaceHandler := marketplacetpl.NewHandler(s.marketplaceService)
+		marketplaceHandler.RegisterRoutes(protected)
+
+		// Event Mesh Routing Engine
+		eventmeshHandler := eventmesh.NewHandler(s.eventmeshService)
+		eventmeshHandler.RegisterRoutes(protected)
+
+		// Webhook Debugger & Time-Travel Replay
+		debuggerHandler := debugger.NewHandler(s.debuggerService)
+		debuggerHandler.RegisterRoutes(protected)
+
+		// Cloud Control Plane
+		cloudctlHandler := cloudctl.NewHandler(s.cloudctlService)
+		cloudctlHandler.RegisterRoutes(protected)
+
+		// WaaS Cloud Managed Service
+		cloudHandler := cloud.NewHandler(s.cloudService, s.cloudTeamService, s.cloudAuditService, s.cloudOnboardService)
+		cloudHandler.RegisterRoutes(protected)
+
+		// Terraform Provider API
+		tfproviderHandler := tfprovider.NewHandler(s.tfproviderService)
+		tfproviderHandler.RegisterRoutes(protected)
+
+		// Embeddable Webhook Portal
+		portalHandler := portal.NewHandler(s.portalService)
+		portalHandler.RegisterRoutes(protected)
+
+		// ==========================================
+		// Next-Gen Feature Routes v5
+		// ==========================================
+
+		// OpenTelemetry Distributed Tracing
+		tracingHandler := tracing.NewHandler(s.tracingService)
+		tracingHandler.RegisterRoutes(protected)
+
+		// Webhook Canary Deployments
+		canaryHandler := canary.NewHandler(s.canaryService)
+		canaryHandler.RegisterRoutes(protected)
+
+		// AI Auto-Remediation
+		autoremediationHandler := autoremediation.NewHandler(s.autoremediationService)
+		autoremediationHandler.RegisterRoutes(protected)
+
+		// Event Schema Registry
+		schemaregistryHandler := schemaregistry.NewHandler(s.schemaregistryService)
+		schemaregistryHandler.RegisterRoutes(protected)
+
+		// Event Catalog & Schema Registry
+		catalogHandler := catalog.NewHandler(s.catalogService)
+		catalogHandler.RegisterRoutes(protected)
+
+		// Webhook Replay Sandbox
+		sandboxHandler := sandbox.NewHandler(s.sandboxService)
+		sandboxHandler.RegisterRoutes(protected)
+
+		// Multi-Protocol Gateway
+		protocolgwHandler := protocolgw.NewHandler(s.protocolgwService)
+		protocolgwHandler.RegisterRoutes(protected)
+
+		// Embeddable Analytics SDK
+		analyticsembedHandler := analyticsembed.NewHandler(s.analyticsembedService)
+		analyticsembedHandler.RegisterRoutes(protected)
+
+		// Cost Attribution Engine
+		costengineHandler := costengine.NewHandler(s.costengineService)
+		costengineHandler.RegisterRoutes(protected)
+
+		// GitOps Configuration Management
+		gitopsHandler := gitops.NewHandler(s.gitopsService)
+		gitopsHandler.RegisterRoutes(protected)
+
+		// Live Migration Toolkit
+		livemigrationHandler := livemigration.NewHandler(s.livemigrationService)
+		livemigrationHandler.RegisterRoutes(protected)
+
+		// ==========================================
+		// Next-Gen Feature Routes v6
+		// ==========================================
+
+		// Inbound Webhook Gateway (management)
+		inboundHandler := inbound.NewHandler(s.inboundService)
+		inboundHandler.RegisterRoutes(protected)
+
+		// Fan-Out & Topic-Based Routing
+		fanoutHandler := fanout.NewHandler(s.fanoutService)
+		fanoutHandler.RegisterRoutes(protected)
+
+		// Mobile SDK Management
+		mobilesdkHandler := mobilesdk.NewHandler(s.mobilesdkService)
+		mobilesdkHandler.RegisterRoutes(protected)
 	}
 	
 	// Admin endpoints (require authentication but no rate limiting for now)
