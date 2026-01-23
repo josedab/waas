@@ -317,3 +317,39 @@ type DashboardStats struct {
 	TopRiskyEndpoints   []EndpointHealth  `json:"top_risky_endpoints"`
 	RecentPredictions   []Prediction      `json:"recent_predictions"`
 }
+
+// DeliverySuccessPrediction represents a delivery success prediction
+type DeliverySuccessPrediction struct {
+	EndpointID  string    `json:"endpoint_id"`
+	Probability float64   `json:"probability"`
+	Confidence  float64   `json:"confidence"`
+	Factors     []string  `json:"factors"`
+	PredictedAt time.Time `json:"predicted_at"`
+}
+
+// LatencyPrediction represents a predicted latency for an endpoint
+type LatencyPrediction struct {
+	EndpointID         string    `json:"endpoint_id"`
+	PredictedLatencyMs float64   `json:"predicted_latency_ms"`
+	P95LatencyMs       float64   `json:"p95_latency_ms"`
+	P99LatencyMs       float64   `json:"p99_latency_ms"`
+	Confidence         float64   `json:"confidence"`
+	Variance           float64   `json:"variance"`
+	PredictedAt        time.Time `json:"predicted_at"`
+}
+
+// ReliabilityScore represents an overall reliability metric for an endpoint
+type ReliabilityScore struct {
+	EndpointID   string                `json:"endpoint_id"`
+	OverallScore float64               `json:"overall_score"` // 0-100
+	Grade        string                `json:"grade"`         // A, B, C, D, F
+	Components   ReliabilityComponents `json:"components"`
+	CalculatedAt time.Time             `json:"calculated_at"`
+}
+
+// ReliabilityComponents breaks down the reliability score
+type ReliabilityComponents struct {
+	SuccessRateScore  float64 `json:"success_rate_score"`
+	LatencyScore      float64 `json:"latency_score"`
+	AvailabilityScore float64 `json:"availability_score"`
+}

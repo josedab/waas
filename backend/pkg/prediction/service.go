@@ -752,3 +752,159 @@ func (s *Service) RecordFailure(ctx context.Context, failure *FailureEvent) erro
 	failure.ID = uuid.New().String()
 	return s.repo.SaveFailureEvent(ctx, failure)
 }
+
+// PredictDeliverySuccess predicts the probability of a successful delivery for an endpoint
+func (s *Service) PredictDeliverySuccess(ctx context.Context, tenantID string, endpointID string, payloadSizeBytes int) (*DeliverySuccessPrediction, error) {
+	health, err := s.repo.GetEndpointHealth(ctx, tenantID, endpointID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get endpoint health: %w", err)
+	}
+	if health == nil {
+		return nil, ErrEndpointNotFound
+	}
+
+	// Base probability from success rate
+	probability := health.SuccessRate
+
+	// Adjust based on health score
+	if health.HealthScore < 50 {
+		probability *= 0.7
+	} else if health.HealthScore < 70 {
+		probability *= 0.85
+	}
+
+	// Adjust based on current status
+	switch health.CurrentStatus {
+	case "unhealthy":
+		probability *= 0.5
+	case "degraded":
+		probability *= 0.8
+	}
+
+	// Adjust for large payloads
+	if payloadSizeBytes > 1024*1024 { // > 1MB
+		probability *= 0.9
+	}
+
+	// Clamp
+	if probability > 1.0 {
+		probability = 1.0
+	}
+	if probability < 0.0 {
+		probability = 0.0
+	}
+
+	confidence := 0.5
+	if health.TotalRequests > 100 {
+		confidence = 0.7
+	}
+	if health.TotalRequests > 1000 {
+		confidence = 0.85
+	}
+
+	return &DeliverySuccessPrediction{
+		EndpointID:  endpointID,
+		Probability: probability,
+		Confidence:  confidence,
+		Factors: []string{
+			fmt.Sprintf("Historical success rate: %.1f%%", health.SuccessRate*100),
+			fmt.Sprintf("Health score: %.0f/100", health.HealthScore),
+			fmt.Sprintf("Current status: %s", health.CurrentStatus),
+		},
+		PredictedAt: time.Now(),
+	}, nil
+}
+
+// PredictLatency predicts the expected latency for a delivery to an endpoint
+func (s *Service) PredictLatency(ctx context.Context, tenantID string, endpointID string) (*LatencyPrediction, error) {
+	health, err := s.repo.GetEndpointHealth(ctx, tenantID, endpointID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get endpoint health: %w", err)
+	}
+	if health == nil {
+		return nil, ErrEndpointNotFound
+	}
+
+	// Predict based on recent performance
+	predictedMs := health.AverageLatencyMs
+
+	// Add buffer based on variance (P95 vs avg)
+	variance := health.P95LatencyMs - health.AverageLatencyMs
+	if variance < 0 {
+		variance = 0
+	}
+
+	confidence := 0.6
+	if health.TotalRequests > 100 {
+		confidence = 0.75
+	}
+	if health.TotalRequests > 1000 {
+		confidence = 0.85
+	}
+
+	return &LatencyPrediction{
+		EndpointID:         endpointID,
+		PredictedLatencyMs: predictedMs,
+		P95LatencyMs:       health.P95LatencyMs,
+		P99LatencyMs:       health.P99LatencyMs,
+		Confidence:         confidence,
+		Variance:           variance,
+		PredictedAt:        time.Now(),
+	}, nil
+}
+
+// CalculateReliabilityScore calculates an overall reliability metric for an endpoint
+func (s *Service) CalculateReliabilityScore(ctx context.Context, tenantID string, endpointID string) (*ReliabilityScore, error) {
+	health, err := s.repo.GetEndpointHealth(ctx, tenantID, endpointID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get endpoint health: %w", err)
+	}
+	if health == nil {
+		return nil, ErrEndpointNotFound
+	}
+
+	// Success rate component (40%)
+	successScore := health.SuccessRate * 100.0
+
+	// Latency consistency component (30%) - lower P95/avg ratio is better
+	latencyRatio := 1.0
+	if health.AverageLatencyMs > 0 {
+		latencyRatio = health.P95LatencyMs / health.AverageLatencyMs
+	}
+	latencyScore := math.Max(0, 100.0-((latencyRatio-1.0)*50.0))
+
+	// Uptime/availability component (30%) - based on error rate
+	availScore := (1.0 - health.ErrorRate) * 100.0
+
+	overallScore := successScore*0.4 + latencyScore*0.3 + availScore*0.3
+	if overallScore > 100 {
+		overallScore = 100
+	}
+	if overallScore < 0 {
+		overallScore = 0
+	}
+
+	grade := "F"
+	switch {
+	case overallScore >= 95:
+		grade = "A"
+	case overallScore >= 85:
+		grade = "B"
+	case overallScore >= 70:
+		grade = "C"
+	case overallScore >= 50:
+		grade = "D"
+	}
+
+	return &ReliabilityScore{
+		EndpointID:   endpointID,
+		OverallScore: overallScore,
+		Grade:        grade,
+		Components: ReliabilityComponents{
+			SuccessRateScore: successScore,
+			LatencyScore:     latencyScore,
+			AvailabilityScore: availScore,
+		},
+		CalculatedAt: time.Now(),
+	}, nil
+}
