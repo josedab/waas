@@ -20,7 +20,7 @@ func AbortWithError(c *gin.Context, err *WebhookError) {
 			}
 		}
 	}
-	
+
 	if err.TraceID == "" {
 		if traceID, exists := c.Get("trace_id"); exists {
 			if id, ok := traceID.(string); ok {
@@ -28,7 +28,7 @@ func AbortWithError(c *gin.Context, err *WebhookError) {
 			}
 		}
 	}
-	
+
 	c.JSON(err.GetHTTPStatus(), ErrorResponse{Error: err})
 	c.Abort()
 }
@@ -97,14 +97,56 @@ func AbortWithPayloadTooLarge(c *gin.Context, actualSize, maxSize int) {
 	AbortWithError(c, err)
 }
 
+// RespondWithError writes a structured error response without aborting the handler chain.
+// Use this instead of AbortWithError when you want to return an error but continue middleware execution.
+func RespondWithError(c *gin.Context, err *WebhookError) {
+	if err.RequestID == "" {
+		if requestID, exists := c.Get("request_id"); exists {
+			if id, ok := requestID.(string); ok {
+				err.RequestID = id
+			}
+		}
+	}
+	c.JSON(err.GetHTTPStatus(), ErrorResponse{Error: err})
+}
+
+// HandleBindError converts a Gin binding/validation error into a user-friendly WebhookError.
+// Instead of exposing raw struct field names, it returns actionable messages.
+func HandleBindError(c *gin.Context, err error) {
+	webhookErr := NewWebhookError(
+		"INVALID_REQUEST_BODY",
+		"The request body could not be parsed or is missing required fields",
+		CategoryValidation,
+		http.StatusBadRequest,
+		SeverityLow,
+	).WithCause(err).WithDebuggingHints(
+		"Ensure the request body is valid JSON",
+		"Check that all required fields are present and correctly typed",
+		fmt.Sprintf("Validation detail: %s", sanitizeValidationError(err.Error())),
+	).WithDocumentation("https://docs.webhook-platform.com/api-reference")
+	AbortWithError(c, webhookErr)
+}
+
+// sanitizeValidationError cleans up Go struct validation errors for end users
+func sanitizeValidationError(msg string) string {
+	// Replace Go struct field references with friendlier names
+	replacer := strings.NewReplacer(
+		"Key: '", "",
+		"' Error:Field validation for '", ": field '",
+		"' failed on the '", "' failed validation '",
+		"' tag", "'",
+	)
+	return replacer.Replace(msg)
+}
+
 // HandleRepositoryError converts common repository errors to WebhookErrors
 func HandleRepositoryError(err error) *WebhookError {
 	if err == nil {
 		return nil
 	}
-	
+
 	errMsg := strings.ToLower(err.Error())
-	
+
 	// Not found errors
 	if strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "no rows") {
 		return NewWebhookError(
@@ -115,7 +157,7 @@ func HandleRepositoryError(err error) *WebhookError {
 			SeverityLow,
 		).WithCause(err)
 	}
-	
+
 	// Duplicate key errors
 	if strings.Contains(errMsg, "duplicate") || strings.Contains(errMsg, "unique constraint") {
 		return NewWebhookError(
@@ -129,7 +171,7 @@ func HandleRepositoryError(err error) *WebhookError {
 			"Use a different identifier or update the existing resource",
 		)
 	}
-	
+
 	// Foreign key constraint errors
 	if strings.Contains(errMsg, "foreign key") || strings.Contains(errMsg, "constraint") {
 		return NewWebhookError(
@@ -143,12 +185,12 @@ func HandleRepositoryError(err error) *WebhookError {
 			"Check the IDs in your request",
 		)
 	}
-	
+
 	// Connection errors
 	if strings.Contains(errMsg, "connection") || strings.Contains(errMsg, "timeout") {
 		return FromDatabaseError(err)
 	}
-	
+
 	// Default to database error
 	return FromDatabaseError(err)
 }
@@ -158,17 +200,17 @@ func HandleValidationError(err error, field string) *WebhookError {
 	if err == nil {
 		return nil
 	}
-	
+
 	return NewValidationError(field, err.Error()).WithCause(err)
 }
 
 // HandleHTTPError converts HTTP client errors to WebhookErrors
 func HandleHTTPError(statusCode int, responseBody string, endpointURL string) *WebhookError {
 	details := map[string]interface{}{
-		"http_status":   statusCode,
-		"endpoint_url":  endpointURL,
+		"http_status":  statusCode,
+		"endpoint_url": endpointURL,
 	}
-	
+
 	if responseBody != "" {
 		// Truncate long response bodies
 		if len(responseBody) > 1000 {
@@ -176,9 +218,9 @@ func HandleHTTPError(statusCode int, responseBody string, endpointURL string) *W
 		}
 		details["response_body"] = responseBody
 	}
-	
+
 	var err *WebhookError
-	
+
 	switch {
 	case statusCode >= 400 && statusCode < 500:
 		// Client errors from webhook endpoint
@@ -193,7 +235,7 @@ func HandleHTTPError(statusCode int, responseBody string, endpointURL string) *W
 			"Verify the endpoint can handle the webhook payload format",
 			"Ensure the endpoint returns a 2xx status code for successful processing",
 		)
-		
+
 	case statusCode >= 500:
 		// Server errors from webhook endpoint
 		err = NewWebhookError(
@@ -207,7 +249,7 @@ func HandleHTTPError(statusCode int, responseBody string, endpointURL string) *W
 			"Check the endpoint's server logs for errors",
 			"The delivery will be retried automatically",
 		)
-		
+
 	default:
 		// Unexpected status code
 		err = NewWebhookError(
@@ -221,7 +263,7 @@ func HandleHTTPError(statusCode int, responseBody string, endpointURL string) *W
 			"Verify the endpoint returns appropriate status codes",
 		)
 	}
-	
+
 	return err.WithDetails(details)
 }
 
@@ -230,15 +272,15 @@ func HandleNetworkError(err error, endpointURL string) *WebhookError {
 	if err == nil {
 		return nil
 	}
-	
+
 	errMsg := strings.ToLower(err.Error())
 	details := map[string]interface{}{
-		"endpoint_url": endpointURL,
+		"endpoint_url":  endpointURL,
 		"network_error": err.Error(),
 	}
-	
+
 	var webhookErr *WebhookError
-	
+
 	switch {
 	case strings.Contains(errMsg, "timeout") || strings.Contains(errMsg, "deadline exceeded"):
 		webhookErr = NewWebhookError(
@@ -253,7 +295,7 @@ func HandleNetworkError(err error, endpointURL string) *WebhookError {
 			"Consider optimizing the endpoint's response time",
 			"The delivery will be retried automatically",
 		)
-		
+
 	case strings.Contains(errMsg, "connection refused") || strings.Contains(errMsg, "no route to host"):
 		webhookErr = NewWebhookError(
 			"WEBHOOK_UNREACHABLE",
@@ -267,7 +309,7 @@ func HandleNetworkError(err error, endpointURL string) *WebhookError {
 			"Check firewall settings and network connectivity",
 			"Ensure the endpoint is listening on the correct port",
 		)
-		
+
 	case strings.Contains(errMsg, "tls") || strings.Contains(errMsg, "certificate"):
 		webhookErr = NewWebhookError(
 			"WEBHOOK_TLS_ERROR",
@@ -280,7 +322,7 @@ func HandleNetworkError(err error, endpointURL string) *WebhookError {
 			"Verify the certificate is not expired",
 			"Ensure the certificate matches the domain name",
 		)
-		
+
 	default:
 		webhookErr = NewWebhookError(
 			"WEBHOOK_NETWORK_ERROR",
@@ -294,7 +336,7 @@ func HandleNetworkError(err error, endpointURL string) *WebhookError {
 			"The delivery will be retried automatically",
 		)
 	}
-	
+
 	return webhookErr.WithDetails(details).WithCause(err)
 }
 
@@ -303,7 +345,7 @@ func IsRetryableError(err error) bool {
 	if webhookErr, ok := err.(*WebhookError); ok {
 		return webhookErr.IsRetryable()
 	}
-	
+
 	// Check common retryable error patterns
 	errMsg := strings.ToLower(err.Error())
 	retryablePatterns := []string{
@@ -314,13 +356,13 @@ func IsRetryableError(err error) bool {
 		"unavailable",
 		"deadline exceeded",
 	}
-	
+
 	for _, pattern := range retryablePatterns {
 		if strings.Contains(errMsg, pattern) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -345,20 +387,20 @@ func WithContext(err *WebhookError, ctx context.Context) *WebhookError {
 	if err == nil {
 		return nil
 	}
-	
+
 	// Add context values if available
 	if requestID := ctx.Value("request_id"); requestID != nil {
 		if id, ok := requestID.(string); ok && err.RequestID == "" {
 			err.RequestID = id
 		}
 	}
-	
+
 	if traceID := ctx.Value("trace_id"); traceID != nil {
 		if id, ok := traceID.(string); ok && err.TraceID == "" {
 			err.TraceID = id
 		}
 	}
-	
+
 	return err
 }
 
@@ -369,7 +411,7 @@ func LogError(logger interface{}, err error, context map[string]interface{}) {
 	if context == nil {
 		context = make(map[string]interface{})
 	}
-	
+
 	if webhookErr, ok := err.(*WebhookError); ok {
 		context["error_code"] = webhookErr.Code
 		context["error_category"] = webhookErr.Category
@@ -377,9 +419,9 @@ func LogError(logger interface{}, err error, context map[string]interface{}) {
 		context["request_id"] = webhookErr.RequestID
 		context["trace_id"] = webhookErr.TraceID
 	}
-	
+
 	context["error_message"] = err.Error()
-	
+
 	// Log based on severity if available
 	if webhookErr, ok := err.(*WebhookError); ok {
 		switch webhookErr.Severity {
