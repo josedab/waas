@@ -359,6 +359,30 @@ func (r *Repository) GetSubscriberCount(ctx context.Context, eventTypeID uuid.UU
 	return count, nil
 }
 
+// ListEventTypeSubscriptions returns all active subscriptions for an event type
+func (r *Repository) ListEventTypeSubscriptions(ctx context.Context, eventTypeID uuid.UUID) ([]*EventSubscription, error) {
+	query := `
+		SELECT id, endpoint_id, event_type_id, filter_expression, is_active, created_at
+		FROM event_subscriptions WHERE event_type_id = $1 AND is_active = true`
+
+	rows, err := r.db.Pool.Query(ctx, query, eventTypeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list event type subscriptions: %w", err)
+	}
+	defer rows.Close()
+
+	var subs []*EventSubscription
+	for rows.Next() {
+		var sub EventSubscription
+		err := rows.Scan(&sub.ID, &sub.EndpointID, &sub.EventTypeID, &sub.FilterExpression, &sub.IsActive, &sub.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan subscription: %w", err)
+		}
+		subs = append(subs, &sub)
+	}
+	return subs, nil
+}
+
 // SaveDocumentation saves event documentation
 func (r *Repository) SaveDocumentation(ctx context.Context, doc *EventDocumentation) error {
 	if doc.ID == uuid.Nil {

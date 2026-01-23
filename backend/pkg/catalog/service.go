@@ -384,3 +384,157 @@ func isValidSemver(version string) bool {
 	re := regexp.MustCompile(`^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$`)
 	return re.MatchString(version)
 }
+
+// ValidatePayload validates a JSON payload against the event type's schema
+func (s *Service) ValidatePayload(ctx context.Context, eventTypeID uuid.UUID, payload json.RawMessage) (bool, []string) {
+	et, err := s.repo.GetEventType(ctx, eventTypeID)
+	if err != nil {
+		return false, []string{fmt.Sprintf("event type not found: %v", err)}
+	}
+
+	var schemaBytes json.RawMessage
+	if et.Schema != nil && et.Schema.Schema != nil {
+		schemaBytes = et.Schema.Schema
+	} else if et.ExamplePayload != nil {
+		// Use example payload structure for validation
+		schemaBytes = et.ExamplePayload
+	} else {
+		return true, nil // No schema to validate against
+	}
+
+	var schema map[string]interface{}
+	if err := json.Unmarshal(schemaBytes, &schema); err != nil {
+		return false, []string{"invalid schema definition"}
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(payload, &data); err != nil {
+		return false, []string{"invalid JSON payload"}
+	}
+
+	return validateAgainstSchema(data, schema)
+}
+
+// CheckCompatibility checks schema compatibility between versions
+func (s *Service) CheckCompatibility(ctx context.Context, eventTypeID uuid.UUID, newSchema json.RawMessage, mode string) (bool, []string, error) {
+	et, err := s.repo.GetEventType(ctx, eventTypeID)
+	if err != nil {
+		return false, nil, fmt.Errorf("event type not found: %w", err)
+	}
+
+	var oldSchema json.RawMessage
+	if et.Schema != nil && et.Schema.Schema != nil {
+		oldSchema = et.Schema.Schema
+	} else {
+		return true, nil, nil // No existing schema, always compatible
+	}
+
+	checker := NewCompatibilityChecker()
+	switch mode {
+	case "backward":
+		compatible, issues := checker.CheckBackwardCompatibility(oldSchema, newSchema)
+		return compatible, issues, nil
+	case "forward":
+		compatible, issues := checker.CheckForwardCompatibility(oldSchema, newSchema)
+		return compatible, issues, nil
+	case "full":
+		compatible, issues := checker.CheckFullCompatibility(oldSchema, newSchema)
+		return compatible, issues, nil
+	default:
+		return true, nil, nil
+	}
+}
+
+// GenerateSDKTypes generates typed code for the given event type and language
+func (s *Service) GenerateSDKTypes(ctx context.Context, eventTypeID uuid.UUID, language string) (string, error) {
+	et, err := s.repo.GetEventType(ctx, eventTypeID)
+	if err != nil {
+		return "", fmt.Errorf("event type not found: %w", err)
+	}
+
+	switch language {
+	case LangGo:
+		return GenerateGoTypes(et)
+	case LangPython:
+		return GeneratePythonTypes(et)
+	case LangTypeScript:
+		return GenerateTypeScriptTypes(et)
+	default:
+		return "", fmt.Errorf("unsupported language: %s", language)
+	}
+}
+
+// ListSubscribers returns all active subscriptions for an event type
+func (s *Service) ListSubscribers(ctx context.Context, eventTypeID uuid.UUID) ([]*EventSubscription, error) {
+	return s.repo.ListEventTypeSubscriptions(ctx, eventTypeID)
+}
+
+// validateAgainstSchema performs basic JSON Schema validation
+func validateAgainstSchema(data map[string]interface{}, schema map[string]interface{}) (bool, []string) {
+	var issues []string
+
+	// Check required fields
+	if required, ok := schema["required"].([]interface{}); ok {
+		for _, r := range required {
+			field, _ := r.(string)
+			if _, exists := data[field]; !exists {
+				issues = append(issues, fmt.Sprintf("missing required field '%s'", field))
+			}
+		}
+	}
+
+	// Check property types
+	props, _ := schema["properties"].(map[string]interface{})
+	for field, val := range data {
+		propDef, exists := props[field]
+		if !exists {
+			continue
+		}
+		propMap, ok := propDef.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		expectedType, _ := propMap["type"].(string)
+		if expectedType == "" {
+			continue
+		}
+		actualType := inferGoJSONType(val)
+		if !isTypeCompatible(expectedType, actualType) {
+			issues = append(issues, fmt.Sprintf("field '%s' expected type '%s', got '%s'", field, expectedType, actualType))
+		}
+	}
+
+	return len(issues) == 0, issues
+}
+
+func inferGoJSONType(val interface{}) string {
+	switch val.(type) {
+	case string:
+		return "string"
+	case float64:
+		return "number"
+	case bool:
+		return "boolean"
+	case []interface{}:
+		return "array"
+	case map[string]interface{}:
+		return "object"
+	case nil:
+		return "null"
+	default:
+		return "unknown"
+	}
+}
+
+func isTypeCompatible(expected, actual string) bool {
+	if expected == actual {
+		return true
+	}
+	if expected == "integer" && actual == "number" {
+		return true
+	}
+	if expected == "number" && actual == "integer" {
+		return true
+	}
+	return false
+}
