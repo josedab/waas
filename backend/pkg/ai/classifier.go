@@ -1,13 +1,18 @@
 package ai
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 )
 
 // Classifier provides error classification capabilities
 type Classifier struct {
-	patterns []classificationPattern
+	patterns       []classificationPattern
+	mu             sync.RWMutex
+	outcomeHistory map[string]*outcomeStats
 }
 
 type classificationPattern struct {
@@ -19,9 +24,17 @@ type classificationPattern struct {
 	delay      int
 }
 
+type outcomeStats struct {
+	total    int
+	correct  int
+	category ErrorCategory
+}
+
 // NewClassifier creates a new error classifier with predefined patterns
 func NewClassifier() *Classifier {
-	c := &Classifier{}
+	c := &Classifier{
+		outcomeHistory: make(map[string]*outcomeStats),
+	}
 	c.initPatterns()
 	return c
 }
@@ -34,6 +47,10 @@ func (c *Classifier) initPatterns() {
 		{regexp.MustCompile(`(?i)no route to host`), CategoryNetwork, "no_route", 0.95, true, 60},
 		{regexp.MustCompile(`(?i)network is unreachable`), CategoryNetwork, "unreachable", 0.95, true, 60},
 		{regexp.MustCompile(`(?i)i/o timeout`), CategoryNetwork, "io_timeout", 0.90, true, 30},
+		{regexp.MustCompile(`(?i)broken pipe`), CategoryNetwork, "broken_pipe", 0.90, true, 15},
+		{regexp.MustCompile(`(?i)connection closed`), CategoryNetwork, "connection_closed", 0.90, true, 15},
+		{regexp.MustCompile(`(?i)host is down`), CategoryNetwork, "host_down", 0.95, true, 60},
+		{regexp.MustCompile(`(?i)protocol error`), CategoryNetwork, "protocol_error", 0.85, true, 30},
 		
 		// Timeout errors
 		{regexp.MustCompile(`(?i)context deadline exceeded`), CategoryTimeout, "deadline", 0.95, true, 60},
@@ -48,8 +65,11 @@ func (c *Classifier) initPatterns() {
 		
 		// Certificate errors
 		{regexp.MustCompile(`(?i)certificate.*(expired|invalid|untrusted)`), CategoryCertificate, "invalid", 0.95, false, 0},
-		{regexp.MustCompile(`(?i)x509|tls|ssl.*error`), CategoryCertificate, "tls_error", 0.85, false, 0},
 		{regexp.MustCompile(`(?i)certificate signed by unknown authority`), CategoryCertificate, "unknown_ca", 0.95, false, 0},
+		{regexp.MustCompile(`(?i)certificate.*revoked`), CategoryCertificate, "revoked", 0.95, false, 0},
+		{regexp.MustCompile(`(?i)ssl.*handshake`), CategoryCertificate, "ssl_handshake", 0.90, false, 0},
+		{regexp.MustCompile(`(?i)tls.*handshake`), CategoryCertificate, "tls_handshake", 0.90, false, 0},
+		{regexp.MustCompile(`(?i)x509|tls|ssl.*error`), CategoryCertificate, "tls_error", 0.85, false, 0},
 		
 		// Authentication errors
 		{regexp.MustCompile(`(?i)401|unauthorized`), CategoryAuth, "unauthorized", 0.90, false, 0},
@@ -68,6 +88,8 @@ func (c *Classifier) initPatterns() {
 		{regexp.MustCompile(`(?i)502|bad gateway`), CategoryServerError, "bad_gateway", 0.90, true, 30},
 		{regexp.MustCompile(`(?i)503|service unavailable`), CategoryServerError, "unavailable", 0.90, true, 60},
 		{regexp.MustCompile(`(?i)504|gateway timeout`), CategoryServerError, "gateway_timeout", 0.90, true, 60},
+		{regexp.MustCompile(`(?i)invalid.*response`), CategoryServerError, "invalid_response", 0.80, true, 30},
+		{regexp.MustCompile(`(?i)unexpected.*eof`), CategoryServerError, "unexpected_eof", 0.85, true, 15},
 		
 		// Client errors
 		{regexp.MustCompile(`(?i)400|bad request`), CategoryClientError, "bad_request", 0.85, false, 0},
@@ -76,6 +98,8 @@ func (c *Classifier) initPatterns() {
 		{regexp.MustCompile(`(?i)406|not acceptable`), CategoryClientError, "not_acceptable", 0.90, false, 0},
 		{regexp.MustCompile(`(?i)415|unsupported media type`), CategoryClientError, "unsupported_media", 0.95, false, 0},
 		{regexp.MustCompile(`(?i)422|unprocessable`), CategoryClientError, "unprocessable", 0.90, false, 0},
+		{regexp.MustCompile(`(?i)301|302|303|307|308|moved|redirect`), CategoryClientError, "redirect", 0.85, false, 0},
+		{regexp.MustCompile(`(?i)413|payload too large|request entity too large`), CategoryClientError, "payload_too_large", 0.90, false, 0},
 		
 		// Payload errors
 		{regexp.MustCompile(`(?i)invalid.*json`), CategoryPayload, "invalid_json", 0.90, false, 0},
@@ -326,4 +350,150 @@ func (c *Classifier) normalizeError(err string) string {
 	err = regexp.MustCompile(`\s+`).ReplaceAllString(err, " ")
 	
 	return strings.TrimSpace(err)
+}
+
+// ClassifyFromHTTPResponse classifies an error from HTTP response details
+func (c *Classifier) ClassifyFromHTTPResponse(statusCode int, body string, headers map[string]string, latency time.Duration) ErrorClassification {
+	// Build combined context for pattern matching
+	combined := body
+	if statusCode > 0 {
+		combined += fmt.Sprintf(" %d", statusCode)
+	}
+
+	// Check for latency-based timeout
+	if latency > 30*time.Second {
+		return ErrorClassification{
+			Category:       CategoryTimeout,
+			Confidence:     0.85,
+			SubCategory:    "slow_response",
+			IsRetryable:    true,
+			SuggestedDelay: 60,
+		}
+	}
+
+	// Check for retry-after header
+	if retryAfter, ok := headers["Retry-After"]; ok && retryAfter != "" {
+		return ErrorClassification{
+			Category:       CategoryRateLimit,
+			Confidence:     0.95,
+			SubCategory:    "retry_after",
+			IsRetryable:    true,
+			SuggestedDelay: 60,
+		}
+	}
+
+	// Check for redirect
+	if statusCode >= 300 && statusCode < 400 {
+		return ErrorClassification{
+			Category:       CategoryClientError,
+			Confidence:     0.90,
+			SubCategory:    "redirect",
+			IsRetryable:    false,
+			SuggestedDelay: 0,
+		}
+	}
+
+	// Run through pattern matching
+	for _, p := range c.patterns {
+		if p.regex.MatchString(combined) {
+			return ErrorClassification{
+				Category:       p.category,
+				Confidence:     p.confidence,
+				SubCategory:    p.subCategory,
+				IsRetryable:    p.retryable,
+				SuggestedDelay: p.delay,
+			}
+		}
+	}
+
+	return c.classifyByStatusCode(statusCode)
+}
+
+// LearnFromOutcome records a feedback entry to improve future classification accuracy
+func (c *Classifier) LearnFromOutcome(classification *ErrorClassification, actualOutcome string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	key := string(classification.Category) + ":" + classification.SubCategory
+	stats, exists := c.outcomeHistory[key]
+	if !exists {
+		stats = &outcomeStats{category: classification.Category}
+		c.outcomeHistory[key] = stats
+	}
+
+	stats.total++
+	if actualOutcome == string(classification.Category) {
+		stats.correct++
+	}
+}
+
+// GetRetryabilityScore calculates a retryability score combining error type, history, and context
+func (c *Classifier) GetRetryabilityScore(classification ErrorClassification, attemptNumber int, totalFailures int) float64 {
+	if !classification.IsRetryable {
+		return 0.0
+	}
+
+	// Base score from classification confidence
+	score := classification.Confidence
+
+	// Decrease score based on attempt number (diminishing returns)
+	if attemptNumber > 0 {
+		score *= 1.0 / (1.0 + float64(attemptNumber)*0.3)
+	}
+
+	// Decrease score if endpoint has high historical failure rate
+	if totalFailures > 100 {
+		score *= 0.5
+	} else if totalFailures > 50 {
+		score *= 0.7
+	} else if totalFailures > 20 {
+		score *= 0.85
+	}
+
+	// Category-specific adjustments
+	switch classification.Category {
+	case CategoryRateLimit:
+		score = min64(score*1.2, 1.0) // rate limits usually recover
+	case CategoryServerError:
+		score *= 0.9
+	case CategoryTimeout:
+		score *= 0.85
+	case CategoryNetwork:
+		if classification.SubCategory == "connection_refused" {
+			score *= 0.7
+		}
+	}
+
+	// Clamp to [0, 1]
+	if score < 0 {
+		return 0.0
+	}
+	if score > 1.0 {
+		return 1.0
+	}
+	return score
+}
+
+// GetAccuracy returns the accuracy of classifications based on recorded outcomes
+func (c *Classifier) GetAccuracy() float64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	totalCorrect := 0
+	totalCount := 0
+	for _, stats := range c.outcomeHistory {
+		totalCorrect += stats.correct
+		totalCount += stats.total
+	}
+	if totalCount == 0 {
+		return 0.0
+	}
+	return float64(totalCorrect) / float64(totalCount)
+}
+
+func min64(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
 }

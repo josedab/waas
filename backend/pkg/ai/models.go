@@ -157,6 +157,94 @@ type TransformGenerateResponse struct {
 	Warnings      []string `json:"warnings,omitempty"`
 }
 
+// RetryRecommendation represents a smart retry recommendation
+type RetryRecommendation struct {
+	ShouldRetry      bool          `json:"should_retry"`
+	Confidence       float64       `json:"confidence"`
+	RecommendedDelay time.Duration `json:"recommended_delay"`
+	MaxRetries       int           `json:"max_retries"`
+	Strategy         string        `json:"strategy"` // "exponential", "linear", "fixed", "adaptive"
+	Reasoning        string        `json:"reasoning"`
+}
+
+// HealthPrediction represents a predicted health change
+type HealthPrediction struct {
+	Timestamp   time.Time `json:"timestamp"`
+	Metric      string    `json:"metric"`
+	PredValue   float64   `json:"predicted_value"`
+	Confidence  float64   `json:"confidence"`
+	Description string    `json:"description"`
+}
+
+// EndpointHealthReport represents a comprehensive endpoint health report
+type EndpointHealthReport struct {
+	EndpointID     string             `json:"endpoint_id"`
+	HealthScore    float64            `json:"health_score"`
+	SuccessRate    float64            `json:"success_rate"`
+	AvgLatency     time.Duration      `json:"avg_latency"`
+	P95Latency     time.Duration      `json:"p95_latency"`
+	ErrorBreakdown map[string]int     `json:"error_breakdown"`
+	Trend          string             `json:"trend"` // "improving", "stable", "degrading", "critical"
+	Predictions    []HealthPrediction `json:"predictions"`
+	GeneratedAt    time.Time          `json:"generated_at"`
+}
+
+// AnomalyReport represents a detected anomaly
+type AnomalyReport struct {
+	ID          string    `json:"id"`
+	TenantID    string    `json:"tenant_id"`
+	EndpointID  string    `json:"endpoint_id"`
+	Type        string    `json:"type"` // "error_spike", "latency_spike", "traffic_drop"
+	Severity    string    `json:"severity"`
+	Description string    `json:"description"`
+	DetectedAt  time.Time `json:"detected_at"`
+	MetricName  string    `json:"metric_name"`
+	Expected    float64   `json:"expected_value"`
+	Actual      float64   `json:"actual_value"`
+	Deviation   float64   `json:"deviation"`
+}
+
+// FailingEndpoint represents a top failing endpoint
+type FailingEndpoint struct {
+	EndpointID   string  `json:"endpoint_id"`
+	URL          string  `json:"url"`
+	FailureCount int     `json:"failure_count"`
+	FailureRate  float64 `json:"failure_rate"`
+	TopError     string  `json:"top_error"`
+	LastFailure  time.Time `json:"last_failure"`
+}
+
+// DeliveryInsight represents an AI-generated insight
+type DeliveryInsight struct {
+	Type              string   `json:"type"`     // "anomaly", "trend", "recommendation", "alert"
+	Severity          string   `json:"severity"` // "info", "warning", "critical"
+	Title             string   `json:"title"`
+	Description       string   `json:"description"`
+	AffectedEndpoints []string `json:"affected_endpoints"`
+	SuggestedAction   string   `json:"suggested_action"`
+	DetectedAt        time.Time `json:"detected_at"`
+}
+
+// ClassifyRequest represents a manual classification request
+type ClassifyRequest struct {
+	ErrorMessage string            `json:"error_message"`
+	StatusCode   *int              `json:"status_code,omitempty"`
+	ResponseBody string            `json:"response_body,omitempty"`
+	Headers      map[string]string `json:"headers,omitempty"`
+	LatencyMs    int64             `json:"latency_ms,omitempty"`
+}
+
+// DeliveryRecord represents a historical delivery for analytics
+type DeliveryRecord struct {
+	EndpointID   string    `json:"endpoint_id"`
+	URL          string    `json:"url"`
+	Status       string    `json:"status"` // "success", "failed"
+	HTTPStatus   *int      `json:"http_status,omitempty"`
+	ErrorMessage string    `json:"error_message,omitempty"`
+	LatencyMs    int64     `json:"latency_ms"`
+	Timestamp    time.Time `json:"timestamp"`
+}
+
 // ErrorPattern represents a learned error pattern
 type ErrorPattern struct {
 	ID            string            `json:"id" db:"id"`
