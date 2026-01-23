@@ -1,0 +1,100 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "waas.fullname" . }}-redis
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "waas.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "waas.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      securityContext:
+        fsGroup: 999
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        command:
+        - redis-server
+        - --appendonly
+        - "yes"
+        - --maxmemory
+        - {{ .Values.redis.maxmemory | quote }}
+        - --maxmemory-policy
+        - allkeys-lru
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        resources:
+          {{- toYaml .Values.redis.resources | nindent 10 }}
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          runAsUser: 999
+          runAsGroup: 999
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: {{ include "waas.fullname" . }}-redis
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "waas.fullname" . }}-redis
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  accessModes:
+  - ReadWriteOnce
+  {{- if .Values.redis.storageClassName }}
+  storageClassName: {{ .Values.redis.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.redis.storage }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "waas.fullname" . }}-redis
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  selector:
+    {{- include "waas.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+  ports:
+  - port: {{ .Values.redis.port }}
+    targetPort: 6379
+  type: ClusterIP
+{{- end }}

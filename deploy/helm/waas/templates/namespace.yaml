@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    environment: {{ .Values.global.environment }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ include "waas.fullname" . }}-quota
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    persistentvolumeclaims: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ include "waas.fullname" . }}-limits
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+spec:
+  limits:
+  - default:
+      cpu: "1"
+      memory: 1Gi
+    defaultRequest:
+      cpu: 100m
+      memory: 128Mi
+    type: Container

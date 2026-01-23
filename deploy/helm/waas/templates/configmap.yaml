@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "waas.fullname" . }}-config
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.global.environment | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  LOG_FORMAT: {{ .Values.config.logFormat | quote }}
+  METRICS_ENABLED: {{ .Values.config.metricsEnabled | quote }}
+  TRACING_ENABLED: {{ .Values.config.tracingEnabled | quote }}
+  HEALTH_CHECK_INTERVAL: {{ .Values.config.healthCheckInterval | quote }}
+  GRACEFUL_SHUTDOWN_TIMEOUT: {{ .Values.config.gracefulShutdownTimeout | quote }}
+  # API Service Configuration
+  API_PORT: {{ .Values.api.port | quote }}
+  API_READ_TIMEOUT: {{ .Values.config.apiReadTimeout | quote }}
+  API_WRITE_TIMEOUT: {{ .Values.config.apiWriteTimeout | quote }}
+  API_IDLE_TIMEOUT: {{ .Values.config.apiIdleTimeout | quote }}
+  # Delivery Engine Configuration
+  DELIVERY_WORKERS: {{ .Values.config.deliveryWorkers | quote }}
+  DELIVERY_BATCH_SIZE: {{ .Values.config.deliveryBatchSize | quote }}
+  DELIVERY_TIMEOUT: {{ .Values.config.deliveryTimeout | quote }}
+  RETRY_MAX_ATTEMPTS: {{ .Values.config.retryMaxAttempts | quote }}
+  RETRY_INITIAL_DELAY: {{ .Values.config.retryInitialDelay | quote }}
+  RETRY_MAX_DELAY: {{ .Values.config.retryMaxDelay | quote }}
+  RETRY_BACKOFF_MULTIPLIER: {{ .Values.config.retryBackoffMultiplier | quote }}
+  # Analytics Configuration
+  ANALYTICS_PORT: {{ .Values.analytics.port | quote }}
+  ANALYTICS_BATCH_SIZE: {{ .Values.config.analyticsBatchSize | quote }}
+  ANALYTICS_FLUSH_INTERVAL: {{ .Values.config.analyticsFlushInterval | quote }}
+  # Rate Limiting
+  RATE_LIMIT_WINDOW: {{ .Values.config.rateLimitWindow | quote }}
+  RATE_LIMIT_BURST: {{ .Values.config.rateLimitBurst | quote }}

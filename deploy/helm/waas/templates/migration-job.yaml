@@ -1,0 +1,57 @@
+{{- if .Values.migrations.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "waas.fullname" . }}-migration
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "waas.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        {{- include "waas.podSecurityContext" . | nindent 8 }}
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:15-alpine
+        command:
+        - sh
+        - -c
+        - |
+          until pg_isready -h {{ include "waas.postgresql.host" . }} -p {{ .Values.postgresql.port }} -U $POSTGRES_USER; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.existingSecret | default (printf "%s-postgres-credentials" (include "waas.fullname" .)) }}
+              key: POSTGRES_USER
+      containers:
+      - name: migrate
+        image: "{{ .Values.migrations.image }}:{{ .Values.global.imageTag }}"
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - "echo 'Running database migrations...' && migrate -path /migrations -database $DATABASE_URL up"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.existingSecret | default (printf "%s-secrets" (include "waas.fullname" .)) }}
+              key: DATABASE_URL
+        securityContext:
+          {{- include "waas.containerSecurityContext" . | nindent 10 }}
+{{- end }}

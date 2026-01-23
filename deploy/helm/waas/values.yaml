@@ -1,0 +1,177 @@
+## Global configuration
+global:
+  environment: production
+  imagePullPolicy: IfNotPresent
+  imageTag: latest
+
+## Service account
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+## API Service
+api:
+  replicaCount: 2
+  image: waas/api-service
+  port: 8080
+  servicePort: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+## Delivery Engine
+delivery:
+  replicaCount: 2
+  image: waas/delivery-engine
+  port: 8081
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 20
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+## Analytics Service
+analytics:
+  replicaCount: 1
+  image: waas/analytics-service
+  port: 8082
+  servicePort: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+
+## PostgreSQL (in-cluster)
+postgresql:
+  enabled: true
+  host: ""
+  port: 5432
+  database: webhook_platform
+  username: postgres
+  password: ""
+  existingSecret: ""
+  storage: 10Gi
+  storageClassName: ""
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+## Redis (in-cluster)
+redis:
+  enabled: true
+  host: ""
+  port: 6379
+  password: ""
+  existingSecret: ""
+  storage: 5Gi
+  storageClassName: ""
+  maxmemory: 1gb
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+## Ingress
+ingress:
+  enabled: true
+  className: nginx
+  host: waas.example.com
+  tls: true
+  annotations: {}
+
+## Monitoring
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: false
+
+## Database Migrations
+migrations:
+  enabled: true
+  image: waas/api-service
+
+## ConfigMap overrides
+config:
+  logLevel: info
+  logFormat: json
+  metricsEnabled: "true"
+  tracingEnabled: "true"
+  healthCheckInterval: 30s
+  gracefulShutdownTimeout: 30s
+  apiReadTimeout: 30s
+  apiWriteTimeout: 30s
+  apiIdleTimeout: 60s
+  deliveryWorkers: "10"
+  deliveryBatchSize: "100"
+  deliveryTimeout: 30s
+  retryMaxAttempts: "5"
+  retryInitialDelay: 1s
+  retryMaxDelay: 300s
+  retryBackoffMultiplier: "2"
+  analyticsBatchSize: "1000"
+  analyticsFlushInterval: 10s
+  rateLimitWindow: 1m
+  rateLimitBurst: "100"
+
+## Secrets — provide via --set or existingSecret
+secrets:
+  jwtSecret: ""
+  encryptionKey: ""
+  webhookSigningSecret: ""

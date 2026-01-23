@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "waas.fullname" . }}-api
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  {{- if not .Values.api.autoscaling.enabled }}
+  replicas: {{ .Values.api.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "waas.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "waas.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.api.port | quote }}
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: {{ include "waas.serviceAccountName" . }}
+      securityContext:
+        {{- include "waas.podSecurityContext" . | nindent 8 }}
+      containers:
+      - name: api-service
+        image: "{{ .Values.api.image }}:{{ .Values.global.imageTag }}"
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.api.port }}
+          name: http
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.existingSecret | default (printf "%s-secrets" (include "waas.fullname" .)) }}
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.existingSecret | default (printf "%s-secrets" (include "waas.fullname" .)) }}
+              key: REDIS_URL
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.existingSecret | default (printf "%s-secrets" (include "waas.fullname" .)) }}
+              key: JWT_SECRET
+        - name: ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.existingSecret | default (printf "%s-secrets" (include "waas.fullname" .)) }}
+              key: ENCRYPTION_KEY
+        envFrom:
+        - configMapRef:
+            name: {{ include "waas.fullname" . }}-config
+        resources:
+          {{- toYaml .Values.api.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.api.port }}
+          initialDelaySeconds: {{ .Values.api.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.api.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.api.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.api.livenessProbe.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: {{ .Values.api.port }}
+          initialDelaySeconds: {{ .Values.api.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.api.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.api.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.api.readinessProbe.failureThreshold }}
+        securityContext:
+          {{- include "waas.containerSecurityContext" . | nindent 10 }}
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "waas.fullname" . }}-api
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  selector:
+    {{- include "waas.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  ports:
+  - port: {{ .Values.api.servicePort }}
+    targetPort: {{ .Values.api.port }}
+    name: http
+  type: ClusterIP

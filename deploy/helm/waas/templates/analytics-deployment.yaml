@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "waas.fullname" . }}-analytics
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics
+spec:
+  {{- if not .Values.analytics.autoscaling.enabled }}
+  replicas: {{ .Values.analytics.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "waas.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: analytics
+  template:
+    metadata:
+      labels:
+        {{- include "waas.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: analytics
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.analytics.port | quote }}
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: {{ include "waas.serviceAccountName" . }}
+      securityContext:
+        {{- include "waas.podSecurityContext" . | nindent 8 }}
+      containers:
+      - name: analytics-service
+        image: "{{ .Values.analytics.image }}:{{ .Values.global.imageTag }}"
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - containerPort: {{ .Values.analytics.port }}
+          name: http
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.existingSecret | default (printf "%s-secrets" (include "waas.fullname" .)) }}
+              key: DATABASE_URL
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.existingSecret | default (printf "%s-secrets" (include "waas.fullname" .)) }}
+              key: REDIS_URL
+        envFrom:
+        - configMapRef:
+            name: {{ include "waas.fullname" . }}-config
+        resources:
+          {{- toYaml .Values.analytics.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.analytics.port }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: {{ .Values.analytics.port }}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          {{- include "waas.containerSecurityContext" . | nindent 10 }}
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "waas.fullname" . }}-analytics
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics
+spec:
+  selector:
+    {{- include "waas.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics
+  ports:
+  - port: {{ .Values.analytics.servicePort }}
+    targetPort: {{ .Values.analytics.port }}
+    name: http
+  type: ClusterIP

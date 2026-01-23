@@ -1,0 +1,49 @@
+WaaS has been deployed successfully!
+
+Release: {{ .Release.Name }}
+Namespace: {{ include "waas.namespace" . }}
+Environment: {{ .Values.global.environment }}
+
+== Services ==
+
+{{- if .Values.ingress.enabled }}
+
+The application is accessible at:
+  {{- if .Values.ingress.tls }}
+  https://{{ .Values.ingress.host }}
+  {{- else }}
+  http://{{ .Values.ingress.host }}
+  {{- end }}
+{{- else }}
+
+To access the API service, run:
+  kubectl port-forward svc/{{ include "waas.fullname" . }}-api {{ .Values.api.port }}:{{ .Values.api.servicePort }} -n {{ include "waas.namespace" . }}
+
+To access the analytics service, run:
+  kubectl port-forward svc/{{ include "waas.fullname" . }}-analytics {{ .Values.analytics.port }}:{{ .Values.analytics.servicePort }} -n {{ include "waas.namespace" . }}
+{{- end }}
+
+== Status ==
+
+Check deployment status:
+  kubectl get pods -n {{ include "waas.namespace" . }}
+  kubectl get svc -n {{ include "waas.namespace" . }}
+
+View logs:
+  kubectl logs -l app.kubernetes.io/instance={{ .Release.Name }} -n {{ include "waas.namespace" . }}
+
+{{- if .Values.postgresql.enabled }}
+
+== PostgreSQL ==
+  Host: {{ include "waas.postgresql.host" . }}
+  Port: {{ .Values.postgresql.port }}
+{{- end }}
+
+{{- if .Values.redis.enabled }}
+
+== Redis ==
+  Host: {{ include "waas.redis.host" . }}
+  Port: {{ .Values.redis.port }}
+{{- end }}
+
+For more information, see: https://github.com/your-org/waas
