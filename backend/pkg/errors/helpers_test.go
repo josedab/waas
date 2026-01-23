@@ -746,3 +746,49 @@ func TestWithContext(t *testing.T) {
 		})
 	}
 }
+
+func TestRespondWithError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/test", nil)
+	c.Set("request_id", "req_respond")
+
+	err := ErrEndpointNotFound
+	RespondWithError(c, err)
+
+	assert.False(t, c.IsAborted(), "RespondWithError should not abort")
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	var response ErrorResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+	assert.Equal(t, "ENDPOINT_NOT_FOUND", response.Error.Code)
+	assert.Equal(t, "req_respond", response.Error.RequestID)
+}
+
+func TestHandleBindError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/test", nil)
+
+	bindErr := errors.New("Key: 'CreateEndpointRequest.URL' Error:Field validation for 'URL' failed on the 'required' tag")
+	HandleBindError(c, bindErr)
+
+	assert.True(t, c.IsAborted())
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var response ErrorResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+	assert.Equal(t, "INVALID_REQUEST_BODY", response.Error.Code)
+	assert.NotEmpty(t, response.Error.DebuggingHints)
+}
+
+func TestSanitizeValidationError(t *testing.T) {
+	raw := "Key: 'CreateEndpointRequest.URL' Error:Field validation for 'URL' failed on the 'required' tag"
+	sanitized := sanitizeValidationError(raw)
+	assert.NotContains(t, sanitized, "Key: '")
+	assert.NotContains(t, sanitized, "' tag")
+}
