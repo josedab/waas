@@ -13,6 +13,7 @@ var (
 	apiURL  string
 	apiKey  string
 	output  string
+	verbose bool
 )
 
 var rootCmd = &cobra.Command{
@@ -42,6 +43,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&apiURL, "api-url", "", "WAAS API URL (default: http://localhost:8080)")
 	rootCmd.PersistentFlags().StringVar(&apiKey, "api-key", "", "API key for authentication")
 	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "table", "Output format: table, json, yaml")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 
 	viper.BindPFlag("api_url", rootCmd.PersistentFlags().Lookup("api-url"))
 	viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))

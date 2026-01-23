@@ -326,3 +326,144 @@ func (c *Client) ReplayDelivery(deliveryID string) (*SendWebhookResponse, error)
 
 	return &result, nil
 }
+
+// CreateTenantRequest represents a request to create a tenant
+type CreateTenantRequest struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+// CreateTenantResponse represents the response from creating a tenant
+type CreateTenantResponse struct {
+	Tenant Tenant `json:"tenant"`
+	APIKey string `json:"api_key"`
+}
+
+// CreateTenant creates a new tenant
+func (c *Client) CreateTenant(name, email string) (*CreateTenantResponse, error) {
+	req := &CreateTenantRequest{Name: name, Email: email}
+	resp, err := c.doRequest("POST", "/api/v1/tenants", req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result CreateTenantResponse
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// RegenerateAPIKeyResponse represents the response from regenerating an API key
+type RegenerateAPIKeyResponse struct {
+	APIKey string `json:"api_key"`
+}
+
+// RegenerateAPIKey regenerates the tenant's API key
+func (c *Client) RegenerateAPIKey() (*RegenerateAPIKeyResponse, error) {
+	resp, err := c.doRequest("POST", "/api/v1/tenant/regenerate-key", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result RegenerateAPIKeyResponse
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// UpdateEndpointRequest represents a request to update an endpoint
+type UpdateEndpointRequest struct {
+	URL           string            `json:"url,omitempty"`
+	IsActive      *bool             `json:"is_active,omitempty"`
+	CustomHeaders map[string]string `json:"custom_headers,omitempty"`
+	RetryConfig   *RetryConfig      `json:"retry_config,omitempty"`
+}
+
+// UpdateEndpoint updates a webhook endpoint
+func (c *Client) UpdateEndpoint(id string, req *UpdateEndpointRequest) (*Endpoint, error) {
+	resp, err := c.doRequest("PUT", "/api/v1/webhooks/endpoints/"+id, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var endpoint Endpoint
+	if err := parseResponse(resp, &endpoint); err != nil {
+		return nil, err
+	}
+
+	return &endpoint, nil
+}
+
+// BatchRequest represents a single request in a batch send
+type BatchRequest struct {
+	EndpointID string          `json:"endpoint_id"`
+	Payload    json.RawMessage `json:"payload"`
+}
+
+// BatchResponse represents the response from a batch send
+type BatchResponse struct {
+	Results []BatchResult `json:"results"`
+}
+
+// BatchResult represents the result of a single batch item
+type BatchResult struct {
+	EndpointID string `json:"endpoint_id"`
+	DeliveryID string `json:"delivery_id"`
+	Status     string `json:"status"`
+	Error      string `json:"error,omitempty"`
+}
+
+// BatchSend sends webhooks to multiple endpoints
+func (c *Client) BatchSend(requests []BatchRequest) (*BatchResponse, error) {
+	body := map[string]interface{}{"requests": requests}
+	resp, err := c.doRequest("POST", "/api/v1/webhooks/send/batch", body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result BatchResponse
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// DeliveryDetail represents detailed delivery inspection data
+type DeliveryDetail struct {
+	Delivery Delivery          `json:"delivery"`
+	Attempts []DeliveryAttempt `json:"attempts"`
+	Request  *DeliveryRequest  `json:"request,omitempty"`
+}
+
+// DeliveryRequest represents the original request data
+type DeliveryRequest struct {
+	URL     string            `json:"url"`
+	Method  string            `json:"method"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Payload json.RawMessage   `json:"payload,omitempty"`
+}
+
+// InspectDelivery returns detailed delivery inspection data
+func (c *Client) InspectDelivery(id string) (*DeliveryDetail, error) {
+	resp, err := c.doRequest("GET", "/api/v1/webhooks/deliveries/"+id+"/inspect", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result DeliveryDetail
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// RetryDelivery retries a failed delivery (alias for replay)
+func (c *Client) RetryDelivery(deliveryID string) (*SendWebhookResponse, error) {
+	return c.ReplayDelivery(deliveryID)
+}

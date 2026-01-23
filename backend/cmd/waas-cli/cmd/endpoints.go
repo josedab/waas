@@ -60,12 +60,27 @@ Examples:
 	RunE: runEndpointsDelete,
 }
 
+var endpointsUpdateCmd = &cobra.Command{
+	Use:   "update <endpoint-id>",
+	Short: "Update a webhook endpoint",
+	Long: `Update properties of an existing webhook endpoint.
+
+Examples:
+  waas endpoints update ep_123 --url https://new.example.com/webhook
+  waas endpoints update ep_123 --active false
+  waas endpoints update ep_123 --url https://new.example.com --active true`,
+	Args: cobra.ExactArgs(1),
+	RunE: runEndpointsUpdate,
+}
+
 var (
-	endpointURL     string
-	endpointHeaders []string
-	maxAttempts     int
-	initialDelay    int
-	maxDelay        int
+	endpointURL      string
+	endpointHeaders  []string
+	maxAttempts      int
+	initialDelay     int
+	maxDelay         int
+	endpointActive   string
+	endpointUpdateURL string
 )
 
 func init() {
@@ -75,6 +90,7 @@ func init() {
 	endpointsCmd.AddCommand(endpointsGetCmd)
 	endpointsCmd.AddCommand(endpointsCreateCmd)
 	endpointsCmd.AddCommand(endpointsDeleteCmd)
+	endpointsCmd.AddCommand(endpointsUpdateCmd)
 
 	endpointsCreateCmd.Flags().StringVar(&endpointURL, "url", "", "Webhook endpoint URL (required)")
 	endpointsCreateCmd.Flags().StringArrayVar(&endpointHeaders, "header", nil, "Custom headers (format: Key: Value)")
@@ -82,6 +98,10 @@ func init() {
 	endpointsCreateCmd.Flags().IntVar(&initialDelay, "initial-delay", 1000, "Initial retry delay in milliseconds")
 	endpointsCreateCmd.Flags().IntVar(&maxDelay, "max-delay", 300000, "Maximum retry delay in milliseconds")
 	endpointsCreateCmd.MarkFlagRequired("url")
+
+	endpointsUpdateCmd.Flags().StringVar(&endpointUpdateURL, "url", "", "New webhook endpoint URL")
+	endpointsUpdateCmd.Flags().StringVar(&endpointActive, "active", "", "Set endpoint active status (true/false)")
+	endpointsUpdateCmd.Flags().StringArrayVar(&endpointHeaders, "header", nil, "Custom headers (format: Key: Value)")
 }
 
 func runEndpointsList(cmd *cobra.Command, args []string) error {
@@ -220,4 +240,57 @@ func boolToStatus(b bool) string {
 		return "active"
 	}
 	return "inactive"
+}
+
+func runEndpointsUpdate(cmd *cobra.Command, args []string) error {
+	client := NewClient(getAPIURL(), getAPIKey())
+	id := args[0]
+
+	req := &UpdateEndpointRequest{}
+	hasChanges := false
+
+	if endpointUpdateURL != "" {
+		req.URL = endpointUpdateURL
+		hasChanges = true
+	}
+
+	if endpointActive != "" {
+		active := endpointActive == "true"
+		req.IsActive = &active
+		hasChanges = true
+	}
+
+	if len(endpointHeaders) > 0 {
+		headers := make(map[string]string)
+		for _, h := range endpointHeaders {
+			parts := strings.SplitN(h, ":", 2)
+			if len(parts) == 2 {
+				headers[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			}
+		}
+		req.CustomHeaders = headers
+		hasChanges = true
+	}
+
+	if !hasChanges {
+		return fmt.Errorf("no changes specified. Use --url, --active, or --header flags")
+	}
+
+	endpoint, err := client.UpdateEndpoint(id, req)
+	if err != nil {
+		return fmt.Errorf("failed to update endpoint: %w", err)
+	}
+
+	if output == "json" {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(endpoint)
+	}
+
+	fmt.Printf("✓ Endpoint updated successfully\n")
+	fmt.Printf("  ID:     %s\n", endpoint.ID)
+	fmt.Printf("  URL:    %s\n", endpoint.URL)
+	fmt.Printf("  Status: %s\n", boolToStatus(endpoint.IsActive))
+
+	return nil
 }

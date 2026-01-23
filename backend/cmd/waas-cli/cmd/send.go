@@ -12,7 +12,7 @@ import (
 var sendCmd = &cobra.Command{
 	Use:   "send",
 	Short: "Send a webhook to an endpoint",
-	Long: `Send a webhook payload to a specified endpoint.
+	Long: `Send a webhook payload to a specified endpoint or publish to a topic.
 
 The payload can be provided via stdin, a file, or inline JSON.
 
@@ -20,7 +20,8 @@ Examples:
   waas send --endpoint ep_123 --data '{"event": "test"}'
   waas send --endpoint ep_123 --file payload.json
   echo '{"event": "test"}' | waas send --endpoint ep_123
-  waas send --endpoint ep_123 --data '{"event": "test"}' --header "X-Custom: value"`,
+  waas send --endpoint ep_123 --data '{"event": "test"}' --header "X-Custom: value"
+  waas send --topic orders --event-type "order.created" --data '{"id": "123"}'`,
 	RunE: runSend,
 }
 
@@ -29,19 +30,26 @@ var (
 	sendData        string
 	sendFile        string
 	sendHeaders     []string
+	sendTopic       string
+	sendEventType   string
 )
 
 func init() {
 	rootCmd.AddCommand(sendCmd)
 
-	sendCmd.Flags().StringVar(&sendEndpointID, "endpoint", "", "Target endpoint ID (required)")
+	sendCmd.Flags().StringVar(&sendEndpointID, "endpoint", "", "Target endpoint ID")
 	sendCmd.Flags().StringVar(&sendData, "data", "", "JSON payload to send")
 	sendCmd.Flags().StringVar(&sendFile, "file", "", "File containing JSON payload")
 	sendCmd.Flags().StringArrayVar(&sendHeaders, "header", nil, "Additional headers (format: Key: Value)")
-	sendCmd.MarkFlagRequired("endpoint")
+	sendCmd.Flags().StringVar(&sendTopic, "topic", "", "Publish to a topic instead of a specific endpoint")
+	sendCmd.Flags().StringVar(&sendEventType, "event-type", "", "Event type for topic publishing")
 }
 
 func runSend(cmd *cobra.Command, args []string) error {
+	if sendEndpointID == "" && sendTopic == "" {
+		return fmt.Errorf("either --endpoint or --topic is required")
+	}
+
 	client := NewClient(getAPIURL(), getAPIKey())
 
 	// Determine payload source
@@ -85,6 +93,45 @@ func runSend(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Topic-based publishing
+	if sendTopic != "" {
+		body := map[string]interface{}{
+			"topic":   sendTopic,
+			"payload": json.RawMessage(payload),
+		}
+		if sendEventType != "" {
+			body["event_type"] = sendEventType
+		}
+		if len(headers) > 0 {
+			body["headers"] = headers
+		}
+
+		resp, err := client.doRequest("POST", "/api/v1/webhooks/send", body)
+		if err != nil {
+			return fmt.Errorf("failed to publish to topic: %w", err)
+		}
+
+		var result SendWebhookResponse
+		if err := parseResponse(resp, &result); err != nil {
+			return fmt.Errorf("failed to publish to topic: %w", err)
+		}
+
+		if output == "json" {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(result)
+		}
+
+		fmt.Printf("✓ Published to topic %q\n", sendTopic)
+		if sendEventType != "" {
+			fmt.Printf("  Event Type:  %s\n", sendEventType)
+		}
+		fmt.Printf("  Delivery ID: %s\n", result.DeliveryID)
+		fmt.Printf("  Status:      %s\n", result.Status)
+		return nil
+	}
+
+	// Direct endpoint send
 	req := &SendWebhookRequest{
 		EndpointID: sendEndpointID,
 		Payload:    payload,
