@@ -1,9 +1,9 @@
 .PHONY: build run-api run-delivery run-analytics test test-all clean \
        docker-up docker-down docker-build \
-       migrate-up migrate-down migrate-core dev-setup ensure-env deps \
+       migrate-up migrate-down migrate-core migrate-status dev-setup ensure-env deps \
        docs docs-generate docs-serve docs-test \
        lint fmt vet help validate-setup \
-       smoke-test run-all \
+       smoke-test run-all run-dashboard \
        install-hooks uninstall-hooks
 
 # Configuration
@@ -28,6 +28,9 @@ build: ## Build all service binaries
 	go build -o bin/delivery-engine ./cmd/delivery-engine
 	go build -o bin/analytics-service ./cmd/analytics-service
 
+build-check: ## Compile-check all packages without producing binaries
+	go build ./...
+
 # Run services locally
 run-api: ## Run API service (port 8080)
 	go run ./cmd/api-service
@@ -47,11 +50,27 @@ run-all: ## Run all services in parallel (Ctrl+C to stop)
 		wait
 
 # Testing
-test: ## Run core tests (fast — internal + key packages)
-	go test -short ./internal/... ./pkg/database/... ./pkg/repository/... ./pkg/auth/... ./pkg/queue/... ./pkg/models/... ./pkg/errors/... ./pkg/signatures/...
+test: ## Run core tests with coverage summary
+	@go test -short -coverprofile=coverage.out ./internal/... ./pkg/database/... ./pkg/repository/... ./pkg/auth/... ./pkg/queue/... ./pkg/models/... ./pkg/errors/... ./pkg/signatures/...
+	@echo ""
+	@go tool cover -func=coverage.out | grep total: | awk '{printf "Coverage: %s\n", $$3}'
+	@echo "Detailed report: go tool cover -html=coverage.out"
 
 test-all: ## Run all tests including enterprise packages
 	go test -v ./...
+
+test-integration: ## Run integration tests in Docker (isolated from dev environment)
+	@echo "Starting isolated test environment..."
+	@docker-compose -f docker-compose.test.yml up -d postgres redis
+	@echo "Waiting for test services..."
+	@sleep 5
+	@docker-compose -f docker-compose.test.yml exec -T postgres pg_isready -U postgres -d webhook_platform_test >/dev/null 2>&1 || sleep 5
+	@echo "Running integration tests..."
+	@TEST_DATABASE_URL=postgres://postgres:password@localhost:5433/webhook_platform_test?sslmode=disable \
+		TEST_REDIS_URL=redis://localhost:6380/10 \
+		go test -v -timeout=10m ./test/integration/... || (docker-compose -f docker-compose.test.yml down -v && exit 1)
+	@docker-compose -f docker-compose.test.yml down -v
+	@echo "Integration tests complete. Test environment cleaned up."
 
 # Code quality
 lint: ## Run golangci-lint
@@ -101,6 +120,9 @@ migrate-down: ## Rollback database migrations
 migrate-core: ## Run core-only migrations (tables 1-5: tenants, endpoints, deliveries, analytics, quotas)
 	$(MIGRATE_CMD) up 5
 
+migrate-status: ## Show current migration version
+	$(MIGRATE_CMD) version
+
 # Environment file
 ensure-env: ## Create .env from template if it doesn't exist
 	@if [ ! -f .env ]; then \
@@ -137,6 +159,7 @@ dev-setup: ensure-env docker-up ## One-command dev setup: creates .env, starts c
 	@echo "  Delivery engine:   make run-delivery"
 	@echo "  Analytics service: make run-analytics   (http://localhost:8082)"
 	@echo "  All services:      make run-all"
+	@echo "  React dashboard:   make run-dashboard   (http://localhost:5173)"
 	@echo "  Smoke test:        make smoke-test"
 	@echo "  API docs:          http://localhost:8080/docs/"
 
@@ -216,3 +239,14 @@ install-hooks: ## Install git pre-commit hooks
 uninstall-hooks: ## Remove git pre-commit hooks
 	@rm -f $(GIT_HOOKS_DIR)/pre-commit
 	@echo "Pre-commit hook removed."
+
+# Dashboard
+run-dashboard: ## Run React dashboard (connects to API on :8080)
+	@echo "Starting React dashboard..."
+	@if command -v pnpm >/dev/null 2>&1; then \
+		cd web/dashboard && pnpm install --frozen-lockfile && VITE_API_URL=http://localhost:8080 pnpm dev; \
+	elif command -v npm >/dev/null 2>&1; then \
+		cd web/dashboard && npm install && VITE_API_URL=http://localhost:8080 npm run dev; \
+	else \
+		echo "Neither pnpm nor npm found. Install Node.js: https://nodejs.org/"; exit 1; \
+	fi

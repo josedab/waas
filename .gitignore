@@ -5,4 +5,4 @@ node_modules/
 *.dylib
 .DS_Store
 backend/api-service
-waas-cli
+/backend/waas-cli
