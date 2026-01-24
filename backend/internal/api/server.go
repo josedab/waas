@@ -5,6 +5,9 @@ import (
 	"webhook-platform/pkg/auth"
 	"webhook-platform/pkg/billing"
 	"webhook-platform/pkg/blockchain"
+	"webhook-platform/pkg/callback"
+	"webhook-platform/pkg/cloudmanaged"
+	"webhook-platform/pkg/collabdebug"
 	"webhook-platform/pkg/cdc"
 	"webhook-platform/pkg/chaos"
 	"webhook-platform/pkg/cloud"
@@ -14,12 +17,14 @@ import (
 	"webhook-platform/pkg/costing"
 	"webhook-platform/pkg/database"
 	"webhook-platform/pkg/debugger"
+	"webhook-platform/pkg/docgen"
 	"webhook-platform/pkg/edge"
 	"webhook-platform/pkg/embed"
 	"webhook-platform/pkg/eventmesh"
 	"webhook-platform/pkg/fanout"
 	"webhook-platform/pkg/federation"
 	"webhook-platform/pkg/flow"
+	"webhook-platform/pkg/flowbuilder"
 	"webhook-platform/pkg/georouting"
 	"webhook-platform/pkg/graphqlsub"
 	"webhook-platform/pkg/marketplacetpl"
@@ -45,6 +50,7 @@ import (
 	"webhook-platform/pkg/smartlimit"
 	"webhook-platform/pkg/streaming"
 	"webhook-platform/pkg/tfprovider"
+	"webhook-platform/pkg/timetravel"
 	"webhook-platform/pkg/tracing"
 	"webhook-platform/pkg/canary"
 	"webhook-platform/pkg/autoremediation"
@@ -56,10 +62,14 @@ import (
 	"webhook-platform/pkg/costengine"
 	"webhook-platform/pkg/gitops"
 	"webhook-platform/pkg/inbound"
+	"webhook-platform/pkg/intelligence"
 	"webhook-platform/pkg/livemigration"
 	"webhook-platform/pkg/mobilesdk"
+	"webhook-platform/pkg/pluginmarket"
 	"webhook-platform/pkg/utils"
 	"webhook-platform/pkg/versioning"
+	"webhook-platform/pkg/waf"
+	"webhook-platform/pkg/whitelabel"
 	"webhook-platform/pkg/workflow"
 	_ "webhook-platform/docs"
 
@@ -140,6 +150,17 @@ type Server struct {
 	inboundService        *inbound.Service
 	fanoutService         *fanout.Service
 	mobilesdkService      *mobilesdk.Service
+	// Next-gen features v7
+	pluginmarketService    *pluginmarket.Service
+	intelligenceService    *intelligence.Service
+	flowbuilderService     *flowbuilder.Service
+	timetravelService      *timetravel.Service
+	cloudmanagedService    *cloudmanaged.Service
+	callbackService        *callback.Service
+	collabdebugService     *collabdebug.Service
+	wafService             *waf.Service
+	docgenService          *docgen.Service
+	whitelabelService      *whitelabel.Service
 }
 
 func NewServer() *Server {
@@ -296,6 +317,37 @@ func NewServer() *Server {
 	inboundService := inbound.NewService(nil)
 	fanoutService := fanout.NewService(nil)
 	mobilesdkService := mobilesdk.NewService()
+
+	// Initialize next-gen features v7
+	pluginmarketRepo := pluginmarket.NewPostgresRepository(sqlxDB)
+	pluginmarketService := pluginmarket.NewService(pluginmarketRepo)
+
+	intelligenceRepo := intelligence.NewPostgresRepository(sqlxDB)
+	intelligenceService := intelligence.NewService(intelligenceRepo)
+
+	flowbuilderRepo := flowbuilder.NewPostgresRepository(sqlxDB)
+	flowbuilderService := flowbuilder.NewService(flowbuilderRepo)
+
+	timetravelRepo := timetravel.NewPostgresRepository(sqlxDB)
+	timetravelService := timetravel.NewService(timetravelRepo)
+
+	cloudmanagedRepo := cloudmanaged.NewPostgresRepository(sqlxDB)
+	cloudmanagedService := cloudmanaged.NewService(cloudmanagedRepo)
+
+	callbackRepo := callback.NewPostgresRepository(sqlxDB)
+	callbackService := callback.NewService(callbackRepo)
+
+	collabdebugRepo := collabdebug.NewPostgresRepository(sqlxDB)
+	collabdebugService := collabdebug.NewService(collabdebugRepo)
+
+	wafRepo := waf.NewPostgresRepository(sqlxDB)
+	wafService := waf.NewService(wafRepo)
+
+	docgenRepo := docgen.NewPostgresRepository(sqlxDB)
+	docgenService := docgen.NewService(docgenRepo)
+
+	whitelabelRepo := whitelabel.NewPostgresRepository(sqlxDB)
+	whitelabelService := whitelabel.NewService(whitelabelRepo)
 	
 	// Setup Gin with monitoring middleware
 	router := gin.New()
@@ -368,6 +420,16 @@ func NewServer() *Server {
 		inboundService:       inboundService,
 		fanoutService:        fanoutService,
 		mobilesdkService:    mobilesdkService,
+		pluginmarketService: pluginmarketService,
+		intelligenceService: intelligenceService,
+		flowbuilderService:  flowbuilderService,
+		timetravelService:   timetravelService,
+		cloudmanagedService: cloudmanagedService,
+		callbackService:     callbackService,
+		collabdebugService:  collabdebugService,
+		wafService:           wafService,
+		docgenService:        docgenService,
+		whitelabelService:    whitelabelService,
 	}
 
 	server.setupRoutes()
@@ -695,6 +757,50 @@ func (s *Server) setupRoutes() {
 		// Mobile SDK Management
 		mobilesdkHandler := mobilesdk.NewHandler(s.mobilesdkService)
 		mobilesdkHandler.RegisterRoutes(protected)
+
+		// ==========================================
+		// Next-Gen Feature Routes v7
+		// ==========================================
+
+		// Webhook Plugin Marketplace
+		pluginmarketHandler := pluginmarket.NewHandler(s.pluginmarketService)
+		pluginmarketHandler.RegisterRoutes(protected)
+
+		// AI-Powered Webhook Intelligence
+		intelligenceHandler := intelligence.NewHandler(s.intelligenceService)
+		intelligenceHandler.RegisterRoutes(protected)
+
+		// Visual Webhook Workflow Builder
+		flowbuilderHandler := flowbuilder.NewHandler(s.flowbuilderService)
+		flowbuilderHandler.RegisterRoutes(protected)
+
+		// Webhook Replay & Time Travel
+		timetravelHandler := timetravel.NewHandler(s.timetravelService)
+		timetravelHandler.RegisterRoutes(protected)
+
+		// Managed Cloud Offering
+		cloudmanagedHandler := cloudmanaged.NewHandler(s.cloudmanagedService)
+		cloudmanagedHandler.RegisterRoutes(protected)
+
+		// Bi-Directional Webhooks & Callbacks
+		callbackHandler := callback.NewHandler(s.callbackService)
+		callbackHandler.RegisterRoutes(protected)
+
+		// Real-Time Collaborative Debugging
+		collabdebugHandler := collabdebug.NewHandler(s.collabdebugService)
+		collabdebugHandler.RegisterRoutes(protected)
+
+		// Webhook Security Scanner & WAF
+		wafHandler := waf.NewHandler(s.wafService)
+		wafHandler.RegisterRoutes(protected)
+
+		// API-First Documentation Generator
+		docgenHandler := docgen.NewHandler(s.docgenService)
+		docgenHandler.RegisterRoutes(protected)
+
+		// Multi-Tenant Whitelabel
+		whitelabelHandler := whitelabel.NewHandler(s.whitelabelService)
+		whitelabelHandler.RegisterRoutes(protected)
 	}
 	
 	// Admin endpoints (require authentication but no rate limiting for now)
