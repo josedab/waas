@@ -1,10 +1,11 @@
 .PHONY: build run-api run-delivery run-analytics test test-all clean \
        docker-up docker-down docker-build \
-       migrate-up migrate-down migrate-core migrate-status dev-setup ensure-env deps \
+       migrate-up migrate-down migrate-core migrate-status migrate-reset migrate-rollback dev-setup ensure-env deps \
        docs docs-generate docs-serve docs-test \
        lint fmt vet help validate-setup \
        smoke-test run-all run-dashboard \
-       install-hooks uninstall-hooks
+       install-hooks uninstall-hooks \
+       test-coverage test-status audit-deps validate-env
 
 # Configuration
 DATABASE_URL ?= postgres://postgres:password@localhost:5432/webhook_platform?sslmode=disable
@@ -58,6 +59,40 @@ test: ## Run core tests with coverage summary
 
 test-all: ## Run all tests including enterprise packages
 	go test -v ./...
+
+test-coverage: ## Run tests with per-package coverage breakdown
+	@echo "Running tests with per-package coverage..."
+	@go test -short -coverprofile=coverage.out ./internal/... ./pkg/...
+	@echo ""
+	@echo "=== Per-Package Coverage ==="
+	@go tool cover -func=coverage.out | grep -E '^[a-z]' | awk -F'\t' '{split($$1,a,"/"); pkg=a[length(a)-1]"/"a[length(a)]; coverage[pkg]=$$NF} END {for (p in coverage) printf "  %-45s %s\n", p, coverage[p]}' | sort
+	@echo ""
+	@go tool cover -func=coverage.out | grep total: | awk '{printf "Total Coverage: %s\n", $$3}'
+	@echo ""
+	@echo "HTML report: go tool cover -html=coverage.out"
+
+test-status: ## Show test file inventory per package (find coverage gaps)
+	@echo "=== Test File Inventory ==="
+	@echo ""
+	@echo "Core packages:"
+	@for pkg in internal/api internal/delivery internal/analytics pkg/models pkg/repository pkg/queue pkg/auth pkg/errors pkg/signatures pkg/database pkg/delivery pkg/utils; do \
+		count=$$(find $$pkg -name '*_test.go' 2>/dev/null | wc -l | tr -d ' '); \
+		if [ "$$count" -eq 0 ]; then status="❌ no tests"; else status="✅ $$count test file(s)"; fi; \
+		printf "  %-35s %s\n" "$$pkg" "$$status"; \
+	done
+	@echo ""
+	@echo "Enterprise packages (with tests):"
+	@for dir in pkg/*/; do \
+		pkg=$$(basename $$dir); \
+		case $$pkg in models|repository|queue|auth|errors|signatures|database|delivery|utils) continue;; esac; \
+		count=$$(find $$dir -name '*_test.go' 2>/dev/null | wc -l | tr -d ' '); \
+		if [ "$$count" -gt 0 ]; then printf "  %-35s ✅ %s test file(s)\n" "pkg/$$pkg" "$$count"; fi; \
+	done
+	@echo ""
+	@total=$$(find . -name '*_test.go' -not -path './vendor/*' | wc -l | tr -d ' '); \
+	pkgs_with=$$(find pkg -name '*_test.go' | xargs -n1 dirname 2>/dev/null | sort -u | wc -l | tr -d ' '); \
+	pkgs_total=$$(find pkg -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' '); \
+	echo "Summary: $$total test files across $$pkgs_with/$$pkgs_total packages"
 
 test-integration: ## Run integration tests in Docker (isolated from dev environment)
 	@echo "Starting isolated test environment..."
@@ -123,6 +158,18 @@ migrate-core: ## Run core-only migrations (tables 1-5: tenants, endpoints, deliv
 migrate-status: ## Show current migration version
 	$(MIGRATE_CMD) version
 
+migrate-rollback-last: ## Rollback the last migration only
+	$(MIGRATE_CMD) down 1
+
+migrate-reset: ## Drop all and re-run migrations (DESTRUCTIVE - requires confirmation)
+	@echo "⚠️  WARNING: This will DROP all tables and re-run all migrations."
+	@echo "   Database: $(DATABASE_URL)"
+	@echo ""
+	@read -p "Type 'yes' to confirm: " confirm && [ "$$confirm" = "yes" ] || (echo "Aborted."; exit 1)
+	$(MIGRATE_CMD) drop -f
+	$(MIGRATE_CMD) up
+	@echo "✅ Database reset complete."
+
 # Environment file
 ensure-env: ## Create .env from template if it doesn't exist
 	@if [ ! -f .env ]; then \
@@ -135,6 +182,21 @@ ensure-env: ## Create .env from template if it doesn't exist
 		fi; \
 		echo "  .env ready."; \
 	fi
+
+validate-env: ## Validate .env file for required variables and insecure defaults
+	@if [ ! -f .env ]; then \
+		echo "❌ .env file not found. Run 'make ensure-env' first."; \
+		exit 1; \
+	fi
+	@echo "Checking .env configuration..."
+	@errors=0; \
+	if ! grep -q '^DATABASE_URL=' .env 2>/dev/null; then echo "  ❌ DATABASE_URL is missing"; errors=$$((errors+1)); fi; \
+	if ! grep -q '^REDIS_URL=' .env 2>/dev/null && ! grep -q '^REDIS_ADDR=' .env 2>/dev/null; then echo "  ⚠️  REDIS_URL not set (will use default localhost:6379)"; fi; \
+	if ! grep -q '^JWT_SECRET=' .env 2>/dev/null; then echo "  ❌ JWT_SECRET is missing"; errors=$$((errors+1)); fi; \
+	if grep -q 'change-me-in-production' .env 2>/dev/null; then echo "  ⚠️  JWT_SECRET still has default value — change before deploying"; fi; \
+	if grep -q '^JWT_SECRET=$$' .env 2>/dev/null; then echo "  ❌ JWT_SECRET is empty"; errors=$$((errors+1)); fi; \
+	if [ $$errors -gt 0 ]; then echo ""; echo "$$errors error(s) found. Fix .env before running."; exit 1; \
+	else echo "  ✅ .env looks good."; fi
 
 # Development setup
 dev-setup: ensure-env docker-up ## One-command dev setup: creates .env, starts containers, runs migrations
@@ -249,4 +311,19 @@ run-dashboard: ## Run React dashboard (connects to API on :8080)
 		cd web/dashboard && npm install && VITE_API_URL=http://localhost:8080 npm run dev; \
 	else \
 		echo "Neither pnpm nor npm found. Install Node.js: https://nodejs.org/"; exit 1; \
+	fi
+
+# Dependency Auditing
+audit-deps: ## Check for outdated and vulnerable dependencies
+	@echo "=== Checking for outdated modules ==="
+	@go list -m -u -json all 2>/dev/null | go run golang.org/x/tools/cmd/godeps@latest 2>/dev/null || \
+		go list -m -u all 2>/dev/null | grep '\[' || echo "  All modules up to date."
+	@echo ""
+	@echo "=== Checking for known vulnerabilities ==="
+	@if command -v govulncheck >/dev/null 2>&1; then \
+		govulncheck ./...; \
+	else \
+		echo "  govulncheck not installed. Install: go install golang.org/x/vuln/cmd/govulncheck@latest"; \
+		echo "  Running 'go mod verify' instead..."; \
+		go mod verify; \
 	fi
