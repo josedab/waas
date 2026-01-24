@@ -4,6 +4,29 @@
 
 set -e
 
+# Check for staged .env files or secrets
+STAGED_ENV_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.env($|\.)' || true)
+if [ -n "$STAGED_ENV_FILES" ]; then
+    echo "pre-commit: ❌ BLOCKED — .env file(s) staged for commit:"
+    echo "$STAGED_ENV_FILES"
+    echo ""
+    echo "Remove with: git reset HEAD <file>"
+    exit 1
+fi
+
+SECRET_PATTERNS='(password|secret|api_key|private_key|token)\s*[:=]\s*["\x27][^"\x27]{8,}'
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM || true)
+if [ -n "$STAGED_FILES" ]; then
+    SECRETS_FOUND=$(echo "$STAGED_FILES" | xargs grep -liE "$SECRET_PATTERNS" 2>/dev/null | grep -v -E '(\.example|\.sample|\.template|_test\.go|test_|mock_|fake_)' || true)
+    if [ -n "$SECRETS_FOUND" ]; then
+        echo "pre-commit: ⚠️  WARNING — possible secrets detected in:"
+        echo "$SECRETS_FOUND"
+        echo ""
+        echo "Review these files carefully. Use 'git diff --cached <file>' to check."
+        echo "If these are false positives (test fixtures, examples), proceed with: git commit --no-verify"
+    fi
+fi
+
 # Only check staged Go files
 STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)
 
