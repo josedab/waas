@@ -4,5 +4,30 @@ node_modules/
 *.so
 *.dylib
 .DS_Store
+
+# Binaries
 backend/api-service
 /backend/waas-cli
+bin/
+
+# Environment files (may contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Test / coverage output
+coverage.out
+*.test
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
