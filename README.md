@@ -15,6 +15,8 @@ make dev-setup    # starts PostgreSQL + Redis, runs migrations
 make run-api      # API on http://localhost:8080
 ```
 
+> **Tip:** `make dev-setup` runs all 83 migrations. For a faster start, use `make migrate-core` instead — it runs only the 5 essential tables (tenants, endpoints, deliveries, analytics, quotas).
+
 Verify it works:
 
 ```bash
