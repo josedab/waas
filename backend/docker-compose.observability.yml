@@ -1,0 +1,78 @@
+# Observability Stack (Development)
+#
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.observability.yml up
+#
+# This adds Jaeger, Prometheus, and Grafana to the base dev environment.
+# Access:
+#   - Jaeger UI:     http://localhost:16686
+#   - Prometheus:    http://localhost:9090
+#   - Grafana:       http://localhost:3001 (admin/admin)
+
+services:
+  # Jaeger — distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "14268:14268"   # Collector HTTP
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - webhook-network
+
+  # Prometheus — metrics collection
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    networks:
+      - webhook-network
+
+  # Grafana — dashboards
+  grafana:
+    image: grafana/grafana:10.2.3
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - webhook-network
+
+  # Override API service to export telemetry
+  api:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_SERVICE_NAME: waas-api
+      METRICS_ENABLED: "true"
+      METRICS_PORT: "9100"
+
+  delivery-engine:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_SERVICE_NAME: waas-delivery
+      METRICS_ENABLED: "true"
+      METRICS_PORT: "9101"
+
+  analytics-collector:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_SERVICE_NAME: waas-analytics
+      METRICS_ENABLED: "true"
+      METRICS_PORT: "9102"
+
+volumes:
+  grafana-data:
