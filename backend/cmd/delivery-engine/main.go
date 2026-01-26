@@ -11,7 +11,10 @@ import (
 func main() {
 	log.Println("Starting Webhook Delivery Engine...")
 	
-	engine := delivery.NewEngine()
+	engine, err := delivery.NewEngine()
+	if err != nil {
+		log.Fatal("Failed to initialize delivery engine: ", err)
+	}
 	if err := engine.Start(); err != nil {
 		log.Fatal("Failed to start delivery engine:", err)
 	}

@@ -43,7 +43,10 @@ import (
 func main() {
 	log.Println("Starting Webhook API Service...")
 	
-	server := api.NewServer()
+	server, err := api.NewServer()
+	if err != nil {
+		log.Fatal("Failed to initialize API service: ", err)
+	}
 	if err := server.Start(":8080"); err != nil {
 		log.Fatal("Failed to start API service:", err)
 	}

@@ -115,7 +115,11 @@ func (s *E2ETestSuite) SetupSuite() {
 	s.queueManager = queue.NewManager(s.redis, mockHandler, 2)
 	
 	// Initialize delivery engine
-	s.deliveryEngine = delivery.NewEngine()
+	engine, err := delivery.NewEngine()
+	if err != nil {
+		panic(err)
+	}
+	s.deliveryEngine = engine
 	
 	// Setup API server
 	s.setupAPIServer()

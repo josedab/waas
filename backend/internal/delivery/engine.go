@@ -24,44 +24,44 @@ import (
 
 // DeliveryEngine handles webhook delivery processing
 type DeliveryEngine struct {
-	db                    *database.DB
-	redis                 *database.RedisClient
-	logger                *utils.Logger
-	config                *utils.Config
-	httpClient            *http.Client
-	consumer              *queue.Consumer
-	deliveryRepo          repository.DeliveryAttemptRepository
-	webhookRepo           repository.WebhookEndpointRepository
-	transformRepo         repository.TransformationRepository
-	transformEngine       *transform.Engine
-	healthMonitor         *EndpointHealthMonitor
-	ctx                   context.Context
-	cancel                context.CancelFunc
-	wg                    sync.WaitGroup
+	db              *database.DB
+	redis           *database.RedisClient
+	logger          *utils.Logger
+	config          *utils.Config
+	httpClient      *http.Client
+	consumer        *queue.Consumer
+	deliveryRepo    repository.DeliveryAttemptRepository
+	webhookRepo     repository.WebhookEndpointRepository
+	transformRepo   repository.TransformationRepository
+	transformEngine *transform.Engine
+	healthMonitor   *EndpointHealthMonitor
+	ctx             context.Context
+	cancel          context.CancelFunc
+	wg              sync.WaitGroup
 }
 
 // DeliveryConfig holds configuration for webhook delivery
 type DeliveryConfig struct {
-	MaxWorkers          int           `json:"max_workers"`
-	RequestTimeout      time.Duration `json:"request_timeout"`
-	MaxIdleConns        int           `json:"max_idle_conns"`
-	MaxIdleConnsPerHost int           `json:"max_idle_conns_per_host"`
-	IdleConnTimeout     time.Duration `json:"idle_conn_timeout"`
-	TLSHandshakeTimeout time.Duration `json:"tls_handshake_timeout"`
+	MaxWorkers            int           `json:"max_workers"`
+	RequestTimeout        time.Duration `json:"request_timeout"`
+	MaxIdleConns          int           `json:"max_idle_conns"`
+	MaxIdleConnsPerHost   int           `json:"max_idle_conns_per_host"`
+	IdleConnTimeout       time.Duration `json:"idle_conn_timeout"`
+	TLSHandshakeTimeout   time.Duration `json:"tls_handshake_timeout"`
 	ResponseHeaderTimeout time.Duration `json:"response_header_timeout"`
 }
 
 // NewEngine creates a new delivery engine instance
-func NewEngine() *DeliveryEngine {
+func NewEngine() (*DeliveryEngine, error) {
 	config := utils.LoadConfig()
 	logger := utils.NewLogger("delivery-engine")
-	
+
 	db, err := database.NewConnection()
 	if err != nil {
 		logger.Error("Failed to connect to database", map[string]interface{}{
 			"error": err.Error(),
 		})
-		panic(err)
+		return nil, fmt.Errorf("database connection failed: %w", err)
 	}
 
 	redis, err := database.NewRedisConnection(config.RedisURL)
@@ -69,7 +69,7 @@ func NewEngine() *DeliveryEngine {
 		logger.Error("Failed to connect to Redis", map[string]interface{}{
 			"error": err.Error(),
 		})
-		panic(err)
+		return nil, fmt.Errorf("redis connection failed: %w", err)
 	}
 
 	// Create repositories
@@ -106,13 +106,13 @@ func NewEngine() *DeliveryEngine {
 	// Create consumer with this engine as the message handler
 	engine.consumer = queue.NewConsumer(redis, engine, getDeliveryConfig().MaxWorkers)
 
-	return engine
+	return engine, nil
 }
 
 // Start begins the delivery engine processing
 func (e *DeliveryEngine) Start() error {
 	e.logger.Info("Starting delivery engine", nil)
-	
+
 	// Start health monitor
 	e.wg.Add(1)
 	go func() {
@@ -132,18 +132,18 @@ func (e *DeliveryEngine) Start() error {
 // Stop gracefully stops the delivery engine
 func (e *DeliveryEngine) Stop() {
 	e.logger.Info("Stopping delivery engine", nil)
-	
+
 	e.cancel()
 	e.consumer.Stop()
 	e.wg.Wait()
-	
+
 	e.logger.Info("Delivery engine stopped", nil)
 }
 
 // HandleDelivery implements the MessageHandler interface
 func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.DeliveryMessage) (*queue.DeliveryResult, error) {
 	startTime := time.Now()
-	
+
 	e.logger.Info("Processing webhook delivery", map[string]interface{}{
 		"delivery_id":    message.DeliveryID,
 		"endpoint_id":    message.EndpointID,
@@ -199,7 +199,7 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 			ErrorMessage:  &errMsg,
 			AttemptNumber: message.AttemptNumber,
 		}
-		
+
 		// Update delivery attempt with result
 		attempt.Status = result.Status
 		attempt.ErrorMessage = result.ErrorMessage
@@ -209,7 +209,7 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 				"error":       err.Error(),
 			})
 		}
-		
+
 		return result, nil
 	}
 
@@ -232,7 +232,7 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 
 	// Perform the HTTP delivery
 	result := e.performDelivery(ctx, endpoint, message)
-	
+
 	// Update delivery attempt with result
 	attempt.Status = result.Status
 	attempt.HTTPStatus = result.HTTPStatus
@@ -285,7 +285,7 @@ func (e *DeliveryEngine) performDelivery(ctx context.Context, endpoint *models.W
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "WebhookPlatform/1.0")
-	
+
 	// Add signature header
 	if message.Signature != "" {
 		req.Header.Set("X-Webhook-Signature", message.Signature)
@@ -305,7 +305,7 @@ func (e *DeliveryEngine) performDelivery(ctx context.Context, endpoint *models.W
 	resp, err := e.httpClient.Do(req)
 	if err != nil {
 		errMsg := fmt.Sprintf("request failed: %v", err)
-		
+
 		// Determine if this is a retryable error
 		status := queue.StatusFailed
 		if isRetryableError(err) && message.AttemptNumber < message.MaxAttempts {
@@ -332,7 +332,7 @@ func (e *DeliveryEngine) performDelivery(ctx context.Context, endpoint *models.W
 	}
 
 	responseBodyStr := string(responseBody)
-	
+
 	// Determine delivery status based on HTTP status code
 	status := queue.StatusSuccess
 	var errorMessage *string

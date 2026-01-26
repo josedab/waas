@@ -1,19 +1,27 @@
 package api
 
 import (
+	"fmt"
+
+	_ "webhook-platform/docs"
 	"webhook-platform/internal/api/handlers"
+	"webhook-platform/pkg/analyticsembed"
 	"webhook-platform/pkg/auth"
+	"webhook-platform/pkg/autoremediation"
 	"webhook-platform/pkg/billing"
 	"webhook-platform/pkg/blockchain"
 	"webhook-platform/pkg/callback"
-	"webhook-platform/pkg/cloudmanaged"
-	"webhook-platform/pkg/collabdebug"
+	"webhook-platform/pkg/canary"
+	"webhook-platform/pkg/catalog"
 	"webhook-platform/pkg/cdc"
 	"webhook-platform/pkg/chaos"
 	"webhook-platform/pkg/cloud"
 	"webhook-platform/pkg/cloudctl"
+	"webhook-platform/pkg/cloudmanaged"
+	"webhook-platform/pkg/collabdebug"
 	"webhook-platform/pkg/compliancecenter"
 	"webhook-platform/pkg/contracts"
+	"webhook-platform/pkg/costengine"
 	"webhook-platform/pkg/costing"
 	"webhook-platform/pkg/database"
 	"webhook-platform/pkg/debugger"
@@ -26,10 +34,15 @@ import (
 	"webhook-platform/pkg/flow"
 	"webhook-platform/pkg/flowbuilder"
 	"webhook-platform/pkg/georouting"
+	"webhook-platform/pkg/gitops"
 	"webhook-platform/pkg/graphqlsub"
+	"webhook-platform/pkg/inbound"
+	"webhook-platform/pkg/intelligence"
+	"webhook-platform/pkg/livemigration"
 	"webhook-platform/pkg/marketplacetpl"
 	"webhook-platform/pkg/metaevents"
 	"webhook-platform/pkg/metrics"
+	"webhook-platform/pkg/mobilesdk"
 	"webhook-platform/pkg/mocking"
 	"webhook-platform/pkg/monetization"
 	"webhook-platform/pkg/monitoring"
@@ -37,14 +50,18 @@ import (
 	"webhook-platform/pkg/multicloud"
 	"webhook-platform/pkg/observability"
 	"webhook-platform/pkg/otel"
+	"webhook-platform/pkg/pluginmarket"
 	"webhook-platform/pkg/portal"
 	"webhook-platform/pkg/prediction"
+	"webhook-platform/pkg/protocolgw"
 	"webhook-platform/pkg/protocols"
 	"webhook-platform/pkg/pushbridge"
 	"webhook-platform/pkg/queue"
 	"webhook-platform/pkg/remediation"
 	"webhook-platform/pkg/repository"
+	"webhook-platform/pkg/sandbox"
 	"webhook-platform/pkg/schema"
+	"webhook-platform/pkg/schemaregistry"
 	"webhook-platform/pkg/signatures"
 	"webhook-platform/pkg/sla"
 	"webhook-platform/pkg/smartlimit"
@@ -52,26 +69,11 @@ import (
 	"webhook-platform/pkg/tfprovider"
 	"webhook-platform/pkg/timetravel"
 	"webhook-platform/pkg/tracing"
-	"webhook-platform/pkg/canary"
-	"webhook-platform/pkg/autoremediation"
-	"webhook-platform/pkg/schemaregistry"
-	"webhook-platform/pkg/catalog"
-	"webhook-platform/pkg/sandbox"
-	"webhook-platform/pkg/protocolgw"
-	"webhook-platform/pkg/analyticsembed"
-	"webhook-platform/pkg/costengine"
-	"webhook-platform/pkg/gitops"
-	"webhook-platform/pkg/inbound"
-	"webhook-platform/pkg/intelligence"
-	"webhook-platform/pkg/livemigration"
-	"webhook-platform/pkg/mobilesdk"
-	"webhook-platform/pkg/pluginmarket"
 	"webhook-platform/pkg/utils"
 	"webhook-platform/pkg/versioning"
 	"webhook-platform/pkg/waf"
 	"webhook-platform/pkg/whitelabel"
 	"webhook-platform/pkg/workflow"
-	_ "webhook-platform/docs"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -92,14 +94,14 @@ type Server struct {
 	metricsRecorder *monitoring.MetricsRecorder
 	tracer          *monitoring.Tracer
 	// Next-gen feature services
-	flowService       *flow.Service
-	metaService       *metaevents.Service
-	geoService        *georouting.Service
-	embedService      *embed.Service
-	mockService       *mocking.Service
-	costService       *costing.Service
-	otelService       *otel.Service
-	protocolService   *protocols.Service
+	flowService     *flow.Service
+	metaService     *metaevents.Service
+	geoService      *georouting.Service
+	embedService    *embed.Service
+	mockService     *mocking.Service
+	costService     *costing.Service
+	otelService     *otel.Service
+	protocolService *protocols.Service
 	// Next-gen features v2
 	observabilityService *observability.Service
 	smartlimitService    *smartlimit.Service
@@ -112,68 +114,68 @@ type Server struct {
 	versioningService    *versioning.Service
 	federationService    *federation.Service
 	// Next-gen features v3
-	streamingService      *streaming.Service
-	remediationService    *remediation.Service
-	edgeService           *edge.Service
-	blockchainService     *blockchain.Service
-	complianceService     *compliancecenter.Service
-	predictionService     *prediction.Service
-	graphqlsubService     *graphqlsub.Service
-	monetizationService   *monetization.Service
-	multicloudService     *multicloud.FederationService
+	streamingService    *streaming.Service
+	remediationService  *remediation.Service
+	edgeService         *edge.Service
+	blockchainService   *blockchain.Service
+	complianceService   *compliancecenter.Service
+	predictionService   *prediction.Service
+	graphqlsubService   *graphqlsub.Service
+	monetizationService *monetization.Service
+	multicloudService   *multicloud.FederationService
 	// Next-gen features v4
-	slaService            *sla.Service
-	mtlsService           *mtls.Service
-	contractsService      *contracts.Service
-	marketplaceService    *marketplacetpl.Service
-	eventmeshService      *eventmesh.Service
-	debuggerService       *debugger.Service
-	cloudService          *cloud.BillingService
-	cloudTeamService      *cloud.TeamService
-	cloudAuditService     *cloud.AuditService
-	cloudOnboardService   *cloud.OnboardingService
-	cloudctlService       *cloudctl.Service
-	tfproviderService     *tfprovider.Service
-	portalService         *portal.Service
+	slaService          *sla.Service
+	mtlsService         *mtls.Service
+	contractsService    *contracts.Service
+	marketplaceService  *marketplacetpl.Service
+	eventmeshService    *eventmesh.Service
+	debuggerService     *debugger.Service
+	cloudService        *cloud.BillingService
+	cloudTeamService    *cloud.TeamService
+	cloudAuditService   *cloud.AuditService
+	cloudOnboardService *cloud.OnboardingService
+	cloudctlService     *cloudctl.Service
+	tfproviderService   *tfprovider.Service
+	portalService       *portal.Service
 	// Next-gen features v5
-	tracingService        *tracing.Service
-	canaryService         *canary.Service
+	tracingService         *tracing.Service
+	canaryService          *canary.Service
 	autoremediationService *autoremediation.Service
-	schemaregistryService *schemaregistry.Service
-	catalogService        *catalog.Service
-	sandboxService        *sandbox.Service
-	protocolgwService     *protocolgw.Service
-	analyticsembedService *analyticsembed.Service
-	costengineService     *costengine.Service
-	gitopsService         *gitops.Service
-	livemigrationService  *livemigration.Service
-	inboundService        *inbound.Service
-	fanoutService         *fanout.Service
-	mobilesdkService      *mobilesdk.Service
+	schemaregistryService  *schemaregistry.Service
+	catalogService         *catalog.Service
+	sandboxService         *sandbox.Service
+	protocolgwService      *protocolgw.Service
+	analyticsembedService  *analyticsembed.Service
+	costengineService      *costengine.Service
+	gitopsService          *gitops.Service
+	livemigrationService   *livemigration.Service
+	inboundService         *inbound.Service
+	fanoutService          *fanout.Service
+	mobilesdkService       *mobilesdk.Service
 	// Next-gen features v7
-	pluginmarketService    *pluginmarket.Service
-	intelligenceService    *intelligence.Service
-	flowbuilderService     *flowbuilder.Service
-	timetravelService      *timetravel.Service
-	cloudmanagedService    *cloudmanaged.Service
-	callbackService        *callback.Service
-	collabdebugService     *collabdebug.Service
-	wafService             *waf.Service
-	docgenService          *docgen.Service
-	whitelabelService      *whitelabel.Service
+	pluginmarketService *pluginmarket.Service
+	intelligenceService *intelligence.Service
+	flowbuilderService  *flowbuilder.Service
+	timetravelService   *timetravel.Service
+	cloudmanagedService *cloudmanaged.Service
+	callbackService     *callback.Service
+	collabdebugService  *collabdebug.Service
+	wafService          *waf.Service
+	docgenService       *docgen.Service
+	whitelabelService   *whitelabel.Service
 }
 
-func NewServer() *Server {
+func NewServer() (*Server, error) {
 	config := utils.LoadConfig()
 	logger := utils.NewLogger("api-service")
-	
+
 	// Connect to database
 	db, err := database.NewConnection()
 	if err != nil {
 		logger.Error("Failed to connect to database", map[string]interface{}{
 			"error": err.Error(),
 		})
-		panic(err)
+		return nil, fmt.Errorf("database connection failed: %w", err)
 	}
 
 	// Connect to sqlx database for new features
@@ -182,7 +184,7 @@ func NewServer() *Server {
 		logger.Error("Failed to connect to sqlx database", map[string]interface{}{
 			"error": err.Error(),
 		})
-		panic(err)
+		return nil, fmt.Errorf("sqlx database connection failed: %w", err)
 	}
 
 	// Connect to Redis
@@ -191,7 +193,7 @@ func NewServer() *Server {
 		logger.Error("Failed to connect to Redis", map[string]interface{}{
 			"error": err.Error(),
 		})
-		panic(err)
+		return nil, fmt.Errorf("redis connection failed: %w", err)
 	}
 
 	// Run migrations
@@ -199,7 +201,7 @@ func NewServer() *Server {
 		logger.Error("Failed to run migrations", map[string]interface{}{
 			"error": err.Error(),
 		})
-		panic(err)
+		return nil, fmt.Errorf("database migrations failed: %w", err)
 	}
 
 	// Initialize monitoring components
@@ -208,13 +210,13 @@ func NewServer() *Server {
 		logger.Error("Failed to get std database connection", map[string]interface{}{
 			"error": err.Error(),
 		})
-		panic(err)
+		return nil, fmt.Errorf("std database connection failed: %w", err)
 	}
 	healthChecker := monitoring.NewHealthChecker(stdDB, redisClient.Client, logger, "1.0.0")
 	alertManager := monitoring.NewAlertManager(logger)
 	metricsRecorder := monitoring.NewMetricsRecorder()
 	tracer := monitoring.NewTracer("api-service", logger)
-	
+
 	// Setup alert notifiers
 	logNotifier := monitoring.NewLogNotifier(logger)
 	alertManager.AddNotifier(logNotifier)
@@ -348,93 +350,93 @@ func NewServer() *Server {
 
 	whitelabelRepo := whitelabel.NewPostgresRepository(sqlxDB)
 	whitelabelService := whitelabel.NewService(whitelabelRepo)
-	
+
 	// Setup Gin with monitoring middleware
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(tracer.TracingMiddleware())
 	router.Use(metrics.EnhancedMetricsMiddleware(metricsRecorder, alertManager))
-	
+
 	server := &Server{
-		router:               router,
-		db:                   db,
-		sqlxDB:               sqlxDB,
-		redisClient:          redisClient,
-		logger:               logger,
-		config:               config,
-		healthChecker:        healthChecker,
-		alertManager:         alertManager,
-		metricsRecorder:      metricsRecorder,
-		tracer:               tracer,
-		flowService:          flowService,
-		metaService:          metaService,
-		geoService:           geoService,
-		embedService:         embedService,
-		mockService:          mockService,
-		costService:          costService,
-		otelService:          otelService,
-		protocolService:      protocolService,
-		observabilityService: observabilityService,
-		smartlimitService:    smartlimitService,
-		chaosService:         chaosService,
-		cdcService:           cdcService,
-		workflowService:      workflowService,
-		signaturesService:    signaturesService,
-		pushbridgeService:    pushbridgeService,
-		billingService:       billingService,
-		versioningService:    versioningService,
-		federationService:    federationService,
-		streamingService:     streamingService,
-		remediationService:   remediationService,
-		edgeService:          edgeService,
-		blockchainService:    blockchainService,
-		complianceService:    complianceService,
-		predictionService:    predictionService,
-		graphqlsubService:    graphqlsubService,
-		monetizationService:  monetizationService,
-		multicloudService:    multicloudService,
-		slaService:           slaService,
-		mtlsService:          mtlsService,
-		contractsService:     contractsService,
-		marketplaceService:   marketplaceService,
-		eventmeshService:     eventmeshService,
-		debuggerService:      debuggerService,
-		cloudService:          cloudBillingService,
-		cloudTeamService:      cloudTeamService,
-		cloudAuditService:     cloudAuditService,
-		cloudOnboardService:   cloudOnboardService,
-		cloudctlService:      cloudctlService,
-		tfproviderService:    tfproviderService,
-		portalService:        portalService,
-		tracingService:       tracingService,
-		canaryService:        canaryService,
+		router:                 router,
+		db:                     db,
+		sqlxDB:                 sqlxDB,
+		redisClient:            redisClient,
+		logger:                 logger,
+		config:                 config,
+		healthChecker:          healthChecker,
+		alertManager:           alertManager,
+		metricsRecorder:        metricsRecorder,
+		tracer:                 tracer,
+		flowService:            flowService,
+		metaService:            metaService,
+		geoService:             geoService,
+		embedService:           embedService,
+		mockService:            mockService,
+		costService:            costService,
+		otelService:            otelService,
+		protocolService:        protocolService,
+		observabilityService:   observabilityService,
+		smartlimitService:      smartlimitService,
+		chaosService:           chaosService,
+		cdcService:             cdcService,
+		workflowService:        workflowService,
+		signaturesService:      signaturesService,
+		pushbridgeService:      pushbridgeService,
+		billingService:         billingService,
+		versioningService:      versioningService,
+		federationService:      federationService,
+		streamingService:       streamingService,
+		remediationService:     remediationService,
+		edgeService:            edgeService,
+		blockchainService:      blockchainService,
+		complianceService:      complianceService,
+		predictionService:      predictionService,
+		graphqlsubService:      graphqlsubService,
+		monetizationService:    monetizationService,
+		multicloudService:      multicloudService,
+		slaService:             slaService,
+		mtlsService:            mtlsService,
+		contractsService:       contractsService,
+		marketplaceService:     marketplaceService,
+		eventmeshService:       eventmeshService,
+		debuggerService:        debuggerService,
+		cloudService:           cloudBillingService,
+		cloudTeamService:       cloudTeamService,
+		cloudAuditService:      cloudAuditService,
+		cloudOnboardService:    cloudOnboardService,
+		cloudctlService:        cloudctlService,
+		tfproviderService:      tfproviderService,
+		portalService:          portalService,
+		tracingService:         tracingService,
+		canaryService:          canaryService,
 		autoremediationService: autoremediationService,
-		schemaregistryService: schemaregistryService,
-		catalogService:        catalogService,
-		sandboxService:       sandboxService,
-		protocolgwService:    protocolgwService,
-		analyticsembedService: analyticsembedService,
-		costengineService:    costengineService,
-		gitopsService:        gitopsService,
-		livemigrationService: livemigrationService,
-		inboundService:       inboundService,
-		fanoutService:        fanoutService,
-		mobilesdkService:    mobilesdkService,
-		pluginmarketService: pluginmarketService,
-		intelligenceService: intelligenceService,
-		flowbuilderService:  flowbuilderService,
-		timetravelService:   timetravelService,
-		cloudmanagedService: cloudmanagedService,
-		callbackService:     callbackService,
-		collabdebugService:  collabdebugService,
-		wafService:           wafService,
-		docgenService:        docgenService,
-		whitelabelService:    whitelabelService,
+		schemaregistryService:  schemaregistryService,
+		catalogService:         catalogService,
+		sandboxService:         sandboxService,
+		protocolgwService:      protocolgwService,
+		analyticsembedService:  analyticsembedService,
+		costengineService:      costengineService,
+		gitopsService:          gitopsService,
+		livemigrationService:   livemigrationService,
+		inboundService:         inboundService,
+		fanoutService:          fanoutService,
+		mobilesdkService:       mobilesdkService,
+		pluginmarketService:    pluginmarketService,
+		intelligenceService:    intelligenceService,
+		flowbuilderService:     flowbuilderService,
+		timetravelService:      timetravelService,
+		cloudmanagedService:    cloudmanagedService,
+		callbackService:        callbackService,
+		collabdebugService:     collabdebugService,
+		wafService:             wafService,
+		docgenService:          docgenService,
+		whitelabelService:      whitelabelService,
 	}
 
 	server.setupRoutes()
-	
-	return server
+
+	return server, nil
 }
 
 func (s *Server) setupRoutes() {
@@ -442,14 +444,14 @@ func (s *Server) setupRoutes() {
 	tenantRepo := repository.NewTenantRepository(s.db)
 	webhookRepo := repository.NewWebhookEndpointRepository(s.db)
 	deliveryAttemptRepo := repository.NewDeliveryAttemptRepository(s.db)
-	
+
 	// Initialize queue publisher
 	publisher := queue.NewPublisher(s.redisClient)
-	
+
 	// Initialize middleware
 	authMiddleware := auth.NewAuthMiddleware(tenantRepo)
 	rateLimiter := auth.NewRateLimiter(s.redisClient.Client)
-	
+
 	// Initialize handlers
 	tenantHandler := handlers.NewTenantHandler(tenantRepo, s.logger)
 	webhookHandler := handlers.NewWebhookHandler(webhookRepo, deliveryAttemptRepo, publisher, s.logger)
@@ -469,23 +471,23 @@ func (s *Server) setupRoutes() {
 	costHandler := costing.NewHandler(s.costService)
 	otelHandler := otel.NewHandler(s.otelService)
 	protocolHandler := protocols.NewHandler(s.protocolService)
-	
+
 	// Health and monitoring endpoints (no auth required)
 	s.router.GET("/health", monitoringHandler.GetHealthStatus)
 	s.router.GET("/ready", monitoringHandler.GetReadinessStatus)
 	s.router.GET("/live", monitoringHandler.GetLivenessStatus)
 	s.router.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	
+
 	// API Documentation endpoints (no auth required)
 	s.router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	
+
 	// Public endpoints (no auth required)
 	public := s.router.Group("/api/v1")
 	{
 		public.POST("/tenants", tenantHandler.CreateTenant)
 	}
-	
+
 	// Test endpoint receivers (no auth required for webhook testing)
 	testEndpoints := s.router.Group("/test")
 	{
@@ -501,7 +503,7 @@ func (s *Server) setupRoutes() {
 		inboundPublicHandler := inbound.NewHandler(s.inboundService)
 		inboundPublicHandler.RegisterPublicRoutes(inboundPublic)
 	}
-	
+
 	// Protected endpoints (require authentication and rate limiting)
 	protected := s.router.Group("/api/v1")
 	protected.Use(authMiddleware.RequireAuth())
@@ -511,25 +513,25 @@ func (s *Server) setupRoutes() {
 		protected.GET("/tenant", tenantHandler.GetTenant)
 		protected.PUT("/tenant", tenantHandler.UpdateTenant)
 		protected.POST("/tenant/regenerate-key", tenantHandler.RegenerateAPIKey)
-		
+
 		// Webhook endpoint management
 		protected.POST("/webhooks/endpoints", webhookHandler.CreateWebhookEndpoint)
 		protected.GET("/webhooks/endpoints", webhookHandler.GetWebhookEndpoints)
 		protected.GET("/webhooks/endpoints/:id", webhookHandler.GetWebhookEndpoint)
 		protected.PUT("/webhooks/endpoints/:id", webhookHandler.UpdateWebhookEndpoint)
 		protected.DELETE("/webhooks/endpoints/:id", webhookHandler.DeleteWebhookEndpoint)
-		
+
 		// Webhook sending
 		protected.POST("/webhooks/send", webhookHandler.SendWebhook)
 		protected.POST("/webhooks/send/batch", webhookHandler.BatchSendWebhook)
-		
+
 		// Webhook testing and debugging tools
 		protected.POST("/webhooks/test", testingHandler.TestWebhook)
 		protected.POST("/webhooks/test/endpoints", testingHandler.CreateTestEndpoint)
 		protected.GET("/webhooks/deliveries/:id/inspect", testingHandler.InspectDelivery)
 		protected.GET("/webhooks/deliveries/:id/logs", testingHandler.GetDeliveryLogs)
 		protected.GET("/webhooks/realtime", testingHandler.WebSocketUpdates)
-		
+
 		// Monitoring and delivery history
 		protected.GET("/webhooks/deliveries", monitoringHandler.GetDeliveryHistory)
 		protected.GET("/webhooks/deliveries/:id", monitoringHandler.GetDeliveryDetails)
@@ -802,7 +804,7 @@ func (s *Server) setupRoutes() {
 		whitelabelHandler := whitelabel.NewHandler(s.whitelabelService)
 		whitelabelHandler.RegisterRoutes(protected)
 	}
-	
+
 	// Admin endpoints (require authentication but no rate limiting for now)
 	admin := s.router.Group("/api/v1/admin")
 	admin.Use(authMiddleware.RequireAuth())
@@ -813,13 +815,11 @@ func (s *Server) setupRoutes() {
 	}
 }
 
-
-
 func (s *Server) Start(addr string) error {
 	s.logger.Info("Starting API server", map[string]interface{}{
 		"address": addr,
 	})
-	
+
 	return s.router.Run(addr)
 }
 
