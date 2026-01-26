@@ -18,13 +18,13 @@ type MessageHandler interface {
 
 // Consumer handles consuming messages from Redis queues
 type Consumer struct {
-	redis           *database.RedisClient
-	publisher       *Publisher
-	handler         MessageHandler
-	workers         int
-	stopCh          chan struct{}
-	wg              sync.WaitGroup
-	retryProcessor  *RetryProcessor
+	redis          *database.RedisClient
+	publisher      *Publisher
+	handler        MessageHandler
+	workers        int
+	stopCh         chan struct{}
+	wg             sync.WaitGroup
+	retryProcessor *RetryProcessor
 }
 
 // NewConsumer creates a new queue consumer
@@ -175,11 +175,11 @@ func (c *Consumer) handleDeliveryResult(ctx context.Context, message *DeliveryMe
 // scheduleRetry schedules a message for retry with exponential backoff
 func (c *Consumer) scheduleRetry(ctx context.Context, message *DeliveryMessage, result *DeliveryResult) error {
 	message.AttemptNumber++
-	
+
 	// Calculate retry delay using exponential backoff
 	delay := c.calculateRetryDelay(message.AttemptNumber)
-	
-	log.Printf("Scheduling retry for delivery %s (attempt %d) in %v", 
+
+	log.Printf("Scheduling retry for delivery %s (attempt %d) in %v",
 		message.DeliveryID, message.AttemptNumber, delay)
 
 	return c.publisher.PublishDelayedDelivery(ctx, message, delay)
@@ -189,20 +189,30 @@ func (c *Consumer) scheduleRetry(ctx context.Context, message *DeliveryMessage, 
 func (c *Consumer) calculateRetryDelay(attemptNumber int) time.Duration {
 	// Base delay: 1 second
 	baseDelay := time.Second
-	
+
+	// Cap attempt number to prevent bit shift overflow (1<<63 would overflow int64)
+	const maxShift = 18 // 2^18 seconds ~ 3 days, well above maxDelay
+	shift := attemptNumber - 1
+	if shift < 0 {
+		shift = 0
+	}
+	if shift > maxShift {
+		shift = maxShift
+	}
+
 	// Exponential backoff: 2^(attempt-1) * baseDelay
-	delay := time.Duration(1<<uint(attemptNumber-1)) * baseDelay
-	
+	delay := time.Duration(1<<uint(shift)) * baseDelay
+
 	// Cap at 5 minutes
 	maxDelay := 5 * time.Minute
 	if delay > maxDelay {
 		delay = maxDelay
 	}
-	
+
 	// Add jitter (±25%)
 	jitter := time.Duration(float64(delay) * 0.25)
 	jitterMultiplier := float64(2*(time.Now().UnixNano()%2) - 1)
 	delay = delay + time.Duration(float64(jitter)*jitterMultiplier)
-	
+
 	return delay
 }
