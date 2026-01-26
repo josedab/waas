@@ -11,6 +11,20 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// Connection pool configuration defaults
+const (
+	DefaultMaxConns           = 30
+	DefaultMinConns           = 5
+	DefaultMaxConnLifetime    = time.Hour
+	DefaultMaxConnIdleTime    = 30 * time.Minute
+	DefaultHealthCheckTimeout = 5 * time.Second
+
+	TestMaxConns        = 5
+	TestMinConns        = 1
+	TestMaxConnLifetime = 10 * time.Minute
+	TestMaxConnIdleTime = 5 * time.Minute
+)
+
 type DB struct {
 	Pool *pgxpool.Pool
 }
@@ -18,7 +32,7 @@ type DB struct {
 func NewConnection() (*DB, error) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		databaseURL = "postgres://postgres:password@localhost:5432/webhook_platform?sslmode=disable"
+		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
 	}
 
 	config, err := pgxpool.ParseConfig(databaseURL)
@@ -27,10 +41,10 @@ func NewConnection() (*DB, error) {
 	}
 
 	// Configure connection pool
-	config.MaxConns = 30
-	config.MinConns = 5
-	config.MaxConnLifetime = time.Hour
-	config.MaxConnIdleTime = time.Minute * 30
+	config.MaxConns = DefaultMaxConns
+	config.MinConns = DefaultMinConns
+	config.MaxConnLifetime = DefaultMaxConnLifetime
+	config.MaxConnIdleTime = DefaultMaxConnIdleTime
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
@@ -56,7 +70,7 @@ func (db *DB) Close() {
 func GetStdDB() (*sql.DB, error) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		databaseURL = "postgres://postgres:password@localhost:5432/webhook_platform?sslmode=disable"
+		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
 	}
 	return sql.Open("pgx", databaseURL)
 }
@@ -66,10 +80,10 @@ func (db *DB) HealthCheck() error {
 	if db.Pool == nil {
 		return fmt.Errorf("database pool is nil")
 	}
-	
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultHealthCheckTimeout)
 	defer cancel()
-	
+
 	return db.Pool.Ping(ctx)
 }
 
@@ -87,10 +101,10 @@ func NewTestConnection() (*DB, error) {
 	}
 
 	// Configure connection pool for testing (smaller pool)
-	config.MaxConns = 5
-	config.MinConns = 1
-	config.MaxConnLifetime = time.Minute * 10
-	config.MaxConnIdleTime = time.Minute * 5
+	config.MaxConns = TestMaxConns
+	config.MinConns = TestMinConns
+	config.MaxConnLifetime = TestMaxConnLifetime
+	config.MaxConnIdleTime = TestMaxConnIdleTime
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
