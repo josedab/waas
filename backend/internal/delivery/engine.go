@@ -22,6 +22,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// Delivery engine configuration defaults
+const (
+	DefaultMaxWorkers            = 10
+	DefaultRequestTimeout        = 30 * time.Second
+	DefaultMaxIdleConns          = 100
+	DefaultMaxIdleConnsPerHost   = 10
+	DefaultIdleConnTimeout       = 90 * time.Second
+	DefaultTLSHandshakeTimeout   = 10 * time.Second
+	DefaultResponseHeaderTimeout = 10 * time.Second
+	DefaultDialTimeout           = 30 * time.Second
+	DefaultDialKeepAlive         = 30 * time.Second
+	DefaultExpectContinueTimeout = 1 * time.Second
+	MaxResponseBodySize          = 64 * 1024 // 64KB
+)
+
 // DeliveryEngine handles webhook delivery processing
 type DeliveryEngine struct {
 	db              *database.DB
@@ -321,8 +336,8 @@ func (e *DeliveryEngine) performDelivery(ctx context.Context, endpoint *models.W
 	}
 	defer resp.Body.Close()
 
-	// Read response body (limit to 64KB)
-	bodyReader := io.LimitReader(resp.Body, 64*1024)
+	// Read response body (limit to MaxResponseBodySize)
+	bodyReader := io.LimitReader(resp.Body, MaxResponseBodySize)
 	responseBody, err := io.ReadAll(bodyReader)
 	if err != nil {
 		e.logger.Warn("Failed to read response body", map[string]interface{}{
@@ -365,19 +380,67 @@ func (e *DeliveryEngine) performDelivery(ctx context.Context, endpoint *models.W
 	return result
 }
 
+// isPrivateIP returns true if the IP is in a private/internal range that
+// should not be reachable via user-provided webhook URLs (SSRF protection).
+func isPrivateIP(ip net.IP) bool {
+	privateRanges := []net.IPNet{
+		{IP: net.IPv4(127, 0, 0, 0), Mask: net.CIDRMask(8, 32)},    // 127.0.0.0/8
+		{IP: net.IPv4(10, 0, 0, 0), Mask: net.CIDRMask(8, 32)},     // 10.0.0.0/8
+		{IP: net.IPv4(172, 16, 0, 0), Mask: net.CIDRMask(12, 32)},  // 172.16.0.0/12
+		{IP: net.IPv4(192, 168, 0, 0), Mask: net.CIDRMask(16, 32)}, // 192.168.0.0/16
+		{IP: net.IPv4(169, 254, 0, 0), Mask: net.CIDRMask(16, 32)}, // 169.254.0.0/16
+		{IP: net.IPv4(0, 0, 0, 0), Mask: net.CIDRMask(8, 32)},      // 0.0.0.0/8
+	}
+	for _, cidr := range privateRanges {
+		if cidr.Contains(ip) {
+			return true
+		}
+	}
+	// IPv6 loopback
+	if ip.Equal(net.IPv6loopback) {
+		return true
+	}
+	return false
+}
+
+// ssrfSafeDialContext wraps a net.Dialer to reject connections to private IPs.
+func ssrfSafeDialContext(dialer *net.Dialer) func(ctx context.Context, network, addr string) (net.Conn, error) {
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid address %q: %w", addr, err)
+		}
+
+		ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if err != nil {
+			return nil, fmt.Errorf("DNS resolution failed for %q: %w", host, err)
+		}
+
+		for _, ip := range ips {
+			if isPrivateIP(ip.IP) {
+				return nil, fmt.Errorf("connections to private/internal IP %s are not allowed (SSRF protection)", ip.IP)
+			}
+		}
+
+		return dialer.DialContext(ctx, network, net.JoinHostPort(host, port))
+	}
+}
+
 // createHTTPClient creates an optimized HTTP client for webhook delivery
 func createHTTPClient(config DeliveryConfig) *http.Client {
+	dialer := &net.Dialer{
+		Timeout:   DefaultDialTimeout,
+		KeepAlive: DefaultDialKeepAlive,
+	}
+
 	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
+		DialContext:           ssrfSafeDialContext(dialer),
 		MaxIdleConns:          config.MaxIdleConns,
 		MaxIdleConnsPerHost:   config.MaxIdleConnsPerHost,
 		IdleConnTimeout:       config.IdleConnTimeout,
 		TLSHandshakeTimeout:   config.TLSHandshakeTimeout,
 		ResponseHeaderTimeout: config.ResponseHeaderTimeout,
-		ExpectContinueTimeout: 1 * time.Second,
+		ExpectContinueTimeout: DefaultExpectContinueTimeout,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: false,
 		},
@@ -392,13 +455,13 @@ func createHTTPClient(config DeliveryConfig) *http.Client {
 // getDeliveryConfig returns the delivery configuration
 func getDeliveryConfig() DeliveryConfig {
 	return DeliveryConfig{
-		MaxWorkers:            10,
-		RequestTimeout:        30 * time.Second,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   10,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: 10 * time.Second,
+		MaxWorkers:            DefaultMaxWorkers,
+		RequestTimeout:        DefaultRequestTimeout,
+		MaxIdleConns:          DefaultMaxIdleConns,
+		MaxIdleConnsPerHost:   DefaultMaxIdleConnsPerHost,
+		IdleConnTimeout:       DefaultIdleConnTimeout,
+		TLSHandshakeTimeout:   DefaultTLSHandshakeTimeout,
+		ResponseHeaderTimeout: DefaultResponseHeaderTimeout,
 	}
 }
 
