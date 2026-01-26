@@ -1,0 +1,209 @@
+# Testing Guide
+
+How to write, run, and debug tests in the WaaS codebase.
+
+## Quick Commands
+
+```bash
+make test               # Core package tests with coverage
+make test-all           # All tests (includes enterprise packages)
+make test-coverage      # Per-package coverage breakdown
+make test-status        # Show which packages have test files
+make test-integration   # Integration tests in Docker (isolated DB)
+
+# Run a specific package
+go test -v ./pkg/repository/...
+
+# Run a specific test
+go test -v -run TestValidateTenant ./pkg/models/...
+
+# Run with race detection
+go test -race ./pkg/queue/...
+```
+
+## Test Conventions
+
+### File naming
+- Unit tests: `*_test.go` in the same package
+- Unit tests (external): `*_unit_test.go` for black-box testing
+- Integration tests: `*_integration_test.go` (need live DB/Redis)
+
+### Test structure
+We use `testify/assert` and table-driven subtests:
+
+```go
+package mypackage
+
+import (
+    "testing"
+    "github.com/stretchr/testify/assert"
+)
+
+func TestMyFunction(t *testing.T) {
+    t.Parallel()
+
+    t.Run("success case", func(t *testing.T) {
+        result, err := MyFunction("valid-input")
+        assert.NoError(t, err)
+        assert.Equal(t, "expected", result)
+    })
+
+    t.Run("error case", func(t *testing.T) {
+        _, err := MyFunction("")
+        assert.Error(t, err)
+        assert.Contains(t, err.Error(), "input required")
+    })
+}
+```
+
+### Table-driven tests (preferred for multiple cases)
+
+```go
+func TestValidateURL(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   string
+        wantErr bool
+    }{
+        {"valid https", "https://example.com/webhook", false},
+        {"valid with port", "https://example.com:8443/hook", false},
+        {"http rejected", "http://example.com/webhook", true},
+        {"empty string", "", true},
+        {"no scheme", "example.com/webhook", true},
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := ValidateURL(tt.input)
+            if tt.wantErr {
+                assert.Error(t, err)
+            } else {
+                assert.NoError(t, err)
+            }
+        })
+    }
+}
+```
+
+## Test Layers
+
+### 1. Unit tests (no external dependencies)
+
+Test pure functions, models, validation logic. These run fast and need no Docker.
+
+**Example:** `pkg/models/validation_test.go` — tests model validation rules.
+
+```go
+// Good: tests pure logic, no DB needed
+func TestValidateTenant(t *testing.T) {
+    tenant := &Tenant{Name: "test", APIKeyHash: "hash", ...}
+    err := ValidateTenant(tenant)
+    assert.NoError(t, err)
+}
+```
+
+### 2. Repository/integration tests (need PostgreSQL)
+
+Test database queries against a real database. These skip if `TEST_DATABASE_URL` is not set.
+
+**Example:** `pkg/repository/test_helpers_test.go` — provides `setupTestDB()` helper.
+
+```go
+func setupTestDB(t *testing.T) *database.DB {
+    t.Helper()
+    dbURL := os.Getenv("TEST_DATABASE_URL")
+    if dbURL == "" {
+        t.Skip("TEST_DATABASE_URL not set")
+    }
+    db, err := database.NewTestConnection()
+    if err != nil {
+        t.Fatalf("failed to connect: %v", err)
+    }
+    t.Cleanup(func() { db.Close() })
+    return db
+}
+```
+
+To run integration tests:
+```bash
+# Start test database
+docker-compose up -d postgres
+
+# Set test DB URL and run
+TEST_DATABASE_URL="postgres://postgres:password@localhost:5432/webhook_platform_test?sslmode=disable" \
+  go test -v ./pkg/repository/...
+```
+
+### 3. Handler tests (HTTP layer)
+
+Test API handlers using `httptest` and Gin's test mode:
+
+```go
+func TestHandler(t *testing.T) {
+    gin.SetMode(gin.TestMode)
+    w := httptest.NewRecorder()
+    c, _ := gin.CreateTestContext(w)
+
+    c.Set("tenant_id", "test-tenant-id")
+    c.Request = httptest.NewRequest("GET", "/api/v1/resource", nil)
+
+    handler.GetResource(c)
+    assert.Equal(t, http.StatusOK, w.Code)
+}
+```
+
+**Example:** `internal/api/handlers/tenant_handler_test.go`
+
+### 4. End-to-end tests
+
+Full flow tests using real HTTP calls against a running server. Found in `test/e2e/`.
+
+```bash
+# Start the full stack first
+make run-all
+
+# Then run e2e tests
+go test -v ./test/e2e/...
+```
+
+## Mocking
+
+Use interfaces for dependency injection. All service constructors accept an interface:
+
+```go
+type Repository interface {
+    GetByID(ctx context.Context, id uuid.UUID) (*Model, error)
+    Create(ctx context.Context, m *Model) error
+}
+
+// In tests, create a mock:
+type mockRepo struct{}
+func (m *mockRepo) GetByID(ctx context.Context, id uuid.UUID) (*Model, error) {
+    return &Model{ID: id, Name: "test"}, nil
+}
+func (m *mockRepo) Create(ctx context.Context, model *Model) error {
+    return nil
+}
+
+func TestService(t *testing.T) {
+    svc := NewService(&mockRepo{})
+    result, err := svc.GetByID(context.Background(), uuid.New())
+    assert.NoError(t, err)
+    assert.Equal(t, "test", result.Name)
+}
+```
+
+## CI
+
+Tests run automatically on every push via `.github/workflows/ci.yml`. The CI pipeline:
+1. Builds all packages (`go build ./...`)
+2. Runs `go vet ./...`
+3. Runs `make test`
+
+To replicate CI locally: `go build ./... && go vet ./... && make test`
+
+## Troubleshooting
+
+- **Tests skip with "TEST_DATABASE_URL not set"** — These are integration tests. Start Docker: `docker-compose up -d`
+- **"connection refused"** — PostgreSQL/Redis not running. Run `docker-compose up -d`
+- **Slow tests** — Use `-short` flag to skip slow tests: `go test -short ./...`
+- **Race conditions** — Run with `-race`: `go test -race ./pkg/queue/...`
