@@ -27,24 +27,24 @@ type TestingHandler struct {
 
 // TestWebhookRequest represents a webhook test request
 type TestWebhookRequest struct {
-	URL           string            `json:"url" binding:"required"`
-	Payload       json.RawMessage   `json:"payload" binding:"required"`
-	Headers       map[string]string `json:"headers,omitempty"`
-	Method        string            `json:"method,omitempty"` // defaults to POST
-	Timeout       int               `json:"timeout,omitempty"` // seconds, defaults to 30
+	URL     string            `json:"url" binding:"required"`
+	Payload json.RawMessage   `json:"payload" binding:"required"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Method  string            `json:"method,omitempty"`  // defaults to POST
+	Timeout int               `json:"timeout,omitempty"` // seconds, defaults to 30
 }
 
 // TestWebhookResponse represents the response from a webhook test
 type TestWebhookResponse struct {
-	TestID       uuid.UUID         `json:"test_id"`
-	URL          string            `json:"url"`
-	Status       string            `json:"status"`
-	HTTPStatus   *int              `json:"http_status,omitempty"`
-	ResponseBody *string           `json:"response_body,omitempty"`
-	ErrorMessage *string           `json:"error_message,omitempty"`
-	Latency      *int64            `json:"latency_ms,omitempty"`
-	RequestID    string            `json:"request_id"`
-	TestedAt     time.Time         `json:"tested_at"`
+	TestID       uuid.UUID `json:"test_id"`
+	URL          string    `json:"url"`
+	Status       string    `json:"status"`
+	HTTPStatus   *int      `json:"http_status,omitempty"`
+	ResponseBody *string   `json:"response_body,omitempty"`
+	ErrorMessage *string   `json:"error_message,omitempty"`
+	Latency      *int64    `json:"latency_ms,omitempty"`
+	RequestID    string    `json:"request_id"`
+	TestedAt     time.Time `json:"tested_at"`
 }
 
 // CreateTestEndpointRequest represents a request to create a temporary test endpoint
@@ -79,38 +79,38 @@ type DeliveryInspectionResponse struct {
 }
 
 type DeliveryRequestDetails struct {
-	URL           string            `json:"url"`
-	Method        string            `json:"method"`
-	Headers       map[string]string `json:"headers"`
-	PayloadHash   string            `json:"payload_hash"`
-	PayloadSize   int               `json:"payload_size"`
-	Signature     string            `json:"signature"`
-	ScheduledAt   time.Time         `json:"scheduled_at"`
+	URL         string            `json:"url"`
+	Method      string            `json:"method"`
+	Headers     map[string]string `json:"headers"`
+	PayloadHash string            `json:"payload_hash"`
+	PayloadSize int               `json:"payload_size"`
+	Signature   string            `json:"signature"`
+	ScheduledAt time.Time         `json:"scheduled_at"`
 }
 
 type DeliveryResponseDetails struct {
-	HTTPStatus   int               `json:"http_status"`
-	Headers      map[string]string `json:"headers,omitempty"`
-	Body         string            `json:"body,omitempty"`
-	BodySize     int               `json:"body_size"`
-	DeliveredAt  time.Time         `json:"delivered_at"`
-	Latency      int64             `json:"latency_ms"`
+	HTTPStatus  int               `json:"http_status"`
+	Headers     map[string]string `json:"headers,omitempty"`
+	Body        string            `json:"body,omitempty"`
+	BodySize    int               `json:"body_size"`
+	DeliveredAt time.Time         `json:"delivered_at"`
+	Latency     int64             `json:"latency_ms"`
 }
 
 type DeliveryTimelineEvent struct {
-	Timestamp   time.Time `json:"timestamp"`
-	Event       string    `json:"event"`
-	Description string    `json:"description"`
+	Timestamp   time.Time              `json:"timestamp"`
+	Event       string                 `json:"event"`
+	Description string                 `json:"description"`
 	Details     map[string]interface{} `json:"details,omitempty"`
 }
 
 type DeliveryErrorDetails struct {
-	ErrorType    string `json:"error_type"`
-	ErrorMessage string `json:"error_message"`
-	HTTPStatus   *int   `json:"http_status,omitempty"`
-	RetryCount   int    `json:"retry_count"`
+	ErrorType    string     `json:"error_type"`
+	ErrorMessage string     `json:"error_message"`
+	HTTPStatus   *int       `json:"http_status,omitempty"`
+	RetryCount   int        `json:"retry_count"`
 	NextRetryAt  *time.Time `json:"next_retry_at,omitempty"`
-	Suggestions  []string `json:"suggestions,omitempty"`
+	Suggestions  []string   `json:"suggestions,omitempty"`
 }
 
 // WebSocketMessage represents a real-time update message
@@ -123,8 +123,21 @@ type WebSocketMessage struct {
 func NewTestingHandler(webhookRepo repository.WebhookEndpointRepository, deliveryAttemptRepo repository.DeliveryAttemptRepository, publisher queue.PublisherInterface, logger *utils.Logger) *TestingHandler {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			// In production, implement proper origin checking
-			return true
+			origin := r.Header.Get("Origin")
+			if origin == "" {
+				return true // Allow non-browser clients
+			}
+			allowedOrigins := []string{
+				"http://localhost:3000",
+				"http://localhost:8080",
+				"https://app.waas.dev",
+			}
+			for _, allowed := range allowedOrigins {
+				if origin == allowed {
+					return true
+				}
+			}
+			return false
 		},
 	}
 
@@ -276,7 +289,7 @@ func (h *TestingHandler) CreateTestEndpoint(c *gin.Context) {
 	endpointID := uuid.New()
 	// In production, this would be your actual domain
 	testURL := fmt.Sprintf("http://localhost:8080/test/%s", endpointID.String())
-	
+
 	now := time.Now()
 	expiresAt := now.Add(time.Duration(req.TTL) * time.Second)
 
@@ -459,8 +472,8 @@ func (h *TestingHandler) GetDeliveryLogs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"delivery_id": deliveryID,
-		"logs":        logs,
+		"delivery_id":    deliveryID,
+		"logs":           logs,
 		"total_attempts": len(attempts),
 	})
 }
@@ -501,7 +514,7 @@ func (h *TestingHandler) WebSocketUpdates(c *gin.Context) {
 
 func (h *TestingHandler) performWebhookTest(ctx context.Context, req *TestWebhookRequest, testID uuid.UUID, requestID string) *TestWebhookResponse {
 	startTime := time.Now()
-	
+
 	response := &TestWebhookResponse{
 		TestID:    testID,
 		URL:       req.URL,
@@ -527,7 +540,7 @@ func (h *TestingHandler) performWebhookTest(ctx context.Context, req *TestWebhoo
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("User-Agent", "Webhook-Platform-Test/1.0")
 	httpReq.Header.Set("X-Request-ID", requestID)
-	
+
 	for key, value := range req.Headers {
 		httpReq.Header.Set(key, value)
 	}
@@ -569,7 +582,7 @@ func (h *TestingHandler) performWebhookTest(ctx context.Context, req *TestWebhoo
 
 func (h *TestingHandler) buildDeliveryInspection(deliveryID uuid.UUID, endpoint *models.WebhookEndpoint, attempts []*models.DeliveryAttempt) *DeliveryInspectionResponse {
 	latestAttempt := attempts[len(attempts)-1]
-	
+
 	inspection := &DeliveryInspectionResponse{
 		DeliveryID:    deliveryID,
 		EndpointID:    endpoint.ID,
@@ -593,12 +606,12 @@ func (h *TestingHandler) buildDeliveryInspection(deliveryID uuid.UUID, endpoint 
 			HTTPStatus:  *latestAttempt.HTTPStatus,
 			DeliveredAt: *latestAttempt.DeliveredAt,
 		}
-		
+
 		if latestAttempt.ResponseBody != nil {
 			inspection.Response.Body = *latestAttempt.ResponseBody
 			inspection.Response.BodySize = len(*latestAttempt.ResponseBody)
 		}
-		
+
 		// Calculate latency if possible
 		if latestAttempt.DeliveredAt != nil {
 			latency := latestAttempt.DeliveredAt.Sub(latestAttempt.ScheduledAt).Milliseconds()
@@ -635,7 +648,7 @@ func (h *TestingHandler) buildDeliveryTimeline(attempts []*models.DeliveryAttemp
 		if attempt.DeliveredAt != nil {
 			event := "delivered"
 			description := fmt.Sprintf("Delivery attempt %d completed", attempt.AttemptNumber)
-			
+
 			if attempt.Status == "failed" {
 				event = "failed"
 				description = fmt.Sprintf("Delivery attempt %d failed", attempt.AttemptNumber)
@@ -645,11 +658,11 @@ func (h *TestingHandler) buildDeliveryTimeline(attempts []*models.DeliveryAttemp
 				"attempt_number": attempt.AttemptNumber,
 				"status":         attempt.Status,
 			}
-			
+
 			if attempt.HTTPStatus != nil {
 				details["http_status"] = *attempt.HTTPStatus
 			}
-			
+
 			if attempt.ErrorMessage != nil {
 				details["error_message"] = *attempt.ErrorMessage
 			}
@@ -673,7 +686,7 @@ func (h *TestingHandler) buildErrorDetails(attempt *models.DeliveryAttempt, retr
 
 	if attempt.ErrorMessage != nil {
 		errorDetails.ErrorMessage = *attempt.ErrorMessage
-		
+
 		// Categorize error type based on message
 		errorMsg := strings.ToLower(*attempt.ErrorMessage)
 		switch {
@@ -710,7 +723,7 @@ func (h *TestingHandler) buildErrorDetails(attempt *models.DeliveryAttempt, retr
 
 	if attempt.HTTPStatus != nil {
 		errorDetails.HTTPStatus = attempt.HTTPStatus
-		
+
 		// Add HTTP status specific suggestions
 		switch *attempt.HTTPStatus {
 		case 400:
@@ -738,7 +751,7 @@ func (h *TestingHandler) handleWebSocketConnection(conn *websocket.Conn, tenantI
 		Data:      map[string]interface{}{"tenant_id": tenantID},
 		Timestamp: time.Now(),
 	}
-	
+
 	if err := conn.WriteJSON(welcomeMsg); err != nil {
 		h.logger.Error("Failed to send welcome message", map[string]interface{}{
 			"error": err.Error(),

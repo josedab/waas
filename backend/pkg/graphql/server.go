@@ -22,7 +22,21 @@ func NewServer(resolver *Resolver) *Server {
 		resolver: resolver,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
-				return true // Configure properly in production
+				origin := r.Header.Get("Origin")
+				if origin == "" {
+					return true // Allow non-browser clients
+				}
+				allowedOrigins := []string{
+					"http://localhost:3000",
+					"http://localhost:8080",
+					"https://app.waas.dev",
+				}
+				for _, allowed := range allowedOrigins {
+					if origin == allowed {
+						return true
+					}
+				}
+				return false
 			},
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -39,15 +53,15 @@ type GraphQLRequest struct {
 
 // GraphQLResponse represents a GraphQL response
 type GraphQLResponse struct {
-	Data   interface{}      `json:"data,omitempty"`
-	Errors []GraphQLError   `json:"errors,omitempty"`
+	Data   interface{}    `json:"data,omitempty"`
+	Errors []GraphQLError `json:"errors,omitempty"`
 }
 
 // GraphQLError represents a GraphQL error
 type GraphQLError struct {
-	Message   string                 `json:"message"`
-	Locations []Location             `json:"locations,omitempty"`
-	Path      []interface{}          `json:"path,omitempty"`
+	Message    string                 `json:"message"`
+	Locations  []Location             `json:"locations,omitempty"`
+	Path       []interface{}          `json:"path,omitempty"`
 	Extensions map[string]interface{} `json:"extensions,omitempty"`
 }
 
@@ -143,7 +157,7 @@ func (s *Server) handleWebSocketConnection(conn *websocket.Conn, c *gin.Context)
 			if payload, ok := msg.Payload["authToken"].(string); ok {
 				tenantID = s.authenticateToken(payload)
 			}
-			
+
 			if tenantID == "" {
 				conn.WriteJSON(WebSocketMessage{
 					Type:    GQLConnectionError,
@@ -151,7 +165,7 @@ func (s *Server) handleWebSocketConnection(conn *websocket.Conn, c *gin.Context)
 				})
 				return
 			}
-			
+
 			conn.WriteJSON(WebSocketMessage{Type: GQLConnectionAck})
 
 		case GQLStart:
@@ -167,7 +181,7 @@ func (s *Server) handleWebSocketConnection(conn *websocket.Conn, c *gin.Context)
 			// Parse subscription query
 			query, _ := msg.Payload["query"].(string)
 			variables, _ := msg.Payload["variables"].(map[string]interface{})
-			
+
 			channel, filter := s.parseSubscription(query, variables)
 			if channel == "" {
 				conn.WriteJSON(WebSocketMessage{
@@ -241,7 +255,7 @@ func (s *Server) parseSubscription(query string, variables map[string]interface{
 }
 
 func containsSubscription(query, name string) bool {
-	return len(query) > 0 && (query == name || 
+	return len(query) > 0 && (query == name ||
 		contains(query, "subscription") && contains(query, name))
 }
 
@@ -304,7 +318,7 @@ func (s *Server) HandlePlayground(c *gin.Context) {
   })</script>
 </body>
 </html>`, c.Request.URL.Path[:len(c.Request.URL.Path)-11]) // Remove "/playground"
-	
+
 	c.Header("Content-Type", "text/html")
 	c.String(http.StatusOK, html)
 }

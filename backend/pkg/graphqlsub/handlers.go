@@ -25,7 +25,21 @@ func NewHandler(service *Service) *Handler {
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
 			CheckOrigin: func(r *http.Request) bool {
-				return true // Configure for production
+				origin := r.Header.Get("Origin")
+				if origin == "" {
+					return true // Allow non-browser clients
+				}
+				allowedOrigins := []string{
+					"http://localhost:3000",
+					"http://localhost:8080",
+					"https://app.waas.dev",
+				}
+				for _, allowed := range allowedOrigins {
+					if origin == allowed {
+						return true
+					}
+				}
+				return false
 			},
 			EnableCompression: true,
 		},
