@@ -82,6 +82,27 @@ Provides metrics, aggregations, and real-time monitoring.
 6. On failure, the engine schedules a retry with backoff
 7. **Analytics Service** aggregates delivery data for dashboards
 
+## What Actually Runs (Minimal Core)
+
+If you stripped the platform to its essentials, the entire webhook lifecycle depends on only these packages:
+
+```
+internal/api          ← HTTP server, routes, middleware
+internal/delivery     ← Delivery engine, retry logic
+pkg/models            ← Data types (Tenant, Endpoint, Delivery, Event)
+pkg/repository        ← PostgreSQL queries (sqlx)
+pkg/queue             ← Redis job queue
+pkg/auth              ← API key validation, tenant middleware
+pkg/errors            ← Structured error responses
+pkg/signatures        ← HMAC webhook signing
+pkg/database          ← DB connection pool
+pkg/utils             ← Shared helpers
+```
+
+**Everything else (~80 packages) is additive.** Enterprise packages provide advanced features (AI, billing, multi-cloud, observability) but can be removed without affecting core webhook delivery.
+
+> **Rule of thumb:** If your change only involves sending or receiving webhooks, you should only need the 10 packages listed above.
+
 ## Package Structure
 
 ### Core (`internal/`)
@@ -133,45 +154,85 @@ These packages provide enterprise-grade capabilities. They are not required for 
 
 > **Tip:** If you're fixing a bug or adding a feature, you almost certainly only need packages from the 🟢 Core and 🔵 Standard tiers. Enterprise packages are additive and won't affect core webhook delivery.
 
+**Status key:** 🟢 Stable — 🟡 Beta — 🔵 Alpha — ⚪ Planned
+
 **Observability & Analytics:**
-- `otel` - OpenTelemetry integration
-- `observability` - Observability utilities
-- `anomaly` - Anomaly detection on delivery patterns
+
+| Package | Purpose | Status |
+|---------|---------|--------|
+| `otel` | OpenTelemetry integration | 🟡 Beta |
+| `observability` | Observability utilities | 🟡 Beta |
+| `anomaly` | Anomaly detection on delivery patterns | 🔵 Alpha |
+| `tracing` | Distributed tracing | 🟡 Beta |
+| `analyticsembed` | Embeddable analytics SDK | 🔵 Alpha |
 
 **Advanced Features:**
-- `ai` - AI/ML classification and pattern analysis
-- `prediction` - Predictive analytics for delivery success
-- `flow` - Workflow/event flow orchestration
-- `connectors` - Third-party service connectors
-- `streaming` - Event streaming
-- `eventsourcing` - Event sourcing patterns
-- `cdc` - Change data capture
-- `graphql` / `graphqlsub` - GraphQL API and subscriptions
+
+| Package | Purpose | Status |
+|---------|---------|--------|
+| `ai` | AI/ML classification and pattern analysis | 🔵 Alpha |
+| `prediction` | Predictive analytics for delivery success | 🔵 Alpha |
+| `flow` | Workflow/event flow orchestration | 🟡 Beta |
+| `connectors` | Third-party service connectors | 🔵 Alpha |
+| `streaming` | Event streaming | 🟡 Beta |
+| `eventsourcing` | Event sourcing patterns | 🔵 Alpha |
+| `cdc` | Change data capture | 🟡 Beta |
+| `graphql` / `graphqlsub` | GraphQL API and subscriptions | 🔵 Alpha |
+| `intelligence` | AI-powered failure prediction & anomaly detection | 🔵 Alpha |
+| `flowbuilder` | Visual DAG workflow builder with execution engine | 🔵 Alpha |
+| `timetravel` | Event replay & point-in-time recovery | 🔵 Alpha |
+| `callback` | Bi-directional webhooks with correlation tracking | 🔵 Alpha |
+| `collabdebug` | Multiplayer debugging sessions | 🔵 Alpha |
 
 **Infrastructure:**
-- `multicloud` / `cloud` - Multi-cloud provider support
-- `multiregion` / `georouting` - Multi-region routing
-- `federation` - Cross-region federation
-- `edge` - Edge computing support
-- `gateway` - API gateway patterns
-- `protocols` - Multi-protocol support (HTTP, gRPC, MQTT)
+
+| Package | Purpose | Status |
+|---------|---------|--------|
+| `multicloud` / `cloud` | Multi-cloud provider support | 🟡 Beta |
+| `multiregion` / `georouting` | Multi-region routing | 🟡 Beta |
+| `federation` | Cross-region federation | 🔵 Alpha |
+| `edge` | Edge computing support | 🔵 Alpha |
+| `gateway` | API gateway patterns | 🔵 Alpha |
+| `protocols` / `protocolgw` | Multi-protocol support (HTTP, gRPC, MQTT) | 🔵 Alpha |
+| `cloudmanaged` | Managed cloud offering (signup, billing, tiers) | 🔵 Alpha |
+| `whitelabel` | Custom domains, branding, sub-tenant management | 🔵 Alpha |
 
 **Business:**
-- `billing` / `monetization` / `costing` - Billing and usage metering
-- `marketplace` / `catalog` - Extension marketplace
-- `compliancecenter` / `contracts` - Compliance (GDPR, HIPAA, SOC2)
-- `blockchain` - Blockchain audit trail
+
+| Package | Purpose | Status |
+|---------|---------|--------|
+| `billing` / `monetization` / `costing` | Billing and usage metering | 🟡 Beta |
+| `marketplace` / `catalog` | Extension marketplace | 🔵 Alpha |
+| `compliancecenter` / `contracts` | Compliance (GDPR, HIPAA, SOC2) | 🔵 Alpha |
+| `blockchain` | Blockchain audit trail | 🔵 Alpha |
+| `pluginmarket` | Plugin SDK, marketplace, lifecycle, reviews | 🔵 Alpha |
+| `costengine` | Cost attribution engine | 🔵 Alpha |
+
+**Security & Operations:**
+
+| Package | Purpose | Status |
+|---------|---------|--------|
+| `waf` | Payload scanning, WAF rules, threat detection | 🔵 Alpha |
+| `zerotrust` | Zero-trust security model | 🔵 Alpha |
+| `mtls` | mTLS certificate management | 🔵 Alpha |
+| `canary` | Canary deployments | 🔵 Alpha |
+| `chaos` | Chaos engineering utilities | 🔵 Alpha |
+| `gitops` | GitOps configuration management | 🔵 Alpha |
 
 **Developer Tools:**
-- `playground` - Interactive webhook playground
-- `embed` - Embeddable webhook widgets
-- `metaevents` - Meta-event notifications
-- `workflow` - Workflow automation
-- `versioning` - API versioning
-- `smartlimit` - Intelligent rate limiting
-- `pushbridge` - Push notification bridge
-- `zerotrust` - Zero-trust security model
-- `chaos` - Chaos engineering utilities
+
+| Package | Purpose | Status |
+|---------|---------|--------|
+| `playground` | Interactive webhook playground | 🟡 Beta |
+| `embed` | Embeddable webhook widgets | 🟡 Beta |
+| `metaevents` | Meta-event notifications | 🟡 Beta |
+| `workflow` | Workflow automation | 🟡 Beta |
+| `versioning` | API versioning | 🟡 Beta |
+| `smartlimit` | Intelligent rate limiting | 🟡 Beta |
+| `pushbridge` | Push notification bridge | 🔵 Alpha |
+| `debugger` | Time-travel debugging | 🔵 Alpha |
+| `docgen` | Auto-generate webhook docs, code samples, widgets | 🔵 Alpha |
+| `sandbox` | Webhook replay sandbox | 🔵 Alpha |
 
 ## Database
 
@@ -184,8 +245,8 @@ Migrations live in `migrations/` and are applied via `make migrate-up`.
 
 ## Common Questions for New Contributors
 
-**Q: There are 75+ packages — which ones do I need to understand?**
-Start with `internal/api`, `pkg/models`, `pkg/repository`, and `pkg/queue`. These handle 90% of the core webhook workflow. Enterprise packages (🟡 tier) are additive features that don't affect core delivery.
+**Q: There are 90+ packages — which ones do I need to understand?**
+Start with `internal/api`, `pkg/models`, `pkg/repository`, and `pkg/queue`. These handle 90% of the core webhook workflow. Enterprise packages (🟡 tier) are additive features that don't affect core delivery. See the status badges (🟢 Stable / 🟡 Beta / 🔵 Alpha) in the tables above.
 
 **Q: What's the difference between `pkg/billing`, `pkg/monetization`, and `pkg/costing`?**
 - `billing` — Stripe integration and subscription management
