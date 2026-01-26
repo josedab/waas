@@ -370,4 +370,128 @@ kubectl patch ingress webhook-platform-ingress -n webhook-platform \
 6. Scale services back up
 7. Monitor for issues
 
+---
+
+## Development → Staging → Production Path
+
+This section covers how to promote WaaS from local development to production.
+
+### Environment Overview
+
+| Environment | Purpose | Infrastructure | Database |
+|-------------|---------|---------------|----------|
+| **Local dev** | Feature development | `docker-compose up` | Local PostgreSQL + Redis |
+| **CI** | Automated testing | GitHub Actions | Ephemeral test containers |
+| **Staging** | Pre-release validation | Single VM or small K8s cluster | Managed PostgreSQL |
+| **Production** | Live traffic | Kubernetes cluster (see above) | Managed PostgreSQL + Redis |
+
+### Step 1: Local Development
+
+```bash
+cd backend
+make dev-setup          # Creates .env, starts Docker, runs migrations
+make run-all            # Runs API + delivery + analytics
+
+# Optional: Add observability
+docker-compose -f docker-compose.yml -f docker-compose.observability.yml up -d
+```
+
+Validate with:
+```bash
+make test               # Core tests
+make build-check        # Compile all packages
+make lint               # Code quality
+```
+
+### Step 2: CI Validation
+
+Push to a branch to trigger CI (`.github/workflows/ci.yml`):
+- Runs `go build ./...` and `go test ./...`
+- Integration tests use ephemeral Docker containers
+- Lint and vet checks run in parallel
+
+### Step 3: Staging Deployment (Simple)
+
+For teams that don't need Kubernetes yet, deploy to a single VM:
+
+```bash
+# On the staging server:
+# 1. Install Go 1.24+, PostgreSQL 15+, Redis 7+
+
+# 2. Build the binaries
+cd backend
+go build -o bin/api ./cmd/api/
+go build -o bin/delivery ./cmd/delivery/
+go build -o bin/analytics ./cmd/analytics/
+
+# 3. Set environment variables
+export DATABASE_URL="postgres://user:pass@localhost:5432/waas_staging?sslmode=require"
+export REDIS_URL="localhost:6379"
+export JWT_SECRET="<staging-secret>"
+export API_PORT=8080
+
+# 4. Run migrations
+make migrate-up
+
+# 5. Start services (use systemd or supervisor in practice)
+./bin/api &
+./bin/delivery &
+./bin/analytics &
+```
+
+For Docker-based staging:
+```bash
+# Build and push images
+docker build -t your-registry/waas-api:staging .
+docker push your-registry/waas-api:staging
+
+# Deploy with docker-compose on staging server
+DATABASE_URL=... REDIS_URL=... docker-compose up -d
+```
+
+### Step 4: Staging Validation Checklist
+
+Before promoting to production:
+
+- [ ] All CI tests pass on the release branch
+- [ ] `make smoke-test` passes against staging
+- [ ] Webhook delivery round-trip works (create endpoint → send event → confirm delivery)
+- [ ] Dashboard loads and shows correct data
+- [ ] Rate limiting and quotas enforce correctly
+- [ ] Migrations ran cleanly (`make migrate-status`)
+- [ ] No error spikes in logs for 1 hour
+
+### Step 5: Production Deployment
+
+Follow the Kubernetes deployment sections above, or use the Helm chart:
+
+```bash
+# Using Helm (recommended for production)
+helm upgrade --install waas ./deploy/helm/waas \
+  --namespace waas \
+  --set database.url="$PROD_DATABASE_URL" \
+  --set redis.url="$PROD_REDIS_URL" \
+  --set api.replicas=3 \
+  --set delivery.replicas=3
+
+# Verify
+kubectl -n waas rollout status deployment/waas-api
+kubectl -n waas logs -l app=waas-api --tail=50
+```
+
+### Environment Variable Reference
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
+| `REDIS_URL` | Yes | `localhost:6379` | Redis connection string |
+| `JWT_SECRET` | Yes | — | JWT signing key (use different per env) |
+| `API_PORT` | No | `8080` | HTTP listen port |
+| `LOG_LEVEL` | No | `info` | `debug` / `info` / `warn` / `error` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | — | OTLP collector URL for tracing |
+| `OTEL_SERVICE_NAME` | No | — | Service name for tracing |
+| `METRICS_ENABLED` | No | `false` | Enable Prometheus metrics endpoint |
+| `METRICS_PORT` | No | `9100` | Metrics endpoint port |
+
+
 This deployment guide ensures a secure, scalable, and maintainable production deployment of the Webhook Service Platform.
