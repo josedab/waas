@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 	"webhook-platform/pkg/metrics"
@@ -16,13 +18,56 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	wsReadBufferSize       = 1024
+	wsWriteBufferSize      = 1024
+	wsReadDeadline         = 60 * time.Second
+	wsPingInterval         = 30 * time.Second
+	wsWriteDeadline        = 10 * time.Second
+	wsBroadcastInterval    = 10 * time.Second
+	wsCleanupInterval      = 5 * time.Minute
+	wsCleanupPingTimeout   = 5 * time.Second
+	wsRealtimeMetricWindow = 1 * time.Minute
+	wsDashboardWindow      = time.Hour
+)
+
+// getAllowedOrigins returns the list of allowed WebSocket origins from the
+// WEBSOCKET_ALLOWED_ORIGINS env var (comma-separated). Falls back to
+// localhost origins when unset.
+func getAllowedOrigins() map[string]bool {
+	origins := os.Getenv("WEBSOCKET_ALLOWED_ORIGINS")
+	if origins == "" {
+		return map[string]bool{
+			"http://localhost:3000":  true,
+			"http://localhost:5173":  true,
+			"http://localhost:8080":  true,
+			"https://localhost:3000": true,
+			"https://localhost:5173": true,
+			"https://localhost:8080": true,
+		}
+	}
+	allowed := make(map[string]bool)
+	for _, o := range strings.Split(origins, ",") {
+		o = strings.TrimSpace(o)
+		if o != "" {
+			allowed[o] = true
+		}
+	}
+	return allowed
+}
+
+var allowedOrigins = getAllowedOrigins()
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		// In production, implement proper origin checking
-		return true
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // Same-origin requests don't send Origin header
+		}
+		return allowedOrigins[origin]
 	},
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:  wsReadBufferSize,
+	WriteBufferSize: wsWriteBufferSize,
 }
 
 // WebSocketManager manages WebSocket connections for real-time metrics
@@ -62,7 +107,7 @@ func (wsm *WebSocketManager) Start(ctx context.Context) {
 func (wsm *WebSocketManager) Stop() {
 	wsm.logger.Info("Stopping WebSocket manager", nil)
 	close(wsm.stopCh)
-	
+
 	// Close all connections
 	wsm.mutex.Lock()
 	for tenantID, connections := range wsm.connections {
@@ -72,7 +117,7 @@ func (wsm *WebSocketManager) Stop() {
 		delete(wsm.connections, tenantID)
 	}
 	wsm.mutex.Unlock()
-	
+
 	wsm.wg.Wait()
 }
 
@@ -140,7 +185,7 @@ func (wsm *WebSocketManager) removeConnection(tenantID uuid.UUID, conn *websocke
 			delete(wsm.connections, tenantID)
 		}
 	}
-	
+
 	conn.Close()
 	wsm.updateConnectionsMetric()
 }
@@ -148,14 +193,14 @@ func (wsm *WebSocketManager) removeConnection(tenantID uuid.UUID, conn *websocke
 // handleConnection manages a single WebSocket connection
 func (wsm *WebSocketManager) handleConnection(conn *websocket.Conn, tenantID uuid.UUID) {
 	// Set read deadline and pong handler for keepalive
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(wsReadDeadline))
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		conn.SetReadDeadline(time.Now().Add(wsReadDeadline))
 		return nil
 	})
 
 	// Start ping ticker
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(wsPingInterval)
 	defer ticker.Stop()
 
 	for {
@@ -189,7 +234,7 @@ func (wsm *WebSocketManager) handleConnection(conn *websocket.Conn, tenantID uui
 func (wsm *WebSocketManager) metricsbroadcaster(ctx context.Context) {
 	defer wsm.wg.Done()
 
-	ticker := time.NewTicker(10 * time.Second) // Broadcast every 10 seconds
+	ticker := time.NewTicker(wsBroadcastInterval) // Broadcast every 10 seconds
 	defer ticker.Stop()
 
 	for {
@@ -208,7 +253,7 @@ func (wsm *WebSocketManager) metricsbroadcaster(ctx context.Context) {
 func (wsm *WebSocketManager) connectionCleanup(ctx context.Context) {
 	defer wsm.wg.Done()
 
-	ticker := time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(wsCleanupInterval)
 	defer ticker.Stop()
 
 	for {
@@ -258,7 +303,7 @@ func (wsm *WebSocketManager) broadcastMetrics() {
 // sendInitialData sends initial dashboard data to a new connection
 func (wsm *WebSocketManager) sendInitialData(conn *websocket.Conn, tenantID uuid.UUID) {
 	// Get dashboard metrics for the last hour
-	dashboard, err := wsm.analyticsRepo.GetDashboardMetrics(context.Background(), tenantID, time.Hour)
+	dashboard, err := wsm.analyticsRepo.GetDashboardMetrics(context.Background(), tenantID, wsDashboardWindow)
 	if err != nil {
 		wsm.logger.Error("Failed to get initial dashboard data", map[string]interface{}{
 			"error":     err.Error(),
@@ -305,8 +350,8 @@ func (wsm *WebSocketManager) broadcastToTenant(tenantID uuid.UUID, message *mode
 
 // sendMessage sends a message to a specific WebSocket connection
 func (wsm *WebSocketManager) sendMessage(conn *websocket.Conn, message *models.WebSocketMessage) error {
-	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-	
+	conn.SetWriteDeadline(time.Now().Add(wsWriteDeadline))
+
 	data, err := json.Marshal(message)
 	if err != nil {
 		return err
@@ -318,7 +363,7 @@ func (wsm *WebSocketManager) sendMessage(conn *websocket.Conn, message *models.W
 // getRealtimeMetricsForTenant retrieves current real-time metrics for a tenant
 func (wsm *WebSocketManager) getRealtimeMetricsForTenant(tenantID uuid.UUID) (map[string]interface{}, error) {
 	ctx := context.Background()
-	since := time.Now().Add(-1 * time.Minute)
+	since := time.Now().Add(-wsRealtimeMetricWindow)
 
 	// Get various real-time metrics
 	deliveryRateMetrics, err := wsm.analyticsRepo.GetRealtimeMetrics(ctx, tenantID, "delivery_rate", since)
@@ -354,7 +399,7 @@ func (wsm *WebSocketManager) cleanupStaleConnections() {
 
 		for conn := range connections {
 			// Try to write a ping message to test connection
-			conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			conn.SetWriteDeadline(time.Now().Add(wsCleanupPingTimeout))
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				staleConnections = append(staleConnections, conn)
 			}
