@@ -43,6 +43,29 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		// Onboarding
 		cloud.GET("/onboarding", h.GetOnboardingProgress)
 		cloud.POST("/onboarding/:stepId/complete", h.CompleteOnboardingStep)
+
+		// Isolation & Quotas
+		cloud.GET("/isolation", h.GetTenantIsolation)
+		cloud.GET("/quota", h.GetQuotaStatus)
+
+		// Auto-scaling
+		cloud.GET("/autoscale", h.GetAutoScaleConfig)
+
+		// SLA Monitoring
+		cloud.GET("/sla", h.GetSLAStatus)
+
+		// Status Page (public-facing)
+		cloud.GET("/status", h.GetStatusPage)
+
+		// Regional Deployments
+		cloud.GET("/regions", h.GetRegionalDeployments)
+
+		// Tenant lifecycle
+		cloud.POST("/suspend", h.SuspendTenant)
+		cloud.POST("/reactivate", h.ReactivateTenant)
+
+		// Stripe webhook
+		cloud.POST("/stripe-webhook", h.HandleStripeWebhook)
 	}
 }
 
@@ -305,4 +328,90 @@ func (h *Handler) CompleteOnboardingStep(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, progress)
+}
+
+func (h *Handler) GetTenantIsolation(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	isolation, err := h.service.GetTenantIsolation(c.Request.Context(), tenantID)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+	c.JSON(http.StatusOK, isolation)
+}
+
+func (h *Handler) GetQuotaStatus(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	status, err := h.service.GetQuotaStatus(c.Request.Context(), tenantID)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+	c.JSON(http.StatusOK, status)
+}
+
+func (h *Handler) GetAutoScaleConfig(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	config, err := h.service.GetAutoScaleConfig(c.Request.Context(), tenantID)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+	c.JSON(http.StatusOK, config)
+}
+
+func (h *Handler) GetSLAStatus(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	sla, err := h.service.GetSLAStatus(c.Request.Context(), tenantID)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+	c.JSON(http.StatusOK, sla)
+}
+
+func (h *Handler) GetStatusPage(c *gin.Context) {
+	page := h.service.GetStatusPage(c.Request.Context())
+	c.JSON(http.StatusOK, page)
+}
+
+func (h *Handler) GetRegionalDeployments(c *gin.Context) {
+	regions := h.service.GetRegionalDeployments(c.Request.Context())
+	c.JSON(http.StatusOK, gin.H{"regions": regions})
+}
+
+func (h *Handler) SuspendTenant(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tenant, err := h.service.SuspendTenant(c.Request.Context(), tenantID)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+	c.JSON(http.StatusOK, tenant)
+}
+
+func (h *Handler) ReactivateTenant(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tenant, err := h.service.ReactivateTenant(c.Request.Context(), tenantID)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+	c.JSON(http.StatusOK, tenant)
+}
+
+// HandleStripeWebhook processes incoming Stripe webhook events
+func (h *Handler) HandleStripeWebhook(c *gin.Context) {
+	var event StripeWebhookEvent
+	if err := c.ShouldBindJSON(&event); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid event"})
+		return
+	}
+
+	if err := h.service.HandleStripeWebhook(c.Request.Context(), &event); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"received": true})
 }

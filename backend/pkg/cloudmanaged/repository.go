@@ -30,6 +30,15 @@ type Repository interface {
 	// Onboarding
 	SaveOnboardingProgress(ctx context.Context, progress *OnboardingProgress) error
 	GetOnboardingProgress(ctx context.Context, tenantID string) (*OnboardingProgress, error)
+
+	// SLA Metrics
+	GetSLAMetrics(ctx context.Context, tenantID string) (*SLAConfig, error)
+
+	// Status Page
+	GetComponentStatuses(ctx context.Context) ([]StatusPageEntry, error)
+
+	// Regional Deployments
+	GetRegionalDeployments(ctx context.Context) ([]RegionalDeployment, error)
 }
 
 // PostgresRepository implements Repository using PostgreSQL
@@ -303,6 +312,80 @@ func (r *PostgresRepository) GetOnboardingProgress(ctx context.Context, tenantID
 
 	json.Unmarshal(stepsJSON, &progress.Steps)
 	return &progress, nil
+}
+
+// GetSLAMetrics retrieves SLA metrics for a tenant from the database
+func (r *PostgresRepository) GetSLAMetrics(ctx context.Context, tenantID string) (*SLAConfig, error) {
+	query := `
+		SELECT tenant_id, uptime_target_pct, latency_target_ms, delivery_target_pct,
+		       current_uptime_pct, current_latency_ms, current_delivery_pct, in_violation
+		FROM cloud_sla_metrics
+		WHERE tenant_id = $1`
+
+	var sla SLAConfig
+	err := r.db.QueryRowContext(ctx, query, tenantID).Scan(
+		&sla.TenantID, &sla.UptimeTargetPct, &sla.LatencyTargetMs, &sla.DeliveryTargetPct,
+		&sla.CurrentUptimePct, &sla.CurrentLatencyMs, &sla.CurrentDeliveryPct, &sla.InViolation)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("sla metrics not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &sla, nil
+}
+
+// GetComponentStatuses retrieves component statuses from the database
+func (r *PostgresRepository) GetComponentStatuses(ctx context.Context) ([]StatusPageEntry, error) {
+	query := `
+		SELECT component, status, description, updated_at
+		FROM cloud_component_statuses
+		ORDER BY component`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []StatusPageEntry
+	for rows.Next() {
+		var e StatusPageEntry
+		if err := rows.Scan(&e.Component, &e.Status, &e.Description, &e.UpdatedAt); err != nil {
+			return nil, err
+		}
+		entries = append(entries, e)
+	}
+
+	return entries, rows.Err()
+}
+
+// GetRegionalDeployments retrieves regional deployments from the database
+func (r *PostgresRepository) GetRegionalDeployments(ctx context.Context) ([]RegionalDeployment, error) {
+	query := `
+		SELECT region, status, tenant_count, instance_count, health_score, updated_at
+		FROM cloud_regional_deployments
+		ORDER BY region`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var deployments []RegionalDeployment
+	for rows.Next() {
+		var d RegionalDeployment
+		if err := rows.Scan(&d.Region, &d.Status, &d.TenantCount, &d.InstanceCount,
+			&d.HealthScore, &d.UpdatedAt); err != nil {
+			return nil, err
+		}
+		deployments = append(deployments, d)
+	}
+
+	return deployments, rows.Err()
 }
 
 // Ensure imports are used
