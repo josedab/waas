@@ -13,15 +13,15 @@ type AlerterConfig struct {
 	// Rate limiting for alerts
 	MaxAlertsPerMinute int
 	MaxAlertsPerHour   int
-	
+
 	// Alert channels
 	SlackWebhookURL string
 	EmailRecipients []string
-	
+
 	// Alert thresholds
 	CriticalAlertThreshold time.Duration
 	HighAlertThreshold     time.Duration
-	
+
 	// Enable/disable alerting
 	Enabled bool
 }
@@ -41,12 +41,12 @@ func DefaultAlerterConfig() *AlerterConfig {
 type Alerter struct {
 	config *AlerterConfig
 	logger *utils.Logger
-	
+
 	// Rate limiting
 	alertCounts     map[string]int
 	alertCountsLock sync.RWMutex
 	lastReset       time.Time
-	
+
 	// Alert deduplication
 	recentAlerts     map[string]time.Time
 	recentAlertsLock sync.RWMutex
@@ -57,7 +57,7 @@ func NewAlerter(config *AlerterConfig, logger *utils.Logger) *Alerter {
 	if config == nil {
 		config = DefaultAlerterConfig()
 	}
-	
+
 	alerter := &Alerter{
 		config:       config,
 		logger:       logger,
@@ -65,10 +65,10 @@ func NewAlerter(config *AlerterConfig, logger *utils.Logger) *Alerter {
 		recentAlerts: make(map[string]time.Time),
 		lastReset:    time.Now(),
 	}
-	
+
 	// Start cleanup goroutine
 	go alerter.cleanupRoutine()
-	
+
 	return alerter
 }
 
@@ -77,43 +77,43 @@ func (a *Alerter) SendAlert(ctx context.Context, err *WebhookError) error {
 	if !a.config.Enabled {
 		return nil
 	}
-	
+
 	// Check if we should send this alert
 	if !a.shouldSendAlert(err) {
 		return nil
 	}
-	
+
 	// Create alert message
 	alert := a.createAlertMessage(err)
-	
+
 	// Send to configured channels
 	var sendErrors []error
-	
+
 	// Send to Slack if configured
 	if a.config.SlackWebhookURL != "" {
 		if err := a.sendSlackAlert(ctx, alert); err != nil {
 			sendErrors = append(sendErrors, fmt.Errorf("slack alert failed: %w", err))
 		}
 	}
-	
+
 	// Send email alerts if configured
 	if len(a.config.EmailRecipients) > 0 {
 		if err := a.sendEmailAlert(ctx, alert); err != nil {
 			sendErrors = append(sendErrors, fmt.Errorf("email alert failed: %w", err))
 		}
 	}
-	
+
 	// Log the alert
 	a.logAlert(alert)
-	
+
 	// Update rate limiting counters
 	a.updateAlertCounts(err)
-	
+
 	// Return combined errors if any
 	if len(sendErrors) > 0 {
 		return fmt.Errorf("alert sending failed: %v", sendErrors)
 	}
-	
+
 	return nil
 }
 
@@ -123,22 +123,22 @@ func (a *Alerter) shouldSendAlert(err *WebhookError) bool {
 	if !a.config.Enabled {
 		return false
 	}
-	
+
 	// Check severity threshold
 	if err.Severity != SeverityHigh && err.Severity != SeverityCritical {
 		return false
 	}
-	
+
 	// Check rate limits
 	if !a.checkRateLimit(err) {
 		return false
 	}
-	
+
 	// Check for duplicate alerts (deduplication)
 	if a.isDuplicateAlert(err) {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -146,19 +146,19 @@ func (a *Alerter) shouldSendAlert(err *WebhookError) bool {
 func (a *Alerter) checkRateLimit(err *WebhookError) bool {
 	a.alertCountsLock.RLock()
 	defer a.alertCountsLock.RUnlock()
-	
+
 	// Check per-minute limit
 	minuteKey := fmt.Sprintf("minute_%s", time.Now().Format("2006-01-02_15:04"))
 	if count, exists := a.alertCounts[minuteKey]; exists && count >= a.config.MaxAlertsPerMinute {
 		return false
 	}
-	
+
 	// Check per-hour limit
 	hourKey := fmt.Sprintf("hour_%s", time.Now().Format("2006-01-02_15"))
 	if count, exists := a.alertCounts[hourKey]; exists && count >= a.config.MaxAlertsPerHour {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -166,21 +166,21 @@ func (a *Alerter) checkRateLimit(err *WebhookError) bool {
 func (a *Alerter) isDuplicateAlert(err *WebhookError) bool {
 	a.recentAlertsLock.RLock()
 	defer a.recentAlertsLock.RUnlock()
-	
+
 	// Create a key for deduplication based on error code and category
 	alertKey := fmt.Sprintf("%s_%s", err.Code, err.Category)
-	
+
 	if lastSent, exists := a.recentAlerts[alertKey]; exists {
 		threshold := a.config.HighAlertThreshold
 		if err.Severity == SeverityCritical {
 			threshold = a.config.CriticalAlertThreshold
 		}
-		
+
 		if time.Since(lastSent) < threshold {
 			return true // Duplicate within threshold
 		}
 	}
-	
+
 	return false
 }
 
@@ -188,17 +188,17 @@ func (a *Alerter) isDuplicateAlert(err *WebhookError) bool {
 func (a *Alerter) updateAlertCounts(err *WebhookError) {
 	a.alertCountsLock.Lock()
 	defer a.alertCountsLock.Unlock()
-	
+
 	now := time.Now()
-	
+
 	// Update per-minute counter
 	minuteKey := fmt.Sprintf("minute_%s", now.Format("2006-01-02_15:04"))
 	a.alertCounts[minuteKey]++
-	
+
 	// Update per-hour counter
 	hourKey := fmt.Sprintf("hour_%s", now.Format("2006-01-02_15"))
 	a.alertCounts[hourKey]++
-	
+
 	// Update recent alerts for deduplication
 	a.recentAlertsLock.Lock()
 	alertKey := fmt.Sprintf("%s_%s", err.Code, err.Category)
@@ -247,8 +247,8 @@ func (a *Alerter) sendSlackAlert(ctx context.Context, alert *AlertMessage) error
 		"error_code": alert.ErrorCode,
 		"request_id": alert.RequestID,
 	})
-	
-	// TODO: Implement actual Slack webhook integration
+
+	// TODO(#3): Implement actual Slack webhook integration
 	// Example:
 	// payload := map[string]interface{}{
 	//     "text": alert.Title,
@@ -267,7 +267,7 @@ func (a *Alerter) sendSlackAlert(ctx context.Context, alert *AlertMessage) error
 	//     },
 	// }
 	// return a.sendWebhook(ctx, a.config.SlackWebhookURL, payload)
-	
+
 	return nil
 }
 
@@ -282,13 +282,13 @@ func (a *Alerter) sendEmailAlert(ctx context.Context, alert *AlertMessage) error
 		"recipients": a.config.EmailRecipients,
 		"request_id": alert.RequestID,
 	})
-	
-	// TODO: Implement actual email sending
+
+	// TODO(#4): Implement actual email sending
 	// Example:
 	// subject := fmt.Sprintf("[%s] %s", alert.Severity, alert.Title)
 	// body := a.formatEmailBody(alert)
 	// return a.emailService.SendEmail(ctx, a.config.EmailRecipients, subject, body)
-	
+
 	return nil
 }
 
@@ -311,7 +311,7 @@ func (a *Alerter) logAlert(alert *AlertMessage) {
 func (a *Alerter) cleanupRoutine() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		a.cleanup()
 	}
@@ -320,7 +320,7 @@ func (a *Alerter) cleanupRoutine() {
 // cleanup removes old rate limiting and deduplication data
 func (a *Alerter) cleanup() {
 	now := time.Now()
-	
+
 	// Clean up alert counts (keep last 2 hours)
 	a.alertCountsLock.Lock()
 	for key := range a.alertCounts {
@@ -330,14 +330,14 @@ func (a *Alerter) cleanup() {
 		}
 	}
 	a.alertCountsLock.Unlock()
-	
+
 	// Clean up recent alerts (keep based on max threshold)
 	a.recentAlertsLock.Lock()
 	maxThreshold := a.config.HighAlertThreshold
 	if a.config.CriticalAlertThreshold > maxThreshold {
 		maxThreshold = a.config.CriticalAlertThreshold
 	}
-	
+
 	for key, timestamp := range a.recentAlerts {
 		if now.Sub(timestamp) > maxThreshold*2 { // Keep for 2x the threshold
 			delete(a.recentAlerts, key)

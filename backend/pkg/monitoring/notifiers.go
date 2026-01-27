@@ -34,15 +34,15 @@ func (ln *LogNotifier) SendAlert(ctx context.Context, alert *Alert) error {
 
 	message := fmt.Sprintf("Alert %s: %s", alert.Status, alert.Name)
 	fields := map[string]interface{}{
-		"alert_id":     alert.ID,
-		"alert_name":   alert.Name,
-		"severity":     alert.Severity,
-		"status":       alert.Status,
-		"value":        alert.Value,
-		"threshold":    alert.Threshold,
-		"labels":       alert.Labels,
-		"annotations":  alert.Annotations,
-		"starts_at":    alert.StartsAt,
+		"alert_id":    alert.ID,
+		"alert_name":  alert.Name,
+		"severity":    alert.Severity,
+		"status":      alert.Status,
+		"value":       alert.Value,
+		"threshold":   alert.Threshold,
+		"labels":      alert.Labels,
+		"annotations": alert.Annotations,
+		"starts_at":   alert.StartsAt,
 	}
 
 	if alert.EndsAt != nil {
@@ -90,16 +90,16 @@ func NewWebhookNotifier(webhookURL string, timeout time.Duration, logger *utils.
 // SendAlert sends an alert via webhook
 func (wn *WebhookNotifier) SendAlert(ctx context.Context, alert *Alert) error {
 	payload := map[string]interface{}{
-		"alert_id":     alert.ID,
-		"name":         alert.Name,
-		"description":  alert.Description,
-		"severity":     alert.Severity,
-		"status":       alert.Status,
-		"labels":       alert.Labels,
-		"annotations":  alert.Annotations,
-		"starts_at":    alert.StartsAt.Format(time.RFC3339),
-		"value":        alert.Value,
-		"threshold":    alert.Threshold,
+		"alert_id":    alert.ID,
+		"name":        alert.Name,
+		"description": alert.Description,
+		"severity":    alert.Severity,
+		"status":      alert.Status,
+		"labels":      alert.Labels,
+		"annotations": alert.Annotations,
+		"starts_at":   alert.StartsAt.Format(time.RFC3339),
+		"value":       alert.Value,
+		"threshold":   alert.Threshold,
 	}
 
 	if alert.EndsAt != nil {
@@ -256,8 +256,8 @@ func (sn *SlackNotifier) SendAlert(ctx context.Context, alert *Alert) error {
 	}
 
 	sn.logger.Info("Alert sent to Slack", map[string]interface{}{
-		"alert_id": alert.ID,
-		"channel":  sn.channel,
+		"alert_id":    alert.ID,
+		"channel":     sn.channel,
 		"status_code": resp.StatusCode,
 	})
 
@@ -271,25 +271,25 @@ func (sn *SlackNotifier) GetName() string {
 
 // EmailNotifier sends alerts via email (placeholder implementation)
 type EmailNotifier struct {
-	smtpHost     string
-	smtpPort     int
-	username     string
-	password     string
-	fromAddress  string
-	toAddresses  []string
-	logger       *utils.Logger
+	smtpHost    string
+	smtpPort    int
+	username    string
+	password    string
+	fromAddress string
+	toAddresses []string
+	logger      *utils.Logger
 }
 
 // NewEmailNotifier creates a new email notifier
 func NewEmailNotifier(smtpHost string, smtpPort int, username, password, fromAddress string, toAddresses []string, logger *utils.Logger) *EmailNotifier {
 	return &EmailNotifier{
-		smtpHost:     smtpHost,
-		smtpPort:     smtpPort,
-		username:     username,
-		password:     password,
-		fromAddress:  fromAddress,
-		toAddresses:  toAddresses,
-		logger:       logger,
+		smtpHost:    smtpHost,
+		smtpPort:    smtpPort,
+		username:    username,
+		password:    password,
+		fromAddress: fromAddress,
+		toAddresses: toAddresses,
+		logger:      logger,
 	}
 }
 
@@ -297,9 +297,9 @@ func NewEmailNotifier(smtpHost string, smtpPort int, username, password, fromAdd
 func (en *EmailNotifier) SendAlert(ctx context.Context, alert *Alert) error {
 	// This is a placeholder implementation
 	// In a real system, you would implement SMTP email sending
-	
+
 	subject := fmt.Sprintf("[%s] %s: %s", alert.Severity, alert.Status, alert.Name)
-	
+
 	en.logger.Info("Email alert notification (placeholder)", map[string]interface{}{
 		"alert_id":     alert.ID,
 		"subject":      subject,
@@ -307,7 +307,7 @@ func (en *EmailNotifier) SendAlert(ctx context.Context, alert *Alert) error {
 		"from_address": en.fromAddress,
 	})
 
-	// TODO: Implement actual email sending using net/smtp or a third-party service
+	// TODO(#2): Implement actual email sending using net/smtp or a third-party service
 	return nil
 }
 

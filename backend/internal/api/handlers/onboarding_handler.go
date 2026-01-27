@@ -132,7 +132,7 @@ func (h *OnboardingHandler) StartOnboarding(c *gin.Context) {
 		response.VerificationToken = token
 	}
 
-	// TODO: Send verification email with token
+	// TODO(#5): Send verification email with token
 
 	h.logger.Info("Onboarding started", map[string]interface{}{
 		"session_id": session.ID,

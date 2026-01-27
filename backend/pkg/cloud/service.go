@@ -18,9 +18,9 @@ var (
 
 // BillingService manages billing operations
 type BillingService struct {
-	repo           Repository
-	stripeClient   StripeClient
-	usageTracker   *UsageTracker
+	repo         Repository
+	stripeClient StripeClient
+	usageTracker *UsageTracker
 }
 
 // StripeClient interface for Stripe operations (implement with actual Stripe SDK)
@@ -280,7 +280,7 @@ func (ts *TeamService) InviteMember(ctx context.Context, tenantID, inviterID, em
 		return nil, err
 	}
 
-	// TODO: Send invitation email
+	// TODO(#1): Send invitation email
 
 	return member, nil
 }
