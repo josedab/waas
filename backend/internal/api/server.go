@@ -170,7 +170,29 @@ type Server struct {
 	openapigenService *openapigen.Service
 }
 
+// NewServer constructs and wires the entire API server. Initialization
+// proceeds in phases:
+//
+//  1. Infrastructure — config, logging, PostgreSQL (pgx + sqlx), Redis, migrations
+//  2. Observability  — health checker, alert manager, metrics recorder, tracer
+//  3. Core services  — flow, meta-events, geo-routing, embed, mocking, costing,
+//     OTel, protocols (v1)
+//  4. Platform services — observability, smart-limit, chaos, CDC, workflow,
+//     signatures, push-bridge, billing, versioning, federation (v2)
+//  5. Delivery & edge — streaming, remediation, edge functions, blockchain,
+//     compliance, prediction, GraphQL subscriptions, monetization, multi-cloud (v3)
+//  6. Enterprise — SLA, mTLS, contracts, marketplace, event-mesh, debugger,
+//     cloud (billing/team/audit/onboard), Terraform provider, portal (v4)
+//  7. Extended platform — tracing, canary, auto-remediation, schema registry,
+//     catalog, sandbox, protocol gateway, analytics embed, cost engine,
+//     GitOps, live migration, inbound, fan-out, mobile SDK (v5)
+//  8. Ecosystem — DLQ, plugin marketplace, intelligence, flow builder,
+//     time-travel, cloud-managed, callback, collab-debug, WAF, docgen,
+//     OpenAPI gen, white-label (v7)
+//  9. HTTP layer — Gin router with recovery, tracing, and metrics middleware
+// 10. Route registration — handler setup and route binding
 func NewServer() (*Server, error) {
+	// ── Phase 1: Infrastructure (config, databases, migrations) ─────────
 	config := utils.LoadConfig()
 	logger := utils.NewLogger("api-service")
 
@@ -209,6 +231,7 @@ func NewServer() (*Server, error) {
 		return nil, fmt.Errorf("database migrations failed: %w", err)
 	}
 
+	// ── Phase 2: Observability (health, alerts, metrics, tracing) ───────
 	// Initialize monitoring components
 	stdDB, err := database.GetStdDB()
 	if err != nil {
@@ -226,6 +249,7 @@ func NewServer() (*Server, error) {
 	logNotifier := monitoring.NewLogNotifier(logger)
 	alertManager.AddNotifier(logNotifier)
 
+	// ── Phase 3: Core services (v1) ─────────────────────────────────────
 	// Initialize next-gen feature repositories and services
 	flowRepo := flow.NewPostgresRepository(sqlxDB)
 	flowService := flow.NewService(flowRepo)
@@ -252,6 +276,7 @@ func NewServer() (*Server, error) {
 	protocolRepo := protocols.NewRepository(sqlxDB)
 	protocolService := protocols.NewService(protocolRepo, nil)
 
+	// ── Phase 4: Platform services (v2) ─────────────────────────────────
 	// Initialize next-gen features v2
 	observabilityRepo := observability.NewPostgresRepository(sqlxDB)
 	observabilityService := observability.NewService(observabilityRepo)
@@ -283,6 +308,7 @@ func NewServer() (*Server, error) {
 	federationRepo := federation.NewPostgresRepository(sqlxDB.DB)
 	federationService := federation.NewService(federationRepo, nil)
 
+	// ── Phase 5: Delivery & edge services (v3) ──────────────────────────
 	// Initialize next-gen features v3
 	streamingService := streaming.NewService(nil, nil, streaming.DefaultServiceConfig())
 	remediationService := remediation.NewService(nil, nil, nil, nil, remediation.DefaultServiceConfig())
@@ -294,6 +320,7 @@ func NewServer() (*Server, error) {
 	monetizationService := monetization.NewService(nil, monetization.DefaultServiceConfig())
 	multicloudService := multicloud.NewFederationService(nil, nil, multicloud.DefaultFederationConfig())
 
+	// ── Phase 6: Enterprise services (v4) ───────────────────────────────
 	// Initialize next-gen features v4
 	slaService := sla.NewService(nil)
 	mtlsService := mtls.NewService(nil)
@@ -309,6 +336,7 @@ func NewServer() (*Server, error) {
 	tfproviderService := tfprovider.NewService(nil)
 	portalService := portal.NewService(nil)
 
+	// ── Phase 7: Extended platform services (v5) ────────────────────────
 	// Initialize next-gen features v5
 	tracingService := tracing.NewService(nil)
 	canaryService := canary.NewService(nil)
@@ -327,9 +355,11 @@ func NewServer() (*Server, error) {
 	fanoutService := fanout.NewService(nil)
 	mobilesdkService := mobilesdk.NewService()
 
+	// ── Phase 8a: DLQ ───────────────────────────────────────────────────
 	// Initialize DLQ service
 	dlqService := dlq.NewService()
 
+	// ── Phase 8b: Ecosystem services (v7) ───────────────────────────────
 	// Initialize next-gen features v7
 	pluginmarketRepo := pluginmarket.NewPostgresRepository(sqlxDB)
 	pluginmarketService := pluginmarket.NewService(pluginmarketRepo)
@@ -363,6 +393,7 @@ func NewServer() (*Server, error) {
 	whitelabelRepo := whitelabel.NewPostgresRepository(sqlxDB)
 	whitelabelService := whitelabel.NewService(whitelabelRepo)
 
+	// ── Phase 9: HTTP layer (Gin router + middleware) ───────────────────
 	// Setup Gin with monitoring middleware
 	router := gin.New()
 	router.Use(gin.Recovery())
