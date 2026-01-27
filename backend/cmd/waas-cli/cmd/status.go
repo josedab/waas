@@ -66,7 +66,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the CLI version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("waas version 1.0.0")
+		fmt.Printf("waas version %s\n", Version)
 	},
 }
 

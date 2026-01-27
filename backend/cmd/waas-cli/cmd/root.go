@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+var Version = "dev"
+
 var (
 	cfgFile string
 	apiURL  string
@@ -42,7 +44,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.waas.yaml)")
 	rootCmd.PersistentFlags().StringVar(&apiURL, "api-url", "", "WAAS API URL (default: http://localhost:8080)")
 	rootCmd.PersistentFlags().StringVar(&apiKey, "api-key", "", "API key for authentication")
-	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "table", "Output format: table, json, yaml")
+	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "table", "Output format: table, json, yaml, csv")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 
 	viper.BindPFlag("api_url", rootCmd.PersistentFlags().Lookup("api-url"))

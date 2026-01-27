@@ -1,6 +1,7 @@
 package output
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -82,10 +83,37 @@ func ColorStatus(status string) string {
 	}
 }
 
+// FormatCSV writes headers and rows as CSV to stdout.
+func FormatCSV(headers []string, rows [][]string) error {
+	w := csv.NewWriter(os.Stdout)
+	if err := w.Write(headers); err != nil {
+		return fmt.Errorf("failed to write CSV header: %w", err)
+	}
+	for _, row := range rows {
+		if err := w.Write(row); err != nil {
+			return fmt.Errorf("failed to write CSV row: %w", err)
+		}
+	}
+	w.Flush()
+	return w.Error()
+}
+
 // Truncate shortens a string to max length, appending "..." if truncated.
 func Truncate(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
 	return s[:max-3] + "..."
+}
+
+// PrintOutput selects the output format based on the format string and renders accordingly.
+func PrintOutput(format string, headers []string, rows [][]string, data interface{}) {
+	switch format {
+	case "json":
+		PrintJSON(data)
+	case "csv":
+		FormatCSV(headers, rows)
+	default:
+		PrintTable(headers, rows)
+	}
 }
