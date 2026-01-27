@@ -372,6 +372,181 @@ func (h *PlaygroundHandler) ListSnippets(c *gin.Context) {
 	c.JSON(http.StatusOK, snippets)
 }
 
+// CreateSharedScenarioRequest represents a request to create a shared scenario
+type CreateSharedScenarioRequest struct {
+	SessionID   string            `json:"session_id" binding:"required"`
+	Name        string            `json:"name" binding:"required"`
+	Description string            `json:"description,omitempty"`
+	Payload     string            `json:"payload" binding:"required"`
+	TargetURL   string            `json:"target_url,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+}
+
+// CreateSharedScenario creates a shareable test scenario
+// @Summary Create shared scenario
+// @Tags playground
+// @Accept json
+// @Produce json
+// @Param request body CreateSharedScenarioRequest true "Scenario data"
+// @Success 201 {object} playground.SharedScenario
+// @Router /playground/scenarios [post]
+func (h *PlaygroundHandler) CreateSharedScenario(c *gin.Context) {
+	var req CreateSharedScenarioRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
+		return
+	}
+
+	scenario, err := h.service.CreateSharedScenario(c.Request.Context(), req.SessionID, req.Name, req.Description, req.Payload, req.TargetURL, req.Headers)
+	if err != nil {
+		h.logger.Error("Failed to create shared scenario", map[string]interface{}{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, scenario)
+}
+
+// GetSharedScenario retrieves a shared scenario by token
+// @Summary Get shared scenario
+// @Tags playground
+// @Produce json
+// @Param token path string true "Scenario token"
+// @Success 200 {object} playground.SharedScenario
+// @Router /playground/scenarios/{token} [get]
+func (h *PlaygroundHandler) GetSharedScenario(c *gin.Context) {
+	token := c.Param("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_TOKEN", Message: "Token is required"})
+		return
+	}
+
+	scenario, err := h.service.GetSharedScenario(c.Request.Context(), token)
+	if err != nil {
+		c.JSON(http.StatusNotFound, ErrorResponse{Code: "NOT_FOUND", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, scenario)
+}
+
+// CreateTestSuiteRequest represents a request to create a test suite
+type CreateTestSuiteRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description,omitempty"`
+	IsPublic    bool   `json:"is_public"`
+}
+
+// CreateTestSuite creates a new test suite
+// @Summary Create test suite
+// @Tags playground
+// @Accept json
+// @Produce json
+// @Param request body CreateTestSuiteRequest true "Test suite data"
+// @Success 201 {object} playground.TestSuite
+// @Router /playground/test-suites [post]
+func (h *PlaygroundHandler) CreateTestSuite(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
+		return
+	}
+
+	var req CreateTestSuiteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
+		return
+	}
+
+	suite, err := h.service.CreateTestSuite(c.Request.Context(), tenantID, req.Name, req.Description, req.IsPublic)
+	if err != nil {
+		h.logger.Error("Failed to create test suite", map[string]interface{}{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, suite)
+}
+
+// ListTestSuites lists test suites for a tenant
+// @Summary List test suites
+// @Tags playground
+// @Produce json
+// @Success 200 {array} playground.TestSuite
+// @Router /playground/test-suites [get]
+func (h *PlaygroundHandler) ListTestSuites(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
+		return
+	}
+
+	suites, err := h.service.ListTestSuites(c.Request.Context(), tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "LIST_FAILED", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, suites)
+}
+
+// ReplayProductionEventRequest represents a request to replay a production event
+type ReplayProductionEventRequest struct {
+	EventID         string   `json:"event_id" binding:"required"`
+	SensitiveFields []string `json:"sensitive_fields,omitempty"`
+}
+
+// ReplayProductionEvent replays a production event with redacted fields
+// @Summary Replay production event
+// @Tags playground
+// @Accept json
+// @Produce json
+// @Param request body ReplayProductionEventRequest true "Replay data"
+// @Success 200 {object} playground.SanitizedReplay
+// @Router /playground/replay [post]
+func (h *PlaygroundHandler) ReplayProductionEvent(c *gin.Context) {
+	var req ReplayProductionEventRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
+		return
+	}
+
+	replay, err := h.service.ReplayProductionEvent(c.Request.Context(), req.EventID, req.SensitiveFields)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "REPLAY_FAILED", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, replay)
+}
+
+// ComputeDiffRequest represents a request to compute a diff between two request/response pairs
+type ComputeDiffRequest struct {
+	OldRequest  map[string]interface{} `json:"old_request"`
+	NewRequest  map[string]interface{} `json:"new_request"`
+	OldResponse map[string]interface{} `json:"old_response"`
+	NewResponse map[string]interface{} `json:"new_response"`
+}
+
+// ComputeDiff computes the diff between old and new request/response pairs
+// @Summary Compute diff
+// @Tags playground
+// @Accept json
+// @Produce json
+// @Param request body ComputeDiffRequest true "Diff data"
+// @Success 200 {object} playground.DiffResult
+// @Router /playground/diff [post]
+func (h *PlaygroundHandler) ComputeDiff(c *gin.Context) {
+	var req ComputeDiffRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
+		return
+	}
+
+	result := h.service.ComputeDiff(req.OldRequest, req.NewRequest, req.OldResponse, req.NewResponse)
+	c.JSON(http.StatusOK, result)
+}
+
 // RegisterPlaygroundRoutes registers playground API routes
 func RegisterPlaygroundRoutes(r *gin.RouterGroup, h *PlaygroundHandler) {
 	pg := r.Group("/playground")
@@ -394,5 +569,17 @@ func RegisterPlaygroundRoutes(r *gin.RouterGroup, h *PlaygroundHandler) {
 		// Snippets
 		pg.POST("/snippets", h.CreateSnippet)
 		pg.GET("/snippets", h.ListSnippets)
+
+		// Playground v2: Shareable scenarios
+		pg.POST("/scenarios", h.CreateSharedScenario)
+		pg.GET("/scenarios/:token", h.GetSharedScenario)
+
+		// Playground v2: Test suites
+		pg.POST("/test-suites", h.CreateTestSuite)
+		pg.GET("/test-suites", h.ListTestSuites)
+
+		// Playground v2: Production replay & diff
+		pg.POST("/replay", h.ReplayProductionEvent)
+		pg.POST("/diff", h.ComputeDiff)
 	}
 }

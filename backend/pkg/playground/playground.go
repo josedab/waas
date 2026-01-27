@@ -1,9 +1,13 @@
 package playground
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -86,13 +90,20 @@ type Snippet struct {
 type Service struct {
 	repo   *Repository
 	engine *transform.Engine
+
+	// In-memory stores for playground v2 features
+	scenarios  map[string]*SharedScenario // keyed by token
+	testSuites map[string]*TestSuite      // keyed by ID
+	mu         sync.RWMutex
 }
 
 // NewService creates a new playground service
 func NewService(repo *Repository, engine *transform.Engine) *Service {
 	return &Service{
-		repo:   repo,
-		engine: engine,
+		repo:       repo,
+		engine:     engine,
+		scenarios:  make(map[string]*SharedScenario),
+		testSuites: make(map[string]*TestSuite),
 	}
 }
 
@@ -231,8 +242,26 @@ func (s *Service) ReplayRequest(ctx context.Context, captureID uuid.UUID) (*Requ
 		CreatedAt:   time.Now(),
 	}
 
-	// TODO: Actually execute the HTTP request and capture response
-	// For now, just save the replay attempt
+	// Make actual HTTP request if target URL is provided
+	if replay.URL != "" {
+		client := &http.Client{Timeout: 10 * time.Second}
+		req, reqErr := http.NewRequestWithContext(ctx, replay.Method, replay.URL, bytes.NewReader(replay.Body))
+		if reqErr == nil {
+			var hdrs map[string]string
+			json.Unmarshal(replay.Headers, &hdrs)
+			for k, v := range hdrs {
+				req.Header.Set(k, v)
+			}
+			resp, respErr := client.Do(req)
+			if respErr == nil {
+				defer resp.Body.Close()
+				body, _ := io.ReadAll(resp.Body)
+				status := resp.StatusCode
+				replay.ResponseStatus = &status
+				replay.ResponseBody = body
+			}
+		}
+	}
 
 	if err := s.repo.CreateCapture(ctx, replay); err != nil {
 		return nil, err
@@ -458,4 +487,272 @@ func (r *Repository) ListSnippets(ctx context.Context, tenantID uuid.UUID, snipp
 		snippets = append(snippets, &s)
 	}
 	return snippets, nil
+}
+
+// --- Playground v2: Shareable Scenarios, Test Suites, Production Replay, and Diff Viewing ---
+
+// SharedScenario represents a shareable test scenario accessible via a URL token.
+type SharedScenario struct {
+	ID          uuid.UUID         `json:"id" db:"id"`
+	SessionID   uuid.UUID         `json:"session_id" db:"session_id"`
+	Token       string            `json:"token" db:"token"`
+	Name        string            `json:"name" db:"name"`
+	Description string            `json:"description,omitempty" db:"description"`
+	Payload     string            `json:"payload" db:"payload"`
+	TargetURL   string            `json:"target_url" db:"target_url"`
+	Headers     map[string]string `json:"headers,omitempty"`
+	ExpiresAt   time.Time         `json:"expires_at" db:"expires_at"`
+	ViewCount   int               `json:"view_count" db:"view_count"`
+	CreatedBy   string            `json:"created_by" db:"created_by"`
+	CreatedAt   time.Time         `json:"created_at" db:"created_at"`
+}
+
+// TestSuite represents a collection of shared test scenarios for a team.
+type TestSuite struct {
+	ID          uuid.UUID        `json:"id" db:"id"`
+	TenantID    uuid.UUID        `json:"tenant_id" db:"tenant_id"`
+	Name        string           `json:"name" db:"name"`
+	Description string           `json:"description,omitempty" db:"description"`
+	Scenarios   []SharedScenario `json:"scenarios,omitempty"`
+	IsPublic    bool             `json:"is_public" db:"is_public"`
+	CreatedBy   string           `json:"created_by" db:"created_by"`
+	CreatedAt   time.Time        `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at" db:"updated_at"`
+}
+
+// SanitizedReplay represents a production event replayed with sensitive data redacted.
+type SanitizedReplay struct {
+	ID               uuid.UUID       `json:"id" db:"id"`
+	OriginalEventID  uuid.UUID       `json:"original_event_id" db:"original_event_id"`
+	SanitizedPayload json.RawMessage `json:"sanitized_payload" db:"sanitized_payload"`
+	SanitizedHeaders json.RawMessage `json:"sanitized_headers" db:"sanitized_headers"`
+	RedactedFields   []string        `json:"redacted_fields" db:"redacted_fields"`
+	ReplayedAt       time.Time       `json:"replayed_at" db:"replayed_at"`
+	Result           string          `json:"result" db:"result"`
+}
+
+// DiffResult holds the comparison between two request/response pairs.
+type DiffResult struct {
+	RequestDiff  []DiffEntry `json:"request_diff,omitempty"`
+	ResponseDiff []DiffEntry `json:"response_diff,omitempty"`
+	StatusMatch  bool        `json:"status_match"`
+	HeaderDiffs  []DiffEntry `json:"header_diffs,omitempty"`
+	BodyDiffs    []DiffEntry `json:"body_diffs,omitempty"`
+}
+
+// DiffEntry represents a single field difference.
+type DiffEntry struct {
+	Field    string `json:"field"`
+	OldValue string `json:"old_value"`
+	NewValue string `json:"new_value"`
+	Type     string `json:"type"`
+}
+
+// CreateSharedScenario creates a shareable test scenario with a unique URL token and 72-hour expiry.
+func (s *Service) CreateSharedScenario(ctx context.Context, sessionID, name, description, payload string, targetURL string, headers map[string]string) (*SharedScenario, error) {
+	sid, err := uuid.Parse(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid session ID: %w", err)
+	}
+
+	scenario := &SharedScenario{
+		ID:          uuid.New(),
+		SessionID:   sid,
+		Token:       uuid.New().String(),
+		Name:        name,
+		Description: description,
+		Payload:     payload,
+		TargetURL:   targetURL,
+		Headers:     headers,
+		ExpiresAt:   time.Now().Add(72 * time.Hour),
+		ViewCount:   0,
+		CreatedAt:   time.Now(),
+	}
+
+	s.mu.Lock()
+	s.scenarios[scenario.Token] = scenario
+	s.mu.Unlock()
+	return scenario, nil
+}
+
+// GetSharedScenario retrieves a shared scenario by token, checking expiry and incrementing the view count.
+func (s *Service) GetSharedScenario(ctx context.Context, token string) (*SharedScenario, error) {
+	s.mu.RLock()
+	scenario, ok := s.scenarios[token]
+	s.mu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("shared scenario with token %q not found", token)
+	}
+	if scenario.ExpiresAt.Before(time.Now()) {
+		return nil, fmt.Errorf("shared scenario has expired")
+	}
+	s.mu.Lock()
+	scenario.ViewCount++
+	s.mu.Unlock()
+	return scenario, nil
+}
+
+// CreateTestSuite creates a new team test suite.
+func (s *Service) CreateTestSuite(ctx context.Context, tenantID, name, description string, isPublic bool) (*TestSuite, error) {
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid tenant ID: %w", err)
+	}
+
+	suite := &TestSuite{
+		ID:          uuid.New(),
+		TenantID:    tid,
+		Name:        name,
+		Description: description,
+		Scenarios:   []SharedScenario{},
+		IsPublic:    isPublic,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	s.mu.Lock()
+	s.testSuites[suite.ID.String()] = suite
+	s.mu.Unlock()
+	return suite, nil
+}
+
+// ListTestSuites lists all test suites for a tenant.
+func (s *Service) ListTestSuites(ctx context.Context, tenantID string) ([]TestSuite, error) {
+	_, err := uuid.Parse(tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid tenant ID: %w", err)
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []TestSuite
+	for _, suite := range s.testSuites {
+		if suite.TenantID.String() == tenantID {
+			result = append(result, *suite)
+		}
+	}
+	return result, nil
+}
+
+// ReplayProductionEvent replays a production event with sensitive fields redacted.
+func (s *Service) ReplayProductionEvent(ctx context.Context, eventID string, sensitiveFields []string) (*SanitizedReplay, error) {
+	eid, err := uuid.Parse(eventID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid event ID: %w", err)
+	}
+
+	capture, err := s.repo.GetCapture(ctx, eid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve event: %w", err)
+	}
+
+	sanitizedPayload := redactFields(capture.Body, sensitiveFields)
+	sanitizedHeaders := redactFields(capture.Headers, sensitiveFields)
+
+	replay := &SanitizedReplay{
+		ID:               uuid.New(),
+		OriginalEventID:  eid,
+		SanitizedPayload: sanitizedPayload,
+		SanitizedHeaders: sanitizedHeaders,
+		RedactedFields:   sensitiveFields,
+		ReplayedAt:       time.Now(),
+		Result:           "pending",
+	}
+
+	return replay, nil
+}
+
+// redactFields redacts the specified fields from a JSON payload.
+func redactFields(data json.RawMessage, fields []string) json.RawMessage {
+	if len(data) == 0 || len(fields) == 0 {
+		return data
+	}
+
+	var m map[string]interface{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return data
+	}
+
+	for _, field := range fields {
+		if _, ok := m[field]; ok {
+			m[field] = "[REDACTED]"
+		}
+	}
+
+	result, err := json.Marshal(m)
+	if err != nil {
+		return data
+	}
+	return result
+}
+
+// ComputeDiff compares old and new request/response pairs and returns the differences.
+func (s *Service) ComputeDiff(oldReq, newReq, oldResp, newResp map[string]interface{}) *DiffResult {
+	result := &DiffResult{
+		StatusMatch: true,
+	}
+
+	result.RequestDiff = computeMapDiff(oldReq, newReq)
+	result.ResponseDiff = computeMapDiff(oldResp, newResp)
+
+	oldStatus := fmt.Sprintf("%v", oldResp["status"])
+	newStatus := fmt.Sprintf("%v", newResp["status"])
+	result.StatusMatch = oldStatus == newStatus
+
+	oldHeaders, _ := toStringMap(oldReq["headers"])
+	newHeaders, _ := toStringMap(newReq["headers"])
+	result.HeaderDiffs = computeMapDiff(oldHeaders, newHeaders)
+
+	oldBody, _ := toStringMap(oldReq["body"])
+	newBody, _ := toStringMap(newReq["body"])
+	result.BodyDiffs = computeMapDiff(oldBody, newBody)
+
+	return result
+}
+
+// computeMapDiff compares two maps and returns a list of differences.
+func computeMapDiff(oldMap, newMap map[string]interface{}) []DiffEntry {
+	var diffs []DiffEntry
+
+	for key, oldVal := range oldMap {
+		newVal, exists := newMap[key]
+		if !exists {
+			diffs = append(diffs, DiffEntry{
+				Field:    key,
+				OldValue: fmt.Sprintf("%v", oldVal),
+				Type:     "removed",
+			})
+		} else if fmt.Sprintf("%v", oldVal) != fmt.Sprintf("%v", newVal) {
+			diffs = append(diffs, DiffEntry{
+				Field:    key,
+				OldValue: fmt.Sprintf("%v", oldVal),
+				NewValue: fmt.Sprintf("%v", newVal),
+				Type:     "changed",
+			})
+		}
+	}
+
+	for key, newVal := range newMap {
+		if _, exists := oldMap[key]; !exists {
+			diffs = append(diffs, DiffEntry{
+				Field:    key,
+				NewValue: fmt.Sprintf("%v", newVal),
+				Type:     "added",
+			})
+		}
+	}
+
+	return diffs
+}
+
+// toStringMap attempts to convert an interface{} to map[string]interface{}.
+func toStringMap(v interface{}) (map[string]interface{}, bool) {
+	if v == nil {
+		return map[string]interface{}{}, false
+	}
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		return map[string]interface{}{}, false
+	}
+	return m, true
 }
