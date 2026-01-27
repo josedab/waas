@@ -136,6 +136,8 @@ type memoryRepository struct {
 	topics        map[uuid.UUID]*Topic
 	subscriptions map[uuid.UUID]*Subscription
 	events        map[uuid.UUID]*TopicEvent
+	rules         map[uuid.UUID]*RoutingRule
+	ruleVersions  map[uuid.UUID][]RuleVersion
 }
 
 func newMemoryRepository() *memoryRepository {
@@ -143,6 +145,8 @@ func newMemoryRepository() *memoryRepository {
 		topics:        make(map[uuid.UUID]*Topic),
 		subscriptions: make(map[uuid.UUID]*Subscription),
 		events:        make(map[uuid.UUID]*TopicEvent),
+		rules:         make(map[uuid.UUID]*RoutingRule),
+		ruleVersions:  make(map[uuid.UUID][]RuleVersion),
 	}
 }
 
@@ -291,6 +295,57 @@ func (r *memoryRepository) UpdateEventStatus(_ context.Context, eventID uuid.UUI
 	e.Status = status
 	e.FanOutCount = fanOutCount
 	return nil
+}
+
+func (r *memoryRepository) CreateRoutingRule(_ context.Context, rule *RoutingRule) error {
+	r.rules[rule.ID] = rule
+	return nil
+}
+
+func (r *memoryRepository) GetRoutingRule(_ context.Context, tenantID, ruleID uuid.UUID) (*RoutingRule, error) {
+	rule, ok := r.rules[ruleID]
+	if !ok || rule.TenantID != tenantID {
+		return nil, assert.AnError
+	}
+	return rule, nil
+}
+
+func (r *memoryRepository) ListRoutingRules(_ context.Context, tenantID, topicID uuid.UUID) ([]RoutingRule, error) {
+	var result []RoutingRule
+	for _, rule := range r.rules {
+		if rule.TenantID == tenantID && rule.TopicID == topicID {
+			result = append(result, *rule)
+		}
+	}
+	return result, nil
+}
+
+func (r *memoryRepository) UpdateRoutingRule(_ context.Context, rule *RoutingRule) error {
+	r.rules[rule.ID] = rule
+	return nil
+}
+
+func (r *memoryRepository) DeleteRoutingRule(_ context.Context, tenantID, ruleID uuid.UUID) error {
+	delete(r.rules, ruleID)
+	return nil
+}
+
+func (r *memoryRepository) CreateRuleVersion(_ context.Context, v *RuleVersion) error {
+	r.ruleVersions[v.RuleID] = append(r.ruleVersions[v.RuleID], *v)
+	return nil
+}
+
+func (r *memoryRepository) GetRuleVersions(_ context.Context, ruleID uuid.UUID) ([]RuleVersion, error) {
+	return r.ruleVersions[ruleID], nil
+}
+
+func (r *memoryRepository) GetRuleVersion(_ context.Context, ruleID uuid.UUID, version int) (*RuleVersion, error) {
+	for _, v := range r.ruleVersions[ruleID] {
+		if v.Version == version {
+			return &v, nil
+		}
+	}
+	return nil, assert.AnError
 }
 
 // ---- Topic CRUD Tests ----
@@ -468,8 +523,8 @@ func TestService_FanOut_WithFilters(t *testing.T) {
 	result := svc.FanOut(context.Background(), event, subs)
 
 	assert.Equal(t, 4, result.TotalTargets)
-	assert.Equal(t, 3, result.Delivered)  // first, third, and fourth match
-	assert.Equal(t, 1, result.Filtered)   // second doesn't match
+	assert.Equal(t, 3, result.Delivered) // first, third, and fourth match
+	assert.Equal(t, 1, result.Filtered)  // second doesn't match
 	assert.Equal(t, 0, result.Failed)
 }
 
@@ -576,4 +631,422 @@ func TestSubscription_CreatedAtIsSet(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.WithinDuration(t, time.Now(), sub.CreatedAt, time.Second)
+}
+
+// ---- Routing Rule Tests ----
+
+func TestService_CreateRoutingRule(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "orders"})
+
+	rule, err := svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name: "route-high-value",
+		Conditions: []RuleCondition{
+			{Type: "jsonpath", Expression: "$.amount", Operator: "gt", Value: "100"},
+		},
+		Actions: []RuleAction{
+			{Type: "route", DestinationID: uuid.New().String()},
+		},
+		Priority: 1,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "route-high-value", rule.Name)
+	assert.Equal(t, 1, rule.Version)
+	assert.True(t, rule.Enabled)
+	assert.Equal(t, topic.ID, rule.TopicID)
+}
+
+func TestService_CreateRoutingRule_Validation(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topicID := uuid.New()
+
+	_, err := svc.CreateRoutingRule(context.Background(), tenantID, topicID, &CreateRuleRequest{})
+	assert.Error(t, err)
+
+	_, err = svc.CreateRoutingRule(context.Background(), tenantID, topicID, &CreateRuleRequest{
+		Name:       "test",
+		Conditions: []RuleCondition{},
+		Actions:    []RuleAction{{Type: "route"}},
+	})
+	assert.Error(t, err)
+
+	_, err = svc.CreateRoutingRule(context.Background(), tenantID, topicID, &CreateRuleRequest{
+		Name:       "test",
+		Conditions: []RuleCondition{{Type: "jsonpath", Expression: "$.x", Operator: "equals", Value: "1"}},
+		Actions:    []RuleAction{},
+	})
+	assert.Error(t, err)
+}
+
+func TestService_UpdateRoutingRule_Versioning(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "orders"})
+
+	rule, _ := svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name:       "rule-v1",
+		Conditions: []RuleCondition{{Type: "jsonpath", Expression: "$.status", Operator: "equals", Value: "active"}},
+		Actions:    []RuleAction{{Type: "route", DestinationID: "dest-1"}},
+	})
+
+	updated, err := svc.UpdateRoutingRule(context.Background(), tenantID, rule.ID, &CreateRuleRequest{
+		Name:       "rule-v2",
+		Conditions: []RuleCondition{{Type: "jsonpath", Expression: "$.status", Operator: "equals", Value: "pending"}},
+		Actions:    []RuleAction{{Type: "route", DestinationID: "dest-2"}},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, updated.Version)
+	assert.Equal(t, "rule-v2", updated.Name)
+
+	// Verify version history was saved
+	versions, err := svc.GetRuleVersions(context.Background(), rule.ID)
+	require.NoError(t, err)
+	assert.Len(t, versions, 2) // initial v1 + saved v1 before update
+}
+
+func TestService_RollbackRule(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "orders"})
+
+	rule, _ := svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name:       "rule",
+		Conditions: []RuleCondition{{Type: "jsonpath", Expression: "$.status", Operator: "equals", Value: "v1"}},
+		Actions:    []RuleAction{{Type: "route", DestinationID: "dest-1"}},
+	})
+
+	// Update to v2
+	svc.UpdateRoutingRule(context.Background(), tenantID, rule.ID, &CreateRuleRequest{
+		Name:       "rule",
+		Conditions: []RuleCondition{{Type: "jsonpath", Expression: "$.status", Operator: "equals", Value: "v2"}},
+		Actions:    []RuleAction{{Type: "route", DestinationID: "dest-2"}},
+	})
+
+	// Rollback to v1
+	rolled, err := svc.RollbackRule(context.Background(), tenantID, rule.ID, 1)
+	require.NoError(t, err)
+	assert.Equal(t, 3, rolled.Version)
+	assert.Equal(t, "v1", rolled.Conditions[0].Value)
+}
+
+func TestService_TestRule_JSONPath(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "orders"})
+
+	rule, _ := svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name: "high-value",
+		Conditions: []RuleCondition{
+			{Type: "jsonpath", Expression: "$.amount", Operator: "gt", Value: "100"},
+			{Type: "jsonpath", Expression: "$.status", Operator: "equals", Value: "active"},
+		},
+		Actions: []RuleAction{{Type: "route", DestinationID: "dest-1"}},
+	})
+
+	// Test matching payload
+	result, err := svc.TestRule(context.Background(), tenantID, rule.ID, &RuleTestRequest{
+		Payload: json.RawMessage(`{"amount": 200, "status": "active"}`),
+	})
+	require.NoError(t, err)
+	assert.True(t, result.Matched)
+	assert.Len(t, result.Conditions, 2)
+	assert.True(t, result.Conditions[0].Matched)
+	assert.True(t, result.Conditions[1].Matched)
+	assert.Len(t, result.Actions, 1)
+
+	// Test non-matching payload
+	result, err = svc.TestRule(context.Background(), tenantID, rule.ID, &RuleTestRequest{
+		Payload: json.RawMessage(`{"amount": 50, "status": "active"}`),
+	})
+	require.NoError(t, err)
+	assert.False(t, result.Matched)
+	assert.False(t, result.Conditions[0].Matched)
+	assert.True(t, result.Conditions[1].Matched)
+	assert.Nil(t, result.Actions)
+}
+
+func TestService_TestRule_HeaderMatching(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "events"})
+
+	rule, _ := svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name: "content-type-check",
+		Conditions: []RuleCondition{
+			{Type: "header", Expression: "Content-Type", Operator: "equals", Value: "application/json"},
+		},
+		Actions: []RuleAction{{Type: "route", DestinationID: "dest-1"}},
+	})
+
+	result, err := svc.TestRule(context.Background(), tenantID, rule.ID, &RuleTestRequest{
+		Payload: json.RawMessage(`{}`),
+		Headers: map[string]string{"Content-Type": "application/json"},
+	})
+	require.NoError(t, err)
+	assert.True(t, result.Matched)
+
+	result, err = svc.TestRule(context.Background(), tenantID, rule.ID, &RuleTestRequest{
+		Payload: json.RawMessage(`{}`),
+		Headers: map[string]string{"Content-Type": "text/plain"},
+	})
+	require.NoError(t, err)
+	assert.False(t, result.Matched)
+}
+
+func TestService_TestRule_Regex(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "events"})
+
+	rule, _ := svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name: "email-check",
+		Conditions: []RuleCondition{
+			{Type: "regex", Expression: "$.email", Value: `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`},
+		},
+		Actions: []RuleAction{{Type: "filter"}},
+	})
+
+	result, err := svc.TestRule(context.Background(), tenantID, rule.ID, &RuleTestRequest{
+		Payload: json.RawMessage(`{"email": "test@example.com"}`),
+	})
+	require.NoError(t, err)
+	assert.True(t, result.Matched)
+
+	result, err = svc.TestRule(context.Background(), tenantID, rule.ID, &RuleTestRequest{
+		Payload: json.RawMessage(`{"email": "not-an-email"}`),
+	})
+	require.NoError(t, err)
+	assert.False(t, result.Matched)
+}
+
+func TestService_TestRule_EventType(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "events"})
+
+	rule, _ := svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name: "order-events",
+		Conditions: []RuleCondition{
+			{Type: "event_type", Operator: "contains", Value: "order"},
+		},
+		Actions: []RuleAction{{Type: "route", DestinationID: "dest-1"}},
+	})
+
+	result, err := svc.TestRule(context.Background(), tenantID, rule.ID, &RuleTestRequest{
+		Payload:   json.RawMessage(`{}`),
+		EventType: "order.created",
+	})
+	require.NoError(t, err)
+	assert.True(t, result.Matched)
+
+	result, err = svc.TestRule(context.Background(), tenantID, rule.ID, &RuleTestRequest{
+		Payload:   json.RawMessage(`{}`),
+		EventType: "user.updated",
+	})
+	require.NoError(t, err)
+	assert.False(t, result.Matched)
+}
+
+func TestService_DeleteRoutingRule(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "orders"})
+
+	rule, _ := svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name:       "rule",
+		Conditions: []RuleCondition{{Type: "jsonpath", Expression: "$.x", Operator: "equals", Value: "1"}},
+		Actions:    []RuleAction{{Type: "route"}},
+	})
+
+	err := svc.DeleteRoutingRule(context.Background(), tenantID, rule.ID)
+	require.NoError(t, err)
+
+	_, err = svc.GetRoutingRule(context.Background(), tenantID, rule.ID)
+	assert.Error(t, err)
+}
+
+func TestService_ListRoutingRules(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "orders"})
+
+	svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name:       "rule-1",
+		Conditions: []RuleCondition{{Type: "jsonpath", Expression: "$.x", Operator: "equals", Value: "1"}},
+		Actions:    []RuleAction{{Type: "route"}},
+	})
+	svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name:       "rule-2",
+		Conditions: []RuleCondition{{Type: "jsonpath", Expression: "$.y", Operator: "equals", Value: "2"}},
+		Actions:    []RuleAction{{Type: "filter"}},
+	})
+
+	rules, err := svc.ListRoutingRules(context.Background(), tenantID, topic.ID)
+	require.NoError(t, err)
+	assert.Len(t, rules, 2)
+}
+
+func TestService_TestRule_RetryPolicy(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "events"})
+
+	rule, _ := svc.CreateRoutingRule(context.Background(), tenantID, topic.ID, &CreateRuleRequest{
+		Name: "with-retry",
+		Conditions: []RuleCondition{
+			{Type: "jsonpath", Expression: "$.status", Operator: "equals", Value: "active"},
+		},
+		Actions: []RuleAction{{
+			Type:          "route",
+			DestinationID: "dest-1",
+			RetryPolicy: &RetryPolicy{
+				MaxRetries:        5,
+				InitialDelayMs:    1000,
+				MaxDelayMs:        30000,
+				BackoffMultiplier: 2,
+			},
+		}},
+	})
+
+	result, err := svc.TestRule(context.Background(), tenantID, rule.ID, &RuleTestRequest{
+		Payload: json.RawMessage(`{"status": "active"}`),
+	})
+	require.NoError(t, err)
+	assert.True(t, result.Matched)
+	assert.NotNil(t, result.Actions[0].RetryPolicy)
+	assert.Equal(t, 5, result.Actions[0].RetryPolicy.MaxRetries)
+}
+
+// ---- FanOutDelivery Tests ----
+
+func TestService_FanOutDelivery_AllSucceed(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, err := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "orders"})
+	require.NoError(t, err)
+
+	// Subscribe three endpoints with no filters
+	for i := 0; i < 3; i++ {
+		_, err := svc.Subscribe(context.Background(), tenantID, topic.ID, uuid.New(), "")
+		require.NoError(t, err)
+	}
+
+	payload := json.RawMessage(`{"event_type":"order.created","amount":100}`)
+	result, err := svc.FanOutDelivery(context.Background(), tenantID, topic.ID, payload, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, topic.ID, result.TopicID)
+	assert.Equal(t, 3, result.TotalTargets)
+	assert.Equal(t, 3, result.Succeeded)
+	assert.Equal(t, 0, result.Failed)
+	assert.Equal(t, 0, result.Pending)
+	assert.Len(t, result.TargetResults, 3)
+	for _, tr := range result.TargetResults {
+		assert.Equal(t, DeliveryStatusDelivered, tr.Status)
+	}
+}
+
+func TestService_FanOutDelivery_WithFilterExclusion(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, err := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "orders"})
+	require.NoError(t, err)
+
+	// Sub 1: matches
+	_, err = svc.Subscribe(context.Background(), tenantID, topic.ID, uuid.New(), `$.event_type == "order.created"`)
+	require.NoError(t, err)
+	// Sub 2: does NOT match
+	_, err = svc.Subscribe(context.Background(), tenantID, topic.ID, uuid.New(), `$.event_type == "order.updated"`)
+	require.NoError(t, err)
+	// Sub 3: no filter, matches all
+	_, err = svc.Subscribe(context.Background(), tenantID, topic.ID, uuid.New(), "")
+	require.NoError(t, err)
+
+	payload := json.RawMessage(`{"event_type":"order.created","amount":50}`)
+	result, err := svc.FanOutDelivery(context.Background(), tenantID, topic.ID, payload, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, 3, result.TotalTargets)
+	assert.Equal(t, 2, result.Succeeded)
+	assert.Equal(t, 0, result.Failed)
+
+	filteredCount := 0
+	for _, tr := range result.TargetResults {
+		if tr.Status == DeliveryStatusFiltered {
+			filteredCount++
+		}
+	}
+	assert.Equal(t, 1, filteredCount)
+}
+
+func TestService_FanOutDelivery_PausedTopic(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, _ := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "orders"})
+
+	// Pause the topic
+	svc.UpdateTopic(context.Background(), tenantID, topic.ID, &UpdateTopicRequest{Status: TopicStatusPaused})
+
+	_, err := svc.FanOutDelivery(context.Background(), tenantID, topic.ID, json.RawMessage(`{}`), nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not active")
+}
+
+func TestService_FanOutDelivery_NoMatchingSubscriptions(t *testing.T) {
+	repo := newMemoryRepository()
+	svc := NewService(repo)
+
+	tenantID := uuid.New()
+	topic, err := svc.CreateTopic(context.Background(), tenantID, &CreateTopicRequest{Name: "orders"})
+	require.NoError(t, err)
+
+	// All subscriptions have filters that won't match
+	_, err = svc.Subscribe(context.Background(), tenantID, topic.ID, uuid.New(), `$.event_type == "user.deleted"`)
+	require.NoError(t, err)
+	_, err = svc.Subscribe(context.Background(), tenantID, topic.ID, uuid.New(), `$.event_type == "user.updated"`)
+	require.NoError(t, err)
+
+	payload := json.RawMessage(`{"event_type":"order.created"}`)
+	result, err := svc.FanOutDelivery(context.Background(), tenantID, topic.ID, payload, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, result.TotalTargets)
+	assert.Equal(t, 0, result.Succeeded)
+	assert.Equal(t, 0, result.Failed)
+
+	for _, tr := range result.TargetResults {
+		assert.Equal(t, DeliveryStatusFiltered, tr.Status)
+	}
 }

@@ -113,3 +113,128 @@ type PublishRequest struct {
 	Payload   json.RawMessage `json:"payload" binding:"required"`
 	Metadata  json.RawMessage `json:"metadata"`
 }
+
+// RoutingRule defines a routing rule with conditions and actions
+type RoutingRule struct {
+	ID          uuid.UUID       `json:"id" db:"id"`
+	TenantID    uuid.UUID       `json:"tenant_id" db:"tenant_id"`
+	TopicID     uuid.UUID       `json:"topic_id" db:"topic_id"`
+	Name        string          `json:"name" db:"name"`
+	Description string          `json:"description,omitempty" db:"description"`
+	Version     int             `json:"version" db:"version"`
+	Conditions  []RuleCondition `json:"conditions" db:"conditions"`
+	Actions     []RuleAction    `json:"actions" db:"actions"`
+	Priority    int             `json:"priority" db:"priority"`
+	Enabled     bool            `json:"enabled" db:"enabled"`
+	CreatedAt   time.Time       `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at" db:"updated_at"`
+}
+
+// RuleCondition defines a matching condition
+type RuleCondition struct {
+	Type       string `json:"type"`       // jsonpath, header, regex, event_type
+	Expression string `json:"expression"` // JSONPath expr, header name, regex pattern
+	Operator   string `json:"operator"`   // equals, contains, matches, gt, lt, exists
+	Value      string `json:"value"`
+}
+
+// RuleAction defines what to do when conditions match
+type RuleAction struct {
+	Type          string            `json:"type"` // route, transform, filter, delay
+	DestinationID string            `json:"destination_id,omitempty"`
+	Transform     string            `json:"transform,omitempty"` // JS transform expression
+	DelaySeconds  int               `json:"delay_seconds,omitempty"`
+	Headers       map[string]string `json:"headers,omitempty"`
+	RetryPolicy   *RetryPolicy      `json:"retry_policy,omitempty"`
+}
+
+// RetryPolicy defines retry behavior per target
+type RetryPolicy struct {
+	MaxRetries        int `json:"max_retries"`
+	InitialDelayMs    int `json:"initial_delay_ms"`
+	MaxDelayMs        int `json:"max_delay_ms"`
+	BackoffMultiplier int `json:"backoff_multiplier"`
+}
+
+// RuleVersion tracks version history for rollback
+type RuleVersion struct {
+	ID         uuid.UUID       `json:"id"`
+	RuleID     uuid.UUID       `json:"rule_id"`
+	Version    int             `json:"version"`
+	Conditions []RuleCondition `json:"conditions"`
+	Actions    []RuleAction    `json:"actions"`
+	CreatedAt  time.Time       `json:"created_at"`
+	CreatedBy  string          `json:"created_by,omitempty"`
+}
+
+// RuleTestRequest represents a request to test a rule
+type RuleTestRequest struct {
+	Payload   json.RawMessage   `json:"payload" binding:"required"`
+	Headers   map[string]string `json:"headers,omitempty"`
+	EventType string            `json:"event_type,omitempty"`
+}
+
+// RuleTestResult represents the result of testing a rule
+type RuleTestResult struct {
+	RuleID     uuid.UUID         `json:"rule_id"`
+	RuleName   string            `json:"rule_name"`
+	Matched    bool              `json:"matched"`
+	Conditions []ConditionResult `json:"conditions"`
+	Actions    []RuleAction      `json:"triggered_actions,omitempty"`
+}
+
+// ConditionResult represents the evaluation result of a single condition
+type ConditionResult struct {
+	Condition   RuleCondition `json:"condition"`
+	Matched     bool          `json:"matched"`
+	ActualValue string        `json:"actual_value,omitempty"`
+}
+
+// CreateRuleRequest is the request to create a routing rule
+type CreateRuleRequest struct {
+	Name        string          `json:"name" binding:"required"`
+	Description string          `json:"description,omitempty"`
+	Conditions  []RuleCondition `json:"conditions" binding:"required"`
+	Actions     []RuleAction    `json:"actions" binding:"required"`
+	Priority    int             `json:"priority"`
+}
+
+// RollbackRuleRequest is the request to rollback a routing rule to a specific version
+type RollbackRuleRequest struct {
+	Version int `json:"version" binding:"required"`
+}
+
+// FanOutDeliveryRequest represents the request to fan-out deliver an event
+type FanOutDeliveryRequest struct {
+	Payload json.RawMessage   `json:"payload" binding:"required"`
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// FanOutDeliveryResult captures the results of parallel delivery
+type FanOutDeliveryResult struct {
+	EventID       uuid.UUID              `json:"event_id"`
+	TopicID       uuid.UUID              `json:"topic_id"`
+	TotalTargets  int                    `json:"total_targets"`
+	Succeeded     int                    `json:"succeeded"`
+	Failed        int                    `json:"failed"`
+	Pending       int                    `json:"pending"`
+	TargetResults []TargetDeliveryResult `json:"target_results"`
+}
+
+// TargetDeliveryResult represents the result of delivering to a single target
+type TargetDeliveryResult struct {
+	SubscriptionID uuid.UUID    `json:"subscription_id"`
+	EndpointURL    string       `json:"endpoint_url"`
+	Status         string       `json:"status"` // delivered, failed, pending, filtered
+	RetryPolicy    *RetryPolicy `json:"retry_policy,omitempty"`
+	ErrorMessage   string       `json:"error_message,omitempty"`
+	DurationMs     int          `json:"duration_ms"`
+}
+
+// Delivery status constants for FanOutDelivery
+const (
+	DeliveryStatusDelivered = "delivered"
+	DeliveryStatusFailed    = "failed"
+	DeliveryStatusPending   = "pending"
+	DeliveryStatusFiltered  = "filtered"
+)

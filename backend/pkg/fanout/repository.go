@@ -2,6 +2,7 @@ package fanout
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -30,6 +31,18 @@ type Repository interface {
 	GetEvent(ctx context.Context, eventID uuid.UUID) (*TopicEvent, error)
 	ListEvents(ctx context.Context, topicID uuid.UUID, limit, offset int) ([]TopicEvent, int, error)
 	UpdateEventStatus(ctx context.Context, eventID uuid.UUID, status string, fanOutCount int) error
+
+	// Routing Rules
+	CreateRoutingRule(ctx context.Context, rule *RoutingRule) error
+	GetRoutingRule(ctx context.Context, tenantID, ruleID uuid.UUID) (*RoutingRule, error)
+	ListRoutingRules(ctx context.Context, tenantID, topicID uuid.UUID) ([]RoutingRule, error)
+	UpdateRoutingRule(ctx context.Context, rule *RoutingRule) error
+	DeleteRoutingRule(ctx context.Context, tenantID, ruleID uuid.UUID) error
+
+	// Rule Versions
+	CreateRuleVersion(ctx context.Context, version *RuleVersion) error
+	GetRuleVersions(ctx context.Context, ruleID uuid.UUID) ([]RuleVersion, error)
+	GetRuleVersion(ctx context.Context, ruleID uuid.UUID, version int) (*RuleVersion, error)
 }
 
 // PostgresRepository implements Repository using PostgreSQL
@@ -208,4 +221,121 @@ func (r *PostgresRepository) UpdateEventStatus(ctx context.Context, eventID uuid
 		`UPDATE fanout_events SET status = $1, fan_out_count = $2 WHERE id = $3`,
 		status, fanOutCount, eventID)
 	return err
+}
+
+func (r *PostgresRepository) CreateRoutingRule(ctx context.Context, rule *RoutingRule) error {
+	condJSON, _ := json.Marshal(rule.Conditions)
+	actJSON, _ := json.Marshal(rule.Actions)
+	query := `INSERT INTO fanout_routing_rules (id, tenant_id, topic_id, name, description, version, conditions, actions, priority, enabled, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+	_, err := r.db.ExecContext(ctx, query,
+		rule.ID, rule.TenantID, rule.TopicID, rule.Name, rule.Description,
+		rule.Version, condJSON, actJSON, rule.Priority, rule.Enabled,
+		rule.CreatedAt, rule.UpdatedAt)
+	return err
+}
+
+func (r *PostgresRepository) GetRoutingRule(ctx context.Context, tenantID, ruleID uuid.UUID) (*RoutingRule, error) {
+	var rule RoutingRule
+	var condJSON, actJSON []byte
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, tenant_id, topic_id, name, description, version, conditions, actions, priority, enabled, created_at, updated_at
+		FROM fanout_routing_rules WHERE id = $1 AND tenant_id = $2`, ruleID, tenantID).
+		Scan(&rule.ID, &rule.TenantID, &rule.TopicID, &rule.Name, &rule.Description,
+			&rule.Version, &condJSON, &actJSON, &rule.Priority, &rule.Enabled,
+			&rule.CreatedAt, &rule.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal(condJSON, &rule.Conditions)
+	json.Unmarshal(actJSON, &rule.Actions)
+	return &rule, nil
+}
+
+func (r *PostgresRepository) ListRoutingRules(ctx context.Context, tenantID, topicID uuid.UUID) ([]RoutingRule, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, tenant_id, topic_id, name, description, version, conditions, actions, priority, enabled, created_at, updated_at
+		FROM fanout_routing_rules WHERE tenant_id = $1 AND topic_id = $2 ORDER BY priority ASC`, tenantID, topicID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var rules []RoutingRule
+	for rows.Next() {
+		var rule RoutingRule
+		var condJSON, actJSON []byte
+		if err := rows.Scan(&rule.ID, &rule.TenantID, &rule.TopicID, &rule.Name, &rule.Description,
+			&rule.Version, &condJSON, &actJSON, &rule.Priority, &rule.Enabled,
+			&rule.CreatedAt, &rule.UpdatedAt); err != nil {
+			return nil, err
+		}
+		json.Unmarshal(condJSON, &rule.Conditions)
+		json.Unmarshal(actJSON, &rule.Actions)
+		rules = append(rules, rule)
+	}
+	return rules, nil
+}
+
+func (r *PostgresRepository) UpdateRoutingRule(ctx context.Context, rule *RoutingRule) error {
+	condJSON, _ := json.Marshal(rule.Conditions)
+	actJSON, _ := json.Marshal(rule.Actions)
+	query := `UPDATE fanout_routing_rules SET name = $1, description = $2, version = $3, conditions = $4, actions = $5, priority = $6, enabled = $7, updated_at = $8
+		WHERE id = $9 AND tenant_id = $10`
+	_, err := r.db.ExecContext(ctx, query,
+		rule.Name, rule.Description, rule.Version, condJSON, actJSON,
+		rule.Priority, rule.Enabled, rule.UpdatedAt, rule.ID, rule.TenantID)
+	return err
+}
+
+func (r *PostgresRepository) DeleteRoutingRule(ctx context.Context, tenantID, ruleID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM fanout_routing_rules WHERE id = $1 AND tenant_id = $2`, ruleID, tenantID)
+	return err
+}
+
+func (r *PostgresRepository) CreateRuleVersion(ctx context.Context, v *RuleVersion) error {
+	condJSON, _ := json.Marshal(v.Conditions)
+	actJSON, _ := json.Marshal(v.Actions)
+	query := `INSERT INTO fanout_rule_versions (id, rule_id, version, conditions, actions, created_at, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
+	_, err := r.db.ExecContext(ctx, query,
+		v.ID, v.RuleID, v.Version, condJSON, actJSON, v.CreatedAt, v.CreatedBy)
+	return err
+}
+
+func (r *PostgresRepository) GetRuleVersions(ctx context.Context, ruleID uuid.UUID) ([]RuleVersion, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, rule_id, version, conditions, actions, created_at, created_by
+		FROM fanout_rule_versions WHERE rule_id = $1 ORDER BY version DESC`, ruleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var versions []RuleVersion
+	for rows.Next() {
+		var v RuleVersion
+		var condJSON, actJSON []byte
+		if err := rows.Scan(&v.ID, &v.RuleID, &v.Version, &condJSON, &actJSON, &v.CreatedAt, &v.CreatedBy); err != nil {
+			return nil, err
+		}
+		json.Unmarshal(condJSON, &v.Conditions)
+		json.Unmarshal(actJSON, &v.Actions)
+		versions = append(versions, v)
+	}
+	return versions, nil
+}
+
+func (r *PostgresRepository) GetRuleVersion(ctx context.Context, ruleID uuid.UUID, version int) (*RuleVersion, error) {
+	var v RuleVersion
+	var condJSON, actJSON []byte
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, rule_id, version, conditions, actions, created_at, created_by
+		FROM fanout_rule_versions WHERE rule_id = $1 AND version = $2`, ruleID, version).
+		Scan(&v.ID, &v.RuleID, &v.Version, &condJSON, &actJSON, &v.CreatedAt, &v.CreatedBy)
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal(condJSON, &v.Conditions)
+	json.Unmarshal(actJSON, &v.Actions)
+	return &v, nil
 }

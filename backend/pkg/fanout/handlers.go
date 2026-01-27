@@ -31,7 +31,16 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		fanout.DELETE("/topics/:id/subscriptions/:subId", h.Unsubscribe)
 		fanout.GET("/topics/:id/subscriptions", h.ListSubscriptions)
 		fanout.POST("/topics/:id/publish", h.PublishEvent)
+		fanout.POST("/topics/:id/deliver", h.FanOutDeliver)
 		fanout.GET("/topics/:id/events", h.ListEvents)
+		fanout.POST("/topics/:id/rules", h.CreateRoutingRule)
+		fanout.GET("/topics/:id/rules", h.ListRoutingRules)
+		fanout.GET("/rules/:id", h.GetRoutingRule)
+		fanout.PUT("/rules/:id", h.UpdateRoutingRule)
+		fanout.DELETE("/rules/:id", h.DeleteRoutingRule)
+		fanout.POST("/rules/:id/test", h.TestRule)
+		fanout.POST("/rules/:id/rollback", h.RollbackRule)
+		fanout.GET("/rules/:id/versions", h.GetRuleVersions)
 	}
 }
 
@@ -265,6 +274,35 @@ func (h *Handler) PublishEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+func (h *Handler) FanOutDeliver(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		return
+	}
+
+	topicID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		return
+	}
+
+	var req FanOutDeliveryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	result, err := h.service.FanOutDelivery(c.Request.Context(), tid, topicID, req.Payload, req.Headers)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "DELIVERY_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 func (h *Handler) ListEvents(c *gin.Context) {
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -302,4 +340,204 @@ func parsePagination(c *gin.Context) (int, int) {
 		}
 	}
 	return limit, offset
+}
+
+func (h *Handler) CreateRoutingRule(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		return
+	}
+
+	topicID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		return
+	}
+
+	var req CreateRuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	rule, err := h.service.CreateRoutingRule(c.Request.Context(), tid, topicID, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusCreated, rule)
+}
+
+func (h *Handler) ListRoutingRules(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		return
+	}
+
+	topicID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		return
+	}
+
+	rules, err := h.service.ListRoutingRules(c.Request.Context(), tid, topicID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"rules": rules})
+}
+
+func (h *Handler) GetRoutingRule(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		return
+	}
+
+	ruleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		return
+	}
+
+	rule, err := h.service.GetRoutingRule(c.Request.Context(), tid, ruleID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, rule)
+}
+
+func (h *Handler) UpdateRoutingRule(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		return
+	}
+
+	ruleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		return
+	}
+
+	var req CreateRuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	rule, err := h.service.UpdateRoutingRule(c.Request.Context(), tid, ruleID, &req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, rule)
+}
+
+func (h *Handler) DeleteRoutingRule(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		return
+	}
+
+	ruleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		return
+	}
+
+	if err := h.service.DeleteRoutingRule(c.Request.Context(), tid, ruleID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "rule deleted"})
+}
+
+func (h *Handler) TestRule(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		return
+	}
+
+	ruleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		return
+	}
+
+	var req RuleTestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	result, err := h.service.TestRule(c.Request.Context(), tid, ruleID, &req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "TEST_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) RollbackRule(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		return
+	}
+
+	ruleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		return
+	}
+
+	var req RollbackRuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	rule, err := h.service.RollbackRule(c.Request.Context(), tid, ruleID, req.Version)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "ROLLBACK_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, rule)
+}
+
+func (h *Handler) GetRuleVersions(c *gin.Context) {
+	ruleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		return
+	}
+
+	versions, err := h.service.GetRuleVersions(c.Request.Context(), ruleID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"versions": versions})
 }
