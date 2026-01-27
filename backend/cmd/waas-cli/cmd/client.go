@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -59,15 +60,15 @@ type RetryConfig struct {
 
 // Delivery represents a webhook delivery
 type Delivery struct {
-	ID              string    `json:"id"`
-	EndpointID      string    `json:"endpoint_id"`
-	Status          string    `json:"status"`
-	AttemptCount    int       `json:"attempt_count"`
-	LastAttemptAt   time.Time `json:"last_attempt_at,omitempty"`
-	NextAttemptAt   time.Time `json:"next_attempt_at,omitempty"`
-	LastHTTPStatus  int       `json:"last_http_status,omitempty"`
-	LastError       string    `json:"last_error,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID             string    `json:"id"`
+	EndpointID     string    `json:"endpoint_id"`
+	Status         string    `json:"status"`
+	AttemptCount   int       `json:"attempt_count"`
+	LastAttemptAt  time.Time `json:"last_attempt_at,omitempty"`
+	NextAttemptAt  time.Time `json:"next_attempt_at,omitempty"`
+	LastHTTPStatus int       `json:"last_http_status,omitempty"`
+	LastError      string    `json:"last_error,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 // DeliveryAttempt represents a single delivery attempt
@@ -466,4 +467,171 @@ func (c *Client) InspectDelivery(id string) (*DeliveryDetail, error) {
 // RetryDelivery retries a failed delivery (alias for replay)
 func (c *Client) RetryDelivery(deliveryID string) (*SendWebhookResponse, error) {
 	return c.ReplayDelivery(deliveryID)
+}
+
+// StartMigration starts a live migration from the given platform
+func (c *Client) StartMigration(platform, filePath string, dryRun bool) (map[string]interface{}, error) {
+	fileContent, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	body := map[string]interface{}{
+		"platform": platform,
+		"data":     string(fileContent),
+	}
+
+	var path string
+	if dryRun {
+		path = "/api/v1/livemigration/dry-run"
+	} else {
+		path = "/api/v1/livemigration/import/" + platform
+	}
+
+	resp, err := c.doRequest("POST", path, body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GetMigrationStatus retrieves the status of migration jobs
+func (c *Client) GetMigrationStatus() ([]map[string]interface{}, error) {
+	resp, err := c.doRequest("GET", "/api/v1/livemigration/jobs", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Jobs []map[string]interface{} `json:"jobs"`
+	}
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return result.Jobs, nil
+}
+
+// RollbackMigration rolls back a migration job by ID
+func (c *Client) RollbackMigration(jobID string) (map[string]interface{}, error) {
+	resp, err := c.doRequest("POST", "/api/v1/livemigration/jobs/"+jobID+"/rollback", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// ExportEndpoints retrieves all endpoints for export
+func (c *Client) ExportEndpoints() ([]map[string]interface{}, error) {
+	resp, err := c.doRequest("GET", "/api/v1/webhooks/endpoints", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Endpoints []map[string]interface{} `json:"endpoints"`
+	}
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return result.Endpoints, nil
+}
+
+// ExportDeliveries retrieves all deliveries for export
+func (c *Client) ExportDeliveries() ([]map[string]interface{}, error) {
+	resp, err := c.doRequest("GET", "/api/v1/webhooks/deliveries", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Deliveries []map[string]interface{} `json:"deliveries"`
+	}
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return result.Deliveries, nil
+}
+
+// ImportEndpoints imports endpoints, optionally as a dry run
+func (c *Client) ImportEndpoints(endpoints []map[string]interface{}, dryRun bool) (map[string]interface{}, error) {
+	body := map[string]interface{}{
+		"endpoints": endpoints,
+		"dry_run":   dryRun,
+	}
+
+	resp, err := c.doRequest("POST", "/api/v1/webhooks/endpoints/import", body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GenerateFromOpenAPI generates webhook config from an OpenAPI spec
+func (c *Client) GenerateFromOpenAPI(specContent string) (map[string]interface{}, error) {
+	body := map[string]interface{}{
+		"spec": specContent,
+	}
+
+	resp, err := c.doRequest("POST", "/api/v1/openapi/generate", body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GenerateSDK generates SDK types from an OpenAPI spec
+func (c *Client) GenerateSDK(specContent, language string) (map[string]interface{}, error) {
+	body := map[string]interface{}{
+		"spec":     specContent,
+		"language": language,
+	}
+
+	resp, err := c.doRequest("POST", "/api/v1/openapi/generate-sdk", body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GenerateTests generates contract tests from an OpenAPI spec
+func (c *Client) GenerateTests(specContent string) (map[string]interface{}, error) {
+	body := map[string]interface{}{
+		"spec": specContent,
+	}
+
+	resp, err := c.doRequest("POST", "/api/v1/openapi/generate-tests", body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	if err := parseResponse(resp, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
