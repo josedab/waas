@@ -50,6 +50,7 @@ type DeliveryEngine struct {
 	transformRepo   repository.TransformationRepository
 	transformEngine *transform.Engine
 	healthMonitor   *EndpointHealthMonitor
+	dlqHook         DLQHook
 	ctx             context.Context
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
@@ -267,6 +268,11 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 
 	// Update endpoint health status
 	e.healthMonitor.RecordDeliveryResult(message.EndpointID, result.Status == queue.StatusSuccess, result.HTTPStatus)
+
+	// Route to DLQ if permanently failed (retries exhausted)
+	if result.Status == queue.StatusFailed {
+		e.routeToDeadLetter(ctx, message, result)
+	}
 
 	duration := time.Since(startTime)
 	e.logger.Info("Delivery processing completed", map[string]interface{}{
@@ -593,4 +599,46 @@ func (e *DeliveryEngine) logTransformationExecution(ctx context.Context, transfo
 			"error":             err.Error(),
 		})
 	}
+}
+
+// DLQHook is a function called when a delivery permanently fails (retries exhausted).
+type DLQHook func(ctx context.Context, tenantID, endpointID, deliveryID string, payload json.RawMessage, headers json.RawMessage, attempts []DLQAttemptDetail, finalError string)
+
+// DLQAttemptDetail captures one delivery attempt for DLQ context.
+type DLQAttemptDetail struct {
+	AttemptNumber int       `json:"attempt_number"`
+	HTTPStatus    *int      `json:"http_status,omitempty"`
+	ResponseBody  *string   `json:"response_body,omitempty"`
+	ErrorMessage  *string   `json:"error_message,omitempty"`
+	AttemptedAt   time.Time `json:"attempted_at"`
+}
+
+// SetDLQHook registers a hook that is called for permanently failed deliveries.
+func (e *DeliveryEngine) SetDLQHook(hook DLQHook) {
+	e.dlqHook = hook
+}
+
+// routeToDeadLetter invokes the DLQ hook if configured.
+func (e *DeliveryEngine) routeToDeadLetter(ctx context.Context, message *queue.DeliveryMessage, result *queue.DeliveryResult) {
+	if e.dlqHook == nil {
+		return
+	}
+
+	payloadJSON, _ := json.Marshal(message.Payload)
+	headersJSON, _ := json.Marshal(message.Headers)
+
+	errMsg := ""
+	if result.ErrorMessage != nil {
+		errMsg = *result.ErrorMessage
+	}
+
+	attempt := DLQAttemptDetail{
+		AttemptNumber: result.AttemptNumber,
+		HTTPStatus:    result.HTTPStatus,
+		ResponseBody:  result.ResponseBody,
+		ErrorMessage:  result.ErrorMessage,
+		AttemptedAt:   time.Now(),
+	}
+
+	e.dlqHook(ctx, message.TenantID.String(), message.EndpointID.String(), message.DeliveryID.String(), payloadJSON, headersJSON, []DLQAttemptDetail{attempt}, errMsg)
 }
