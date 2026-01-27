@@ -13,11 +13,15 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// QuotaMiddleware enforces monthly webhook delivery quotas per tenant,
+// backed by Redis for fast counter lookups.
 type QuotaMiddleware struct {
 	quotaRepo   repository.QuotaRepository
 	redisClient *redis.Client
 }
 
+// QuotaInfo describes a tenant's current quota status, including remaining
+// allowance and overage details.
 type QuotaInfo struct {
 	Allowed       bool
 	CurrentUsage  int
@@ -29,6 +33,7 @@ type QuotaInfo struct {
 	OverageCount  int
 }
 
+// NewQuotaMiddleware creates a QuotaMiddleware with the given quota repository and Redis client.
 func NewQuotaMiddleware(quotaRepo repository.QuotaRepository, redisClient *redis.Client) *QuotaMiddleware {
 	return &QuotaMiddleware{
 		quotaRepo:   quotaRepo,

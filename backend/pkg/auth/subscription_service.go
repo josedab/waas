@@ -10,11 +10,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// SubscriptionService manages tenant subscription tiers, including upgrades,
+// downgrades, and proration calculations.
 type SubscriptionService struct {
 	tenantRepo repository.TenantRepository
 	quotaRepo  repository.QuotaRepository
 }
 
+// SubscriptionUpdate describes a requested tier change for a tenant.
 type SubscriptionUpdate struct {
 	TenantID         uuid.UUID `json:"tenant_id"`
 	NewTier          string    `json:"new_tier"`
@@ -22,6 +25,8 @@ type SubscriptionUpdate struct {
 	PreserveUsage    bool      `json:"preserve_usage"`
 }
 
+// SubscriptionInfo aggregates a tenant's current subscription details,
+// usage, billing history, and available tier change options.
 type SubscriptionInfo struct {
 	Tenant           *models.Tenant           `json:"tenant"`
 	TierConfig       models.SubscriptionTier  `json:"tier_config"`
@@ -31,6 +36,7 @@ type SubscriptionInfo struct {
 	DowngradeOptions []models.SubscriptionTier `json:"downgrade_options"`
 }
 
+// NewSubscriptionService creates a SubscriptionService with the given repositories.
 func NewSubscriptionService(tenantRepo repository.TenantRepository, quotaRepo repository.QuotaRepository) *SubscriptionService {
 	return &SubscriptionService{
 		tenantRepo: tenantRepo,

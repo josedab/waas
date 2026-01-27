@@ -10,11 +10,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// BillingService calculates and processes tenant billing based on
+// subscription tier and monthly usage.
 type BillingService struct {
 	tenantRepo repository.TenantRepository
 	quotaRepo  repository.QuotaRepository
 }
 
+// BillingCalculation holds the result of a billing computation for a single
+// tenant and period, including base and overage amounts.
 type BillingCalculation struct {
 	TenantID        uuid.UUID `json:"tenant_id"`
 	BillingPeriod   time.Time `json:"billing_period"`
@@ -27,6 +31,8 @@ type BillingCalculation struct {
 	UsageDetails    *models.QuotaUsage `json:"usage_details"`
 }
 
+// BillingReport aggregates current and previous period calculations with a
+// trend indicator for a single tenant.
 type BillingReport struct {
 	TenantID       uuid.UUID            `json:"tenant_id"`
 	TenantName     string               `json:"tenant_name"`
@@ -36,6 +42,7 @@ type BillingReport struct {
 	Trend          string               `json:"trend"` // increasing, decreasing, stable
 }
 
+// NewBillingService creates a BillingService with the given tenant and quota repositories.
 func NewBillingService(tenantRepo repository.TenantRepository, quotaRepo repository.QuotaRepository) *BillingService {
 	return &BillingService{
 		tenantRepo: tenantRepo,

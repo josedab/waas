@@ -12,10 +12,14 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// RateLimiter enforces per-minute request rate limits per tenant using
+// Redis-backed sliding window counters.
 type RateLimiter struct {
 	redisClient *redis.Client
 }
 
+// RateLimitInfo describes the current rate-limit state for a tenant,
+// including remaining requests and reset time.
 type RateLimitInfo struct {
 	Allowed   bool
 	Remaining int
@@ -23,6 +27,7 @@ type RateLimitInfo struct {
 	RetryAfter int64
 }
 
+// NewRateLimiter creates a RateLimiter backed by the given Redis client.
 func NewRateLimiter(redisClient *redis.Client) *RateLimiter {
 	return &RateLimiter{
 		redisClient: redisClient,

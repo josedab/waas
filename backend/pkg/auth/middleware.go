@@ -18,10 +18,13 @@ const (
 	TenantIDKey    = "tenant_id"
 )
 
+// AuthMiddleware validates API keys on incoming requests and injects the
+// authenticated tenant into the Gin context.
 type AuthMiddleware struct {
 	tenantRepo repository.TenantRepository
 }
 
+// NewAuthMiddleware creates an AuthMiddleware backed by the given tenant repository.
 func NewAuthMiddleware(tenantRepo repository.TenantRepository) *AuthMiddleware {
 	return &AuthMiddleware{
 		tenantRepo: tenantRepo,

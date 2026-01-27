@@ -10,11 +10,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// NotificationService sends quota-related notifications to tenants
+// (warnings, limit-reached, overage alerts).
 type NotificationService struct {
 	quotaRepo  repository.QuotaRepository
 	tenantRepo repository.TenantRepository
 }
 
+// NotificationTemplate describes the subject, body, and priority of a
+// notification type.
 type NotificationTemplate struct {
 	Type     string `json:"type"`
 	Subject  string `json:"subject"`
@@ -22,6 +26,8 @@ type NotificationTemplate struct {
 	Priority string `json:"priority"` // low, medium, high, critical
 }
 
+// NotificationContext carries the template variables used when rendering
+// a notification message.
 type NotificationContext struct {
 	TenantName      string  `json:"tenant_name"`
 	CurrentUsage    int     `json:"current_usage"`
@@ -34,6 +40,7 @@ type NotificationContext struct {
 	BurstAllowance  int     `json:"burst_allowance,omitempty"`
 }
 
+// NewNotificationService creates a NotificationService with the given repositories.
 func NewNotificationService(quotaRepo repository.QuotaRepository, tenantRepo repository.TenantRepository) *NotificationService {
 	return &NotificationService{
 		quotaRepo:  quotaRepo,
