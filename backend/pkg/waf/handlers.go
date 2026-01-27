@@ -45,6 +45,12 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		waf.GET("/dashboard", h.GetDashboard)
 		waf.GET("/alerts", h.GetAlerts)
 		waf.POST("/alerts/:id/acknowledge", h.AcknowledgeAlert)
+
+		// Security Scanning & Thresholds
+		waf.POST("/scan-endpoint", h.ScanEndpointSecurity)
+		waf.POST("/export-report", h.ExportSecurityReport)
+		waf.GET("/threshold", h.GetSecurityThreshold)
+		waf.PUT("/threshold", h.UpdateSecurityThreshold)
 	}
 }
 
@@ -546,4 +552,136 @@ func (h *Handler) AcknowledgeAlert(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, alert)
+}
+
+// ScanEndpointSecurity scans an endpoint for security issues
+// @Summary Scan endpoint security
+// @Description Perform a full security scan of a webhook endpoint including TLS, headers, and compliance
+// @Tags waf
+// @Accept json
+// @Produce json
+// @Param request body object{url=string} true "Endpoint URL to scan"
+// @Success 200 {object} SecurityScanResult
+// @Failure 400 {object} map[string]interface{}
+// @Security ApiKeyAuth
+// @Router /waf/scan-endpoint [post]
+func (h *Handler) ScanEndpointSecurity(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		pkgerrors.AbortWithUnauthorized(c)
+		return
+	}
+
+	var req struct {
+		URL string `json:"url" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkgerrors.HandleBindError(c, err)
+		return
+	}
+
+	result, err := h.service.ScanEndpointSecurity(c.Request.Context(), tenantID, req.URL)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// ExportSecurityReport exports a security report
+// @Summary Export security report
+// @Description Export a security scan result in JSON or CSV format
+// @Tags waf
+// @Accept json
+// @Produce json
+// @Param request body object true "Export request with scan result and format"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Security ApiKeyAuth
+// @Router /waf/export-report [post]
+func (h *Handler) ExportSecurityReport(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		pkgerrors.AbortWithUnauthorized(c)
+		return
+	}
+
+	var req struct {
+		Result SecurityScanResult `json:"result" binding:"required"`
+		Format string             `json:"format" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkgerrors.HandleBindError(c, err)
+		return
+	}
+
+	data, err := h.service.ExportSecurityReport(c.Request.Context(), &req.Result, req.Format)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"format": req.Format,
+		"data":   string(data),
+	})
+}
+
+// GetSecurityThreshold retrieves security threshold settings
+// @Summary Get security threshold
+// @Description Get the security threshold configuration for the tenant
+// @Tags waf
+// @Produce json
+// @Success 200 {object} SecurityThreshold
+// @Security ApiKeyAuth
+// @Router /waf/threshold [get]
+func (h *Handler) GetSecurityThreshold(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		pkgerrors.AbortWithUnauthorized(c)
+		return
+	}
+
+	threshold, err := h.service.GetSecurityThreshold(c.Request.Context(), tenantID)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, threshold)
+}
+
+// UpdateSecurityThreshold updates security threshold settings
+// @Summary Update security threshold
+// @Description Update the security threshold configuration for the tenant
+// @Tags waf
+// @Accept json
+// @Produce json
+// @Param request body SecurityThreshold true "Threshold settings"
+// @Success 200 {object} SecurityThreshold
+// @Failure 400 {object} map[string]interface{}
+// @Security ApiKeyAuth
+// @Router /waf/threshold [put]
+func (h *Handler) UpdateSecurityThreshold(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		pkgerrors.AbortWithUnauthorized(c)
+		return
+	}
+
+	var threshold SecurityThreshold
+	if err := c.ShouldBindJSON(&threshold); err != nil {
+		pkgerrors.HandleBindError(c, err)
+		return
+	}
+
+	threshold.TenantID = tenantID
+
+	if err := h.service.UpdateSecurityThreshold(c.Request.Context(), &threshold); err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, threshold)
 }

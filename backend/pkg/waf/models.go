@@ -10,11 +10,11 @@ import (
 type ThreatType string
 
 const (
-	ThreatTypeXSS              ThreatType = "xss"
-	ThreatTypeSQLInjection     ThreatType = "sql_injection"
-	ThreatTypePathTraversal    ThreatType = "path_traversal"
-	ThreatTypeMaliciousJSON    ThreatType = "malicious_json"
-	ThreatTypeOversizedPayload ThreatType = "oversized_payload"
+	ThreatTypeXSS               ThreatType = "xss"
+	ThreatTypeSQLInjection      ThreatType = "sql_injection"
+	ThreatTypePathTraversal     ThreatType = "path_traversal"
+	ThreatTypeMaliciousJSON     ThreatType = "malicious_json"
+	ThreatTypeOversizedPayload  ThreatType = "oversized_payload"
 	ThreatTypeSuspiciousPattern ThreatType = "suspicious_pattern"
 )
 
@@ -115,13 +115,13 @@ type IPReputation struct {
 
 // SecurityDashboard represents aggregated security metrics
 type SecurityDashboard struct {
-	TotalScans      int64            `json:"total_scans"`
-	ThreatsDetected int64            `json:"threats_detected"`
-	ThreatsBlocked  int64            `json:"threats_blocked"`
-	QuarantineCount int64            `json:"quarantine_count"`
-	TopThreats      []ThreatSummary  `json:"top_threats"`
-	RecentAlerts    []SecurityAlert  `json:"recent_alerts"`
-	RiskTrend       []RiskDataPoint  `json:"risk_trend"`
+	TotalScans      int64           `json:"total_scans"`
+	ThreatsDetected int64           `json:"threats_detected"`
+	ThreatsBlocked  int64           `json:"threats_blocked"`
+	QuarantineCount int64           `json:"quarantine_count"`
+	TopThreats      []ThreatSummary `json:"top_threats"`
+	RecentAlerts    []SecurityAlert `json:"recent_alerts"`
+	RiskTrend       []RiskDataPoint `json:"risk_trend"`
 }
 
 // ThreatSummary represents a summary of a threat type
@@ -161,10 +161,10 @@ type CreateWAFRuleRequest struct {
 
 // ScanPayloadRequest represents a request to scan a webhook payload
 type ScanPayloadRequest struct {
-	WebhookID  string          `json:"webhook_id" binding:"required"`
-	DeliveryID string          `json:"delivery_id,omitempty"`
-	Payload    json.RawMessage `json:"payload" binding:"required"`
-	SourceIP   string          `json:"source_ip,omitempty"`
+	WebhookID  string            `json:"webhook_id" binding:"required"`
+	DeliveryID string            `json:"delivery_id,omitempty"`
+	Payload    json.RawMessage   `json:"payload" binding:"required"`
+	SourceIP   string            `json:"source_ip,omitempty"`
 	Headers    map[string]string `json:"headers,omitempty"`
 }
 
@@ -179,6 +179,68 @@ type ReportIPRequest struct {
 	IP         string   `json:"ip" binding:"required"`
 	Categories []string `json:"categories,omitempty"`
 	Reason     string   `json:"reason,omitempty"`
+}
+
+// SecurityScanResult represents a full endpoint security scan
+type SecurityScanResult struct {
+	EndpointID       string            `json:"endpoint_id"`
+	URL              string            `json:"url"`
+	OverallScore     string            `json:"overall_score"` // A-F
+	NumericScore     int               `json:"numeric_score"` // 0-100
+	TLSInfo          *TLSInfo          `json:"tls_info,omitempty"`
+	SecurityHeaders  []HeaderCheck     `json:"security_headers"`
+	ResponseTimeMs   int               `json:"response_time_ms"`
+	Findings         []SecurityFinding `json:"findings"`
+	ComplianceChecks []ComplianceCheck `json:"compliance_checks"`
+	ScannedAt        time.Time         `json:"scanned_at"`
+}
+
+// TLSInfo holds TLS certificate and cipher info
+type TLSInfo struct {
+	Version      string    `json:"version"`
+	CipherSuite  string    `json:"cipher_suite"`
+	CertIssuer   string    `json:"cert_issuer"`
+	CertExpiry   time.Time `json:"cert_expiry"`
+	CertValid    bool      `json:"cert_valid"`
+	CertDaysLeft int       `json:"cert_days_left"`
+	IsHTTPS      bool      `json:"is_https"`
+	SupportsHSTS bool      `json:"supports_hsts"`
+}
+
+// HeaderCheck represents a security header check result
+type HeaderCheck struct {
+	Header   string `json:"header"`
+	Present  bool   `json:"present"`
+	Value    string `json:"value,omitempty"`
+	Expected string `json:"expected,omitempty"`
+	Severity string `json:"severity"` // critical, high, medium, low, info
+}
+
+// SecurityFinding represents a specific security finding
+type SecurityFinding struct {
+	ID             string `json:"id"`
+	Title          string `json:"title"`
+	Description    string `json:"description"`
+	Severity       string `json:"severity"`
+	Category       string `json:"category"`
+	Recommendation string `json:"recommendation"`
+}
+
+// ComplianceCheck represents a compliance framework check
+type ComplianceCheck struct {
+	Framework   string `json:"framework"` // SOC2, HIPAA
+	ControlID   string `json:"control_id"`
+	ControlName string `json:"control_name"`
+	Status      string `json:"status"` // pass, fail, warning, not_applicable
+	Details     string `json:"details,omitempty"`
+}
+
+// SecurityThreshold defines when to auto-disable endpoints
+type SecurityThreshold struct {
+	TenantID       string `json:"tenant_id" db:"tenant_id"`
+	MinScore       int    `json:"min_score" db:"min_score"`
+	AutoDisable    bool   `json:"auto_disable" db:"auto_disable"`
+	AlertOnDegrade bool   `json:"alert_on_degrade" db:"alert_on_degrade"`
 }
 
 // GetSeverityScore returns a numeric score for severity ranking
