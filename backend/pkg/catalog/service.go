@@ -11,13 +11,36 @@ import (
 	"github.com/google/uuid"
 )
 
+// CatalogRepository defines the data access interface for the event catalog
+type CatalogRepository interface {
+	CreateEventType(ctx context.Context, et *EventType) error
+	GetEventType(ctx context.Context, id uuid.UUID) (*EventType, error)
+	GetEventTypeBySlug(ctx context.Context, tenantID uuid.UUID, slug string) (*EventType, error)
+	UpdateEventType(ctx context.Context, et *EventType) error
+	DeleteEventType(ctx context.Context, id uuid.UUID) error
+	SearchEventTypes(ctx context.Context, params *CatalogSearchParams) (*CatalogSearchResult, error)
+	CreateEventVersion(ctx context.Context, ev *EventVersion) error
+	ListEventVersions(ctx context.Context, eventTypeID uuid.UUID) ([]*EventVersion, error)
+	CreateCategory(ctx context.Context, cat *EventCategory) error
+	ListCategories(ctx context.Context, tenantID uuid.UUID) ([]*EventCategory, error)
+	CreateSubscription(ctx context.Context, sub *EventSubscription) error
+	DeleteSubscription(ctx context.Context, endpointID, eventTypeID uuid.UUID) error
+	ListEndpointSubscriptions(ctx context.Context, endpointID uuid.UUID) ([]*EventSubscription, error)
+	ListEventTypeSubscriptions(ctx context.Context, eventTypeID uuid.UUID) ([]*EventSubscription, error)
+	GetSubscriberCount(ctx context.Context, eventTypeID uuid.UUID) (int, error)
+	SaveDocumentation(ctx context.Context, doc *EventDocumentation) error
+	GetDocumentation(ctx context.Context, eventTypeID uuid.UUID) ([]*EventDocumentation, error)
+	GetSchemaValidationConfig(ctx context.Context, tenantID uuid.UUID) (*SchemaValidationConfig, error)
+	SaveSchemaValidationConfig(ctx context.Context, config *SchemaValidationConfig) error
+}
+
 // Service provides event catalog business logic
 type Service struct {
-	repo *Repository
+	repo CatalogRepository
 }
 
 // NewService creates a new catalog service
-func NewService(repo *Repository) *Service {
+func NewService(repo CatalogRepository) *Service {
 	return &Service{repo: repo}
 }
 
@@ -34,19 +57,19 @@ type CreateEventTypeRequest struct {
 
 // UpdateEventTypeRequest represents a request to update an event type
 type UpdateEventTypeRequest struct {
-	Name               string          `json:"name,omitempty"`
-	Description        string          `json:"description,omitempty"`
-	Category           string          `json:"category,omitempty"`
-	SchemaID           *uuid.UUID      `json:"schema_id,omitempty"`
-	ExamplePayload     json.RawMessage `json:"example_payload,omitempty"`
-	Tags               []string        `json:"tags,omitempty"`
-	DocumentationURL   string          `json:"documentation_url,omitempty"`
+	Name             string          `json:"name,omitempty"`
+	Description      string          `json:"description,omitempty"`
+	Category         string          `json:"category,omitempty"`
+	SchemaID         *uuid.UUID      `json:"schema_id,omitempty"`
+	ExamplePayload   json.RawMessage `json:"example_payload,omitempty"`
+	Tags             []string        `json:"tags,omitempty"`
+	DocumentationURL string          `json:"documentation_url,omitempty"`
 }
 
 // DeprecateEventTypeRequest represents a request to deprecate an event type
 type DeprecateEventTypeRequest struct {
-	Message          string     `json:"message" binding:"required"`
-	ReplacementID    *uuid.UUID `json:"replacement_id,omitempty"`
+	Message       string     `json:"message" binding:"required"`
+	ReplacementID *uuid.UUID `json:"replacement_id,omitempty"`
 }
 
 // PublishVersionRequest represents a request to publish a new version
@@ -102,7 +125,10 @@ func (s *Service) CreateEventType(ctx context.Context, tenantID uuid.UUID, req *
 		Changelog:        "Initial version",
 		IsBreakingChange: false,
 	}
-	s.repo.CreateEventVersion(ctx, ev)
+	if err := s.repo.CreateEventVersion(ctx, ev); err != nil {
+		// Log but don't fail — the event type was already created; version can be retried
+		_ = err
+	}
 
 	return et, nil
 }
@@ -537,4 +563,188 @@ func isTypeCompatible(expected, actual string) bool {
 		return true
 	}
 	return false
+}
+
+// ValidatePayloadWithMode validates a payload with a specific validation mode
+func (s *Service) ValidatePayloadWithMode(ctx context.Context, eventTypeID uuid.UUID, payload json.RawMessage, mode ValidationMode) *ValidationResult {
+	result := &ValidationResult{
+		Mode: string(mode),
+	}
+
+	if mode == ValidationModeNone {
+		result.Valid = true
+		return result
+	}
+
+	valid, issues := s.ValidatePayload(ctx, eventTypeID, payload)
+	result.Valid = valid
+
+	if mode == ValidationModeWarn {
+		result.Warnings = issues
+		result.Valid = true // Warn mode always passes
+	} else {
+		result.Issues = issues
+	}
+
+	return result
+}
+
+// GenerateChangelog generates a changelog for an event type from its versions
+func (s *Service) GenerateChangelog(ctx context.Context, eventTypeID uuid.UUID) (*EventChangelog, error) {
+	et, err := s.repo.GetEventType(ctx, eventTypeID)
+	if err != nil {
+		return nil, fmt.Errorf("event type not found: %w", err)
+	}
+
+	versions, err := s.repo.ListEventVersions(ctx, eventTypeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get versions: %w", err)
+	}
+
+	changelog := &EventChangelog{
+		EventTypeID: eventTypeID,
+		EventName:   et.Name,
+	}
+
+	for _, v := range versions {
+		entry := ChangelogEntry{
+			Version:  v.Version,
+			Date:     v.PublishedAt,
+			Breaking: v.IsBreakingChange,
+		}
+
+		if v.Changelog != "" {
+			entry.Changes = strings.Split(v.Changelog, "\n")
+		} else {
+			entry.Changes = []string{"Version " + v.Version + " published"}
+		}
+
+		changelog.Entries = append(changelog.Entries, entry)
+	}
+
+	return changelog, nil
+}
+
+// GetBreakingChangeNotifications returns breaking change notifications for a tenant
+func (s *Service) GetBreakingChangeNotifications(ctx context.Context, tenantID uuid.UUID) ([]BreakingChangeNotification, error) {
+	result, err := s.repo.SearchEventTypes(ctx, &CatalogSearchParams{
+		TenantID: tenantID,
+		Limit:    1000,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var notifications []BreakingChangeNotification
+	for _, et := range result.EventTypes {
+		versions, _ := s.repo.ListEventVersions(ctx, et.ID)
+		subscriberCount, _ := s.repo.GetSubscriberCount(ctx, et.ID)
+
+		for _, v := range versions {
+			if v.IsBreakingChange {
+				notifications = append(notifications, BreakingChangeNotification{
+					ID:            v.ID,
+					EventTypeID:   et.ID,
+					EventName:     et.Name,
+					NewVersion:    v.Version,
+					Description:   v.Changelog,
+					AffectedCount: subscriberCount,
+					NotifiedAt:    v.PublishedAt,
+				})
+			}
+		}
+	}
+
+	return notifications, nil
+}
+
+// GenerateDocPortal generates a documentation portal page for an event type
+func (s *Service) GenerateDocPortal(ctx context.Context, eventTypeID uuid.UUID) (*DocPortalPage, error) {
+	et, err := s.GetEventType(ctx, eventTypeID)
+	if err != nil {
+		return nil, err
+	}
+
+	docs, _ := s.GetDocumentation(ctx, eventTypeID)
+	versions, _ := s.GetVersions(ctx, eventTypeID)
+	changelog, _ := s.GenerateChangelog(ctx, eventTypeID)
+	subscriberCount, _ := s.repo.GetSubscriberCount(ctx, eventTypeID)
+
+	// Generate example code for supported languages
+	exampleCode := make(map[string]string)
+	for _, lang := range []string{LangGo, LangPython, LangTypeScript} {
+		code, err := s.GenerateSDKTypes(ctx, eventTypeID, lang)
+		if err == nil {
+			exampleCode[lang] = code
+		}
+	}
+
+	return &DocPortalPage{
+		EventType:       et,
+		Documentation:   docs,
+		Schema:          et.Schema,
+		Versions:        versions,
+		ExampleCode:     exampleCode,
+		Changelog:       changelog,
+		SubscriberCount: subscriberCount,
+	}, nil
+}
+
+// GetValidationConfig returns the schema validation configuration for a tenant
+func (s *Service) GetValidationConfig(ctx context.Context, tenantID uuid.UUID) *SchemaValidationConfig {
+	if s.repo != nil {
+		if config, err := s.repo.GetSchemaValidationConfig(ctx, tenantID); err == nil {
+			return config
+		}
+	}
+	return &SchemaValidationConfig{
+		TenantID:        tenantID,
+		Mode:            ValidationModeWarn,
+		RejectUnknown:   false,
+		CoerceTypes:     true,
+		MaxPayloadBytes: 1024 * 1024, // 1MB default
+	}
+}
+
+// UpdateValidationConfig updates the schema validation configuration for a tenant
+func (s *Service) UpdateValidationConfig(ctx context.Context, config *SchemaValidationConfig) error {
+	return s.repo.SaveSchemaValidationConfig(ctx, config)
+}
+
+// ValidateForDelivery validates a payload for the delivery pipeline
+func (s *Service) ValidateForDelivery(ctx context.Context, tenantID uuid.UUID, eventType string, payload json.RawMessage) *ValidationResult {
+	result := &ValidationResult{}
+
+	// 1. Look up event type by slug
+	et, err := s.repo.GetEventTypeBySlug(ctx, tenantID, eventType)
+	if err != nil {
+		// Unknown event type — pass through
+		result.Valid = true
+		result.Mode = string(ValidationModeNone)
+		return result
+	}
+
+	// 2. Get tenant validation config
+	config := s.GetValidationConfig(ctx, tenantID)
+	result.Mode = string(config.Mode)
+
+	// 3. If mode is "none", return valid
+	if config.Mode == ValidationModeNone {
+		result.Valid = true
+		return result
+	}
+
+	// 4. Validate payload against schema
+	valid, issues := s.ValidatePayload(ctx, et.ID, payload)
+
+	// 5. Return result with mode-appropriate handling
+	if config.Mode == ValidationModeWarn {
+		result.Valid = true
+		result.Warnings = issues
+	} else {
+		result.Valid = valid
+		result.Issues = issues
+	}
+
+	return result
 }

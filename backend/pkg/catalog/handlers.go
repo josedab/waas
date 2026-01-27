@@ -34,6 +34,19 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 		catalog.GET("/event-types/:id/subscribers", h.ListSubscribers)
 		catalog.POST("/event-types/:id/generate/:language", h.GenerateSDKTypes)
 		catalog.GET("/search", h.SearchCatalog)
+		catalog.GET("/event-types/:id/changelog", h.GetChangelog)
+		catalog.GET("/event-types/:id/portal", h.GetDocPortal)
+		catalog.POST("/event-types/:id/validate-with-mode", h.ValidatePayloadWithMode)
+		catalog.GET("/notifications/breaking-changes", h.GetBreakingChangeNotifications)
+		catalog.GET("/config/validation", h.GetValidationConfig)
+		catalog.PUT("/config/validation", h.UpdateValidationConfig)
+		catalog.DELETE("/event-types/:id", h.DeleteEventType)
+		catalog.GET("/categories", h.ListCategories)
+		catalog.POST("/categories", h.CreateCategory)
+		catalog.DELETE("/event-types/:id/subscribe/:endpointId", h.UnsubscribeEndpoint)
+		catalog.GET("/event-types/:id/documentation", h.GetDocumentation)
+		catalog.PUT("/event-types/:id/documentation/:section", h.SaveDocumentation)
+		catalog.POST("/openapi-spec", h.GenerateOpenAPISpec)
 	}
 }
 
@@ -360,4 +373,219 @@ func (h *Handler) SearchCatalog(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) GetChangelog(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		return
+	}
+	changelog, err := h.service.GenerateChangelog(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, changelog)
+}
+
+func (h *Handler) GetDocPortal(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		return
+	}
+	portal, err := h.service.GenerateDocPortal(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, portal)
+}
+
+func (h *Handler) ValidatePayloadWithMode(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		return
+	}
+	var req struct {
+		Payload json.RawMessage `json:"payload" binding:"required"`
+		Mode    string          `json:"mode"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+	mode := ValidationMode(req.Mode)
+	if mode == "" {
+		mode = ValidationModeStrict
+	}
+	result := h.service.ValidatePayloadWithMode(c.Request.Context(), id, req.Payload, mode)
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) GetBreakingChangeNotifications(c *gin.Context) {
+	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		return
+	}
+	notifications, err := h.service.GetBreakingChangeNotifications(c.Request.Context(), tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "FETCH_FAILED", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"notifications": notifications})
+}
+
+func (h *Handler) GetValidationConfig(c *gin.Context) {
+	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		return
+	}
+	config := h.service.GetValidationConfig(c.Request.Context(), tenantID)
+	c.JSON(http.StatusOK, config)
+}
+
+// @Summary Update validation config
+// @Tags Catalog
+// @Accept json
+// @Produce json
+// @Success 200 {object} SchemaValidationConfig
+// @Router /catalog/config/validation [put]
+func (h *Handler) UpdateValidationConfig(c *gin.Context) {
+	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		return
+	}
+
+	var config SchemaValidationConfig
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+	config.TenantID = tenantID
+
+	if err := h.service.UpdateValidationConfig(c.Request.Context(), &config); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, &config)
+}
+
+func (h *Handler) DeleteEventType(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		return
+	}
+	if err := h.service.DeleteEventType(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "event type deleted"})
+}
+
+func (h *Handler) ListCategories(c *gin.Context) {
+	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		return
+	}
+	categories, err := h.service.ListCategories(c.Request.Context(), tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"categories": categories})
+}
+
+func (h *Handler) CreateCategory(c *gin.Context) {
+	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		return
+	}
+	var req CreateCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+	cat, err := h.service.CreateCategory(c.Request.Context(), tenantID, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusCreated, cat)
+}
+
+func (h *Handler) UnsubscribeEndpoint(c *gin.Context) {
+	eventTypeID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		return
+	}
+	endpointID, err := uuid.Parse(c.Param("endpointId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid endpoint ID"}})
+		return
+	}
+	if err := h.service.Unsubscribe(c.Request.Context(), eventTypeID, endpointID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UNSUBSCRIBE_FAILED", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "unsubscribed"})
+}
+
+func (h *Handler) GetDocumentation(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		return
+	}
+	docs, err := h.service.GetDocumentation(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "GET_DOCS_FAILED", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"documentation": docs})
+}
+
+func (h *Handler) SaveDocumentation(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		return
+	}
+	section := c.Param("section")
+	var req struct {
+		Content string `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+	if err := h.service.SaveDocumentation(c.Request.Context(), id, section, req.Content); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SAVE_DOCS_FAILED", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "documentation saved"})
+}
+
+func (h *Handler) GenerateOpenAPISpec(c *gin.Context) {
+	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		return
+	}
+	spec, err := h.service.GenerateOpenAPISpec(c.Request.Context(), tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "GENERATE_FAILED", "message": err.Error()}})
+		return
+	}
+	c.Data(http.StatusOK, "application/json", spec)
 }

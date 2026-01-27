@@ -428,3 +428,34 @@ func (r *Repository) GetDocumentation(ctx context.Context, eventTypeID uuid.UUID
 	}
 	return docs, nil
 }
+
+// GetSchemaValidationConfig retrieves the schema validation config for a tenant
+func (r *Repository) GetSchemaValidationConfig(ctx context.Context, tenantID uuid.UUID) (*SchemaValidationConfig, error) {
+	query := `
+		SELECT tenant_id, mode, reject_unknown_fields, coerce_types, max_payload_bytes
+		FROM schema_validation_configs WHERE tenant_id = $1`
+
+	var config SchemaValidationConfig
+	err := r.db.Pool.QueryRow(ctx, query, tenantID).Scan(
+		&config.TenantID, &config.Mode, &config.RejectUnknown,
+		&config.CoerceTypes, &config.MaxPayloadBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get validation config: %w", err)
+	}
+	return &config, nil
+}
+
+// SaveSchemaValidationConfig creates or updates the schema validation config for a tenant
+func (r *Repository) SaveSchemaValidationConfig(ctx context.Context, config *SchemaValidationConfig) error {
+	query := `
+		INSERT INTO schema_validation_configs (tenant_id, mode, reject_unknown_fields, coerce_types, max_payload_bytes)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (tenant_id) DO UPDATE SET mode = $2, reject_unknown_fields = $3, coerce_types = $4, max_payload_bytes = $5`
+
+	_, err := r.db.Pool.Exec(ctx, query, config.TenantID, config.Mode,
+		config.RejectUnknown, config.CoerceTypes, config.MaxPayloadBytes)
+	if err != nil {
+		return fmt.Errorf("failed to save validation config: %w", err)
+	}
+	return nil
+}

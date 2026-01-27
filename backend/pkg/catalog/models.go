@@ -29,22 +29,22 @@ type EventType struct {
 	UpdatedAt          time.Time       `json:"updated_at" db:"updated_at"`
 
 	// Joined data
-	Schema       *EventSchema      `json:"schema,omitempty"`
-	Versions     []*EventVersion   `json:"versions,omitempty"`
-	Subscribers  int               `json:"subscribers,omitempty"`
-	Replacement  *EventType        `json:"replacement,omitempty"`
+	Schema      *EventSchema    `json:"schema,omitempty"`
+	Versions    []*EventVersion `json:"versions,omitempty"`
+	Subscribers int             `json:"subscribers,omitempty"`
+	Replacement *EventType      `json:"replacement,omitempty"`
 }
 
 // EventVersion represents a version of an event type
 type EventVersion struct {
-	ID              uuid.UUID  `json:"id" db:"id"`
-	EventTypeID     uuid.UUID  `json:"event_type_id" db:"event_type_id"`
-	Version         string     `json:"version" db:"version"`
-	SchemaID        *uuid.UUID `json:"schema_id,omitempty" db:"schema_id"`
-	Changelog       string     `json:"changelog,omitempty" db:"changelog"`
-	IsBreakingChange bool      `json:"is_breaking_change" db:"is_breaking_change"`
-	PublishedAt     time.Time  `json:"published_at" db:"published_at"`
-	PublishedBy     *uuid.UUID `json:"published_by,omitempty" db:"published_by"`
+	ID               uuid.UUID  `json:"id" db:"id"`
+	EventTypeID      uuid.UUID  `json:"event_type_id" db:"event_type_id"`
+	Version          string     `json:"version" db:"version"`
+	SchemaID         *uuid.UUID `json:"schema_id,omitempty" db:"schema_id"`
+	Changelog        string     `json:"changelog,omitempty" db:"changelog"`
+	IsBreakingChange bool       `json:"is_breaking_change" db:"is_breaking_change"`
+	PublishedAt      time.Time  `json:"published_at" db:"published_at"`
+	PublishedBy      *uuid.UUID `json:"published_by,omitempty" db:"published_by"`
 }
 
 // EventCategory represents a category for organizing event types
@@ -103,10 +103,10 @@ type SDKConfig struct {
 
 // EventSchema represents the JSON schema for an event (links to schema registry)
 type EventSchema struct {
-	ID         uuid.UUID       `json:"id"`
-	Name       string          `json:"name"`
-	Version    string          `json:"version"`
-	Schema     json.RawMessage `json:"schema"`
+	ID         uuid.UUID        `json:"id"`
+	Name       string           `json:"name"`
+	Version    string           `json:"version"`
+	Schema     json.RawMessage  `json:"schema"`
 	Properties []SchemaProperty `json:"properties,omitempty"`
 }
 
@@ -140,16 +140,16 @@ const (
 
 // CatalogSearchParams for searching event types
 type CatalogSearchParams struct {
-	TenantID   uuid.UUID
-	Query      string
-	Category   string
-	Status     string
-	Tags       []string
-	Version    string
-	Limit      int
-	Offset     int
-	SortBy     string
-	SortOrder  string
+	TenantID  uuid.UUID
+	Query     string
+	Category  string
+	Status    string
+	Tags      []string
+	Version   string
+	Limit     int
+	Offset    int
+	SortBy    string
+	SortOrder string
 }
 
 // CatalogSearchResult represents search results
@@ -158,4 +158,70 @@ type CatalogSearchResult struct {
 	Total      int          `json:"total"`
 	Limit      int          `json:"limit"`
 	Offset     int          `json:"offset"`
+}
+
+// ValidationMode controls how schema validation failures are handled
+type ValidationMode string
+
+const (
+	ValidationModeStrict ValidationMode = "strict" // Reject payloads that don't match schema
+	ValidationModeWarn   ValidationMode = "warn"   // Accept but log warnings
+	ValidationModeNone   ValidationMode = "none"   // Skip validation
+)
+
+// SchemaValidationConfig configures schema validation for a tenant
+type SchemaValidationConfig struct {
+	TenantID        uuid.UUID      `json:"tenant_id" db:"tenant_id"`
+	Mode            ValidationMode `json:"mode" db:"mode"`
+	RejectUnknown   bool           `json:"reject_unknown_fields" db:"reject_unknown_fields"`
+	CoerceTypes     bool           `json:"coerce_types" db:"coerce_types"`
+	MaxPayloadBytes int            `json:"max_payload_bytes" db:"max_payload_bytes"`
+}
+
+// ValidationResult represents the outcome of a schema validation
+type ValidationResult struct {
+	Valid    bool     `json:"valid"`
+	Mode     string   `json:"mode"`
+	Issues   []string `json:"issues,omitempty"`
+	Warnings []string `json:"warnings,omitempty"`
+}
+
+// ChangelogEntry represents a single changelog entry
+type ChangelogEntry struct {
+	Version  string    `json:"version"`
+	Date     time.Time `json:"date"`
+	Changes  []string  `json:"changes"`
+	Breaking bool      `json:"breaking"`
+	Author   string    `json:"author,omitempty"`
+}
+
+// EventChangelog aggregates changelog entries for an event type
+type EventChangelog struct {
+	EventTypeID uuid.UUID        `json:"event_type_id"`
+	EventName   string           `json:"event_name"`
+	Entries     []ChangelogEntry `json:"entries"`
+}
+
+// BreakingChangeNotification represents a notification about a breaking change
+type BreakingChangeNotification struct {
+	ID             uuid.UUID `json:"id"`
+	EventTypeID    uuid.UUID `json:"event_type_id"`
+	EventName      string    `json:"event_name"`
+	OldVersion     string    `json:"old_version"`
+	NewVersion     string    `json:"new_version"`
+	Description    string    `json:"description"`
+	MigrationGuide string    `json:"migration_guide,omitempty"`
+	AffectedCount  int       `json:"affected_subscribers"`
+	NotifiedAt     time.Time `json:"notified_at"`
+}
+
+// DocPortalPage represents a documentation portal page for an event type
+type DocPortalPage struct {
+	EventType       *EventType            `json:"event_type"`
+	Documentation   []*EventDocumentation `json:"documentation,omitempty"`
+	Schema          *EventSchema          `json:"schema,omitempty"`
+	Versions        []*EventVersion       `json:"versions,omitempty"`
+	ExampleCode     map[string]string     `json:"example_code,omitempty"`
+	Changelog       *EventChangelog       `json:"changelog,omitempty"`
+	SubscriberCount int                   `json:"subscriber_count"`
 }
