@@ -25,6 +25,7 @@ import (
 	"webhook-platform/pkg/costing"
 	"webhook-platform/pkg/database"
 	"webhook-platform/pkg/debugger"
+	"webhook-platform/pkg/dlq"
 	"webhook-platform/pkg/docgen"
 	"webhook-platform/pkg/edge"
 	"webhook-platform/pkg/embed"
@@ -49,6 +50,7 @@ import (
 	"webhook-platform/pkg/mtls"
 	"webhook-platform/pkg/multicloud"
 	"webhook-platform/pkg/observability"
+	"webhook-platform/pkg/openapigen"
 	"webhook-platform/pkg/otel"
 	"webhook-platform/pkg/pluginmarket"
 	"webhook-platform/pkg/portal"
@@ -163,6 +165,9 @@ type Server struct {
 	wafService          *waf.Service
 	docgenService       *docgen.Service
 	whitelabelService   *whitelabel.Service
+	// DLQ & Observability
+	dlqService        *dlq.Service
+	openapigenService *openapigen.Service
 }
 
 func NewServer() (*Server, error) {
@@ -309,16 +314,21 @@ func NewServer() (*Server, error) {
 	canaryService := canary.NewService(nil)
 	autoremediationService := autoremediation.NewService(nil)
 	schemaregistryService := schemaregistry.NewService(nil)
-	catalogService := catalog.NewService(nil)
+	catalogRepo := catalog.NewRepository(db)
+	catalogService := catalog.NewService(catalogRepo)
 	sandboxService := sandbox.NewService(nil)
 	protocolgwService := protocolgw.NewService(nil)
 	analyticsembedService := analyticsembed.NewService(nil)
 	costengineService := costengine.NewService(nil)
 	gitopsService := gitops.NewService(nil)
 	livemigrationService := livemigration.NewService(nil)
-	inboundService := inbound.NewService(nil)
+	inboundRepo := inbound.NewPostgresRepository(sqlxDB)
+	inboundService := inbound.NewService(inboundRepo)
 	fanoutService := fanout.NewService(nil)
 	mobilesdkService := mobilesdk.NewService()
+
+	// Initialize DLQ service
+	dlqService := dlq.NewService()
 
 	// Initialize next-gen features v7
 	pluginmarketRepo := pluginmarket.NewPostgresRepository(sqlxDB)
@@ -347,6 +357,8 @@ func NewServer() (*Server, error) {
 
 	docgenRepo := docgen.NewPostgresRepository(sqlxDB)
 	docgenService := docgen.NewService(docgenRepo)
+
+	openapigenService := openapigen.NewService()
 
 	whitelabelRepo := whitelabel.NewPostgresRepository(sqlxDB)
 	whitelabelService := whitelabel.NewService(whitelabelRepo)
@@ -432,6 +444,8 @@ func NewServer() (*Server, error) {
 		wafService:             wafService,
 		docgenService:          docgenService,
 		whitelabelService:      whitelabelService,
+		dlqService:             dlqService,
+		openapigenService:      openapigenService,
 	}
 
 	server.setupRoutes()
@@ -803,6 +817,14 @@ func (s *Server) setupRoutes() {
 		// Multi-Tenant Whitelabel
 		whitelabelHandler := whitelabel.NewHandler(s.whitelabelService)
 		whitelabelHandler.RegisterRoutes(protected)
+
+		// DLQ & Observability Dashboard
+		dlqHandler := dlq.NewHandler(s.dlqService)
+		dlqHandler.RegisterRoutes(protected)
+
+		// OpenAPI-to-Webhook Generator
+		openapigenHandler := openapigen.NewHandler(s.openapigenService)
+		openapigenHandler.RegisterRoutes(protected)
 	}
 
 	// Admin endpoints (require authentication but no rate limiting for now)
