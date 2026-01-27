@@ -8,12 +8,18 @@ import (
 
 // Handler provides HTTP handlers for live migration management
 type Handler struct {
-	service *Service
+	service      *Service
+	svixCompat   *SvixCompatLayer
+	convoyCompat *ConvoyCompatLayer
 }
 
 // NewHandler creates a new live migration handler
 func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+	return &Handler{
+		service:      service,
+		svixCompat:   NewSvixCompatLayer(service),
+		convoyCompat: NewConvoyCompatLayer(service),
+	}
 }
 
 // RegisterRoutes registers live migration routes
@@ -31,6 +37,19 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 		migrations.POST("/:id/cutover", h.ExecuteCutover)
 		migrations.POST("/:id/rollback", h.RollbackMigration)
 		migrations.GET("/:id/stats", h.GetMigrationStats)
+		migrations.POST("/:id/dry-run", h.DryRunMigration)
+		migrations.POST("/:id/import/svix", h.ImportFromSvix)
+		migrations.POST("/:id/import/convoy", h.ImportFromConvoy)
+		migrations.POST("/:id/import/csv", h.ImportFromCSV)
+		migrations.GET("/:id/checkpoint", h.GetCheckpoint)
+	}
+
+	compat := router.Group("/livemigration/compat")
+	{
+		compat.POST("/svix/endpoints", h.SvixCreateEndpoint)
+		compat.GET("/svix/endpoints", h.SvixListEndpoints)
+		compat.POST("/convoy/endpoints", h.ConvoyCreateEndpoint)
+		compat.GET("/convoy/endpoints", h.ConvoyListEndpoints)
 	}
 }
 
@@ -253,4 +272,206 @@ func (h *Handler) GetMigrationStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// @Summary Dry-run migration analysis
+// @Tags LiveMigration
+// @Accept json
+// @Produce json
+// @Param body body ImporterConfig true "Importer configuration"
+// @Success 200 {object} DryRunResult
+// @Router /migrations/{id}/dry-run [post]
+func (h *Handler) DryRunMigration(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var config ImporterConfig
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	result, err := h.service.DryRunMigration(c.Request.Context(), tenantID, &config)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DRY_RUN_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// @Summary Import endpoints from Svix
+// @Tags LiveMigration
+// @Accept json
+// @Produce json
+// @Param body body ImporterConfig true "Svix importer configuration"
+// @Success 201 {object} MigrationJob
+// @Router /migrations/{id}/import/svix [post]
+func (h *Handler) ImportFromSvix(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var config ImporterConfig
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	job, err := h.service.ImportFromSvix(c.Request.Context(), tenantID, &config)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SVIX_IMPORT_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusCreated, job)
+}
+
+// @Summary Import endpoints from Convoy
+// @Tags LiveMigration
+// @Accept json
+// @Produce json
+// @Param body body ImporterConfig true "Convoy importer configuration"
+// @Success 201 {object} MigrationJob
+// @Router /migrations/{id}/import/convoy [post]
+func (h *Handler) ImportFromConvoy(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var config ImporterConfig
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	job, err := h.service.ImportFromConvoy(c.Request.Context(), tenantID, &config)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CONVOY_IMPORT_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusCreated, job)
+}
+
+// @Summary Import endpoints from CSV/JSON file
+// @Tags LiveMigration
+// @Accept json
+// @Produce json
+// @Param body body ImporterConfig true "CSV/JSON importer configuration"
+// @Success 201 {object} MigrationJob
+// @Router /migrations/{id}/import/csv [post]
+func (h *Handler) ImportFromCSV(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var config ImporterConfig
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	job, err := h.service.ImportFromCSV(c.Request.Context(), tenantID, &config)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CSV_IMPORT_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusCreated, job)
+}
+
+// @Summary Get migration checkpoint
+// @Tags LiveMigration
+// @Produce json
+// @Param id path string true "Migration Job ID"
+// @Success 200 {object} MigrationCheckpoint
+// @Router /migrations/{id}/checkpoint [get]
+func (h *Handler) GetCheckpoint(c *gin.Context) {
+	jobID := c.Param("id")
+
+	checkpoint, err := h.service.GetCheckpoint(c.Request.Context(), jobID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "CHECKPOINT_NOT_FOUND", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, checkpoint)
+}
+
+// @Summary Create endpoint via Svix-compatible API
+// @Tags LiveMigration Compat
+// @Accept json
+// @Produce json
+// @Param body body SvixEndpointIn true "Svix endpoint"
+// @Success 201 {object} SvixEndpointOut
+// @Router /livemigration/compat/svix/endpoints [post]
+func (h *Handler) SvixCreateEndpoint(c *gin.Context) {
+	appUID := c.Query("app_uid")
+
+	var endpoint SvixEndpointIn
+	if err := c.ShouldBindJSON(&endpoint); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	out, err := h.svixCompat.CreateEndpoint(appUID, endpoint)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SVIX_COMPAT_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusCreated, out)
+}
+
+// @Summary List endpoints via Svix-compatible API
+// @Tags LiveMigration Compat
+// @Produce json
+// @Success 200 {array} SvixEndpointOut
+// @Router /livemigration/compat/svix/endpoints [get]
+func (h *Handler) SvixListEndpoints(c *gin.Context) {
+	appUID := c.Query("app_uid")
+
+	endpoints, err := h.svixCompat.ListEndpoints(appUID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SVIX_COMPAT_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": endpoints})
+}
+
+// @Summary Create endpoint via Convoy-compatible API
+// @Tags LiveMigration Compat
+// @Accept json
+// @Produce json
+// @Param body body ConvoyEndpointIn true "Convoy endpoint"
+// @Success 201 {object} ConvoyEndpointOut
+// @Router /livemigration/compat/convoy/endpoints [post]
+func (h *Handler) ConvoyCreateEndpoint(c *gin.Context) {
+	projectID := c.Query("project_id")
+
+	var endpoint ConvoyEndpointIn
+	if err := c.ShouldBindJSON(&endpoint); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	out, err := h.convoyCompat.CreateEndpoint(projectID, endpoint)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CONVOY_COMPAT_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusCreated, out)
+}
+
+// @Summary List endpoints via Convoy-compatible API
+// @Tags LiveMigration Compat
+// @Produce json
+// @Success 200 {array} ConvoyEndpointOut
+// @Router /livemigration/compat/convoy/endpoints [get]
+func (h *Handler) ConvoyListEndpoints(c *gin.Context) {
+	projectID := c.Query("project_id")
+
+	endpoints, err := h.convoyCompat.ListEndpoints(projectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CONVOY_COMPAT_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": endpoints})
 }

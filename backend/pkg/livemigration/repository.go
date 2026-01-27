@@ -25,4 +25,9 @@ type Repository interface {
 	// Stats and readiness
 	GetMigrationStats(ctx context.Context, tenantID, jobID string) (*MigrationStats, error)
 	GetCutoverReadiness(ctx context.Context, tenantID, jobID string) (totalEndpoints, readyCount, failedCount int, parallelSuccessRate float64, err error)
+
+	// Checkpoints
+	CreateCheckpoint(ctx context.Context, checkpoint *MigrationCheckpoint) error
+	GetCheckpoint(ctx context.Context, migrationID string) (*MigrationCheckpoint, error)
+	UpdateCheckpoint(ctx context.Context, checkpoint *MigrationCheckpoint) error
 }
