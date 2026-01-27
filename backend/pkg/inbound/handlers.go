@@ -29,6 +29,19 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		inbound.DELETE("/sources/:id", h.DeleteSource)
 		inbound.GET("/sources/:id/events", h.GetSourceEvents)
 		inbound.POST("/sources/:id/events/:eventId/replay", h.ReplayEvent)
+		// DLQ
+		inbound.GET("/sources/:id/dlq", h.GetDLQ)
+		inbound.POST("/sources/:id/dlq/:entryId/replay", h.ReplayDLQEntry)
+		// Provider health
+		inbound.GET("/sources/:id/health", h.GetProviderHealth)
+		// Rate limiting
+		inbound.GET("/sources/:id/rate-limit", h.GetRateLimitConfig)
+		// Stats
+		inbound.GET("/sources/:id/stats", h.GetInboundStats)
+		// Content routing
+		inbound.POST("/sources/:id/routes", h.CreateContentRoute)
+		// Transform rules
+		inbound.POST("/sources/:id/transforms", h.CreateTransformRule)
 	}
 }
 
@@ -282,4 +295,118 @@ func (h *Handler) ReceiveWebhook(c *gin.Context) {
 		"status":          event.Status,
 		"signature_valid": event.SignatureValid,
 	})
+}
+
+// GetDLQ returns DLQ entries for a source
+func (h *Handler) GetDLQ(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	limit := 20
+	offset := 0
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil {
+			limit = parsed
+		}
+	}
+	if o := c.Query("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil {
+			offset = parsed
+		}
+	}
+
+	entries, err := h.service.GetDLQEntries(c.Request.Context(), tenantID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DLQ_FAILED", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"entries": entries, "total": len(entries)})
+}
+
+// ReplayDLQEntry replays a failed event from the DLQ
+func (h *Handler) ReplayDLQEntry(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	entryID := c.Param("entryId")
+
+	event, err := h.service.ReplayDLQEntry(c.Request.Context(), tenantID, entryID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, event)
+}
+
+// GetProviderHealth returns health status for a source
+func (h *Handler) GetProviderHealth(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	sourceID := c.Param("id")
+
+	health, err := h.service.GetProviderHealth(c.Request.Context(), tenantID, sourceID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, health)
+}
+
+// GetRateLimitConfig returns rate limit configuration
+func (h *Handler) GetRateLimitConfig(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	sourceID := c.Param("id")
+
+	config, err := h.service.GetRateLimitConfig(c.Request.Context(), tenantID, sourceID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, config)
+}
+
+// GetInboundStats returns statistics for a source
+func (h *Handler) GetInboundStats(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	sourceID := c.Param("id")
+
+	stats, err := h.service.GetInboundStats(c.Request.Context(), tenantID, sourceID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, stats)
+}
+
+// CreateContentRoute creates a content-based routing rule
+func (h *Handler) CreateContentRoute(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	sourceID := c.Param("id")
+
+	var req CreateContentRouteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	route, err := h.service.CreateContentRoute(c.Request.Context(), tenantID, sourceID, &req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusCreated, route)
+}
+
+// CreateTransformRule creates a payload transformation rule
+func (h *Handler) CreateTransformRule(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	sourceID := c.Param("id")
+
+	var req CreateTransformRuleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	rule, err := h.service.CreateTransformRule(c.Request.Context(), tenantID, sourceID, &req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusCreated, rule)
 }

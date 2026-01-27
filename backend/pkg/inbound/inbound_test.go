@@ -398,6 +398,30 @@ func (m *mockRepository) UpdateEventStatus(_ context.Context, eventID, status, e
 	return nil
 }
 
+func (m *mockRepository) GetDLQEntries(_ context.Context, tenantID string, limit, offset int) ([]InboundDLQEntry, error) {
+	return []InboundDLQEntry{}, nil
+}
+
+func (m *mockRepository) GetDLQEntry(_ context.Context, tenantID, entryID string) (*InboundDLQEntry, error) {
+	return nil, fmt.Errorf("DLQ entry not found")
+}
+
+func (m *mockRepository) MarkDLQEntryReplayed(_ context.Context, entryID string) error {
+	return nil
+}
+
+func (m *mockRepository) GetProviderHealth(_ context.Context, sourceID string) (*ProviderHealth, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (m *mockRepository) GetRateLimitConfig(_ context.Context, sourceID string) (*RateLimitConfig, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (m *mockRepository) GetInboundStats(_ context.Context, sourceID string) (*InboundStats, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 func TestService_CreateSource(t *testing.T) {
 	repo := newMockRepository()
 	svc := NewService(repo)
