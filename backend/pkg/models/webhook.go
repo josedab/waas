@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// WebhookEndpoint represents a registered URL that receives webhook deliveries.
 type WebhookEndpoint struct {
 	ID            uuid.UUID              `json:"id" db:"id"`
 	TenantID      uuid.UUID              `json:"tenant_id" db:"tenant_id"`
@@ -17,6 +18,8 @@ type WebhookEndpoint struct {
 	UpdatedAt     time.Time              `json:"updated_at" db:"updated_at"`
 }
 
+// RetryConfiguration defines the exponential back-off parameters used when
+// a webhook delivery fails.
 type RetryConfiguration struct {
 	MaxAttempts        int `json:"max_attempts"`
 	InitialDelayMs     int `json:"initial_delay_ms"`
@@ -24,6 +27,8 @@ type RetryConfiguration struct {
 	BackoffMultiplier  int `json:"backoff_multiplier"`
 }
 
+// DeliveryRequest represents a queued webhook delivery that has not yet been
+// attempted or is awaiting retry.
 type DeliveryRequest struct {
 	ID          uuid.UUID         `json:"id" db:"id"`
 	EndpointID  uuid.UUID         `json:"endpoint_id" db:"endpoint_id"`
@@ -34,6 +39,8 @@ type DeliveryRequest struct {
 	MaxAttempts int               `json:"max_attempts" db:"max_attempts"`
 }
 
+// DeliveryAttempt records the outcome of a single webhook delivery attempt,
+// including HTTP status, response body, and timing information.
 type DeliveryAttempt struct {
 	ID             uuid.UUID  `json:"id" db:"id"`
 	EndpointID     uuid.UUID  `json:"endpoint_id" db:"endpoint_id"`

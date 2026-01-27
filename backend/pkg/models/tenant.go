@@ -5,6 +5,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// Tenant represents an API consumer account with its subscription tier,
+// rate-limit settings, and monthly quota.
 type Tenant struct {
 	ID                 uuid.UUID `json:"id" db:"id"`
 	Name               string    `json:"name" db:"name"`

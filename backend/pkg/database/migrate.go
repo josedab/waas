@@ -9,6 +9,8 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
+// RunMigrations applies all pending database migrations from the migrations/
+// directory. Returns nil if migrations succeed or if no new migrations exist.
 func RunMigrations(databaseURL string) error {
 	m, err := migrate.New(
 		"file://migrations",
@@ -27,6 +29,7 @@ func RunMigrations(databaseURL string) error {
 	return nil
 }
 
+// RollbackMigrations reverts the specified number of migration steps.
 func RollbackMigrations(databaseURL string, steps int) error {
 	m, err := migrate.New(
 		"file://migrations",

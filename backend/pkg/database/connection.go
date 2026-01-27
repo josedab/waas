@@ -19,16 +19,21 @@ const (
 	DefaultMaxConnIdleTime    = 30 * time.Minute
 	DefaultHealthCheckTimeout = 5 * time.Second
 
+	// Test pool configuration defaults (smaller pool for test environments)
 	TestMaxConns        = 5
 	TestMinConns        = 1
 	TestMaxConnLifetime = 10 * time.Minute
 	TestMaxConnIdleTime = 5 * time.Minute
 )
 
+// DB wraps a pgxpool connection pool for PostgreSQL access.
 type DB struct {
 	Pool *pgxpool.Pool
 }
 
+// NewConnection creates a new database connection pool using the DATABASE_URL
+// environment variable. It configures the pool with default settings and
+// verifies connectivity before returning.
 func NewConnection() (*DB, error) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -59,6 +64,7 @@ func NewConnection() (*DB, error) {
 	return &DB{Pool: pool}, nil
 }
 
+// Close releases all connections in the pool.
 func (db *DB) Close() {
 	if db.Pool != nil {
 		db.Pool.Close()
