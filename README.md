@@ -1,6 +1,7 @@
 # WaaS — Webhook as a Service
 
 [![CI](https://github.com/josedab/waas/actions/workflows/ci.yml/badge.svg)](https://github.com/josedab/waas/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-check%20CI-brightgreen)](https://github.com/josedab/waas/actions/workflows/ci.yml)
 ![Go 1.24+](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -22,12 +23,45 @@ Verify it works:
 ```bash
 # Health check
 curl -s http://localhost:8080/health
+```
 
+Expected response:
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-01T00:00:00Z",
+  "version": "1.0.0",
+  "components": { "database": { "status": "healthy" }, "redis": { "status": "healthy" }, "system": { "status": "healthy" } },
+  "uptime": "5s"
+}
+```
+
+```bash
 # Create a tenant (returns your API key)
 curl -s -X POST http://localhost:8080/api/v1/tenants \
   -H "Content-Type: application/json" \
   -d '{"name": "my-test-tenant", "email": "test@example.com"}'
+```
 
+Expected response:
+
+```json
+{
+  "tenant": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "my-test-tenant",
+    "subscription_tier": "free",
+    "rate_limit_per_minute": 10,
+    "monthly_quota": 1000,
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  "api_key": "whk_..."
+}
+```
+
+```bash
 # Browse interactive API docs
 open http://localhost:8080/docs/
 ```
