@@ -3,6 +3,7 @@ package analytics
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"webhook-platform/pkg/database"
 	"webhook-platform/pkg/metrics"
 	"webhook-platform/pkg/repository"
@@ -73,15 +74,25 @@ func NewService() (*Service, error) {
 	}, nil
 }
 
+// Handler returns the HTTP handler (gin.Engine) for use with a custom http.Server.
+func (s *Service) Handler() http.Handler {
+	return s.router
+}
+
+// StartWorkers starts background workers (WebSocket manager, aggregator).
+func (s *Service) StartWorkers() {
+	ctx := context.Background()
+	s.wsManager.Start(ctx)
+	s.aggregator.Start(ctx)
+}
+
 func (s *Service) Start(addr string) error {
 	s.logger.Info("Starting analytics service", map[string]interface{}{
 		"address": addr,
 	})
 
 	// Start background workers
-	ctx := context.Background()
-	s.wsManager.Start(ctx)
-	s.aggregator.Start(ctx)
+	s.StartWorkers()
 
 	return s.router.Run(addr)
 }
