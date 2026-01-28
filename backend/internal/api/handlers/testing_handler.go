@@ -122,23 +122,7 @@ type WebSocketMessage struct {
 
 func NewTestingHandler(webhookRepo repository.WebhookEndpointRepository, deliveryAttemptRepo repository.DeliveryAttemptRepository, publisher queue.PublisherInterface, logger *utils.Logger) *TestingHandler {
 	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			origin := r.Header.Get("Origin")
-			if origin == "" {
-				return true // Allow non-browser clients
-			}
-			allowedOrigins := []string{
-				"http://localhost:3000",
-				"http://localhost:8080",
-				"https://app.waas.dev",
-			}
-			for _, allowed := range allowedOrigins {
-				if origin == allowed {
-					return true
-				}
-			}
-			return false
-		},
+		CheckOrigin: utils.CheckWebSocketOrigin(),
 	}
 
 	return &TestingHandler{

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"webhook-platform/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -22,25 +23,9 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{
 		service: service,
 		upgrader: websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-			CheckOrigin: func(r *http.Request) bool {
-				origin := r.Header.Get("Origin")
-				if origin == "" {
-					return true // Allow non-browser clients
-				}
-				allowedOrigins := []string{
-					"http://localhost:3000",
-					"http://localhost:8080",
-					"https://app.waas.dev",
-				}
-				for _, allowed := range allowedOrigins {
-					if origin == allowed {
-						return true
-					}
-				}
-				return false
-			},
+			ReadBufferSize:    1024,
+			WriteBufferSize:   1024,
+			CheckOrigin:       utils.CheckWebSocketOrigin(),
 			EnableCompression: true,
 		},
 	}

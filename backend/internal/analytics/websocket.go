@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
-	"strings"
 	"sync"
 	"time"
 	"webhook-platform/pkg/metrics"
@@ -31,41 +29,8 @@ const (
 	wsDashboardWindow      = time.Hour
 )
 
-// getAllowedOrigins returns the list of allowed WebSocket origins from the
-// WEBSOCKET_ALLOWED_ORIGINS env var (comma-separated). Falls back to
-// localhost origins when unset.
-func getAllowedOrigins() map[string]bool {
-	origins := os.Getenv("WEBSOCKET_ALLOWED_ORIGINS")
-	if origins == "" {
-		return map[string]bool{
-			"http://localhost:3000":  true,
-			"http://localhost:5173":  true,
-			"http://localhost:8080":  true,
-			"https://localhost:3000": true,
-			"https://localhost:5173": true,
-			"https://localhost:8080": true,
-		}
-	}
-	allowed := make(map[string]bool)
-	for _, o := range strings.Split(origins, ",") {
-		o = strings.TrimSpace(o)
-		if o != "" {
-			allowed[o] = true
-		}
-	}
-	return allowed
-}
-
-var allowedOrigins = getAllowedOrigins()
-
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			return true // Same-origin requests don't send Origin header
-		}
-		return allowedOrigins[origin]
-	},
+	CheckOrigin:     utils.CheckWebSocketOrigin(),
 	ReadBufferSize:  wsReadBufferSize,
 	WriteBufferSize: wsWriteBufferSize,
 }
