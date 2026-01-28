@@ -124,6 +124,9 @@ func (r *sdkGeneratorRepository) GetConfigsByTenant(ctx context.Context, tenantI
 		json.Unmarshal(featuresJSON, &config.Features)
 		configs = append(configs, &config)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return configs, nil
 }
@@ -215,6 +218,9 @@ func (r *sdkGeneratorRepository) GetGenerationsByConfig(ctx context.Context, con
 		}
 		generations = append(generations, &gen)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return generations, nil
 }
@@ -295,6 +301,9 @@ func (r *sdkGeneratorRepository) GetTemplates(ctx context.Context, language stri
 
 		json.Unmarshal(variablesJSON, &t.Variables)
 		templates = append(templates, &t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return templates, nil

@@ -181,6 +181,9 @@ func (r *PostgresEdgeFunctionsRepository) GetFunctionsByTenant(ctx context.Conte
 		json.Unmarshal(metadataJSON, &fn.Metadata)
 		functions = append(functions, fn)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return functions, nil
 }
@@ -212,6 +215,9 @@ func (r *PostgresEdgeFunctionsRepository) GetActiveFunctions(ctx context.Context
 		json.Unmarshal(envVarsJSON, &fn.EnvironmentVars)
 		json.Unmarshal(metadataJSON, &fn.Metadata)
 		functions = append(functions, fn)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return functions, nil
@@ -287,6 +293,9 @@ func (r *PostgresEdgeFunctionsRepository) GetVersions(ctx context.Context, funct
 		}
 		versions = append(versions, v)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return versions, nil
 }
@@ -329,6 +338,9 @@ func (r *PostgresEdgeFunctionsRepository) GetAllLocations(ctx context.Context) (
 		}
 		json.Unmarshal(metadataJSON, &loc.Metadata)
 		locations = append(locations, loc)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return locations, nil
@@ -399,6 +411,9 @@ func (r *PostgresEdgeFunctionsRepository) GetActiveLocations(ctx context.Context
 		json.Unmarshal(metadataJSON, &loc.Metadata)
 		locations = append(locations, loc)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return locations, nil
 }
@@ -467,6 +482,9 @@ func (r *PostgresEdgeFunctionsRepository) GetDeploymentsByFunction(ctx context.C
 		json.Unmarshal(metadataJSON, &loc.Metadata)
 		d.Location = loc
 		deployments = append(deployments, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return deployments, nil
@@ -575,6 +593,9 @@ func (r *PostgresEdgeFunctionsRepository) GetTriggersByFunction(ctx context.Cont
 		json.Unmarshal(conditionsJSON, &t.Conditions)
 		triggers = append(triggers, t)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return triggers, nil
 }
@@ -609,6 +630,9 @@ func (r *PostgresEdgeFunctionsRepository) GetMatchingTriggers(ctx context.Contex
 		}
 		json.Unmarshal(conditionsJSON, &t.Conditions)
 		triggers = append(triggers, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return triggers, nil
@@ -697,6 +721,9 @@ func (r *PostgresEdgeFunctionsRepository) GetInvocationsByFunction(ctx context.C
 		}
 		invocations = append(invocations, inv)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return invocations, nil
 }
@@ -727,6 +754,9 @@ func (r *PostgresEdgeFunctionsRepository) GetRecentInvocations(ctx context.Conte
 			return nil, err
 		}
 		invocations = append(invocations, inv)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return invocations, nil
@@ -791,6 +821,9 @@ func (r *PostgresEdgeFunctionsRepository) GetMetrics(ctx context.Context, functi
 		}
 		metrics = append(metrics, m)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return metrics, nil
 }
@@ -827,6 +860,9 @@ func (r *PostgresEdgeFunctionsRepository) GetSecrets(ctx context.Context, functi
 			return nil, err
 		}
 		secrets = append(secrets, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return secrets, nil
@@ -882,6 +918,9 @@ func (r *PostgresEdgeFunctionsRepository) GetTests(ctx context.Context, function
 		json.Unmarshal(expectedJSON, &t.ExpectedOutput)
 		json.Unmarshal(actualJSON, &t.ActualOutput)
 		tests = append(tests, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return tests, nil

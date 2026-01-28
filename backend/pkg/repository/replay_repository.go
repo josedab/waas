@@ -173,6 +173,9 @@ func (r *replayRepository) SearchEvents(ctx context.Context, tenantID uuid.UUID,
 		json.Unmarshal(metadataJSON, &event.Metadata)
 		events = append(events, &event)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
 
 	return events, total, nil
 }
@@ -206,6 +209,9 @@ func (r *replayRepository) GetEventsByTimeRange(ctx context.Context, tenantID uu
 		json.Unmarshal(headersJSON, &event.Headers)
 		json.Unmarshal(metadataJSON, &event.Metadata)
 		events = append(events, &event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return events, nil
@@ -328,6 +334,9 @@ func (r *replayRepository) GetReplayJobs(ctx context.Context, tenantID uuid.UUID
 		json.Unmarshal(optionsJSON, &job.Options)
 		jobs = append(jobs, &job)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return jobs, nil
 }
@@ -436,6 +445,9 @@ func (r *replayRepository) GetReplayJobEvents(ctx context.Context, jobID uuid.UU
 		json.Unmarshal(transformedJSON, &event.TransformedPayload)
 		events = append(events, &event)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return events, nil
 }
@@ -484,6 +496,9 @@ func (r *replayRepository) GetPendingReplayEvents(ctx context.Context, jobID uui
 
 		json.Unmarshal(originalJSON, &event.OriginalPayload)
 		events = append(events, &event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return events, nil
@@ -554,6 +569,9 @@ func (r *replayRepository) GetSnapshots(ctx context.Context, tenantID uuid.UUID)
 
 		json.Unmarshal(filterJSON, &snapshot.FilterCriteria)
 		snapshots = append(snapshots, &snapshot)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return snapshots, nil

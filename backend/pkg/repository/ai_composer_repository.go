@@ -135,6 +135,9 @@ func (r *aiComposerRepository) GetSessionsByTenant(ctx context.Context, tenantID
 		}
 		sessions = append(sessions, &session)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate sessions: %w", err)
+	}
 
 	return sessions, nil
 }
@@ -232,6 +235,9 @@ func (r *aiComposerRepository) GetSessionMessages(ctx context.Context, sessionID
 		}
 		messages = append(messages, &msg)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate messages: %w", err)
+	}
 
 	return messages, nil
 }
@@ -324,6 +330,9 @@ func (r *aiComposerRepository) GetSessionConfigs(ctx context.Context, sessionID 
 		json.Unmarshal(errorsJSON, &config.ValidationErrors)
 		configs = append(configs, &config)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate configs: %w", err)
+	}
 
 	return configs, nil
 }
@@ -389,6 +398,9 @@ func (r *aiComposerRepository) GetTemplates(ctx context.Context, category string
 
 		json.Unmarshal(exampleOutputJSON, &t.ExampleOutput)
 		templates = append(templates, &t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate templates: %w", err)
 	}
 
 	return templates, nil
@@ -461,6 +473,9 @@ func (r *aiComposerRepository) GetSessionFeedback(ctx context.Context, sessionID
 			return nil, fmt.Errorf("failed to scan feedback: %w", err)
 		}
 		feedbacks = append(feedbacks, &f)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate feedback: %w", err)
 	}
 
 	return feedbacks, nil

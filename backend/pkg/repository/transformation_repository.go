@@ -106,6 +106,9 @@ func (r *transformationRepository) GetByTenantID(ctx context.Context, tenantID u
 		}
 		transformations = append(transformations, t)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return transformations, nil
 }
 
@@ -175,6 +178,9 @@ func (r *transformationRepository) GetByEndpointID(ctx context.Context, endpoint
 		}
 		transformations = append(transformations, t)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return transformations, nil
 }
 
@@ -242,6 +248,9 @@ func (r *transformationRepository) GetLogsByTransformationID(ctx context.Context
 			return nil, err
 		}
 		logs = append(logs, log)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return logs, nil
 }

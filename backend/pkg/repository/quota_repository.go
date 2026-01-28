@@ -231,6 +231,9 @@ func (r *quotaRepository) GetBillingHistory(ctx context.Context, tenantID uuid.U
 		}
 		records = append(records, &record)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate billing records: %w", err)
+	}
 	
 	return records, nil
 }
@@ -277,6 +280,9 @@ func (r *quotaRepository) GetPendingNotifications(ctx context.Context, tenantID 
 			return nil, fmt.Errorf("failed to scan notification: %w", err)
 		}
 		notifications = append(notifications, &notification)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate notifications: %w", err)
 	}
 	
 	return notifications, nil
@@ -327,6 +333,9 @@ func (r *quotaRepository) GetNotificationHistory(ctx context.Context, tenantID u
 			return nil, fmt.Errorf("failed to scan notification: %w", err)
 		}
 		notifications = append(notifications, &notification)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate notifications: %w", err)
 	}
 	
 	return notifications, nil

@@ -159,6 +159,9 @@ func (r *PostgresBidirectionalSyncRepository) GetConfigsByTenant(ctx context.Con
 		json.Unmarshal(correlationJSON, &config.CorrelationConfig)
 		configs = append(configs, config)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return configs, nil
 }
@@ -324,6 +327,9 @@ func (r *PostgresBidirectionalSyncRepository) queryTransactions(ctx context.Cont
 		json.Unmarshal(responsePayloadJSON, &tx.ResponsePayload)
 		json.Unmarshal(metadataJSON, &tx.Metadata)
 		transactions = append(transactions, tx)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return transactions, nil
@@ -517,6 +523,9 @@ func (r *PostgresBidirectionalSyncRepository) queryStateRecords(ctx context.Cont
 		json.Unmarshal(conflictDataJSON, &record.ConflictData)
 		records = append(records, record)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return records, nil
 }
@@ -683,6 +692,9 @@ func (r *PostgresBidirectionalSyncRepository) GetPendingAcknowledgments(ctx cont
 		json.Unmarshal(ackPayloadJSON, &ack.AckPayload)
 		acks = append(acks, ack)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return acks, nil
 }
@@ -764,6 +776,9 @@ func (r *PostgresBidirectionalSyncRepository) GetConflictHistoryByRecord(ctx con
 		json.Unmarshal(remoteStateJSON, &h.RemoteState)
 		json.Unmarshal(resolvedStateJSON, &h.ResolvedState)
 		histories = append(histories, h)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return histories, nil

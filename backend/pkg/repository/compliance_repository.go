@@ -151,6 +151,9 @@ func (r *PostgresComplianceRepository) GetProfilesByTenant(ctx context.Context, 
 		json.Unmarshal(settingsJSON, &profile.Settings)
 		profiles = append(profiles, profile)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return profiles, nil
 }
@@ -274,6 +277,9 @@ func (r *PostgresComplianceRepository) GetRetentionPoliciesByTenant(ctx context.
 		}
 		policies = append(policies, policy)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return policies, nil
 }
@@ -308,6 +314,9 @@ func (r *PostgresComplianceRepository) GetDueRetentionPolicies(ctx context.Conte
 			return nil, err
 		}
 		policies = append(policies, policy)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return policies, nil
@@ -370,6 +379,9 @@ func (r *PostgresComplianceRepository) GetPIIPatterns(ctx context.Context, tenan
 			return nil, err
 		}
 		patterns = append(patterns, pattern)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return patterns, nil
@@ -456,6 +468,9 @@ func (r *PostgresComplianceRepository) queryDetections(ctx context.Context, quer
 			return nil, err
 		}
 		detections = append(detections, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return detections, nil
@@ -559,6 +574,9 @@ func (r *PostgresComplianceRepository) QueryAuditLogs(ctx context.Context, query
 		json.Unmarshal(detailsJSON, &log.Details)
 		logs = append(logs, log)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return logs, nil
 }
@@ -659,6 +677,9 @@ func (r *PostgresComplianceRepository) GetReportsByTenant(ctx context.Context, t
 
 		json.Unmarshal(reportDataJSON, &report.ReportData)
 		reports = append(reports, report)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return reports, nil
@@ -763,6 +784,9 @@ func (r *PostgresComplianceRepository) queryFindings(ctx context.Context, query 
 		}
 		findings = append(findings, f)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return findings, nil
 }
@@ -801,6 +825,9 @@ func (r *PostgresComplianceRepository) CountFindingsBySeverity(ctx context.Conte
 			return nil, err
 		}
 		counts[severity] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return counts, nil
@@ -904,6 +931,9 @@ func (r *PostgresComplianceRepository) GetDSRsByTenant(ctx context.Context, tena
 		json.Unmarshal(requestDetailsJSON, &dsr.RequestDetails)
 		json.Unmarshal(responseDataJSON, &dsr.ResponseData)
 		dsrs = append(dsrs, dsr)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return dsrs, nil

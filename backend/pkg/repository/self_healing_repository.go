@@ -173,6 +173,9 @@ func (r *PostgresSelfHealingRepository) queryPredictions(ctx context.Context, qu
 		json.Unmarshal(featuresJSON, &pred.FeaturesUsed)
 		predictions = append(predictions, pred)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return predictions, nil
 }
@@ -241,6 +244,9 @@ func (r *PostgresSelfHealingRepository) GetBehaviorPatterns(ctx context.Context,
 
 		json.Unmarshal(patternDataJSON, &p.PatternData)
 		patterns = append(patterns, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return patterns, nil
@@ -359,6 +365,9 @@ func (r *PostgresSelfHealingRepository) queryRules(ctx context.Context, query st
 		json.Unmarshal(triggerJSON, &rule.TriggerCondition)
 		json.Unmarshal(actionConfigJSON, &rule.ActionConfig)
 		rules = append(rules, rule)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return rules, nil
@@ -509,6 +518,9 @@ func (r *PostgresSelfHealingRepository) queryActions(ctx context.Context, query 
 		json.Unmarshal(newStateJSON, &action.NewState)
 		actions = append(actions, action)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return actions, nil
 }
@@ -640,6 +652,9 @@ func (r *PostgresSelfHealingRepository) querySuggestions(ctx context.Context, qu
 		json.Unmarshal(suggestedConfigJSON, &s.SuggestedConfig)
 		suggestions = append(suggestions, s)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return suggestions, nil
 }
@@ -769,6 +784,9 @@ func (r *PostgresSelfHealingRepository) GetOpenCircuitBreakers(ctx context.Conte
 			return nil, err
 		}
 		cbs = append(cbs, cb)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return cbs, nil

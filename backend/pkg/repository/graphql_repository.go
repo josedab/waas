@@ -138,6 +138,9 @@ func (r *PostgresGraphQLRepository) GetSchemasByTenant(ctx context.Context, tena
 		}
 		schemas = append(schemas, schema)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return schemas, nil
 }
@@ -293,6 +296,9 @@ func (r *PostgresGraphQLRepository) querySubscriptions(ctx context.Context, quer
 
 		subs = append(subs, sub)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return subs, nil
 }
@@ -385,6 +391,9 @@ func (r *PostgresGraphQLRepository) GetPendingEvents(ctx context.Context, subscr
 
 		events = append(events, event)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return events, nil
 }
@@ -459,6 +468,9 @@ func (r *PostgresGraphQLRepository) GetFederationSources(ctx context.Context, sc
 
 		json.Unmarshal(authConfigJSON, &source.AuthConfig)
 		sources = append(sources, source)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return sources, nil
@@ -536,6 +548,9 @@ func (r *PostgresGraphQLRepository) GetTypeMappings(ctx context.Context, schemaI
 
 		json.Unmarshal(fieldMappingsJSON, &mapping.FieldMappings)
 		mappings = append(mappings, mapping)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return mappings, nil

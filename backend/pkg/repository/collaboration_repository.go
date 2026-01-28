@@ -135,6 +135,9 @@ func (r *collaborationRepository) GetTeamsByTenant(ctx context.Context, tenantID
 		json.Unmarshal(settingsJSON, &team.Settings)
 		teams = append(teams, &team)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return teams, nil
 }
 
@@ -210,6 +213,9 @@ func (r *collaborationRepository) GetTeamMembers(ctx context.Context, teamID uui
 		}
 		json.Unmarshal(permissionsJSON, &member.Permissions)
 		members = append(members, &member)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return members, nil
 }
@@ -312,6 +318,9 @@ func (r *collaborationRepository) GetTeamConfigs(ctx context.Context, teamID uui
 		json.Unmarshal(configDataJSON, &config.ConfigData)
 		configs = append(configs, &config)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return configs, nil
 }
 
@@ -387,6 +396,9 @@ func (r *collaborationRepository) GetConfigVersions(ctx context.Context, configI
 		}
 		json.Unmarshal(configDataJSON, &v.ConfigData)
 		versions = append(versions, &v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return versions, nil
 }
@@ -481,6 +493,9 @@ func (r *collaborationRepository) GetTeamChangeRequests(ctx context.Context, tea
 		json.Unmarshal(proposedJSON, &cr.ProposedChanges)
 		crs = append(crs, &cr)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return crs, nil
 }
 
@@ -522,6 +537,9 @@ func (r *collaborationRepository) GetReviews(ctx context.Context, changeRequestI
 		}
 		reviews = append(reviews, &review)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return reviews, nil
 }
 
@@ -557,6 +575,9 @@ func (r *collaborationRepository) GetComments(ctx context.Context, changeRequest
 			return nil, err
 		}
 		comments = append(comments, &c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return comments, nil
 }
@@ -596,6 +617,9 @@ func (r *collaborationRepository) GetTeamActivity(ctx context.Context, teamID uu
 		}
 		json.Unmarshal(detailsJSON, &a.Details)
 		activities = append(activities, &a)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return activities, nil
 }
@@ -644,6 +668,9 @@ func (r *collaborationRepository) GetNotificationPreferences(ctx context.Context
 		json.Unmarshal(settingsJSON, &p.Settings)
 		prefs = append(prefs, &p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return prefs, nil
 }
 
@@ -685,6 +712,9 @@ func (r *collaborationRepository) GetNotificationIntegrations(ctx context.Contex
 		}
 		json.Unmarshal(configJSON, &i.Config)
 		integrations = append(integrations, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return integrations, nil
 }
