@@ -1,4 +1,7 @@
-// Package webhooktest provides a testing framework for webhook configurations
+// Package webhooktest provides a testing framework for webhook configurations.
+//
+// STATUS: experimental — available as a test helper library but not yet
+// integrated into CI or consumed by other test packages.
 package webhooktest
 
 import (
