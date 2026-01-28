@@ -52,8 +52,10 @@ X-API-Key: your-api-key-here
 
 ### Base URL
 ```
-https://api.webhook-platform.com/api/v1
+http://localhost:8080/api/v1
 ```
+
+> Replace with your deployment URL in production (e.g., `https://webhooks.example.com/api/v1`).
 
 ### Core Endpoints
 
@@ -87,8 +89,13 @@ https://api.webhook-platform.com/api/v1
 
 ### Go SDK Installation
 
-```bash
-go get github.com/webhook-platform/go-sdk
+The Go SDK is bundled in the repository under `sdk/go/`. See the
+[Go SDK README](../sdk/go/README.md) for installation options (copy,
+Go workspace, or replace directive). For example:
+
+```
+require github.com/webhook-platform/go-sdk v0.0.0
+replace github.com/webhook-platform/go-sdk => /path/to/waas/backend/sdk/go
 ```
 
 ### Basic Usage
@@ -99,7 +106,7 @@ package main
 import (
     "context"
     "log"
-    
+
     "github.com/webhook-platform/go-sdk/client"
 )
 
@@ -324,4 +331,4 @@ When adding new features:
 - **Documentation Issues**: Open an issue in the repository
 - **API Questions**: Check the interactive documentation at `/docs/`
 - **SDK Support**: See the SDK README and examples
-- **General Support**: Contact support@webhook-platform.com
+- **General Support**: Open a [GitHub Discussion](https://github.com/josedab/waas/discussions) or file an issue

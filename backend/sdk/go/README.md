@@ -73,7 +73,7 @@ func main() {
 
 ## Documentation
 
-For detailed documentation and examples, visit [https://docs.webhook-platform.com/sdk/go](https://docs.webhook-platform.com/sdk/go)
+For detailed documentation and examples, see the [examples](./examples) directory and the [API docs](../../docs/README.md).
 
 ## API Reference
 
@@ -139,7 +139,7 @@ c := client.NewFromEnv()
 // 3. Using a configuration struct
 config := &client.Config{
     APIKey:  "your-api-key",
-    BaseURL: "https://api.webhook-platform.com", // optional
+    BaseURL: "http://localhost:8080", // your WaaS instance URL
     Timeout: 30 * time.Second,                   // optional
 }
 c := client.NewWithConfig(config)
