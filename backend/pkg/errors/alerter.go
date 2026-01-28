@@ -248,7 +248,7 @@ func (a *Alerter) sendSlackAlert(ctx context.Context, alert *AlertMessage) error
 		"request_id": alert.RequestID,
 	})
 
-	// TODO(#3): Implement actual Slack webhook integration
+	// TODO(#8): Implement actual Slack webhook integration — https://github.com/josedab/waas/issues/8
 	// Example:
 	// payload := map[string]interface{}{
 	//     "text": alert.Title,
@@ -283,7 +283,7 @@ func (a *Alerter) sendEmailAlert(ctx context.Context, alert *AlertMessage) error
 		"request_id": alert.RequestID,
 	})
 
-	// TODO(#4): Implement actual email sending
+	// TODO(#9): Implement actual email sending — https://github.com/josedab/waas/issues/9
 	// Example:
 	// subject := fmt.Sprintf("[%s] %s", alert.Severity, alert.Title)
 	// body := a.formatEmailBody(alert)

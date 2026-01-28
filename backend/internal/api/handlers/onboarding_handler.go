@@ -132,7 +132,7 @@ func (h *OnboardingHandler) StartOnboarding(c *gin.Context) {
 		response.VerificationToken = token
 	}
 
-	// TODO(#5): Send verification email with token
+	// TODO(#10): Send verification email with token — https://github.com/josedab/waas/issues/10
 
 	h.logger.Info("Onboarding started", map[string]interface{}{
 		"session_id": session.ID,

@@ -280,7 +280,7 @@ func (ts *TeamService) InviteMember(ctx context.Context, tenantID, inviterID, em
 		return nil, err
 	}
 
-	// TODO(#1): Send invitation email
+	// TODO(#6): Send invitation email — https://github.com/josedab/waas/issues/6
 
 	return member, nil
 }

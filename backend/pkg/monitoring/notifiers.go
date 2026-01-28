@@ -307,7 +307,7 @@ func (en *EmailNotifier) SendAlert(ctx context.Context, alert *Alert) error {
 		"from_address": en.fromAddress,
 	})
 
-	// TODO(#2): Implement actual email sending using net/smtp or a third-party service
+	// TODO(#7): Implement actual email sending using net/smtp or a third-party service — https://github.com/josedab/waas/issues/7
 	return nil
 }
 
