@@ -3,7 +3,7 @@ package chaos
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -570,7 +570,7 @@ func (a *Agent) getFaultInjection(endpointID, deliveryID string) *FaultInjection
 	case ExperimentLatency:
 		injection.LatencyMs = a.exp.FaultConfig.LatencyMs
 		if a.exp.FaultConfig.LatencyJitter > 0 {
-			injection.LatencyMs += rand.Intn(a.exp.FaultConfig.LatencyJitter)
+			injection.LatencyMs += rand.IntN(a.exp.FaultConfig.LatencyJitter)
 		}
 	case ExperimentError:
 		if rand.Float64() < a.exp.FaultConfig.ErrorRate {

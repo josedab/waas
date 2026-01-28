@@ -3,7 +3,7 @@ package livemigration
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"time"
 
 	"github.com/google/uuid"
@@ -229,8 +229,8 @@ func (s *Service) StartParallelDelivery(ctx context.Context, tenantID string, re
 		for j := 0; j < numEvents; j++ {
 			sourceStatus := 200
 			destStatus := 200
-			sourceLatency := int64(50 + rand.Intn(150))
-			destLatency := int64(45 + rand.Intn(160))
+			sourceLatency := int64(50 + rand.IntN(150))
+			destLatency := int64(45 + rand.IntN(160))
 			match := true
 			discrepancy := ""
 

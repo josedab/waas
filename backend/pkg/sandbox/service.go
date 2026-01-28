@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"strings"
 	"time"
@@ -105,7 +105,7 @@ func (s *Service) ReplayEvents(ctx context.Context, tenantID, sandboxID string, 
 		}
 
 		// Simulate response (no actual HTTP call)
-		responseLatency := int64(50 + rand.Intn(200))
+		responseLatency := int64(50 + rand.IntN(200))
 		responseStatus := 200
 		responseBody := fmt.Sprintf(`{"status":"ok","event_id":"%s","sandbox":true}`, eventID)
 
@@ -328,7 +328,7 @@ func (s *Service) checkFailureInjection(endpoint *MockEndpointConfig) (bool, str
 	if endpoint.FailureRate > 0 && rand.Float64() < endpoint.FailureRate {
 		if len(endpoint.Failures) > 0 {
 			// Pick a random failure scenario
-			f := endpoint.Failures[rand.Intn(len(endpoint.Failures))]
+			f := endpoint.Failures[rand.IntN(len(endpoint.Failures))]
 			return true, f.Type
 		}
 		return true, Failure500Error
@@ -357,7 +357,7 @@ func SimulateLatency(config LatencySimulation) int {
 		val := rand.NormFloat64()*stddev + mean
 		return int(math.Max(float64(config.MinMs), math.Min(float64(config.MaxMs), val)))
 	default: // uniform
-		return config.MinMs + rand.Intn(config.MaxMs-config.MinMs+1)
+		return config.MinMs + rand.IntN(config.MaxMs-config.MinMs+1)
 	}
 }
 
