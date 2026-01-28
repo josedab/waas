@@ -7,8 +7,9 @@
        install-hooks uninstall-hooks \
        test-coverage test-status audit-deps validate-env
 
-# Configuration
-DATABASE_URL ?= postgres://postgres:password@localhost:5432/webhook_platform?sslmode=disable
+# Configuration — DATABASE_URL must be set in the environment or .env file.
+# Run "make ensure-env" to create .env from template.
+DATABASE_URL ?=
 
 # Default target
 .DEFAULT_GOAL := help
@@ -142,26 +143,32 @@ up: docker-up ## Alias for docker-up
 down: docker-down ## Alias for docker-down
 
 # Database migrations (uses Docker image if local migrate CLI is not installed)
+_require-db-url:
+	@if [ -z "$(DATABASE_URL)" ]; then \
+		echo "❌ DATABASE_URL is not set. Export it or run 'make ensure-env' and source .env first."; \
+		exit 1; \
+	fi
+
 MIGRATE_CMD = $(shell command -v migrate >/dev/null 2>&1 \
 	&& echo 'migrate -path migrations -database "$(DATABASE_URL)"' \
 	|| echo 'docker run --rm -v $(CURDIR)/migrations:/migrations --network host migrate/migrate -path=/migrations -database "$(DATABASE_URL)"')
 
-migrate-up: ## Run database migrations
+migrate-up: _require-db-url ## Run database migrations
 	$(MIGRATE_CMD) up
 
-migrate-down: ## Rollback database migrations
+migrate-down: _require-db-url ## Rollback database migrations
 	$(MIGRATE_CMD) down
 
-migrate-core: ## Run core-only migrations (tables 1-5: tenants, endpoints, deliveries, analytics, quotas)
+migrate-core: _require-db-url ## Run core-only migrations (tables 1-5: tenants, endpoints, deliveries, analytics, quotas)
 	$(MIGRATE_CMD) up 5
 
-migrate-status: ## Show current migration version
+migrate-status: _require-db-url ## Show current migration version
 	$(MIGRATE_CMD) version
 
-migrate-rollback-last: ## Rollback the last migration only
+migrate-rollback-last: _require-db-url ## Rollback the last migration only
 	$(MIGRATE_CMD) down 1
 
-migrate-reset: ## Drop all and re-run migrations (DESTRUCTIVE - requires confirmation)
+migrate-reset: _require-db-url ## Drop all and re-run migrations (DESTRUCTIVE - requires confirmation)
 	@echo "⚠️  WARNING: This will DROP all tables and re-run all migrations."
 	@echo "   Database: $(DATABASE_URL)"
 	@echo ""
