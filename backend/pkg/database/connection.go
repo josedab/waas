@@ -95,10 +95,9 @@ func (db *DB) HealthCheck() error {
 
 // NewTestConnection creates a database connection for testing
 func NewTestConnection() (*DB, error) {
-	// Use test database URL or fallback to default
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
-		databaseURL = "postgres://postgres:password@localhost:5432/webhook_platform_test?sslmode=disable"
+		return nil, fmt.Errorf("TEST_DATABASE_URL environment variable is required")
 	}
 
 	config, err := pgxpool.ParseConfig(databaseURL)
