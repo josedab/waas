@@ -62,12 +62,12 @@ func New(apiKey string) *Client {
 }
 
 // NewFromEnv creates a new client using the WEBHOOK_PLATFORM_API_KEY environment variable
-func NewFromEnv() *Client {
+func NewFromEnv() (*Client, error) {
 	apiKey := os.Getenv("WEBHOOK_PLATFORM_API_KEY")
 	if apiKey == "" {
-		panic("WEBHOOK_PLATFORM_API_KEY environment variable is required")
+		return nil, fmt.Errorf("WEBHOOK_PLATFORM_API_KEY environment variable is required")
 	}
-	return New(apiKey)
+	return New(apiKey), nil
 }
 
 // NewWithConfig creates a new client with the provided configuration
