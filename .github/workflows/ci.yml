@@ -64,7 +64,8 @@ jobs:
         echo "Total coverage: ${COVERAGE}%"
         THRESHOLD=50
         if [ "$(echo "$COVERAGE < $THRESHOLD" | bc -l)" -eq 1 ]; then
-          echo "::warning::Coverage ${COVERAGE}% is below the ${THRESHOLD}% threshold"
+          echo "::error::Coverage ${COVERAGE}% is below the required ${THRESHOLD}% threshold"
+          exit 1
         fi
 
     - name: Upload coverage
