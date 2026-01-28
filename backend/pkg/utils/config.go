@@ -1,28 +1,37 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 )
 
 type Config struct {
-	DatabaseURL    string
-	RedisURL       string
-	APIPort        string
-	AnalyticsPort  string
-	JWTSecret      string
-	Environment    string
+	DatabaseURL   string
+	RedisURL      string
+	APIPort       string
+	AnalyticsPort string
+	JWTSecret     string
+	Environment   string
 }
 
 func LoadConfig() *Config {
 	return &Config{
-		DatabaseURL:   getEnv("DATABASE_URL", "postgres://postgres:password@localhost:5432/webhook_platform?sslmode=disable"),
-		RedisURL:      getEnv("REDIS_URL", "redis://localhost:6379"),
+		DatabaseURL:   requireEnv("DATABASE_URL"),
+		RedisURL:      requireEnv("REDIS_URL"),
 		APIPort:       getEnv("API_PORT", "8080"),
 		AnalyticsPort: getEnv("ANALYTICS_PORT", "8082"),
-		JWTSecret:     getEnv("JWT_SECRET", "your-secret-key"),
+		JWTSecret:     requireEnv("JWT_SECRET"),
 		Environment:   getEnv("ENVIRONMENT", "development"),
 	}
+}
+
+func requireEnv(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		panic(fmt.Sprintf("required environment variable %s is not set", key))
+	}
+	return value
 }
 
 func getEnv(key, defaultValue string) string {
