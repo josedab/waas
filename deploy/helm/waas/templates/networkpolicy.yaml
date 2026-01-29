@@ -1,0 +1,106 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "waas.fullname" . }}-api
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "waas.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: {{ .Values.api.port }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "waas.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: postgresql
+      ports:
+        - protocol: TCP
+          port: {{ .Values.postgresql.port }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "waas.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: redis
+      ports:
+        - protocol: TCP
+          port: {{ .Values.redis.port }}
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "waas.fullname" . }}-delivery
+  namespace: {{ include "waas.namespace" . }}
+  labels:
+    {{- include "waas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: delivery
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "waas.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: delivery
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "waas.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: postgresql
+      ports:
+        - protocol: TCP
+          port: {{ .Values.postgresql.port }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "waas.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: redis
+      ports:
+        - protocol: TCP
+          port: {{ .Values.redis.port }}
+    # Allow outbound webhook delivery to external targets
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}

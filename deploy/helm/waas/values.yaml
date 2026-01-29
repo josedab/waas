@@ -175,3 +175,15 @@ secrets:
   jwtSecret: ""
   encryptionKey: ""
   webhookSigningSecret: ""
+
+## Network Policy
+networkPolicy:
+  enabled: false
+
+## Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  api:
+    minAvailable: 1
+  delivery:
+    minAvailable: 1
