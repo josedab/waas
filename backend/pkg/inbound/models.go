@@ -123,13 +123,15 @@ type CreateRoutingRuleRequest struct {
 
 // TransformRule defines a payload transformation to apply
 type TransformRule struct {
-	ID          string `json:"id" db:"id"`
-	SourceID    string `json:"source_id" db:"source_id"`
-	Name        string `json:"name" db:"name"`
-	Expression  string `json:"expression" db:"expression"` // JSONPath or JS expression
-	TargetField string `json:"target_field" db:"target_field"`
-	Active      bool   `json:"active" db:"active"`
-	Priority    int    `json:"priority" db:"priority"`
+	ID            string `json:"id" db:"id"`
+	SourceID      string `json:"source_id" db:"source_id"`
+	Name          string `json:"name" db:"name"`
+	FieldPath     string `json:"field_path" db:"field_path"`
+	TransformType string `json:"transform_type" db:"transform_type"`
+	Expression    string `json:"expression" db:"expression"` // JSONPath or JS expression
+	TargetField   string `json:"target_field" db:"target_field"`
+	Active        bool   `json:"active" db:"active"`
+	Priority      int    `json:"priority" db:"priority"`
 }
 
 // InboundDLQEntry represents a failed event in the dead letter queue
@@ -172,15 +174,18 @@ type RateLimitConfig struct {
 
 // ContentRoute represents a content-based routing destination
 type ContentRoute struct {
-	ID              string `json:"id" db:"id"`
-	SourceID        string `json:"source_id" db:"source_id"`
-	Name            string `json:"name" db:"name"`
-	MatchExpression string `json:"match_expression" db:"match_expression"` // JSONPath condition
-	MatchValue      string `json:"match_value" db:"match_value"`
-	DestinationType string `json:"destination_type" db:"destination_type"`
-	DestinationURL  string `json:"destination_url" db:"destination_url"`
-	FanOut          bool   `json:"fan_out" db:"fan_out"` // if true, event goes to ALL matching routes
-	Active          bool   `json:"active" db:"active"`
+	ID               string            `json:"id" db:"id"`
+	SourceID         string            `json:"source_id" db:"source_id"`
+	Name             string            `json:"name" db:"name"`
+	MatchExpression  string            `json:"match_expression" db:"match_expression"` // JSONPath condition
+	MatchValue       string            `json:"match_value" db:"match_value"`
+	FilterExpression string            `json:"filter_expression" db:"filter_expression"`
+	DestinationType  string            `json:"destination_type" db:"destination_type"`
+	DestinationURL   string            `json:"destination_url" db:"destination_url"`
+	Headers          map[string]string `json:"headers" db:"headers"`
+	FanOut           bool              `json:"fan_out" db:"fan_out"` // if true, event goes to ALL matching routes
+	Active           bool              `json:"active" db:"active"`
+	Priority         int               `json:"priority" db:"priority"`
 }
 
 // CreateContentRouteRequest is the request DTO for creating a content route
