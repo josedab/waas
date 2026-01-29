@@ -8,7 +8,11 @@ const (
 	ProtocolGRPC    = "grpc"
 	ProtocolMQTT    = "mqtt"
 	ProtocolKafka   = "kafka"
-	ProtocolKinesis = "kinesis"
+	ProtocolKinesis     = "kinesis"
+	ProtocolWebSocket   = "websocket"
+	ProtocolSNS         = "sns"
+	ProtocolEventBridge = "eventbridge"
+	ProtocolPubSub      = "pubsub"
 )
 
 // OrderingGuarantee constants
@@ -110,4 +114,40 @@ type TranslateMessageRequest struct {
 	Payload      string            `json:"payload" binding:"required"`
 	Headers      map[string]string `json:"headers"`
 	PartitionKey string            `json:"partition_key"`
+}
+
+// WebSocketConfig defines WebSocket push delivery configuration
+type WebSocketConfig struct {
+	URL             string            `json:"url"`
+	Headers         map[string]string `json:"headers,omitempty"`
+	PingIntervalSec int               `json:"ping_interval_sec,omitempty"`
+	ReconnectSec    int               `json:"reconnect_sec,omitempty"`
+}
+
+// SNSConfig defines AWS SNS delivery configuration
+type SNSConfig struct {
+	TopicARN   string            `json:"topic_arn"`
+	Region     string            `json:"region"`
+	AccessKey  string            `json:"access_key,omitempty"`
+	SecretKey  string            `json:"-"`
+	Attributes map[string]string `json:"attributes,omitempty"`
+}
+
+// EventBridgeConfig defines AWS EventBridge delivery configuration
+type EventBridgeConfig struct {
+	EventBusName string `json:"event_bus_name"`
+	Region       string `json:"region"`
+	Source       string `json:"source"`
+	DetailType   string `json:"detail_type"`
+	AccessKey    string `json:"access_key,omitempty"`
+	SecretKey    string `json:"-"`
+}
+
+// PubSubConfig defines GCP Pub/Sub delivery configuration
+type PubSubConfig struct {
+	ProjectID       string            `json:"project_id"`
+	TopicID         string            `json:"topic_id"`
+	CredentialsJSON string            `json:"-"`
+	Attributes      map[string]string `json:"attributes,omitempty"`
+	OrderingKey     string            `json:"ordering_key,omitempty"`
 }
