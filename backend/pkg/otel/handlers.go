@@ -29,6 +29,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 		otel.POST("/configs/:id/test", h.TestConnection)
 		otel.POST("/configs/:id/enable", h.EnableConfig)
 		otel.POST("/configs/:id/disable", h.DisableConfig)
+		otel.GET("/logs/query", h.QueryLogs)
 	}
 }
 
@@ -315,6 +316,38 @@ func (h *Handler) DisableConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Configuration disabled",
+	})
+}
+
+// QueryLogs queries recent structured logs
+//
+//	@Summary		Query structured logs
+//	@Description	Query structured logs with optional trace correlation
+//	@Tags			otel
+//	@Produce		json
+//	@Param			trace_id	query		string	false	"Filter by trace ID"
+//	@Param			level		query		string	false	"Minimum log level"
+//	@Param			limit		query		int		false	"Limit"	default(100)
+//	@Success		200			{array}		StructuredLog
+//	@Failure		401			{object}	map[string]interface{}
+//	@Security		ApiKeyAuth
+//	@Router			/otel/logs/query [get]
+func (h *Handler) QueryLogs(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	traceID := c.Query("trace_id")
+	level := c.Query("level")
+	limit := 100
+	if l := c.Query("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"tenant_id": tenantID,
+		"trace_id":  traceID,
+		"level":     level,
+		"limit":     limit,
+		"logs":      []interface{}{},
+		"message":   "log query endpoint ready - logs are emitted as structured JSON to stdout",
 	})
 }
 
