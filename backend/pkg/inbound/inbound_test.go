@@ -422,6 +422,30 @@ func (m *mockRepository) GetInboundStats(_ context.Context, sourceID string) (*I
 	return nil, fmt.Errorf("not implemented")
 }
 
+func (m *mockRepository) CreateTransformRule(_ context.Context, rule *TransformRule) error {
+	return nil
+}
+
+func (m *mockRepository) ListTransformRules(_ context.Context, sourceID string) ([]TransformRule, error) {
+	return nil, nil
+}
+
+func (m *mockRepository) DeleteTransformRule(_ context.Context, ruleID string) error {
+	return nil
+}
+
+func (m *mockRepository) CreateContentRoute(_ context.Context, route *ContentRoute) error {
+	return nil
+}
+
+func (m *mockRepository) ListContentRoutes(_ context.Context, sourceID string) ([]ContentRoute, error) {
+	return nil, nil
+}
+
+func (m *mockRepository) DeleteContentRoute(_ context.Context, routeID string) error {
+	return nil
+}
+
 func TestService_CreateSource(t *testing.T) {
 	repo := newMockRepository()
 	svc := NewService(repo)

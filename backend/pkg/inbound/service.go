@@ -149,6 +149,9 @@ func (s *Service) ProcessInboundWebhook(ctx context.Context, sourceID string, pa
 		return nil, fmt.Errorf("failed to store event: %w", err)
 	}
 
+	// Normalize the payload
+	event.NormalizedPayload = s.normalizePayload(event.RawPayload, source.Provider)
+
 	// Verify signature if secret is configured
 	if source.VerificationSecret != "" {
 		verifier := GetVerifier(source.Provider)
@@ -569,6 +572,10 @@ func (s *Service) CreateContentRoute(ctx context.Context, tenantID, sourceID str
 		Active:          true,
 	}
 
+	if err := s.repo.CreateContentRoute(ctx, route); err != nil {
+		return nil, err
+	}
+
 	return route, nil
 }
 
@@ -589,5 +596,54 @@ func (s *Service) CreateTransformRule(ctx context.Context, tenantID, sourceID st
 		Priority:    req.Priority,
 	}
 
+	if err := s.repo.CreateTransformRule(ctx, rule); err != nil {
+		return nil, err
+	}
+
 	return rule, nil
+}
+
+// normalizePayload converts provider-specific payloads into a common envelope format
+func (s *Service) normalizePayload(rawPayload, provider string) string {
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(rawPayload), &parsed); err != nil {
+		return rawPayload
+	}
+
+	normalized := map[string]interface{}{
+		"provider":    provider,
+		"received_at": time.Now().UTC().Format(time.RFC3339),
+		"payload":     parsed,
+	}
+
+	// Extract common fields based on provider
+	switch provider {
+	case ProviderStripe:
+		if eventType, ok := parsed["type"].(string); ok {
+			normalized["event_type"] = eventType
+		}
+		if id, ok := parsed["id"].(string); ok {
+			normalized["external_id"] = id
+		}
+	case ProviderGitHub:
+		if action, ok := parsed["action"].(string); ok {
+			normalized["event_type"] = action
+		}
+	case ProviderSlack:
+		if eventType, ok := parsed["type"].(string); ok {
+			normalized["event_type"] = eventType
+		}
+	default:
+		if eventType, ok := parsed["event_type"].(string); ok {
+			normalized["event_type"] = eventType
+		} else if eventType, ok := parsed["type"].(string); ok {
+			normalized["event_type"] = eventType
+		}
+	}
+
+	result, err := json.Marshal(normalized)
+	if err != nil {
+		return rawPayload
+	}
+	return string(result)
 }

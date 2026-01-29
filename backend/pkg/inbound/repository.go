@@ -2,6 +2,7 @@ package inbound
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -35,6 +36,16 @@ type Repository interface {
 	GetDLQEntries(ctx context.Context, tenantID string, limit, offset int) ([]InboundDLQEntry, error)
 	GetDLQEntry(ctx context.Context, tenantID, entryID string) (*InboundDLQEntry, error)
 	MarkDLQEntryReplayed(ctx context.Context, entryID string) error
+
+	// Transform rules
+	CreateTransformRule(ctx context.Context, rule *TransformRule) error
+	ListTransformRules(ctx context.Context, sourceID string) ([]TransformRule, error)
+	DeleteTransformRule(ctx context.Context, ruleID string) error
+
+	// Content routes
+	CreateContentRoute(ctx context.Context, route *ContentRoute) error
+	ListContentRoutes(ctx context.Context, sourceID string) ([]ContentRoute, error)
+	DeleteContentRoute(ctx context.Context, routeID string) error
 
 	// Stats and health
 	GetProviderHealth(ctx context.Context, sourceID string) (*ProviderHealth, error)
@@ -321,4 +332,67 @@ func (r *PostgresRepository) GetInboundStats(ctx context.Context, sourceID strin
 	}
 
 	return &stats, nil
+}
+
+func (r *PostgresRepository) CreateTransformRule(ctx context.Context, rule *TransformRule) error {
+	query := `INSERT INTO inbound_transform_rules (id, source_id, field_path, transform_type, expression, target_field, priority, active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	_, err := r.db.ExecContext(ctx, query, rule.ID, rule.SourceID, rule.FieldPath, rule.TransformType, rule.Expression, rule.TargetField, rule.Priority, rule.Active)
+	return err
+}
+
+func (r *PostgresRepository) ListTransformRules(ctx context.Context, sourceID string) ([]TransformRule, error) {
+	query := `SELECT id, source_id, field_path, transform_type, expression, target_field, priority, active FROM inbound_transform_rules WHERE source_id = $1 ORDER BY priority`
+	rows, err := r.db.QueryContext(ctx, query, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var rules []TransformRule
+	for rows.Next() {
+		var tr TransformRule
+		if err := rows.Scan(&tr.ID, &tr.SourceID, &tr.FieldPath, &tr.TransformType, &tr.Expression, &tr.TargetField, &tr.Priority, &tr.Active); err != nil {
+			return nil, err
+		}
+		rules = append(rules, tr)
+	}
+	return rules, rows.Err()
+}
+
+func (r *PostgresRepository) DeleteTransformRule(ctx context.Context, ruleID string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM inbound_transform_rules WHERE id = $1`, ruleID)
+	return err
+}
+
+func (r *PostgresRepository) CreateContentRoute(ctx context.Context, route *ContentRoute) error {
+	query := `INSERT INTO inbound_content_routes (id, source_id, name, filter_expression, destination_type, destination_url, headers, active, priority)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+	headersJSON, _ := json.Marshal(route.Headers)
+	_, err := r.db.ExecContext(ctx, query, route.ID, route.SourceID, route.Name, route.FilterExpression, route.DestinationType, route.DestinationURL, string(headersJSON), route.Active, route.Priority)
+	return err
+}
+
+func (r *PostgresRepository) ListContentRoutes(ctx context.Context, sourceID string) ([]ContentRoute, error) {
+	query := `SELECT id, source_id, name, filter_expression, destination_type, destination_url, headers, active, priority FROM inbound_content_routes WHERE source_id = $1 ORDER BY priority`
+	rows, err := r.db.QueryContext(ctx, query, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var routes []ContentRoute
+	for rows.Next() {
+		var cr ContentRoute
+		var headersStr string
+		if err := rows.Scan(&cr.ID, &cr.SourceID, &cr.Name, &cr.FilterExpression, &cr.DestinationType, &cr.DestinationURL, &headersStr, &cr.Active, &cr.Priority); err != nil {
+			return nil, err
+		}
+		json.Unmarshal([]byte(headersStr), &cr.Headers)
+		routes = append(routes, cr)
+	}
+	return routes, rows.Err()
+}
+
+func (r *PostgresRepository) DeleteContentRoute(ctx context.Context, routeID string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM inbound_content_routes WHERE id = $1`, routeID)
+	return err
 }
