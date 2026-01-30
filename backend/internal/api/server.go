@@ -52,6 +52,7 @@ import (
 	"webhook-platform/pkg/observability"
 	"webhook-platform/pkg/openapigen"
 	"webhook-platform/pkg/otel"
+	"webhook-platform/pkg/playground"
 	"webhook-platform/pkg/pluginmarket"
 	"webhook-platform/pkg/portal"
 	"webhook-platform/pkg/prediction"
@@ -71,6 +72,7 @@ import (
 	"webhook-platform/pkg/tfprovider"
 	"webhook-platform/pkg/timetravel"
 	"webhook-platform/pkg/tracing"
+	"webhook-platform/pkg/transform"
 	"webhook-platform/pkg/utils"
 	"webhook-platform/pkg/versioning"
 	"webhook-platform/pkg/waf"
@@ -165,6 +167,7 @@ type Server struct {
 	wafService          *waf.Service
 	docgenService       *docgen.Service
 	whitelabelService   *whitelabel.Service
+	playgroundService   *playground.Service
 	// DLQ & Observability
 	dlqService        *dlq.Service
 	openapigenService *openapigen.Service
@@ -393,6 +396,11 @@ func NewServer() (*Server, error) {
 	whitelabelRepo := whitelabel.NewPostgresRepository(sqlxDB)
 	whitelabelService := whitelabel.NewService(whitelabelRepo)
 
+	// Interactive Playground v2
+	playgroundRepo := playground.NewRepository(db)
+	playgroundEngine := transform.NewEngine(transform.DefaultEngineConfig())
+	playgroundService := playground.NewService(playgroundRepo, playgroundEngine)
+
 	// ── Phase 9: HTTP layer (Gin router + middleware) ───────────────────
 	// Setup Gin with monitoring middleware
 	router := gin.New()
@@ -475,6 +483,7 @@ func NewServer() (*Server, error) {
 		wafService:             wafService,
 		docgenService:          docgenService,
 		whitelabelService:      whitelabelService,
+		playgroundService:      playgroundService,
 		dlqService:             dlqService,
 		openapigenService:      openapigenService,
 	}
@@ -856,6 +865,10 @@ func (s *Server) setupRoutes() {
 		// OpenAPI-to-Webhook Generator
 		openapigenHandler := openapigen.NewHandler(s.openapigenService)
 		openapigenHandler.RegisterRoutes(protected)
+
+		// Interactive Playground v2
+		playgroundHandler := playground.NewHandler(s.playgroundService)
+		playgroundHandler.RegisterRoutes(protected)
 	}
 
 	// Admin endpoints (require authentication but no rate limiting for now)
