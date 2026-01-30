@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -112,10 +114,28 @@ func runEndpointsList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to list endpoints: %w", err)
 	}
 
-	if output == "json" {
+	switch output {
+	case "json":
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(endpoints)
+	case "csv":
+		headers := []string{"ID", "URL", "Status", "Created"}
+		var rows [][]string
+		for _, ep := range endpoints {
+			status := "active"
+			if !ep.IsActive {
+				status = "inactive"
+			}
+			rows = append(rows, []string{ep.ID, ep.URL, status, ep.CreatedAt.Format("2006-01-02 15:04")})
+		}
+		w := csvWriter(os.Stdout)
+		w.Write(headers)
+		for _, r := range rows {
+			w.Write(r)
+		}
+		w.Flush()
+		return w.Error()
 	}
 
 	if len(endpoints) == 0 {
@@ -293,4 +313,8 @@ func runEndpointsUpdate(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Status: %s\n", boolToStatus(endpoint.IsActive))
 
 	return nil
+}
+
+func csvWriter(w io.Writer) *csv.Writer {
+	return csv.NewWriter(w)
 }
