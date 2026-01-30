@@ -180,10 +180,19 @@ type SchemaValidationConfig struct {
 
 // ValidationResult represents the outcome of a schema validation
 type ValidationResult struct {
-	Valid    bool     `json:"valid"`
-	Mode     string   `json:"mode"`
-	Issues   []string `json:"issues,omitempty"`
-	Warnings []string `json:"warnings,omitempty"`
+	Valid     bool     `json:"valid"`
+	Mode      string   `json:"mode,omitempty"`
+	EventType string   `json:"event_type,omitempty"`
+	Issues    []string `json:"issues,omitempty"`
+	Errors    []string `json:"errors,omitempty"`
+	Warnings  []string `json:"warnings,omitempty"`
+	Message   string   `json:"message,omitempty"`
+}
+
+// ValidatePayloadRequest is the request to validate a payload against a named event type
+type ValidatePayloadRequest struct {
+	EventType string          `json:"event_type" binding:"required"`
+	Payload   json.RawMessage `json:"payload" binding:"required"`
 }
 
 // ChangelogEntry represents a single changelog entry

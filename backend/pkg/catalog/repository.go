@@ -88,6 +88,27 @@ func (r *Repository) GetEventTypeBySlug(ctx context.Context, tenantID uuid.UUID,
 	return &et, nil
 }
 
+// GetEventTypeByName retrieves an event type by tenant and name
+func (r *Repository) GetEventTypeByName(ctx context.Context, tenantID uuid.UUID, name string) (*EventType, error) {
+	query := `
+		SELECT id, tenant_id, name, slug, description, category, schema_id, version, status,
+			deprecation_message, deprecated_at, replacement_event_id, example_payload, tags,
+			metadata, documentation_url, created_at, updated_at
+		FROM event_types WHERE tenant_id = $1 AND name = $2
+		ORDER BY version DESC LIMIT 1`
+
+	var et EventType
+	err := r.db.Pool.QueryRow(ctx, query, tenantID, name).Scan(
+		&et.ID, &et.TenantID, &et.Name, &et.Slug, &et.Description, &et.Category,
+		&et.SchemaID, &et.Version, &et.Status, &et.DeprecationMessage, &et.DeprecatedAt,
+		&et.ReplacementEventID, &et.ExamplePayload, &et.Tags, &et.Metadata,
+		&et.DocumentationURL, &et.CreatedAt, &et.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get event type by name: %w", err)
+	}
+	return &et, nil
+}
+
 // UpdateEventType updates an event type
 func (r *Repository) UpdateEventType(ctx context.Context, et *EventType) error {
 	et.UpdatedAt = time.Now()

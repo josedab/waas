@@ -16,6 +16,7 @@ type CatalogRepository interface {
 	CreateEventType(ctx context.Context, et *EventType) error
 	GetEventType(ctx context.Context, id uuid.UUID) (*EventType, error)
 	GetEventTypeBySlug(ctx context.Context, tenantID uuid.UUID, slug string) (*EventType, error)
+	GetEventTypeByName(ctx context.Context, tenantID uuid.UUID, name string) (*EventType, error)
 	UpdateEventType(ctx context.Context, et *EventType) error
 	DeleteEventType(ctx context.Context, id uuid.UUID) error
 	SearchEventTypes(ctx context.Context, params *CatalogSearchParams) (*CatalogSearchResult, error)
@@ -409,6 +410,51 @@ func generateSlug(name string) string {
 func isValidSemver(version string) bool {
 	re := regexp.MustCompile(`^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$`)
 	return re.MatchString(version)
+}
+
+// ValidatePayloadByEventType validates a webhook payload against the registered schema for a named event type
+func (s *Service) ValidatePayloadByEventType(ctx context.Context, tenantID uuid.UUID, eventType string, payload json.RawMessage) (*ValidationResult, error) {
+	// Look up the event type by name
+	et, err := s.repo.GetEventTypeByName(ctx, tenantID, eventType)
+	if err != nil {
+		// If no schema registered, validation passes (opt-in)
+		return &ValidationResult{Valid: true, EventType: eventType, Message: "no schema registered, skipping validation"}, nil
+	}
+
+	// Get schema bytes
+	var schemaBytes json.RawMessage
+	if et.Schema != nil && et.Schema.Schema != nil {
+		schemaBytes = et.Schema.Schema
+	} else if et.ExamplePayload != nil {
+		schemaBytes = et.ExamplePayload
+	} else {
+		return &ValidationResult{Valid: true, EventType: eventType, Message: "no schema defined"}, nil
+	}
+
+	// Parse the schema
+	var schemaDef map[string]interface{}
+	if err := json.Unmarshal(schemaBytes, &schemaDef); err != nil {
+		return &ValidationResult{Valid: false, EventType: eventType, Message: "invalid schema definition"}, nil
+	}
+
+	// Parse the payload
+	var payloadData map[string]interface{}
+	if err := json.Unmarshal(payload, &payloadData); err != nil {
+		return &ValidationResult{Valid: false, EventType: eventType, Message: "payload is not valid JSON"}, nil
+	}
+
+	// Validate required fields and types from schema
+	_, issues := validateAgainstSchema(payloadData, schemaDef)
+	if len(issues) > 0 {
+		return &ValidationResult{
+			Valid:     false,
+			EventType: eventType,
+			Errors:    issues,
+			Message:   fmt.Sprintf("validation failed: %d error(s)", len(issues)),
+		}, nil
+	}
+
+	return &ValidationResult{Valid: true, EventType: eventType, Message: "payload is valid"}, nil
 }
 
 // ValidatePayload validates a JSON payload against the event type's schema

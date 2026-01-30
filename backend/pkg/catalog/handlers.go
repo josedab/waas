@@ -34,6 +34,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 		catalog.GET("/event-types/:id/subscribers", h.ListSubscribers)
 		catalog.POST("/event-types/:id/generate/:language", h.GenerateSDKTypes)
 		catalog.GET("/search", h.SearchCatalog)
+		catalog.POST("/validate", h.ValidatePayloadByEventType)
 		catalog.GET("/event-types/:id/changelog", h.GetChangelog)
 		catalog.GET("/event-types/:id/portal", h.GetDocPortal)
 		catalog.POST("/event-types/:id/validate-with-mode", h.ValidatePayloadWithMode)
@@ -239,6 +240,36 @@ func (h *Handler) ValidatePayload(c *gin.Context) {
 		"valid":  valid,
 		"issues": issues,
 	})
+}
+
+// ValidatePayloadByEventType validates a payload against a registered event type schema by name
+// @Summary Validate payload against schema
+// @Tags EventCatalog
+// @Accept json
+// @Produce json
+// @Param request body ValidatePayloadRequest true "Validation request"
+// @Success 200 {object} ValidationResult
+// @Router /catalog/validate [post]
+func (h *Handler) ValidatePayloadByEventType(c *gin.Context) {
+	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		return
+	}
+
+	var req ValidatePayloadRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	result, err := h.service.ValidatePayloadByEventType(c.Request.Context(), tenantID, req.EventType, req.Payload)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "VALIDATION_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // @Summary Deprecate event type

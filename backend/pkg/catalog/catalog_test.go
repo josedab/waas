@@ -57,6 +57,15 @@ func (m *mockRepository) GetEventTypeBySlug(ctx context.Context, tenantID uuid.U
 	return nil, fmt.Errorf("not found")
 }
 
+func (m *mockRepository) GetEventTypeByName(ctx context.Context, tenantID uuid.UUID, name string) (*EventType, error) {
+	for _, et := range m.eventTypes {
+		if et.TenantID == tenantID && et.Name == name {
+			return et, nil
+		}
+	}
+	return nil, fmt.Errorf("not found")
+}
+
 func (m *mockRepository) UpdateEventType(ctx context.Context, et *EventType) error {
 	m.eventTypes[et.ID] = et
 	return nil
