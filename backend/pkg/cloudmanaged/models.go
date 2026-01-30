@@ -248,5 +248,29 @@ type StripeInvoiceData struct {
 	} `json:"object"`
 }
 
+// TrialStatus represents the trial state for a tenant
+type TrialStatus struct {
+	TenantID      string     `json:"tenant_id"`
+	IsOnTrial     bool       `json:"is_on_trial"`
+	IsExpired     bool       `json:"is_expired"`
+	Plan          PlanTier   `json:"plan"`
+	TrialEndsAt   *time.Time `json:"trial_ends_at,omitempty"`
+	DaysRemaining int        `json:"days_remaining"`
+}
+
+// Invoice represents a billing invoice for a period
+type Invoice struct {
+	TenantID       string    `json:"tenant_id"`
+	Period         string    `json:"period"`
+	Plan           PlanTier  `json:"plan"`
+	BaseAmount     int64     `json:"base_amount"`
+	OverageAmount  int64     `json:"overage_amount"`
+	OverageDetails string    `json:"overage_details,omitempty"`
+	TotalAmount    int64     `json:"total_amount"`
+	Currency       string    `json:"currency"`
+	Status         string    `json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 // Ensure uuid is used
 var _ = uuid.New

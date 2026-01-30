@@ -1,6 +1,7 @@
 package cloudmanaged
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -66,6 +67,15 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 
 		// Stripe webhook
 		cloud.POST("/stripe-webhook", h.HandleStripeWebhook)
+
+		// Trial management
+		cloud.GET("/trial", h.GetTrialStatus)
+
+		// Invoice generation
+		cloud.GET("/invoice", h.CalculateInvoice)
+
+		// Admin: list tenants
+		cloud.GET("/tenants", h.ListTenants)
 	}
 }
 
@@ -414,4 +424,61 @@ func (h *Handler) HandleStripeWebhook(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"received": true})
+}
+
+// GetTrialStatus returns trial status
+// @Summary Get trial status
+// @Tags CloudManaged
+// @Produce json
+// @Success 200 {object} TrialStatus
+// @Router /cloud/trial [get]
+func (h *Handler) GetTrialStatus(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	status, err := h.service.GetTrialStatus(c.Request.Context(), tenantID)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+	c.JSON(http.StatusOK, status)
+}
+
+// CalculateInvoice returns the current period invoice
+// @Summary Calculate invoice
+// @Tags CloudManaged
+// @Produce json
+// @Success 200 {object} Invoice
+// @Router /cloud/invoice [get]
+func (h *Handler) CalculateInvoice(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	invoice, err := h.service.CalculateInvoice(c.Request.Context(), tenantID)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+	c.JSON(http.StatusOK, invoice)
+}
+
+// ListTenants returns paginated cloud tenants
+// @Summary List cloud tenants (admin)
+// @Tags CloudManaged
+// @Produce json
+// @Param limit query int false "Limit" default(50)
+// @Param offset query int false "Offset" default(0)
+// @Success 200 {array} CloudTenant
+// @Router /cloud/tenants [get]
+func (h *Handler) ListTenants(c *gin.Context) {
+	limit := 50
+	offset := 0
+	if l := c.Query("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+	}
+	if o := c.Query("offset"); o != "" {
+		fmt.Sscanf(o, "%d", &offset)
+	}
+	tenants, err := h.service.ListTenants(c.Request.Context(), limit, offset)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"tenants": tenants, "limit": limit, "offset": offset})
 }

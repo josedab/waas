@@ -669,6 +669,104 @@ func (s *Service) handlePaymentFailed(ctx context.Context, data json.RawMessage)
 	return nil
 }
 
+// ExpireTrials checks for expired trial tenants and suspends them
+func (s *Service) ExpireTrials(ctx context.Context) ([]CloudTenant, error) {
+	tenants, err := s.repo.ListCloudTenants(ctx, 10000, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	var expired []CloudTenant
+	now := time.Now()
+	for _, t := range tenants {
+		if t.Status == CloudTenantStatusTrial && t.TrialEndsAt != nil && now.After(*t.TrialEndsAt) {
+			t.Status = CloudTenantStatusSuspended
+			if err := s.repo.UpdateCloudTenant(ctx, &t); err != nil {
+				continue
+			}
+			expired = append(expired, t)
+		}
+	}
+	return expired, nil
+}
+
+// GetTrialStatus returns the trial status for a tenant
+func (s *Service) GetTrialStatus(ctx context.Context, tenantID string) (*TrialStatus, error) {
+	tenant, err := s.repo.GetCloudTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	status := &TrialStatus{
+		TenantID:  tenantID,
+		IsOnTrial: tenant.Status == CloudTenantStatusTrial,
+		Plan:      tenant.Plan,
+	}
+
+	if tenant.TrialEndsAt != nil {
+		status.TrialEndsAt = tenant.TrialEndsAt
+		status.DaysRemaining = int(time.Until(*tenant.TrialEndsAt).Hours() / 24)
+		if status.DaysRemaining < 0 {
+			status.DaysRemaining = 0
+			status.IsExpired = true
+		}
+	}
+
+	return status, nil
+}
+
+// CalculateInvoice computes the billing amount for a tenant's current period
+func (s *Service) CalculateInvoice(ctx context.Context, tenantID string) (*Invoice, error) {
+	tenant, err := s.repo.GetCloudTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	planDef := getPlanDefinition(tenant.Plan)
+	if planDef == nil {
+		return nil, fmt.Errorf("unknown plan: %s", tenant.Plan)
+	}
+
+	period := time.Now().Format("2006-01")
+	usage, err := s.repo.GetUsageSummary(ctx, tenantID, period)
+	if err != nil {
+		return nil, err
+	}
+
+	invoice := &Invoice{
+		TenantID:   tenantID,
+		Period:     period,
+		Plan:       tenant.Plan,
+		BaseAmount: planDef.PriceMonthly,
+		Currency:   "usd",
+		Status:     "draft",
+		CreatedAt:  time.Now(),
+	}
+
+	// Calculate overage charges
+	if planDef.WebhooksLimit > 0 && usage.WebhooksSent > planDef.WebhooksLimit {
+		overage := usage.WebhooksSent - planDef.WebhooksLimit
+		// $0.001 per overage webhook
+		invoice.OverageAmount = overage
+		invoice.OverageDetails = fmt.Sprintf("%d extra webhooks at $0.001 each", overage)
+	}
+
+	invoice.TotalAmount = invoice.BaseAmount + invoice.OverageAmount
+
+	return invoice, nil
+}
+
+// ListTenants returns paginated cloud tenants (for admin)
+func (s *Service) ListTenants(ctx context.Context, limit, offset int) ([]CloudTenant, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	return s.repo.ListCloudTenants(ctx, limit, offset)
+}
+
 // defaultOnboardingProgress returns the initial onboarding steps for a new tenant
 func defaultOnboardingProgress(tenantID string) *OnboardingProgress {
 	return &OnboardingProgress{
