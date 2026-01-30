@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"text/tabwriter"
+
+	"gopkg.in/yaml.v3"
 )
 
 // ANSI color codes
@@ -106,6 +108,14 @@ func Truncate(s string, max int) string {
 	return s[:max-3] + "..."
 }
 
+// PrintYAML outputs data as YAML.
+func PrintYAML(data interface{}) error {
+	enc := yaml.NewEncoder(os.Stdout)
+	enc.SetIndent(2)
+	defer enc.Close()
+	return enc.Encode(data)
+}
+
 // PrintOutput selects the output format based on the format string and renders accordingly.
 func PrintOutput(format string, headers []string, rows [][]string, data interface{}) {
 	switch format {
@@ -113,6 +123,8 @@ func PrintOutput(format string, headers []string, rows [][]string, data interfac
 		PrintJSON(data)
 	case "csv":
 		FormatCSV(headers, rows)
+	case "yaml":
+		PrintYAML(data)
 	default:
 		PrintTable(headers, rows)
 	}
