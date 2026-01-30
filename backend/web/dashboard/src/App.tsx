@@ -10,6 +10,7 @@ import {
   AnalyticsPage,
   TestingPage,
   SettingsPage,
+  FlowBuilderPage,
 } from '@/pages';
 import { useAuthStore } from '@/store';
 import { PageLoader } from '@/components/common';
@@ -64,6 +65,7 @@ function AppRoutes() {
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/testing" element={<TestingPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/flow-builder" element={<FlowBuilderPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

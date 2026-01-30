@@ -5,3 +5,4 @@ export { DeliveriesPage } from './DeliveriesPage';
 export { AnalyticsPage } from './AnalyticsPage';
 export { TestingPage } from './TestingPage';
 export { SettingsPage } from './SettingsPage';
+export { FlowBuilderPage } from './FlowBuilderPage';

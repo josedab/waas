@@ -8,6 +8,7 @@ import {
   BeakerIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore, useUIStore } from '@/store';
@@ -18,6 +19,7 @@ const navigation = [
   { name: 'Deliveries', href: '/deliveries', icon: PaperAirplaneIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
   { name: 'Testing', href: '/testing', icon: BeakerIcon },
+  { name: 'Flow Builder', href: '/flow-builder', icon: Squares2X2Icon },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ];
 
