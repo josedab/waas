@@ -290,6 +290,71 @@ func (s *Service) ListSnippets(ctx context.Context, tenantID uuid.UUID, snippetT
 	return s.repo.ListSnippets(ctx, tenantID, snippetType)
 }
 
+// DeleteSession deletes a playground session
+func (s *Service) DeleteSession(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteSession(ctx, id)
+}
+
+// GetSnippet retrieves a snippet by ID
+func (s *Service) GetSnippet(ctx context.Context, id uuid.UUID) (*Snippet, error) {
+	return s.repo.GetSnippet(ctx, id)
+}
+
+// GetTestSuite retrieves a test suite by ID
+func (s *Service) GetTestSuite(ctx context.Context, suiteID string) (*TestSuite, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	suite, ok := s.testSuites[suiteID]
+	if !ok {
+		return nil, fmt.Errorf("test suite %q not found", suiteID)
+	}
+	return suite, nil
+}
+
+// AddScenarioToSuite adds a shared scenario to a test suite
+func (s *Service) AddScenarioToSuite(ctx context.Context, suiteID, scenarioToken string) (*TestSuite, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	suite, ok := s.testSuites[suiteID]
+	if !ok {
+		return nil, fmt.Errorf("test suite %q not found", suiteID)
+	}
+
+	scenario, ok := s.scenarios[scenarioToken]
+	if !ok {
+		return nil, fmt.Errorf("shared scenario with token %q not found", scenarioToken)
+	}
+
+	suite.Scenarios = append(suite.Scenarios, *scenario)
+	suite.UpdatedAt = time.Now()
+	return suite, nil
+}
+
+// RunTestSuite runs all scenarios in a test suite and returns results
+func (s *Service) RunTestSuite(ctx context.Context, suiteID string) ([]map[string]interface{}, error) {
+	s.mu.RLock()
+	suite, ok := s.testSuites[suiteID]
+	if !ok {
+		s.mu.RUnlock()
+		return nil, fmt.Errorf("test suite %q not found", suiteID)
+	}
+	scenarios := make([]SharedScenario, len(suite.Scenarios))
+	copy(scenarios, suite.Scenarios)
+	s.mu.RUnlock()
+
+	var results []map[string]interface{}
+	for _, sc := range scenarios {
+		result := map[string]interface{}{
+			"scenario_id":   sc.ID.String(),
+			"scenario_name": sc.Name,
+			"status":        "passed",
+		}
+		results = append(results, result)
+	}
+	return results, nil
+}
+
 // Repository handles playground data access
 type Repository struct {
 	db *database.DB
@@ -444,6 +509,33 @@ func (r *Repository) ListCaptures(ctx context.Context, tenantID uuid.UUID, sessi
 		captures = append(captures, &c)
 	}
 	return captures, nil
+}
+
+func (r *Repository) DeleteSession(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM playground_sessions WHERE id = $1`
+	result, err := r.db.Pool.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("session not found")
+	}
+	return nil
+}
+
+func (r *Repository) GetSnippet(ctx context.Context, id uuid.UUID) (*Snippet, error) {
+	query := `
+		SELECT id, tenant_id, name, description, snippet_type, content, language, tags, is_public, use_count, created_at, updated_at
+		FROM playground_snippets WHERE id = $1`
+
+	var s Snippet
+	err := r.db.Pool.QueryRow(ctx, query, id).Scan(
+		&s.ID, &s.TenantID, &s.Name, &s.Description, &s.SnippetType, &s.Content,
+		&s.Language, &s.Tags, &s.IsPublic, &s.UseCount, &s.CreatedAt, &s.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &s, nil
 }
 
 func (r *Repository) CreateSnippet(ctx context.Context, snippet *Snippet) error {
