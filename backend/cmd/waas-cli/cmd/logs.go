@@ -3,10 +3,15 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
+	"os/signal"
 	"text/tabwriter"
 	"time"
 
+	out "webhook-platform/cmd/waas-cli/output"
+
+	"github.com/gorilla/websocket"
 	"github.com/spf13/cobra"
 )
 
@@ -65,10 +70,33 @@ func listDeliveries(client *Client) error {
 		return fmt.Errorf("failed to list deliveries: %w", err)
 	}
 
-	if output == "json" {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		return enc.Encode(deliveries)
+	// Filter by status if specified
+	if logsStatus != "" {
+		var filtered []Delivery
+		for _, d := range deliveries {
+			if d.Status == logsStatus {
+				filtered = append(filtered, d)
+			}
+		}
+		deliveries = filtered
+	}
+
+	switch output {
+	case "json":
+		return out.PrintJSON(deliveries)
+	case "yaml":
+		return out.PrintYAML(deliveries)
+	case "csv":
+		headers := []string{"ID", "Endpoint", "Status", "Attempts", "Last Attempt"}
+		var rows [][]string
+		for _, d := range deliveries {
+			lastAttempt := ""
+			if !d.LastAttemptAt.IsZero() {
+				lastAttempt = d.LastAttemptAt.Format(time.RFC3339)
+			}
+			rows = append(rows, []string{d.ID, d.EndpointID, d.Status, fmt.Sprintf("%d", d.AttemptCount), lastAttempt})
+		}
+		return out.FormatCSV(headers, rows)
 	}
 
 	if len(deliveries) == 0 {
@@ -79,11 +107,6 @@ func listDeliveries(client *Client) error {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "ID\tENDPOINT\tSTATUS\tATTEMPTS\tLAST ATTEMPT")
 	for _, d := range deliveries {
-		// Filter by status if specified
-		if logsStatus != "" && d.Status != logsStatus {
-			continue
-		}
-
 		lastAttempt := "-"
 		if !d.LastAttemptAt.IsZero() {
 			lastAttempt = d.LastAttemptAt.Format("15:04:05")
@@ -167,31 +190,127 @@ func streamLogs(client *Client) error {
 	fmt.Println("Streaming delivery logs... (Ctrl+C to stop)")
 	fmt.Println()
 
+	apiURL := getAPIURL()
+	apiKey := getAPIKey()
+
+	u, err := url.Parse(apiURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse API URL: %w", err)
+	}
+	switch u.Scheme {
+	case "https":
+		u.Scheme = "wss"
+	default:
+		u.Scheme = "ws"
+	}
+	u.Path = "/api/v1/webhooks/realtime"
+	if logsEndpoint != "" {
+		q := u.Query()
+		q.Set("endpoint_id", logsEndpoint)
+		u.RawQuery = q.Encode()
+	}
+
+	header := map[string][]string{
+		"Authorization": {"Bearer " + apiKey},
+	}
+
+	conn, _, wsErr := websocket.DefaultDialer.Dial(u.String(), header)
+	if wsErr != nil {
+		// Fallback to polling if WebSocket is unavailable
+		return streamLogsPoll(client)
+	}
+	defer conn.Close()
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		for {
+			_, message, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			var event struct {
+				DeliveryID string `json:"delivery_id"`
+				EndpointID string `json:"endpoint_id"`
+				Status     string `json:"status"`
+				EventType  string `json:"event_type"`
+				HTTPStatus int    `json:"http_status"`
+				Error      string `json:"error"`
+			}
+			if err := json.Unmarshal(message, &event); err != nil {
+				continue
+			}
+			if logsStatus != "" && event.Status != logsStatus {
+				continue
+			}
+			ts := time.Now().Format("15:04:05")
+			fmt.Printf("[%s] %s %s → %s",
+				ts,
+				out.ColorStatus(event.Status),
+				out.Truncate(event.EndpointID, 15),
+				out.Truncate(event.DeliveryID, 20),
+			)
+			if event.HTTPStatus > 0 {
+				fmt.Printf(" (HTTP %d)", event.HTTPStatus)
+			}
+			if event.Error != "" {
+				fmt.Printf(" %s", event.Error)
+			}
+			fmt.Println()
+		}
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-interrupt:
+		fmt.Println("\n🛑 Stream stopped")
+		conn.WriteMessage(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		return nil
+	}
+}
+
+// streamLogsPoll falls back to HTTP polling when WebSocket is unavailable
+func streamLogsPoll(client *Client) error {
 	seen := make(map[string]bool)
 
-	for {
-		deliveries, err := client.ListDeliveries(logsEndpoint, 10)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error fetching logs: %v\n", err)
-			time.Sleep(5 * time.Second)
-			continue
-		}
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
 
-		for _, d := range deliveries {
-			key := fmt.Sprintf("%s-%d", d.ID, d.AttemptCount)
-			if !seen[key] {
-				seen[key] = true
-				fmt.Printf("[%s] %s %s → %s (attempts: %d)\n",
-					time.Now().Format("15:04:05"),
-					colorStatus(d.Status),
-					truncate(d.EndpointID, 15),
-					truncate(d.ID, 20),
-					d.AttemptCount,
-				)
+	for {
+		select {
+		case <-interrupt:
+			fmt.Println("\n🛑 Stream stopped")
+			return nil
+		case <-ticker.C:
+			deliveries, err := client.ListDeliveries(logsEndpoint, 10)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error fetching logs: %v\n", err)
+				continue
+			}
+			for _, d := range deliveries {
+				if logsStatus != "" && d.Status != logsStatus {
+					continue
+				}
+				key := fmt.Sprintf("%s-%d", d.ID, d.AttemptCount)
+				if !seen[key] {
+					seen[key] = true
+					fmt.Printf("[%s] %s %s → %s (attempts: %d)\n",
+						time.Now().Format("15:04:05"),
+						colorStatus(d.Status),
+						truncate(d.EndpointID, 15),
+						truncate(d.ID, 20),
+						d.AttemptCount,
+					)
+				}
 			}
 		}
-
-		time.Sleep(2 * time.Second)
 	}
 }
 
