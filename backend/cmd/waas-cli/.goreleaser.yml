@@ -26,6 +26,9 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - README.md
+      - LICENSE
 
 checksum:
   name_template: "checksums.txt"
@@ -46,12 +49,59 @@ brews:
     description: "WaaS CLI - Webhooks as a Service command line tool"
     install: |
       bin.install "waas"
+      bash_completion.install "completions/waas.bash" => "waas"
+      zsh_completion.install "completions/waas.zsh" => "_waas"
+      fish_completion.install "completions/waas.fish"
+
+scoops:
+  - repository:
+      owner: waas
+      name: scoop-bucket
+    homepage: "https://github.com/waas/waas"
+    description: "WaaS CLI - Webhooks as a Service command line tool"
+    license: MIT
 
 nfpms:
   - package_name: waas-cli
     homepage: "https://github.com/waas/waas"
     maintainer: "WaaS Team"
     description: "WaaS CLI - Webhooks as a Service command line tool"
+    license: MIT
     formats:
       - deb
       - rpm
+      - apk
+    contents:
+      - src: ./completions/waas.bash
+        dst: /etc/bash_completion.d/waas
+      - src: ./completions/waas.zsh
+        dst: /usr/share/zsh/vendor-completions/_waas
+      - src: ./completions/waas.fish
+        dst: /usr/share/fish/vendor_completions.d/waas.fish
+
+snapcrafts:
+  - name: waas
+    summary: "WaaS CLI - Webhooks as a Service"
+    description: "Reliable webhook delivery infrastructure CLI tool"
+    grade: stable
+    confinement: strict
+    license: MIT
+    publish: true
+
+dockers:
+  - image_templates:
+      - "ghcr.io/waas/waas-cli:{{ .Version }}-amd64"
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile.cli
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+  - image_templates:
+      - "ghcr.io/waas/waas-cli:{{ .Version }}-arm64"
+    goos: linux
+    goarch: arm64
+    dockerfile: Dockerfile.cli
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64"
