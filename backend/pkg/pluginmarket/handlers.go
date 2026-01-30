@@ -48,6 +48,13 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		installs.DELETE("/:pluginId", h.UninstallPlugin)
 	}
 
+	connectors := r.Group("/marketplace/connectors")
+	{
+		connectors.GET("", h.ListConnectors)
+		connectors.GET("/:id", h.GetConnectorTemplate)
+		connectors.GET("/categories/:category", h.GetConnectorsByCategory)
+	}
+
 	r.GET("/marketplace/stats", h.GetMarketplaceStats)
 	r.POST("/marketplace/execute-hook", h.ExecuteHook)
 }
@@ -325,4 +332,45 @@ func (h *Handler) ExecuteHook(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"results": results})
+}
+
+// ListConnectors returns all available connector templates
+// @Summary List connector templates
+// @Tags Marketplace
+// @Produce json
+// @Success 200 {array} ConnectorTemplate
+// @Router /marketplace/connectors [get]
+func (h *Handler) ListConnectors(c *gin.Context) {
+	connectors := BuiltinConnectors()
+	c.JSON(http.StatusOK, gin.H{"connectors": connectors, "total": len(connectors)})
+}
+
+// GetConnectorTemplate returns a specific connector template
+// @Summary Get connector template
+// @Tags Marketplace
+// @Produce json
+// @Param id path string true "Connector ID"
+// @Success 200 {object} ConnectorTemplate
+// @Router /marketplace/connectors/{id} [get]
+func (h *Handler) GetConnectorTemplate(c *gin.Context) {
+	id := c.Param("id")
+	connector, err := GetConnector(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, connector)
+}
+
+// GetConnectorsByCategory returns connectors filtered by category
+// @Summary Get connectors by category
+// @Tags Marketplace
+// @Produce json
+// @Param category path string true "Category"
+// @Success 200 {array} ConnectorTemplate
+// @Router /marketplace/connectors/categories/{category} [get]
+func (h *Handler) GetConnectorsByCategory(c *gin.Context) {
+	category := c.Param("category")
+	connectors := GetConnectorsByCategory(category)
+	c.JSON(http.StatusOK, gin.H{"connectors": connectors, "category": category})
 }
