@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"webhook-platform/pkg/database"
+	"github.com/josedab/waas/pkg/database"
 )
 
 // Manager provides a high-level interface for queue operations

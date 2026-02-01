@@ -2,7 +2,7 @@ package errors
 
 import (
 	"net/http"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )

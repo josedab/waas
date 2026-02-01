@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"webhook-platform/pkg/multiregion"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/multiregion"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )

@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"time"
-	"webhook-platform/pkg/models"
+	"github.com/josedab/waas/pkg/models"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"

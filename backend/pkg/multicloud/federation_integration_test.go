@@ -3,7 +3,7 @@ package multicloud_test
 import (
 	"testing"
 
-	"webhook-platform/pkg/multicloud"
+	"github.com/josedab/waas/pkg/multicloud"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

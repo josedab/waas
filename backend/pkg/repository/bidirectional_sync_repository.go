@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"webhook-platform/pkg/models"
+	"github.com/josedab/waas/pkg/models"
 )
 
 // BidirectionalSyncRepository handles bi-directional sync data persistence

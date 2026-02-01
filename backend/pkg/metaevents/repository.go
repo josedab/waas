@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"webhook-platform/pkg/database"
+	"github.com/josedab/waas/pkg/database"
 )
 
 // Repository defines the interface for meta-events storage

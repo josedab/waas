@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // AlerterConfig holds configuration for the alerter

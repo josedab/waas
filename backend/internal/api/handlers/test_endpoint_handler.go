@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"webhook-platform/pkg/playground"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/playground"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

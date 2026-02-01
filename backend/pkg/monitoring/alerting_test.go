@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

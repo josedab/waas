@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/jackc/pgx/v5"
-	"webhook-platform/pkg/database"
+	"github.com/josedab/waas/pkg/database"
 )
 
 // Repository handles multi-cloud persistence

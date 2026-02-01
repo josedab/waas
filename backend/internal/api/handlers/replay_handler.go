@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"webhook-platform/pkg/replay"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/replay"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )

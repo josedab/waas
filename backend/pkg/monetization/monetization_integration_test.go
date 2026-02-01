@@ -3,7 +3,7 @@ package monetization_test
 import (
 	"testing"
 
-	"webhook-platform/pkg/monetization"
+	"github.com/josedab/waas/pkg/monetization"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

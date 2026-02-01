@@ -1,6 +1,6 @@
 package repository
 
-import "webhook-platform/pkg/database"
+import "github.com/josedab/waas/pkg/database"
 
 // Repositories holds all repository instances
 type Repositories struct {

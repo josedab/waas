@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"webhook-platform/pkg/queue"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/queue"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // ServiceConfig holds configuration for the fanout service

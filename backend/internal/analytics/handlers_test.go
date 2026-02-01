@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-	"webhook-platform/pkg/models"
-	"webhook-platform/pkg/repository"
+	"github.com/josedab/waas/pkg/models"
+	"github.com/josedab/waas/pkg/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

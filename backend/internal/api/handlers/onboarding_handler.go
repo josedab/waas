@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"webhook-platform/pkg/cloud"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/cloud"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )

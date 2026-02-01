@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"webhook-platform/pkg/database"
-	"webhook-platform/pkg/models"
+	"github.com/josedab/waas/pkg/database"
+	"github.com/josedab/waas/pkg/models"
 )
 
 // FederatedMeshRepository handles persistence for federated mesh

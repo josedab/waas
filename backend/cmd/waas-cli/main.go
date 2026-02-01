@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"webhook-platform/cmd/waas-cli/cmd"
+	"github.com/josedab/waas/cmd/waas-cli/cmd"
 )
 
 func main() {

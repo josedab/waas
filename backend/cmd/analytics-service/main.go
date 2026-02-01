@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"webhook-platform/internal/analytics"
+	"github.com/josedab/waas/internal/analytics"
 )
 
 func main() {

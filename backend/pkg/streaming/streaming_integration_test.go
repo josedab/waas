@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"webhook-platform/pkg/streaming"
+	"github.com/josedab/waas/pkg/streaming"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"webhook-platform/pkg/transform"
+	"github.com/josedab/waas/pkg/transform"
 )
 
 // mockRepository provides an in-memory implementation of the Repository methods

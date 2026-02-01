@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"webhook-platform/pkg/catalog"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/catalog"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

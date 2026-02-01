@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"webhook-platform/pkg/queue"
+	"github.com/josedab/waas/pkg/queue"
 )
 
 // Service provides streaming bridge operations

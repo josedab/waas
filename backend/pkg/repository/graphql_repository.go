@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"webhook-platform/pkg/models"
+	"github.com/josedab/waas/pkg/models"
 )
 
 // GraphQLRepository handles GraphQL schema and subscription persistence

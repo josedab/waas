@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"webhook-platform/pkg/database"
-	"webhook-platform/pkg/transform"
+	"github.com/josedab/waas/pkg/database"
+	"github.com/josedab/waas/pkg/transform"
 )
 
 // Session represents a playground session

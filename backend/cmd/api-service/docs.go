@@ -28,5 +28,5 @@
 package main
 
 import (
-	_ "webhook-platform/docs"
+	_ "github.com/josedab/waas/docs"
 )

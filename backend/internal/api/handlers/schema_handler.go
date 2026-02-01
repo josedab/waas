@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"webhook-platform/pkg/schema"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/schema"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )

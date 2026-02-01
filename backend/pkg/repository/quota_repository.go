@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
-	"webhook-platform/pkg/models"
+	"github.com/josedab/waas/pkg/models"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

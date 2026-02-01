@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"webhook-platform/pkg/database"
-	"webhook-platform/pkg/models"
+	"github.com/josedab/waas/pkg/database"
+	"github.com/josedab/waas/pkg/models"
 )
 
 type ReplayRepository interface {

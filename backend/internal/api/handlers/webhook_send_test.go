@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"webhook-platform/pkg/models"
-	"webhook-platform/pkg/queue"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/models"
+	"github.com/josedab/waas/pkg/queue"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

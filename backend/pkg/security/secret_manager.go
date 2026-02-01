@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"time"
-	"webhook-platform/pkg/repository"
+	"github.com/josedab/waas/pkg/repository"
 
 	"github.com/google/uuid"
 )

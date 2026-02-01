@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"testing"
 	"time"
-	"webhook-platform/pkg/repository"
+	"github.com/josedab/waas/pkg/repository"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

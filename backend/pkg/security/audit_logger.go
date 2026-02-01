@@ -3,7 +3,7 @@ package security
 import (
 	"context"
 	"time"
-	"webhook-platform/pkg/repository"
+	"github.com/josedab/waas/pkg/repository"
 
 	"github.com/google/uuid"
 )

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"webhook-platform/pkg/queue"
+	"github.com/josedab/waas/pkg/queue"
 )
 
 // ---- Filter Tests ----

@@ -1,4 +1,4 @@
-module webhook-platform
+module github.com/josedab/waas
 
 go 1.24.0
 

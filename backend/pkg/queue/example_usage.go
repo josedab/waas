@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"webhook-platform/pkg/database"
+	"github.com/josedab/waas/pkg/database"
 )
 
 // ExampleDeliveryHandler demonstrates how to implement a MessageHandler

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	out "webhook-platform/cmd/waas-cli/output"
+	out "github.com/josedab/waas/cmd/waas-cli/output"
 
 	"github.com/spf13/cobra"
 )

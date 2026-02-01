@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // LogNotifier sends alerts to the application logs

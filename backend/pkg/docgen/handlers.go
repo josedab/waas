@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	pkgerrors "webhook-platform/pkg/errors"
+	pkgerrors "github.com/josedab/waas/pkg/errors"
 )
 
 // Handler provides HTTP handlers for API documentation generation

@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"webhook-platform/internal/delivery"
+	"github.com/josedab/waas/internal/delivery"
 )
 
 func main() {

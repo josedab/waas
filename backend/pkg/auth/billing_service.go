@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
-	"webhook-platform/pkg/models"
-	"webhook-platform/pkg/repository"
+	"github.com/josedab/waas/pkg/models"
+	"github.com/josedab/waas/pkg/repository"
 
 	"github.com/google/uuid"
 )

@@ -26,18 +26,18 @@ package main
 
 import (
 	"log"
-	"webhook-platform/internal/api"
-	_ "webhook-platform/docs"
+	"github.com/josedab/waas/internal/api"
+	_ "github.com/josedab/waas/docs"
 	
 	// Import feature packages for swagger doc generation
-	_ "webhook-platform/pkg/costing"
-	_ "webhook-platform/pkg/embed"
-	_ "webhook-platform/pkg/flow"
-	_ "webhook-platform/pkg/georouting"
-	_ "webhook-platform/pkg/metaevents"
-	_ "webhook-platform/pkg/mocking"
-	_ "webhook-platform/pkg/otel"
-	_ "webhook-platform/pkg/protocols"
+	_ "github.com/josedab/waas/pkg/costing"
+	_ "github.com/josedab/waas/pkg/embed"
+	_ "github.com/josedab/waas/pkg/flow"
+	_ "github.com/josedab/waas/pkg/georouting"
+	_ "github.com/josedab/waas/pkg/metaevents"
+	_ "github.com/josedab/waas/pkg/mocking"
+	_ "github.com/josedab/waas/pkg/otel"
+	_ "github.com/josedab/waas/pkg/protocols"
 )
 
 func main() {

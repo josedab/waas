@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // ServiceConfig holds configuration for the callback service

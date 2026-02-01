@@ -3,7 +3,7 @@ package metrics
 import (
 	"strconv"
 	"time"
-	"webhook-platform/pkg/monitoring"
+	"github.com/josedab/waas/pkg/monitoring"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"

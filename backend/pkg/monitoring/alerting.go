@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // AlertSeverity represents the severity level of an alert

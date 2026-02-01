@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"webhook-platform/pkg/database"
+	"github.com/josedab/waas/pkg/database"
 )
 
 // PublisherInterface defines the interface for publishing messages to queues

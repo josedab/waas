@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"webhook-platform/pkg/anomaly"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/pkg/anomaly"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )

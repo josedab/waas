@@ -3,7 +3,7 @@ package repository
 import (
 	"os"
 	"testing"
-	"webhook-platform/pkg/database"
+	"github.com/josedab/waas/pkg/database"
 )
 
 func setupTestDB(t *testing.T) *database.DB {

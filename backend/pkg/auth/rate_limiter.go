@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-	"webhook-platform/pkg/models"
+	"github.com/josedab/waas/pkg/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"

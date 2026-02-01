@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	pkgerrors "webhook-platform/pkg/errors"
+	pkgerrors "github.com/josedab/waas/pkg/errors"
 )
 
 // Handler implements HTTP handlers for the visual workflow builder

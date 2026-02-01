@@ -3,8 +3,8 @@ package security
 import (
 	"context"
 	"testing"
-	"webhook-platform/pkg/models"
-	"webhook-platform/pkg/repository"
+	"github.com/josedab/waas/pkg/models"
+	"github.com/josedab/waas/pkg/repository"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

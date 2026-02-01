@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"webhook-platform/internal/api/services"
-	"webhook-platform/pkg/models"
-	"webhook-platform/pkg/utils"
+	"github.com/josedab/waas/internal/api/services"
+	"github.com/josedab/waas/pkg/models"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // ComplianceHandler handles compliance endpoints
