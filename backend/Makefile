@@ -1,11 +1,12 @@
 .PHONY: build run-api run-delivery run-analytics test test-all clean \
        docker-up docker-down docker-build \
-       migrate-up migrate-down migrate-core migrate-status migrate-reset migrate-rollback dev-setup ensure-env deps \
+       migrate-up migrate-down migrate-core migrate-status migrate-reset migrate-rollback dev-setup dev-setup-full ensure-env deps \
        docs docs-generate docs-serve docs-test \
        lint fmt vet help validate-setup \
        smoke-test run-all run-dashboard \
        install-hooks uninstall-hooks \
-       test-coverage test-status audit-deps validate-env
+       test-coverage test-status audit-deps validate-env \
+       dev dev-logs check
 
 # Configuration — DATABASE_URL must be set in the environment or .env file.
 # Run "make ensure-env" to create .env from template.
@@ -50,6 +51,20 @@ run-all: ## Run all services in parallel (Ctrl+C to stop)
 		go run ./cmd/delivery-engine & \
 		go run ./cmd/analytics-service & \
 		wait
+
+dev-logs: ## Run all services with colored, prefixed log output
+	@echo "Starting all services with colored prefixed output..."
+	@echo "  \033[36m[api]\033[0m = API Service    \033[33m[delivery]\033[0m = Delivery Engine    \033[35m[analytics]\033[0m = Analytics Service"
+	@echo ""
+	@trap 'kill 0' INT TERM; \
+		go run ./cmd/api-service 2>&1       | sed 's/^/\x1b[36m[api]       \x1b[0m /' & \
+		go run ./cmd/delivery-engine 2>&1   | sed 's/^/\x1b[33m[delivery]  \x1b[0m /' & \
+		go run ./cmd/analytics-service 2>&1 | sed 's/^/\x1b[35m[analytics] \x1b[0m /' & \
+		wait
+
+dev: ## Run API service with hot-reload (requires Air: go install github.com/air-verse/air@latest)
+	@command -v air >/dev/null 2>&1 || { echo "Air not found. Install: go install github.com/air-verse/air@latest"; exit 1; }
+	air
 
 # Testing
 test: ## Run core tests with coverage summary
@@ -123,6 +138,8 @@ fmt: ## Check code formatting (fails if unformatted)
 
 vet: ## Run go vet
 	go vet ./...
+
+check: fmt vet lint test ## Run all quality gates: fmt, vet, lint, test
 
 # Clean
 clean: ## Remove build artifacts
@@ -206,7 +223,34 @@ validate-env: ## Validate .env file for required variables and insecure defaults
 	else echo "  ✅ .env looks good."; fi
 
 # Development setup
-dev-setup: ensure-env docker-up ## One-command dev setup: creates .env, starts containers, runs migrations
+dev-setup: ensure-env install-hooks docker-up ## One-command dev setup: creates .env, installs hooks, starts containers, runs core migrations
+	@echo "Waiting for PostgreSQL to be ready..."
+	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
+		docker-compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1 && break; \
+		echo "  Attempt $$i/30 - PostgreSQL not ready, retrying in 2s..."; \
+		sleep 2; \
+	done
+	@docker-compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1 || { echo "PostgreSQL failed to start after 60s"; exit 1; }
+	@echo "PostgreSQL is ready."
+	@echo "Waiting for Redis to be ready..."
+	@for i in 1 2 3 4 5 6 7 8 9 10; do \
+		docker-compose exec -T redis redis-cli ping >/dev/null 2>&1 && break; \
+		sleep 1; \
+	done
+	@echo "Redis is ready."
+	$(MAKE) migrate-core
+	@echo ""
+	@echo "Development environment is ready! (core migrations only — run 'make dev-setup-full' for all migrations)"
+	@echo "  API service:       make run-api        (http://localhost:8080)"
+	@echo "  Delivery engine:   make run-delivery"
+	@echo "  Analytics service: make run-analytics   (http://localhost:8082)"
+	@echo "  All services:      make run-all"
+	@echo "  Hot-reload:        make dev             (requires Air)"
+	@echo "  React dashboard:   make run-dashboard   (http://localhost:5173)"
+	@echo "  Smoke test:        make smoke-test"
+	@echo "  API docs:          http://localhost:8080/docs/"
+
+dev-setup-full: ensure-env install-hooks docker-up ## Full dev setup with all migrations (not just core)
 	@echo "Waiting for PostgreSQL to be ready..."
 	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
 		docker-compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1 && break; \
@@ -223,11 +267,12 @@ dev-setup: ensure-env docker-up ## One-command dev setup: creates .env, starts c
 	@echo "Redis is ready."
 	$(MAKE) migrate-up
 	@echo ""
-	@echo "Development environment is ready!"
+	@echo "Development environment is ready! (all migrations applied)"
 	@echo "  API service:       make run-api        (http://localhost:8080)"
 	@echo "  Delivery engine:   make run-delivery"
 	@echo "  Analytics service: make run-analytics   (http://localhost:8082)"
 	@echo "  All services:      make run-all"
+	@echo "  Hot-reload:        make dev             (requires Air)"
 	@echo "  React dashboard:   make run-dashboard   (http://localhost:5173)"
 	@echo "  Smoke test:        make smoke-test"
 	@echo "  API docs:          http://localhost:8080/docs/"

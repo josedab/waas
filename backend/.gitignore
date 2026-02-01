@@ -44,3 +44,6 @@ redis_data/
 
 # Logs
 *.log
+
+# Air hot-reload
+tmp/
