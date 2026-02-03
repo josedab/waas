@@ -1,0 +1,44 @@
+# Air configuration for hot-reload of the delivery engine.
+# Usage: air -c .air.delivery.toml
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/delivery-engine ./cmd/delivery-engine"
+  bin = "./tmp/delivery-engine"
+  delay = 1000
+  exclude_dir = ["tmp", "bin", "vendor", "node_modules", "web", "docs", "deploy", "k8s", "test", "migrations"]
+  exclude_file = []
+  exclude_regex = ["_test\\.go$"]
+  exclude_unchanged = false
+  follow_symlink = false
+  include_dir = []
+  include_ext = ["go", "toml", "yaml", "yml"]
+  include_file = []
+  kill_delay = "0s"
+  log = "build-errors.log"
+  poll = false
+  poll_interval = 0
+  rerun = false
+  rerun_delay = 500
+  send_interrupt = true
+  stop_on_error = true
+
+[color]
+  app = ""
+  build = "yellow"
+  main = "magenta"
+  runner = "green"
+  watcher = "cyan"
+
+[log]
+  main_only = false
+  time = false
+
+[misc]
+  clean_on_exit = true
+
+[screen]
+  clear_on_rebuild = false
+  keep_scroll = true
