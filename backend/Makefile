@@ -6,7 +6,7 @@
        smoke-test run-all run-dashboard \
        install-hooks uninstall-hooks \
        test-coverage test-status audit-deps validate-env \
-       dev dev-logs check
+       dev dev-all dev-logs check seed
 
 # Configuration — DATABASE_URL must be set in the environment or .env file.
 # Run "make ensure-env" to create .env from template.
@@ -65,6 +65,19 @@ dev-logs: ## Run all services with colored, prefixed log output
 dev: ## Run API service with hot-reload (requires Air: go install github.com/air-verse/air@latest)
 	@command -v air >/dev/null 2>&1 || { echo "Air not found. Install: go install github.com/air-verse/air@latest"; exit 1; }
 	air
+
+dev-all: ## Run all services with hot-reload (requires Air)
+	@command -v air >/dev/null 2>&1 || { echo "Air not found. Install: go install github.com/air-verse/air@latest"; exit 1; }
+	@echo "Starting all services with hot-reload..."
+	@echo "  \033[36m[api]\033[0m       .air.toml"
+	@echo "  \033[33m[delivery]\033[0m  .air.delivery.toml"
+	@echo "  \033[35m[analytics]\033[0m .air.analytics.toml"
+	@echo ""
+	@trap 'kill 0' INT TERM; \
+		air -c .air.toml 2>&1              | sed 's/^/\x1b[36m[api]       \x1b[0m /' & \
+		air -c .air.delivery.toml 2>&1     | sed 's/^/\x1b[33m[delivery]  \x1b[0m /' & \
+		air -c .air.analytics.toml 2>&1    | sed 's/^/\x1b[35m[analytics] \x1b[0m /' & \
+		wait
 
 # Testing
 test: ## Run core tests with coverage summary
@@ -313,6 +326,10 @@ smoke-test: ## Quick smoke test against running API (requires make run-api)
 		if [ "$$STATUS" = "200" ]; then echo "✅ OK"; else echo "⚠️  Not available (HTTP $$STATUS)"; fi
 	@echo ""
 	@echo "Smoke test passed! 🎉"
+
+# Seed demo data
+seed: ## Seed sample tenants, endpoints, and deliveries via the API (requires make run-api)
+	@./scripts/seed-dev-data.sh
 
 # Environment validation
 validate-setup: ## Check that all prerequisites are installed
