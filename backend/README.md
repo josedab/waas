@@ -5,7 +5,7 @@ A comprehensive webhook-as-a-service platform built with Go microservices archit
 ## Project Structure
 
 ```
-webhook-platform/
+waas/
 ├── cmd/                    # Application entry points
 │   ├── api-service/        # Webhook API service
 │   ├── delivery-engine/    # Webhook delivery engine
@@ -56,6 +56,11 @@ webhook-platform/
   ```bash
   go install github.com/swaggo/swag/cmd/swag@latest
   ```
+- **Node.js 18+** *(for dashboard)* — [Download](https://nodejs.org/). Uses pnpm (preferred) or npm.
+  ```bash
+  # Install pnpm (optional, npm also works)
+  npm install -g pnpm
+  ```
 
 Verify your setup with:
 ```bash
@@ -103,7 +108,7 @@ curl -s -X POST http://localhost:8080/api/v1/tenants \
 # Send a test webhook (replace <your-api-key> with the key from above)
 curl -s -X POST http://localhost:8080/api/v1/webhooks/test \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: <your-api-key>" \
+  -H "Authorization: Bearer <your-api-key>" \
   -d '{"url": "https://httpbin.org/post", "payload": {"hello": "world"}}'
 
 # Browse the interactive API docs
@@ -224,10 +229,10 @@ curl -s -X POST http://localhost:8080/api/v1/tenants \
   -d '{"name": "my-tenant", "email": "me@example.com"}'
 ```
 
-The response includes your `api_key`. Pass it via the `X-API-Key` header:
+The response includes your `api_key`. Pass it via the `Authorization` header:
 
 ```bash
-curl -H "X-API-Key: YOUR_KEY_HERE" http://localhost:8080/api/v1/endpoints
+curl -H "Authorization: Bearer YOUR_KEY_HERE" http://localhost:8080/api/v1/endpoints
 ```
 </details>
 

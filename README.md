@@ -12,11 +12,11 @@ Reliable webhook delivery infrastructure you can self-host. Send, receive, and m
 ```bash
 git clone https://github.com/josedab/waas.git
 cd waas/backend
-make dev-setup    # starts PostgreSQL + Redis, runs migrations
+make dev-setup    # starts PostgreSQL + Redis, runs core migrations (5 tables)
 make run-api      # API on http://localhost:8080
 ```
 
-> **Tip:** `make dev-setup` runs all 83 migrations. For a faster start, use `make migrate-core` instead — it runs only the 5 essential tables (tenants, endpoints, deliveries, analytics, quotas).
+> **Tip:** `make dev-setup` runs core migrations only (5 tables). For all 83 migrations (enterprise features), use `make dev-setup-full`.
 
 Verify it works:
 
@@ -149,6 +149,7 @@ make validate-setup    # Check prerequisites
 
 - **Go 1.24+** — [Download](https://go.dev/dl/)
 - **Docker & Docker Compose** — [Install](https://docs.docker.com/get-docker/)
+- **Node.js 18+** *(optional, for dashboard)* — [Download](https://nodejs.org/)
 
 That's it. All other tools (database migrations, linters) are handled automatically or are optional.
 
