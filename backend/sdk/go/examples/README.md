@@ -256,5 +256,5 @@ c := client.NewWithConfig(config)
 ## Need Help?
 
 - Check the [API Documentation](https://docs.webhook-platform.com)
-- Review the [SDK Reference](https://pkg.go.dev/github.com/webhook-platform/go-sdk)
-- Open an issue on [GitHub](https://github.com/webhook-platform/go-sdk/issues)
+- Review the [SDK Reference](https://pkg.go.dev/github.com/josedab/waas/sdk/go)
+- Open an issue on [GitHub](https://github.com/josedab/waas/issues)

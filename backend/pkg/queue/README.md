@@ -31,8 +31,8 @@ The queue system consists of several components:
 
 ```go
 import (
-    "webhook-platform/pkg/database"
-    "webhook-platform/pkg/queue"
+    "github.com/josedab/waas/pkg/database"
+    "github.com/josedab/waas/pkg/queue"
 )
 
 // Connect to Redis

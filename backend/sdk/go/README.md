@@ -19,8 +19,8 @@ go work use . /path/to/waas/backend/sdk/go
 
 **Option 3: Replace directive in go.mod**
 ```
-require github.com/webhook-platform/go-sdk v0.0.0
-replace github.com/webhook-platform/go-sdk => /path/to/waas/backend/sdk/go
+require github.com/josedab/waas/sdk/go v0.0.0
+replace github.com/josedab/waas/sdk/go => /path/to/waas/backend/sdk/go
 ```
 
 ## Quick Start
@@ -33,7 +33,7 @@ import (
     "fmt"
     "log"
     
-    "github.com/webhook-platform/go-sdk/client"
+    "github.com/josedab/waas/sdk/go/client"
 )
 
 func main() {

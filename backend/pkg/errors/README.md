@@ -36,8 +36,8 @@ This package provides a comprehensive, structured error handling system for the 
 package main
 
 import (
-    "webhook-platform/pkg/errors"
-    "webhook-platform/pkg/utils"
+    "github.com/josedab/waas/pkg/errors"
+    "github.com/josedab/waas/pkg/utils"
     "github.com/gin-gonic/gin"
 )
 

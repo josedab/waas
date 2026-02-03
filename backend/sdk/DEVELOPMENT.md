@@ -19,13 +19,13 @@ sdk/
 
 ### Go SDK
 
-The Go SDK lives in `sdk/go/` with module name `github.com/webhook-platform/go-sdk`.
+The Go SDK lives in `sdk/go/` with module name `github.com/josedab/waas/sdk/go`.
 
 **To test against local backend changes:**
 
 1. In your consuming project's `go.mod`, add a `replace` directive:
    ```
-   replace github.com/webhook-platform/go-sdk => /path/to/waas/backend/sdk/go
+   replace github.com/josedab/waas/sdk/go => /path/to/waas/backend/sdk/go
    ```
 
 2. Or from within the SDK directory:
@@ -54,7 +54,7 @@ npm test
 # Link for local development in another project
 npm link
 # In consuming project:
-npm link @webhook-platform/sdk
+npm link @josedab/waas-sdk
 ```
 
 Test against local API:
