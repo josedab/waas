@@ -21,7 +21,6 @@ coverage.out
 
 # IDE files
 .idea/
-.vscode/
 *.swp
 *.swo
 

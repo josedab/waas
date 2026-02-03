@@ -1,0 +1,24 @@
+{
+    "go.goroot": "",
+    "go.alternateTools": {},
+    "go.testFlags": ["-v", "-count=1"],
+    "go.lintTool": "golangci-lint",
+    "go.lintOnSave": "workspace",
+    "go.formatTool": "gofmt",
+    "[go]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "gopls": {
+        "ui.semanticTokens": true,
+        "build.directoryFilters": ["-node_modules", "-web/dashboard/node_modules"]
+    },
+    "files.exclude": {
+        "**/node_modules": true
+    },
+    "search.exclude": {
+        "**/node_modules": true
+    }
+}
