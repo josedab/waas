@@ -24,14 +24,14 @@ type Service struct {
 
 // ServiceConfig holds service configuration
 type ServiceConfig struct {
-	MaxBridgesPerTenant     int
-	DefaultBatchSize        int
-	DefaultFlushIntervalMs  int
-	MaxEventsPerSecond      int
-	EnableSchemaValidation  bool
-	SchemaRegistryURL       string
-	SchemaRegistryUsername  string
-	SchemaRegistryPassword  string
+	MaxBridgesPerTenant    int
+	DefaultBatchSize       int
+	DefaultFlushIntervalMs int
+	MaxEventsPerSecond     int
+	EnableSchemaValidation bool
+	SchemaRegistryURL      string
+	SchemaRegistryUsername string
+	SchemaRegistryPassword string
 }
 
 // DefaultServiceConfig returns default configuration
@@ -160,6 +160,10 @@ func (s *Service) validateCreateRequest(req *CreateBridgeRequest) error {
 		StreamTypeKinesis:     true,
 		StreamTypePulsar:      true,
 		StreamTypeEventBridge: true,
+		StreamTypeNATS:        true,
+		StreamTypeRabbitMQ:    true,
+		StreamTypeSQS:         true,
+		StreamTypeSNS:         true,
 	}
 	if !validTypes[req.StreamType] {
 		return fmt.Errorf("%w: invalid stream type: %s", ErrInvalidConfig, req.StreamType)
@@ -208,6 +212,34 @@ func (s *Service) validateCreateRequest(req *CreateBridgeRequest) error {
 		if req.Config.EventBridgeConfig == nil {
 			return fmt.Errorf("%w: eventbridge config is required", ErrInvalidConfig)
 		}
+	case StreamTypeNATS:
+		if req.Config.NATSConfig == nil {
+			return fmt.Errorf("%w: NATS config is required", ErrInvalidConfig)
+		}
+		if req.Config.NATSConfig.URL == "" || req.Config.NATSConfig.Subject == "" {
+			return fmt.Errorf("%w: NATS URL and subject are required", ErrInvalidConfig)
+		}
+	case StreamTypeRabbitMQ:
+		if req.Config.RabbitMQConfig == nil {
+			return fmt.Errorf("%w: RabbitMQ config is required", ErrInvalidConfig)
+		}
+		if req.Config.RabbitMQConfig.URL == "" || req.Config.RabbitMQConfig.Exchange == "" {
+			return fmt.Errorf("%w: RabbitMQ URL and exchange are required", ErrInvalidConfig)
+		}
+	case StreamTypeSQS:
+		if req.Config.SQSConfig == nil {
+			return fmt.Errorf("%w: SQS config is required", ErrInvalidConfig)
+		}
+		if req.Config.SQSConfig.QueueURL == "" || req.Config.SQSConfig.Region == "" {
+			return fmt.Errorf("%w: SQS queue URL and region are required", ErrInvalidConfig)
+		}
+	case StreamTypeSNS:
+		if req.Config.SNSConfig == nil {
+			return fmt.Errorf("%w: SNS config is required", ErrInvalidConfig)
+		}
+		if req.Config.SNSConfig.TopicARN == "" || req.Config.SNSConfig.Region == "" {
+			return fmt.Errorf("%w: SNS topic ARN and region are required", ErrInvalidConfig)
+		}
 	}
 
 	return nil
@@ -242,6 +274,27 @@ func (s *Service) extractCredentials(bridge *StreamingBridge) map[string]string 
 		if bridge.Config.EventBridgeConfig.SecretAccessKey != "" {
 			creds["eventbridge_secret_key"] = bridge.Config.EventBridgeConfig.SecretAccessKey
 			bridge.Config.EventBridgeConfig.SecretAccessKey = ""
+		}
+	}
+
+	if bridge.Config.NATSConfig != nil {
+		if bridge.Config.NATSConfig.Token != "" {
+			creds["nats_token"] = bridge.Config.NATSConfig.Token
+			bridge.Config.NATSConfig.Token = ""
+		}
+	}
+
+	if bridge.Config.SQSConfig != nil {
+		if bridge.Config.SQSConfig.SecretAccessKey != "" {
+			creds["sqs_secret_key"] = bridge.Config.SQSConfig.SecretAccessKey
+			bridge.Config.SQSConfig.SecretAccessKey = ""
+		}
+	}
+
+	if bridge.Config.SNSConfig != nil {
+		if bridge.Config.SNSConfig.SecretAccessKey != "" {
+			creds["sns_secret_key"] = bridge.Config.SNSConfig.SecretAccessKey
+			bridge.Config.SNSConfig.SecretAccessKey = ""
 		}
 	}
 
@@ -294,6 +347,14 @@ func (s *Service) createProducer(streamType StreamType) (Producer, error) {
 		return NewKafkaProducer(), nil
 	case StreamTypeKinesis:
 		return NewKinesisProducer(), nil
+	case StreamTypeNATS:
+		return NewNATSProducer(), nil
+	case StreamTypeRabbitMQ:
+		return NewRabbitMQProducer(), nil
+	case StreamTypeSQS:
+		return NewSQSProducer(), nil
+	case StreamTypeSNS:
+		return NewSNSProducer(), nil
 	default:
 		return nil, fmt.Errorf("unsupported stream type for producer: %s", streamType)
 	}
@@ -304,6 +365,12 @@ func (s *Service) createConsumer(streamType StreamType) (Consumer, error) {
 	switch streamType {
 	case StreamTypeKafka:
 		return NewKafkaConsumer(), nil
+	case StreamTypeNATS:
+		return NewNATSConsumer(), nil
+	case StreamTypeRabbitMQ:
+		return NewRabbitMQConsumer(), nil
+	case StreamTypeSQS:
+		return NewSQSConsumer(), nil
 	default:
 		return nil, fmt.Errorf("unsupported stream type for consumer: %s", streamType)
 	}
