@@ -47,7 +47,7 @@ make docs-test
 All API endpoints (except tenant creation) require authentication using an API key:
 
 ```http
-X-API-Key: your-api-key-here
+Authorization: Bearer your-api-key-here
 ```
 
 ### Base URL
@@ -94,8 +94,8 @@ The Go SDK is bundled in the repository under `sdk/go/`. See the
 Go workspace, or replace directive). For example:
 
 ```
-require github.com/webhook-platform/go-sdk v0.0.0
-replace github.com/webhook-platform/go-sdk => /path/to/waas/backend/sdk/go
+require github.com/josedab/waas/sdk/go v0.0.0
+replace github.com/josedab/waas/sdk/go => /path/to/waas/backend/sdk/go
 ```
 
 ### Basic Usage
@@ -107,7 +107,7 @@ import (
     "context"
     "log"
 
-    "github.com/webhook-platform/go-sdk/client"
+    "github.com/josedab/waas/sdk/go/client"
 )
 
 func main() {
@@ -143,7 +143,7 @@ func main() {
 ```http
 POST /api/v1/webhooks/endpoints
 Content-Type: application/json
-X-API-Key: your-api-key
+Authorization: Bearer your-api-key
 
 {
   "url": "https://your-app.com/webhooks",
@@ -189,7 +189,7 @@ Content-Type: application/json
 ```http
 POST /api/v1/webhooks/send
 Content-Type: application/json
-X-API-Key: your-api-key
+Authorization: Bearer your-api-key
 
 {
   "endpoint_id": "550e8400-e29b-41d4-a716-446655440000",

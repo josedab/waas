@@ -7,7 +7,10 @@
 ```bash
 # Clone & setup
 git clone <repo-url> && cd waas/backend
-make dev-setup          # Creates .env, installs deps, runs ALL migrations
+make dev-setup          # Creates .env, starts containers, runs core migrations (5 tables)
+
+# Full setup with all migrations (core + enterprise features):
+# make dev-setup-full
 
 # Faster alternative: only core tables (tenants, endpoints, deliveries, analytics, quotas)
 # make ensure-env && docker-compose up -d && make migrate-core
@@ -94,7 +97,7 @@ migrations/             # SQL migration files
 
 ### Error responses
 ```go
-import pkgerrors "webhook-platform/pkg/errors"
+import pkgerrors "github.com/josedab/waas/pkg/errors"
 
 // Use structured errors
 pkgerrors.AbortWithNotFound(c, "endpoint", endpointID)
