@@ -13,6 +13,8 @@ var (
 	ErrConnectionFailed    = errors.New("failed to connect to streaming platform")
 	ErrSchemaValidation    = errors.New("schema validation failed")
 	ErrEventNotFound       = errors.New("stream event not found")
+	ErrBridgeClosed        = errors.New("streaming bridge is closed")
+	ErrUnsupportedPlatform = errors.New("unsupported streaming platform")
 )
 
 // Repository defines the interface for streaming bridge storage

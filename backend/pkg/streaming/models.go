@@ -16,6 +16,10 @@ const (
 	StreamTypePulsar      StreamType = "pulsar"
 	StreamTypeEventBridge StreamType = "eventbridge"
 	StreamTypeRedis       StreamType = "redis_streams"
+	StreamTypeNATS        StreamType = "nats"
+	StreamTypeRabbitMQ    StreamType = "rabbitmq"
+	StreamTypeSQS         StreamType = "sqs"
+	StreamTypeSNS         StreamType = "sns"
 )
 
 // Direction indicates whether the bridge is inbound or outbound
@@ -81,13 +85,22 @@ type BridgeConfig struct {
 	// EventBridge-specific
 	EventBridgeConfig *EventBridgeConfig `json:"eventbridge,omitempty"`
 
+	// NATS-specific
+	NATSConfig *NATSConfig `json:"nats,omitempty"`
+	// RabbitMQ-specific
+	RabbitMQConfig *RabbitMQConfig `json:"rabbitmq,omitempty"`
+	// SQS-specific
+	SQSConfig *SQSConfig `json:"sqs,omitempty"`
+	// SNS-specific
+	SNSConfig *SNSConfig `json:"sns,omitempty"`
+
 	// Common settings
-	BatchSize       int           `json:"batch_size,omitempty"`
-	FlushIntervalMs int           `json:"flush_interval_ms,omitempty"`
-	MaxRetries      int           `json:"max_retries,omitempty"`
-	RetryBackoffMs  int           `json:"retry_backoff_ms,omitempty"`
-	Compression     string        `json:"compression,omitempty"`
-	AckMode         string        `json:"ack_mode,omitempty"`
+	BatchSize       int    `json:"batch_size,omitempty"`
+	FlushIntervalMs int    `json:"flush_interval_ms,omitempty"`
+	MaxRetries      int    `json:"max_retries,omitempty"`
+	RetryBackoffMs  int    `json:"retry_backoff_ms,omitempty"`
+	Compression     string `json:"compression,omitempty"`
+	AckMode         string `json:"ack_mode,omitempty"`
 }
 
 // KafkaConfig contains Kafka-specific configuration
@@ -145,18 +158,80 @@ type EventBridgeConfig struct {
 	RoleARN         string `json:"role_arn,omitempty"`
 }
 
+// NATSConfig contains NATS-specific configuration
+type NATSConfig struct {
+	URL           string `json:"url"`
+	Subject       string `json:"subject"`
+	QueueGroup    string `json:"queue_group,omitempty"`
+	ClusterID     string `json:"cluster_id,omitempty"`
+	ClientID      string `json:"client_id,omitempty"`
+	Token         string `json:"-"`
+	TLSEnabled    bool   `json:"tls_enabled"`
+	TLSCertPath   string `json:"tls_cert_path,omitempty"`
+	TLSKeyPath    string `json:"tls_key_path,omitempty"`
+	JetStream     bool   `json:"jetstream"`
+	StreamName    string `json:"stream_name,omitempty"`
+	ConsumerName  string `json:"consumer_name,omitempty"`
+	DeliverPolicy string `json:"deliver_policy,omitempty"`
+}
+
+// RabbitMQConfig contains RabbitMQ-specific configuration
+type RabbitMQConfig struct {
+	URL           string `json:"url"`
+	Exchange      string `json:"exchange"`
+	ExchangeType  string `json:"exchange_type,omitempty"` // direct, fanout, topic, headers
+	Queue         string `json:"queue,omitempty"`
+	RoutingKey    string `json:"routing_key,omitempty"`
+	ConsumerTag   string `json:"consumer_tag,omitempty"`
+	Durable       bool   `json:"durable"`
+	AutoDelete    bool   `json:"auto_delete"`
+	Exclusive     bool   `json:"exclusive"`
+	NoWait        bool   `json:"no_wait"`
+	PrefetchCount int    `json:"prefetch_count,omitempty"`
+	PrefetchSize  int    `json:"prefetch_size,omitempty"`
+	TLSEnabled    bool   `json:"tls_enabled"`
+	VHost         string `json:"vhost,omitempty"`
+}
+
+// SQSConfig contains AWS SQS-specific configuration
+type SQSConfig struct {
+	QueueURL          string `json:"queue_url"`
+	Region            string `json:"region"`
+	AccessKeyID       string `json:"access_key_id,omitempty"`
+	SecretAccessKey   string `json:"-"`
+	RoleARN           string `json:"role_arn,omitempty"`
+	MaxMessages       int    `json:"max_messages,omitempty"`
+	WaitTimeSeconds   int    `json:"wait_time_seconds,omitempty"`
+	VisibilityTimeout int    `json:"visibility_timeout,omitempty"`
+	FIFOQueue         bool   `json:"fifo_queue"`
+	MessageGroupID    string `json:"message_group_id,omitempty"`
+	DeduplicationID   string `json:"deduplication_id,omitempty"`
+}
+
+// SNSConfig contains AWS SNS-specific configuration
+type SNSConfig struct {
+	TopicARN        string            `json:"topic_arn"`
+	Region          string            `json:"region"`
+	AccessKeyID     string            `json:"access_key_id,omitempty"`
+	SecretAccessKey string            `json:"-"`
+	RoleARN         string            `json:"role_arn,omitempty"`
+	MessageAttrs    map[string]string `json:"message_attributes,omitempty"`
+	FIFOTopic       bool              `json:"fifo_topic"`
+	MessageGroupID  string            `json:"message_group_id,omitempty"`
+}
+
 // SchemaConfig contains schema registry configuration
 type SchemaConfig struct {
-	Format          SchemaFormat `json:"format"`
-	RegistryURL     string       `json:"registry_url,omitempty"`
-	RegistryType    string       `json:"registry_type,omitempty"` // confluent, aws_glue, apicurio
-	SubjectName     string       `json:"subject_name,omitempty"`
-	SchemaID        int          `json:"schema_id,omitempty"`
-	SchemaVersion   int          `json:"schema_version,omitempty"`
-	SchemaContent   string       `json:"schema_content,omitempty"`
-	AutoRegister    bool         `json:"auto_register"`
-	CompatMode      string       `json:"compat_mode,omitempty"` // backward, forward, full, none
-	ValidationMode  string       `json:"validation_mode,omitempty"`
+	Format         SchemaFormat `json:"format"`
+	RegistryURL    string       `json:"registry_url,omitempty"`
+	RegistryType   string       `json:"registry_type,omitempty"` // confluent, aws_glue, apicurio
+	SubjectName    string       `json:"subject_name,omitempty"`
+	SchemaID       int          `json:"schema_id,omitempty"`
+	SchemaVersion  int          `json:"schema_version,omitempty"`
+	SchemaContent  string       `json:"schema_content,omitempty"`
+	AutoRegister   bool         `json:"auto_register"`
+	CompatMode     string       `json:"compat_mode,omitempty"` // backward, forward, full, none
+	ValidationMode string       `json:"validation_mode,omitempty"`
 }
 
 // FilterRule defines event filtering logic
@@ -169,22 +244,22 @@ type FilterRule struct {
 
 // StreamEvent represents an event from/to a streaming platform
 type StreamEvent struct {
-	ID            string            `json:"id"`
-	BridgeID      string            `json:"bridge_id"`
-	TenantID      string            `json:"tenant_id"`
-	Key           string            `json:"key,omitempty"`
-	Value         json.RawMessage   `json:"value"`
-	Headers       map[string]string `json:"headers,omitempty"`
-	Partition     int               `json:"partition,omitempty"`
-	Offset        int64             `json:"offset,omitempty"`
-	Timestamp     time.Time         `json:"timestamp"`
-	SchemaID      int               `json:"schema_id,omitempty"`
-	SourceTopic   string            `json:"source_topic,omitempty"`
-	ProcessedAt   *time.Time        `json:"processed_at,omitempty"`
-	DeliveryID    string            `json:"delivery_id,omitempty"`
-	Status        string            `json:"status"`
-	ErrorMessage  string            `json:"error_message,omitempty"`
-	RetryCount    int               `json:"retry_count"`
+	ID           string            `json:"id"`
+	BridgeID     string            `json:"bridge_id"`
+	TenantID     string            `json:"tenant_id"`
+	Key          string            `json:"key,omitempty"`
+	Value        json.RawMessage   `json:"value"`
+	Headers      map[string]string `json:"headers,omitempty"`
+	Partition    int               `json:"partition,omitempty"`
+	Offset       int64             `json:"offset,omitempty"`
+	Timestamp    time.Time         `json:"timestamp"`
+	SchemaID     int               `json:"schema_id,omitempty"`
+	SourceTopic  string            `json:"source_topic,omitempty"`
+	ProcessedAt  *time.Time        `json:"processed_at,omitempty"`
+	DeliveryID   string            `json:"delivery_id,omitempty"`
+	Status       string            `json:"status"`
+	ErrorMessage string            `json:"error_message,omitempty"`
+	RetryCount   int               `json:"retry_count"`
 }
 
 // BridgeMetrics contains operational metrics for a bridge
