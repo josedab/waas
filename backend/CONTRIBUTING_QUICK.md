@@ -55,9 +55,7 @@ refactor: extract queue connection logic
 
 Before opening your PR:
 
-- [ ] `make build-check` passes (compiles all packages)
-- [ ] `make test` passes (core tests)
-- [ ] `make vet` passes (static analysis)
+- [ ] `make check` passes (fmt, vet, lint, test)
 - [ ] New code follows existing patterns (see [ARCHITECTURE.md](ARCHITECTURE.md))
 - [ ] Error handling uses `pkg/errors` helpers where applicable
 

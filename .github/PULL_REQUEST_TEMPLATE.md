@@ -24,9 +24,7 @@
 
 <!-- Describe the tests you ran and how to reproduce. -->
 
-- [ ] Unit tests pass (`make test`)
-- [ ] Integration tests pass (`make test-integration`)
-- [ ] Lint passes (`make lint`)
+- [ ] All quality checks pass (`make check`)
 - [ ] Manual testing performed
 
 ## Checklist

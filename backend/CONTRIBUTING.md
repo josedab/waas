@@ -10,6 +10,8 @@ Thank you for contributing to the Webhook-as-a-Service platform.
 4. Run `make dev-setup` to start local infrastructure
 5. Run `make test` to confirm everything works
 
+> **VS Code tip:** Open the repo root in VS Code — curated settings in `.vscode/` and `backend/.vscode/` will be picked up automatically. If gopls has trouble finding packages, open `backend/` as the workspace root instead.
+
 ## Development Workflow
 
 1. Create a feature branch from `main`:
@@ -19,14 +21,10 @@ Thank you for contributing to the Webhook-as-a-Service platform.
 2. Make your changes
 3. Run quality checks:
    ```bash
-   make fmt && make vet && make lint
+   make check    # runs fmt, vet, lint, and test
    ```
-4. Run tests:
-   ```bash
-   make test
-   ```
-5. Commit with a conventional commit message (see below)
-6. Push and open a pull request against `main`
+4. Commit with a conventional commit message (see below)
+5. Push and open a pull request against `main`
 
 ## Commit Messages
 
