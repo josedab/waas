@@ -11,10 +11,10 @@ import (
 func TestSwaggerDocumentationGeneration(t *testing.T) {
 	// Read the generated swagger.json file directly
 	// In a real test environment, you would read from the actual file
-	
+
 	// Test basic swagger structure by reading the file
 	// This is a simplified test that doesn't require a running server
-	
+
 	// Verify expected paths exist in documentation
 	expectedPaths := []string{
 		"/tenants",
@@ -110,19 +110,19 @@ func TestSDKExamples(t *testing.T) {
 	t.Run("basic_client_creation", func(t *testing.T) {
 		// Test that SDK client can be created without errors
 		// This would be a compilation test in a real scenario
-		
+
 		// Example code that should compile:
 		exampleCode := `
 		package main
 		
-		import "github.com/webhook-platform/go-sdk/client"
+		import "github.com/josedab/waas/sdk/go/client"
 		
 		func main() {
 			c := client.New("test-api-key")
 			_ = c
 		}
 		`
-		
+
 		// Verify the example code structure is valid
 		assert.Contains(t, exampleCode, "client.New")
 		assert.Contains(t, exampleCode, "test-api-key")
@@ -135,7 +135,7 @@ func TestSDKExamples(t *testing.T) {
 			URL: "https://your-app.com/webhooks",
 		})
 		`
-		
+
 		assert.Contains(t, exampleCode, "CreateEndpoint")
 		assert.Contains(t, exampleCode, "CreateEndpointRequest")
 	})
@@ -148,7 +148,7 @@ func TestSDKExamples(t *testing.T) {
 			Payload:    map[string]interface{}{"message": "Hello, World!"},
 		})
 		`
-		
+
 		assert.Contains(t, exampleCode, "Send")
 		assert.Contains(t, exampleCode, "SendWebhookRequest")
 		assert.Contains(t, exampleCode, "Payload")
@@ -185,14 +185,14 @@ func TestCodeExampleAccuracy(t *testing.T) {
 	// Test that import statements are correct
 	t.Run("import_statements", func(t *testing.T) {
 		expectedImports := []string{
-			`"github.com/webhook-platform/go-sdk/client"`,
+			`"github.com/josedab/waas/sdk/go/client"`,
 			`"context"`,
 			`"github.com/google/uuid"`,
 		}
-		
+
 		for _, imp := range expectedImports {
 			// Verify import exists in examples
-			assert.True(t, strings.Contains(imp, "webhook-platform") || strings.Contains(imp, "context") || strings.Contains(imp, "uuid"))
+			assert.True(t, strings.Contains(imp, "josedab/waas") || strings.Contains(imp, "context") || strings.Contains(imp, "uuid"))
 		}
 	})
 
@@ -200,11 +200,11 @@ func TestCodeExampleAccuracy(t *testing.T) {
 	t.Run("struct_field_accuracy", func(t *testing.T) {
 		// These should match the actual API response fields
 		expectedFields := map[string][]string{
-			"WebhookEndpoint": {"ID", "URL", "IsActive", "RetryConfig", "CustomHeaders", "CreatedAt", "UpdatedAt"},
+			"WebhookEndpoint":     {"ID", "URL", "IsActive", "RetryConfig", "CustomHeaders", "CreatedAt", "UpdatedAt"},
 			"SendWebhookResponse": {"DeliveryID", "EndpointID", "Status", "ScheduledAt"},
-			"Tenant": {"ID", "Name", "SubscriptionTier", "RateLimitPerMinute", "MonthlyQuota"},
+			"Tenant":              {"ID", "Name", "SubscriptionTier", "RateLimitPerMinute", "MonthlyQuota"},
 		}
-		
+
 		for structName, fields := range expectedFields {
 			for _, field := range fields {
 				// In a real test, you would verify these fields exist in the actual struct definitions

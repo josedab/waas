@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/webhook-platform/go-sdk/client"
+	"github.com/josedab/waas/sdk/go/client"
 )
 
 func main() {
 	// Initialize the client with your API key
 	c := client.New("your-api-key-here")
-	
+
 	ctx := context.Background()
 
 	// Example 1: Create a webhook endpoint

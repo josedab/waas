@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/webhook-platform/go-sdk/client"
+	"github.com/josedab/waas/sdk/go/client"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	testResult, err := c.Testing.TestWebhook(ctx, &client.TestWebhookRequest{
 		URL: "https://httpbin.org/post",
 		Payload: map[string]interface{}{
-			"test": true,
+			"test":    true,
 			"message": "Hello from webhook test!",
 		},
 		Headers: map[string]string{
@@ -30,7 +30,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to test webhook:", err)
 	}
-	
+
 	fmt.Printf("Test Result:\n")
 	fmt.Printf("  Status: %s\n", testResult.Status)
 	fmt.Printf("  HTTP Status: %d\n", *testResult.HTTPStatus)
@@ -49,7 +49,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to create test endpoint:", err)
 	}
-	
+
 	fmt.Printf("Test Endpoint Created:\n")
 	fmt.Printf("  ID: %s\n", testEndpoint.ID)
 	fmt.Printf("  URL: %s\n", testEndpoint.URL)
@@ -69,7 +69,7 @@ func main() {
 	delivery, err := c.Webhooks.Send(ctx, &client.SendWebhookRequest{
 		EndpointID: &endpoint.ID,
 		Payload: map[string]interface{}{
-			"event": "test.webhook",
+			"event":     "test.webhook",
 			"timestamp": "2024-01-01T00:00:00Z",
 			"data": map[string]interface{}{
 				"message": "This is a test webhook delivery",
@@ -79,7 +79,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to send webhook:", err)
 	}
-	
+
 	fmt.Printf("Webhook sent with delivery ID: %s\n", delivery.DeliveryID)
 
 	// Example 4: Inspect the delivery for debugging
@@ -88,18 +88,18 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to inspect delivery:", err)
 	}
-	
+
 	fmt.Printf("Delivery Inspection:\n")
 	fmt.Printf("  Status: %s\n", inspection.Status)
 	fmt.Printf("  Attempt Number: %d\n", inspection.AttemptNumber)
 	fmt.Printf("  Request URL: %s\n", inspection.Request.URL)
 	fmt.Printf("  Payload Size: %d bytes\n", inspection.Request.PayloadSize)
-	
+
 	if inspection.Response != nil {
 		fmt.Printf("  Response Status: %d\n", inspection.Response.HTTPStatus)
 		fmt.Printf("  Response Latency: %dms\n", inspection.Response.Latency)
 	}
-	
+
 	if inspection.ErrorDetails != nil {
 		fmt.Printf("  Error Type: %s\n", inspection.ErrorDetails.ErrorType)
 		fmt.Printf("  Error Message: %s\n", inspection.ErrorDetails.ErrorMessage)
@@ -113,9 +113,9 @@ func main() {
 
 	fmt.Printf("\nTimeline (%d events):\n", len(inspection.Timeline))
 	for _, event := range inspection.Timeline {
-		fmt.Printf("  %s: %s - %s\n", 
-			event.Timestamp.Format("15:04:05"), 
-			event.Event, 
+		fmt.Printf("  %s: %s - %s\n",
+			event.Timestamp.Format("15:04:05"),
+			event.Event,
 			event.Description)
 	}
 

@@ -1,4 +1,4 @@
-module github.com/webhook-platform/go-sdk
+module github.com/josedab/waas/sdk/go
 
 go 1.21
 

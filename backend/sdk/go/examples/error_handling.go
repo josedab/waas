@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/webhook-platform/go-sdk/client"
+	"github.com/josedab/waas/sdk/go/client"
 )
 
 func main() {
