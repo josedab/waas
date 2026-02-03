@@ -1,7 +1,7 @@
 # WaaS — Webhook as a Service
 
 [![CI](https://github.com/josedab/waas/actions/workflows/ci.yml/badge.svg)](https://github.com/josedab/waas/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-check%20CI-brightgreen)](https://github.com/josedab/waas/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/josedab/waas/branch/main/graph/badge.svg)](https://codecov.io/gh/josedab/waas)
 ![Go 1.24+](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
