@@ -6,3 +6,4 @@ export { AnalyticsPage } from './AnalyticsPage';
 export { TestingPage } from './TestingPage';
 export { SettingsPage } from './SettingsPage';
 export { FlowBuilderPage } from './FlowBuilderPage';
+export { DebuggerPage } from './DebuggerPage';

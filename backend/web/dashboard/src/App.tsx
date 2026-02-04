@@ -11,6 +11,7 @@ import {
   TestingPage,
   SettingsPage,
   FlowBuilderPage,
+  DebuggerPage,
 } from '@/pages';
 import { useAuthStore } from '@/store';
 import { PageLoader } from '@/components/common';
@@ -66,6 +67,7 @@ function AppRoutes() {
         <Route path="/testing" element={<TestingPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/flow-builder" element={<FlowBuilderPage />} />
+        <Route path="/debugger" element={<DebuggerPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
