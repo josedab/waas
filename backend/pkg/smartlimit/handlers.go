@@ -28,6 +28,8 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		configs.DELETE("/:endpointId", h.DeleteConfig)
 		configs.GET("/:endpointId/prediction", h.GetPrediction)
 		configs.POST("/:endpointId/train", h.TrainModel)
+		configs.GET("/:endpointId/pattern", h.GetPattern)
+		configs.GET("/:endpointId/recommendation", h.GetRecommendation)
 	}
 
 	r.GET("/rate-limits/stats", h.GetStats)
@@ -235,4 +237,56 @@ func (h *Handler) GetStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// GetPattern godoc
+// @Summary Get endpoint throughput pattern
+// @Description Get the learned throughput pattern for an endpoint
+// @Tags rate-limits
+// @Accept json
+// @Produce json
+// @Param endpointId path string true "Endpoint ID"
+// @Success 200 {object} EndpointPattern
+// @Router /rate-limits/{endpointId}/pattern [get]
+func (h *Handler) GetPattern(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	endpointID := c.Param("endpointId")
+
+	pattern, err := h.service.GetEndpointPattern(c.Request.Context(), tenantID, endpointID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if pattern == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "insufficient data for pattern analysis"})
+		return
+	}
+
+	c.JSON(http.StatusOK, pattern)
+}
+
+// GetRecommendation godoc
+// @Summary Get intelligent rate recommendation
+// @Description Get a pattern-based rate recommendation for an endpoint
+// @Tags rate-limits
+// @Accept json
+// @Produce json
+// @Param endpointId path string true "Endpoint ID"
+// @Success 200 {object} RateRecommendation
+// @Router /rate-limits/{endpointId}/recommendation [get]
+func (h *Handler) GetRecommendation(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	endpointID := c.Param("endpointId")
+
+	recommendation, err := h.service.GetRateRecommendation(c.Request.Context(), tenantID, endpointID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if recommendation == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "pattern analysis not available"})
+		return
+	}
+
+	c.JSON(http.StatusOK, recommendation)
 }

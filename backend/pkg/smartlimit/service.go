@@ -13,6 +13,7 @@ import (
 type Service struct {
 	repo       Repository
 	predictor  *Predictor
+	analyzer   *PatternAnalyzer
 	throttlers sync.Map // map[endpointID]*Throttler
 	config     *ServiceConfig
 }
@@ -46,6 +47,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 	return &Service{
 		repo:      repo,
 		predictor: NewPredictor(),
+		analyzer:  NewPatternAnalyzer(repo, DefaultPatternConfig()),
 		config:    config,
 	}
 }
