@@ -1,0 +1,23 @@
+{
+    "name": "waas/laravel",
+    "description": "WaaS webhook integration for Laravel",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "laravel/framework": "^10.0 || ^11.0",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "WaaS\\Laravel\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "WaaS\\Laravel\\WaaSServiceProvider"
+            ]
+        }
+    }
+}
