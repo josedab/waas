@@ -50,6 +50,7 @@ type DeliveryEngine struct {
 	transformRepo   repository.TransformationRepository
 	transformEngine *transform.Engine
 	healthMonitor   *EndpointHealthMonitor
+	healthScorer    *HealthScorer
 	dlqHook         DLQHook
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -102,6 +103,26 @@ func NewEngine() (*DeliveryEngine, error) {
 	// Create health monitor
 	healthMonitor := NewEndpointHealthMonitor(webhookRepo, logger)
 
+	// Create health scorer for 0-100 endpoint health scoring
+	healthScorer := NewHealthScorer(DefaultHealthScoringConfig())
+	healthScorer.SetPauseCallback(func(endpointID uuid.UUID, reason string) {
+		logger.Warn("Auto-pausing unhealthy endpoint", map[string]interface{}{
+			"endpoint_id": endpointID,
+			"reason":      reason,
+		})
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_ = webhookRepo.UpdateStatus(ctx, endpointID, false)
+	})
+	healthScorer.SetResumeCallback(func(endpointID uuid.UUID) {
+		logger.Info("Auto-resuming recovered endpoint", map[string]interface{}{
+			"endpoint_id": endpointID,
+		})
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_ = webhookRepo.UpdateStatus(ctx, endpointID, true)
+	})
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	engine := &DeliveryEngine{
@@ -115,6 +136,7 @@ func NewEngine() (*DeliveryEngine, error) {
 		transformRepo:   transformRepo,
 		transformEngine: transformEngine,
 		healthMonitor:   healthMonitor,
+		healthScorer:    healthScorer,
 		ctx:             ctx,
 		cancel:          cancel,
 	}
@@ -229,6 +251,30 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 		return result, nil
 	}
 
+	// Check endpoint health score — skip delivery if endpoint is auto-paused
+	if e.healthScorer != nil {
+		score := e.healthScorer.GetScore(message.EndpointID)
+		if score.IsPaused {
+			e.logger.Warn("Skipping delivery to health-paused endpoint", map[string]interface{}{
+				"delivery_id": message.DeliveryID,
+				"endpoint_id": message.EndpointID,
+				"health_score": score.Score,
+				"pause_reason": score.PauseReason,
+			})
+			errMsg := fmt.Sprintf("endpoint paused: health score %d/100 (%s)", score.Score, score.PauseReason)
+			result := &queue.DeliveryResult{
+				DeliveryID:    message.DeliveryID,
+				Status:        queue.StatusRetrying,
+				ErrorMessage:  &errMsg,
+				AttemptNumber: message.AttemptNumber,
+			}
+			attempt.Status = result.Status
+			attempt.ErrorMessage = result.ErrorMessage
+			_ = e.deliveryRepo.Update(ctx, attempt)
+			return result, nil
+		}
+	}
+
 	// Apply transformations if configured for this endpoint
 	transformedPayload, err := e.applyTransformations(ctx, message.EndpointID, message.Payload)
 	if err != nil {
@@ -268,6 +314,16 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 
 	// Update endpoint health status
 	e.healthMonitor.RecordDeliveryResult(message.EndpointID, result.Status == queue.StatusSuccess, result.HTTPStatus)
+
+	// Update health scorer with delivery metrics for 0-100 scoring
+	if e.healthScorer != nil {
+		latencyMs := float64(time.Since(startTime).Milliseconds())
+		httpStatus := 0
+		if result.HTTPStatus != nil {
+			httpStatus = *result.HTTPStatus
+		}
+		e.healthScorer.RecordDelivery(message.EndpointID, result.Status == queue.StatusSuccess, latencyMs, httpStatus)
+	}
 
 	// Route to DLQ if permanently failed (retries exhausted)
 	if result.Status == queue.StatusFailed {
