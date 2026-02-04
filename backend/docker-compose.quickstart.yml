@@ -1,0 +1,28 @@
+# docker-compose.quickstart.yml - Zero-config WaaS evaluation
+# Usage: docker compose -f docker-compose.quickstart.yml up
+#
+# Everything runs in a single container for easy evaluation.
+# For production, use docker-compose.yml or docker-compose.prod.yml.
+
+version: '3.8'
+
+services:
+  waas:
+    build:
+      context: .
+      dockerfile: Dockerfile.quickstart
+    ports:
+      - "8080:8080"
+    environment:
+      - WAAS_QUICKSTART=true
+      - ENVIRONMENT=quickstart
+    volumes:
+      - waas_quickstart_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  waas_quickstart_data:

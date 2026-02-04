@@ -1,0 +1,103 @@
+# Dockerfile.quickstart - Zero-config WaaS evaluation image
+# Usage: docker run -p 8080:8080 waas/waas
+#
+# This image bundles PostgreSQL and Redis for a self-contained evaluation.
+# For production, use docker-compose.yml with external PostgreSQL and Redis.
+
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o api-service ./cmd/api-service
+RUN CGO_ENABLED=0 GOOS=linux go build -o delivery-engine ./cmd/delivery-engine
+
+FROM alpine:3.19
+
+RUN apk --no-cache add \
+    ca-certificates \
+    postgresql15 \
+    postgresql15-contrib \
+    redis \
+    bash \
+    su-exec \
+    curl
+
+# Set up PostgreSQL data directory
+ENV PGDATA=/var/lib/postgresql/data
+RUN mkdir -p "$PGDATA" /run/postgresql && \
+    chown -R postgres:postgres "$PGDATA" /run/postgresql
+
+# Initialize PostgreSQL
+RUN su-exec postgres initdb -D "$PGDATA" && \
+    echo "host all all 0.0.0.0/0 trust" >> "$PGDATA/pg_hba.conf" && \
+    echo "listen_addresses='*'" >> "$PGDATA/postgresql.conf"
+
+WORKDIR /app
+
+# Copy binaries
+COPY --from=builder /app/api-service .
+COPY --from=builder /app/delivery-engine .
+
+# Copy migrations
+COPY migrations/ ./migrations/
+
+# Create startup script
+RUN cat > /app/start.sh << 'STARTUP'
+#!/bin/bash
+set -e
+
+echo "============================================"
+echo "  WaaS - Webhook as a Service (Quickstart)"
+echo "============================================"
+echo ""
+
+# Start PostgreSQL
+echo "[1/4] Starting PostgreSQL..."
+su-exec postgres pg_ctl start -D "$PGDATA" -l /var/log/postgresql.log -w -t 30
+su-exec postgres createdb webhook_platform 2>/dev/null || true
+
+# Start Redis
+echo "[2/4] Starting Redis..."
+redis-server --daemonize yes --loglevel warning
+
+# Wait for services
+echo "[3/4] Waiting for services..."
+until pg_isready -q; do sleep 0.5; done
+until redis-cli ping > /dev/null 2>&1; do sleep 0.5; done
+
+# Run core migrations
+echo "[4/4] Running migrations..."
+export DATABASE_URL="postgres://postgres@localhost:5432/webhook_platform?sslmode=disable"
+export REDIS_URL="redis://localhost:6379"
+export ENVIRONMENT="quickstart"
+export WAAS_QUICKSTART="true"
+
+# Start delivery engine in background
+./delivery-engine &
+
+# Start API service
+echo ""
+echo "============================================"
+echo "  WaaS is ready!"
+echo ""
+echo "  API:          http://localhost:8080"
+echo "  Docs:         http://localhost:8080/docs/"
+echo "  Tutorial:     http://localhost:8080/getting-started"
+echo "  Health:       http://localhost:8080/health"
+echo "============================================"
+echo ""
+
+exec ./api-service
+STARTUP
+
+RUN chmod +x /app/start.sh
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["/app/start.sh"]
