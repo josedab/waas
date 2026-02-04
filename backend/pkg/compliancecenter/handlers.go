@@ -3,18 +3,25 @@ package compliancecenter
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 // Handler provides HTTP handlers for compliance center
 type Handler struct {
-	service *Service
+	service    *Service
+	auditTrail *AuditTrailService
 }
 
 // NewHandler creates a new handler
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
+}
+
+// SetAuditTrail sets the audit trail service for immutable logging
+func (h *Handler) SetAuditTrail(at *AuditTrailService) {
+	h.auditTrail = at
 }
 
 // RegisterRoutes registers HTTP routes
@@ -58,6 +65,12 @@ func (h *Handler) RegisterRoutes(r gin.IRouter) {
 		compliance.POST("/retention-policies", h.SetRetentionPolicy)
 		compliance.GET("/retention-policies", h.ListRetentionPolicies)
 		compliance.POST("/export-data", h.ExportData)
+
+		// Immutable Audit Trail
+		compliance.GET("/audit-trail", h.ListAuditTrailEntries)
+		compliance.GET("/audit-trail/:entryId", h.GetAuditTrailEntry)
+		compliance.POST("/audit-trail/verify", h.VerifyAuditIntegrity)
+		compliance.POST("/audit-trail/export", h.ExportComplianceReport)
 	}
 }
 
@@ -662,4 +675,185 @@ func (h *Handler) ExportData(c *gin.Context) {
 // ErrorResponse represents an error response
 type ErrorResponse struct {
 	Error string `json:"error"`
+}
+
+// --- Immutable Audit Trail Handlers ---
+
+// ListAuditTrailEntries lists immutable audit trail entries
+// @Summary List audit trail entries
+// @Tags compliance
+// @Produce json
+// @Param event_type query string false "Filter by event type"
+// @Param actor_id query string false "Filter by actor ID"
+// @Param resource_id query string false "Filter by resource ID"
+// @Param limit query int false "Limit"
+// @Param offset query int false "Offset"
+// @Success 200 {object} map[string]interface{}
+// @Router /compliance/audit-trail [get]
+func (h *Handler) ListAuditTrailEntries(c *gin.Context) {
+	if h.auditTrail == nil {
+		c.JSON(http.StatusServiceUnavailable, ErrorResponse{Error: "audit trail not configured"})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		tenantID = "default"
+	}
+
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	filters := &AuditTrailFilters{
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	if actorID := c.Query("actor_id"); actorID != "" {
+		filters.ActorID = actorID
+	}
+	if resourceID := c.Query("resource_id"); resourceID != "" {
+		filters.ResourceID = resourceID
+	}
+	if eventType := c.Query("event_type"); eventType != "" {
+		filters.EventTypes = []AuditEventType{AuditEventType(eventType)}
+	}
+
+	entries, total, err := h.auditTrail.ListEntries(c.Request.Context(), tenantID, filters)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"entries": entries,
+		"total":   total,
+	})
+}
+
+// GetAuditTrailEntry retrieves a single audit trail entry
+// @Summary Get audit trail entry
+// @Tags compliance
+// @Produce json
+// @Param entryId path string true "Entry ID"
+// @Success 200 {object} ImmutableAuditEntry
+// @Router /compliance/audit-trail/{entryId} [get]
+func (h *Handler) GetAuditTrailEntry(c *gin.Context) {
+	if h.auditTrail == nil {
+		c.JSON(http.StatusServiceUnavailable, ErrorResponse{Error: "audit trail not configured"})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		tenantID = "default"
+	}
+	entryID := c.Param("entryId")
+
+	entry, err := h.auditTrail.GetEntry(c.Request.Context(), tenantID, entryID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "entry not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, entry)
+}
+
+// VerifyAuditIntegrity verifies the integrity of the audit trail
+// @Summary Verify audit trail integrity
+// @Tags compliance
+// @Produce json
+// @Success 200 {object} IntegrityReport
+// @Router /compliance/audit-trail/verify [post]
+func (h *Handler) VerifyAuditIntegrity(c *gin.Context) {
+	if h.auditTrail == nil {
+		c.JSON(http.StatusServiceUnavailable, ErrorResponse{Error: "audit trail not configured"})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		tenantID = "default"
+	}
+
+	report, err := h.auditTrail.VerifyIntegrity(c.Request.Context(), tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, report)
+}
+
+// ExportComplianceReport generates a compliance export for a framework
+// @Summary Generate compliance export
+// @Tags compliance
+// @Accept json
+// @Produce json
+// @Success 200 {object} ComplianceExport
+// @Router /compliance/audit-trail/export [post]
+func (h *Handler) ExportComplianceReport(c *gin.Context) {
+	if h.auditTrail == nil {
+		c.JSON(http.StatusServiceUnavailable, ErrorResponse{Error: "audit trail not configured"})
+		return
+	}
+
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		tenantID = "default"
+	}
+
+	var req struct {
+		Framework string `json:"framework" binding:"required"`
+		StartDate string `json:"start_date"`
+		EndDate   string `json:"end_date"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	startDate := parseTimeOrDefault(req.StartDate, now().AddDate(0, -3, 0))
+	endDate := parseTimeOrDefault(req.EndDate, now())
+
+	export, err := h.auditTrail.GenerateComplianceExport(
+		c.Request.Context(), tenantID,
+		ComplianceFramework(req.Framework),
+		startDate, endDate,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, export)
+}
+
+// RecordAuditEvent is a helper to record events from other handlers
+func (h *Handler) RecordAuditEvent(tenantID string, eventType AuditEventType, actor AuditActor, resource AuditResource, action, outcome string, payload []byte, c *gin.Context) {
+	if h.auditTrail == nil {
+		return
+	}
+
+	sourceIP := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
+
+	// Fire and forget — don't block the request
+	go func() {
+		ctx := c.Request.Context()
+		_ = h.auditTrail.RecordEvent(ctx, tenantID, eventType, actor, resource, action, outcome, payload, nil, sourceIP, userAgent)
+	}()
+}
+
+func now() time.Time { return time.Now() }
+
+func parseTimeOrDefault(s string, def time.Time) time.Time {
+	if s == "" {
+		return def
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return def
+	}
+	return t
 }
