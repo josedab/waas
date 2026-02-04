@@ -1,0 +1,210 @@
+# SDK Auto-Generation Pipeline
+# Triggers on OpenAPI spec changes and releases to generate SDKs for 8 languages,
+# run integration tests, and publish to package registries.
+
+name: SDK Generation
+
+on:
+  push:
+    paths:
+      - 'backend/docs/openapi.yaml'
+      - 'backend/docs/openapi.json'
+      - 'backend/pkg/openapigen/**'
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      languages:
+        description: 'Comma-separated list of languages to generate (go,python,nodejs,java,ruby,php,rust,csharp)'
+        default: 'go,python,nodejs,java,ruby,php,rust,csharp'
+      publish:
+        description: 'Publish to package registries'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  generate-spec:
+    name: Validate & Generate OpenAPI Spec
+    runs-on: ubuntu-latest
+    outputs:
+      spec-changed: ${{ steps.check.outputs.changed }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Generate OpenAPI spec
+        working-directory: backend
+        run: |
+          go run ./cmd/api-service --generate-spec > docs/openapi.json
+          # Validate spec
+          go run ./pkg/openapigen/cmd/validate/main.go docs/openapi.json
+
+      - name: Detect spec changes
+        id: check
+        run: |
+          if git diff --quiet backend/docs/openapi.json; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=0.0.0-dev.$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: backend/docs/openapi.json
+
+  generate-sdks:
+    name: Generate ${{ matrix.language }} SDK
+    needs: generate-spec
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [go, python, nodejs, java, ruby, php, rust, csharp]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: openapi-spec
+          path: backend/docs/
+
+      - name: Install OpenAPI Generator
+        run: |
+          npm install -g @openapitools/openapi-generator-cli
+
+      - name: Generate SDK
+        run: |
+          LANG=${{ matrix.language }}
+          VERSION=${{ needs.generate-spec.outputs.version }}
+
+          # Map language to generator name
+          case $LANG in
+            go) GENERATOR="go" ;;
+            python) GENERATOR="python" ;;
+            nodejs) GENERATOR="typescript-node" ;;
+            java) GENERATOR="java" ;;
+            ruby) GENERATOR="ruby" ;;
+            php) GENERATOR="php" ;;
+            rust) GENERATOR="rust" ;;
+            csharp) GENERATOR="csharp" ;;
+          esac
+
+          openapi-generator-cli generate \
+            -i backend/docs/openapi.json \
+            -g $GENERATOR \
+            -o sdk/$LANG/generated \
+            --additional-properties=packageName=waas,packageVersion=$VERSION \
+            --git-user-id=josedab \
+            --git-repo-id=waas-sdk-$LANG
+
+      - name: Copy webhook verification helpers
+        run: |
+          cp backend/sdk/${{ matrix.language }}/verify/* sdk/${{ matrix.language }}/generated/verify/ 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk-${{ matrix.language }}
+          path: sdk/${{ matrix.language }}/generated/
+
+  test-sdks:
+    name: Test ${{ matrix.language }} SDK
+    needs: generate-sdks
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            test-cmd: cd sdk/go/generated && go test ./...
+          - language: python
+            test-cmd: cd sdk/python/generated && pip install -e ".[dev]" && pytest
+          - language: nodejs
+            test-cmd: cd sdk/nodejs/generated && npm ci && npm test
+          - language: java
+            test-cmd: cd sdk/java/generated && mvn test
+          - language: ruby
+            test-cmd: cd sdk/ruby/generated && bundle install && bundle exec rspec
+          - language: php
+            test-cmd: cd sdk/php/generated && composer install && vendor/bin/phpunit
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-${{ matrix.language }}
+          path: sdk/${{ matrix.language }}/generated/
+
+      - name: Run tests
+        run: ${{ matrix.test-cmd }}
+        continue-on-error: true
+
+  publish-sdks:
+    name: Publish ${{ matrix.language }} SDK
+    needs: [generate-spec, test-sdks]
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            registry: PyPI
+            publish-cmd: |
+              cd sdk/python/generated
+              pip install build twine
+              python -m build
+              twine upload dist/*
+            secret-env: TWINE_USERNAME=__token__ TWINE_PASSWORD=${{ secrets.PYPI_TOKEN }}
+          - language: nodejs
+            registry: npm
+            publish-cmd: |
+              cd sdk/nodejs/generated
+              echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+              npm publish --access public
+            secret-env: ""
+          - language: java
+            registry: Maven Central
+            publish-cmd: |
+              cd sdk/java/generated
+              mvn deploy -P release
+            secret-env: ""
+          - language: ruby
+            registry: RubyGems
+            publish-cmd: |
+              cd sdk/ruby/generated
+              gem build waas.gemspec
+              gem push waas-*.gem
+            secret-env: GEM_HOST_API_KEY=${{ secrets.RUBYGEMS_TOKEN }}
+          - language: php
+            registry: Packagist
+            publish-cmd: echo "Packagist auto-updates from GitHub"
+            secret-env: ""
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-${{ matrix.language }}
+          path: sdk/${{ matrix.language }}/generated/
+
+      - name: Publish to ${{ matrix.registry }}
+        run: ${{ matrix.publish-cmd }}
+        env:
+          VERSION: ${{ needs.generate-spec.outputs.version }}
