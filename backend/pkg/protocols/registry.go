@@ -104,5 +104,11 @@ func DefaultRegistry() *Registry {
 	// Register MQTT deliverer
 	registry.Register(ProtocolMQTT, NewMQTTDeliverer())
 
+	// Register GraphQL deliverer
+	registry.Register(ProtocolGraphQL, NewGraphQLDeliverer())
+
+	// Register SMTP deliverer
+	registry.Register(ProtocolSMTP, NewSMTPDeliverer())
+
 	return registry
 }

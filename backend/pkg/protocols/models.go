@@ -15,6 +15,8 @@ const (
 	ProtocolGRPCS     Protocol = "grpcs"
 	ProtocolWebSocket Protocol = "websocket"
 	ProtocolMQTT      Protocol = "mqtt"
+	ProtocolGraphQL   Protocol = "graphql"
+	ProtocolSMTP      Protocol = "smtp"
 )
 
 // DeliveryConfig represents configuration for a protocol delivery
@@ -149,6 +151,28 @@ type HTTPOptions struct {
 	MaxRedirects     int               `json:"max_redirects"`
 	Compression      string            `json:"compression,omitempty"`
 	ExpectedStatuses []int             `json:"expected_statuses,omitempty"`
+}
+
+// GraphQLOptions represents GraphQL subscription delivery options
+type GraphQLOptions struct {
+	Query         string                 `json:"query"` // GraphQL mutation/subscription query
+	Variables     map[string]interface{} `json:"variables,omitempty"`
+	OperationName string                 `json:"operation_name,omitempty"`
+	UseSSE        bool                   `json:"use_sse"`      // Use Server-Sent Events transport
+	UseMutation   bool                   `json:"use_mutation"` // Use mutation instead of subscription
+}
+
+// SMTPOptions represents SMTP email delivery options
+type SMTPOptions struct {
+	From       string   `json:"from"`
+	To         []string `json:"to"`
+	Subject    string   `json:"subject"`
+	BodyFormat string   `json:"body_format"` // text, html, json
+	UseTLS     bool     `json:"use_tls"`
+	Port       int      `json:"port"`
+	Username   string   `json:"username,omitempty"`
+	Password   string   `json:"password,omitempty"`
+	ReplyTo    string   `json:"reply_to,omitempty"`
 }
 
 // ProtocolInfo provides information about a protocol
@@ -319,13 +343,52 @@ func SupportedProtocols() []ProtocolInfo {
 				"clean_start": "boolean",
 			},
 		},
+		{
+			Name:        ProtocolGraphQL,
+			DisplayName: "GraphQL",
+			Description: "GraphQL mutation or subscription delivery",
+			Version:     "1.0",
+			Supported:   true,
+			DefaultPort: 443,
+			RequiresTLS: false,
+			SupportsAuth: []AuthType{
+				AuthNone, AuthBearer, AuthAPIKey, AuthBasic,
+			},
+			OptionsSchema: map[string]any{
+				"query":          "string",
+				"variables":      "object",
+				"operation_name": "string",
+				"use_sse":        "boolean",
+				"use_mutation":   "boolean",
+			},
+		},
+		{
+			Name:        ProtocolSMTP,
+			DisplayName: "SMTP",
+			Description: "Email delivery via SMTP",
+			Version:     "RFC 5321",
+			Supported:   true,
+			DefaultPort: 587,
+			RequiresTLS: false,
+			SupportsAuth: []AuthType{
+				AuthNone, AuthBasic,
+			},
+			OptionsSchema: map[string]any{
+				"from":        "string",
+				"to":          "array",
+				"subject":     "string",
+				"body_format": "string",
+				"use_tls":     "boolean",
+				"port":        "integer",
+			},
+		},
 	}
 }
 
 // IsValidProtocol checks if a protocol is valid
 func IsValidProtocol(p Protocol) bool {
 	switch p {
-	case ProtocolHTTP, ProtocolHTTPS, ProtocolGRPC, ProtocolGRPCS, ProtocolWebSocket, ProtocolMQTT:
+	case ProtocolHTTP, ProtocolHTTPS, ProtocolGRPC, ProtocolGRPCS, ProtocolWebSocket, ProtocolMQTT, ProtocolGraphQL, ProtocolSMTP:
 		return true
 	default:
 		return false
