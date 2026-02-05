@@ -16,13 +16,20 @@ services:
     environment:
       - WAAS_QUICKSTART=true
       - ENVIRONMENT=quickstart
+      - LOG_LEVEL=info
     volumes:
       - waas_quickstart_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
 volumes:
   waas_quickstart_data:

@@ -41,53 +41,71 @@ WORKDIR /app
 COPY --from=builder /app/api-service .
 COPY --from=builder /app/delivery-engine .
 
-# Copy migrations
+# Copy migrations and scripts
 COPY migrations/ ./migrations/
+COPY scripts/seed_quickstart.sh ./scripts/seed_quickstart.sh
+RUN chmod +x ./scripts/seed_quickstart.sh
 
 # Create startup script
 RUN cat > /app/start.sh << 'STARTUP'
 #!/bin/bash
 set -e
 
-echo "============================================"
-echo "  WaaS - Webhook as a Service (Quickstart)"
-echo "============================================"
+echo ""
+echo "  ██╗    ██╗ █████╗  █████╗ ███████╗"
+echo "  ██║    ██║██╔══██╗██╔══██╗██╔════╝"
+echo "  ██║ █╗ ██║███████║███████║███████╗"
+echo "  ██║███╗██║██╔══██║██╔══██║╚════██║"
+echo "  ╚███╔███╔╝██║  ██║██║  ██║███████║"
+echo "   ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝"
+echo ""
+echo "  Webhook as a Service - Quickstart Mode"
 echo ""
 
 # Start PostgreSQL
-echo "[1/4] Starting PostgreSQL..."
+echo "[1/5] Starting PostgreSQL..."
 su-exec postgres pg_ctl start -D "$PGDATA" -l /var/log/postgresql.log -w -t 30
 su-exec postgres createdb webhook_platform 2>/dev/null || true
 
 # Start Redis
-echo "[2/4] Starting Redis..."
+echo "[2/5] Starting Redis..."
 redis-server --daemonize yes --loglevel warning
 
 # Wait for services
-echo "[3/4] Waiting for services..."
+echo "[3/5] Waiting for services..."
 until pg_isready -q; do sleep 0.5; done
 until redis-cli ping > /dev/null 2>&1; do sleep 0.5; done
 
-# Run core migrations
-echo "[4/4] Running migrations..."
+# Configure environment
 export DATABASE_URL="postgres://postgres@localhost:5432/webhook_platform?sslmode=disable"
 export REDIS_URL="redis://localhost:6379"
 export ENVIRONMENT="quickstart"
 export WAAS_QUICKSTART="true"
 
+# Run migrations
+echo "[4/5] Running migrations..."
+
+# Seed sample data
+echo "[5/5] Seeding sample data..."
+./scripts/seed_quickstart.sh 2>/dev/null || echo "  (seed data may already exist)"
+
 # Start delivery engine in background
 ./delivery-engine &
 
-# Start API service
 echo ""
-echo "============================================"
-echo "  WaaS is ready!"
-echo ""
-echo "  API:          http://localhost:8080"
-echo "  Docs:         http://localhost:8080/docs/"
-echo "  Tutorial:     http://localhost:8080/getting-started"
-echo "  Health:       http://localhost:8080/health"
-echo "============================================"
+echo "╔══════════════════════════════════════════╗"
+echo "║           WaaS is ready! 🚀             ║"
+echo "╠══════════════════════════════════════════╣"
+echo "║                                          ║"
+echo "║  API:      http://localhost:8080          ║"
+echo "║  Docs:     http://localhost:8080/docs/    ║"
+echo "║  Tutorial: http://localhost:8080/getting-started ║"
+echo "║  Health:   http://localhost:8080/health   ║"
+echo "║                                          ║"
+echo "║  Quick test:                             ║"
+echo "║  curl http://localhost:8080/health       ║"
+echo "║                                          ║"
+echo "╚══════════════════════════════════════════╝"
 echo ""
 
 exec ./api-service
