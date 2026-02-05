@@ -1,0 +1,113 @@
+# WaaS Contract Testing GitHub Action
+#
+# Validates webhook payload schemas against defined contracts.
+# Use in CI/CD to detect breaking changes before deployment.
+#
+# Usage in workflow:
+#   - uses: ./.github/actions/contract-test
+#     with:
+#       api-url: ${{ secrets.WAAS_API_URL }}
+#       api-key: ${{ secrets.WAAS_API_KEY }}
+#       contract-id: 'your-contract-id'
+#       payload-file: 'tests/fixtures/webhook-payload.json'
+
+name: 'WaaS Contract Test'
+description: 'Validate webhook payloads against WaaS contracts'
+inputs:
+  api-url:
+    description: 'WaaS API URL'
+    required: true
+  api-key:
+    description: 'WaaS API key'
+    required: true
+  contract-id:
+    description: 'Contract ID to validate against'
+    required: true
+  payload-file:
+    description: 'Path to JSON payload file to validate'
+    required: false
+  check-breaking:
+    description: 'Check for breaking changes in contract schema'
+    required: false
+    default: 'false'
+  old-version:
+    description: 'Old contract version for diff'
+    required: false
+  new-version:
+    description: 'New contract version for diff'
+    required: false
+  fail-on-breaking:
+    description: 'Fail if breaking changes are detected'
+    required: false
+    default: 'true'
+
+outputs:
+  passed:
+    description: 'Whether all validations passed'
+    value: ${{ steps.validate.outputs.passed }}
+  breaking-changes:
+    description: 'Whether breaking changes were detected'
+    value: ${{ steps.diff.outputs.breaking }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate payload
+      id: validate
+      if: inputs.payload-file != ''
+      shell: bash
+      env:
+        WAAS_API_URL: ${{ inputs.api-url }}
+        WAAS_API_KEY: ${{ inputs.api-key }}
+      run: |
+        echo "::group::WaaS Contract Validation"
+        PAYLOAD=$(cat "${{ inputs.payload-file }}")
+        RESPONSE=$(curl -s -w "\n%{http_code}" \
+          -X POST "${WAAS_API_URL}/api/v1/contracts/validate" \
+          -H "Authorization: Bearer ${WAAS_API_KEY}" \
+          -H "Content-Type: application/json" \
+          -d "{\"contract_id\": \"${{ inputs.contract-id }}\", \"payload\": ${PAYLOAD}}")
+        HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "::error::API error $HTTP_CODE"
+          echo "passed=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        IS_PASSED=$(echo "$BODY" | jq -r '.passed')
+        if [ "$IS_PASSED" = "true" ]; then
+          echo "✅ Contract validation passed"
+          echo "passed=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Contract validation failed"
+          echo "$BODY" | jq -r '.violations[] | "::error file=${{ inputs.payload-file }}::\(.path): \(.message)"'
+          echo "passed=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        echo "::endgroup::"
+
+    - name: Check breaking changes
+      id: diff
+      if: inputs.check-breaking == 'true'
+      shell: bash
+      env:
+        WAAS_API_URL: ${{ inputs.api-url }}
+        WAAS_API_KEY: ${{ inputs.api-key }}
+      run: |
+        echo "::group::Breaking Change Detection"
+        RESPONSE=$(curl -s \
+          "${WAAS_API_URL}/api/v1/contracts/${{ inputs.contract-id }}/diff?old_version=${{ inputs.old-version }}&new_version=${{ inputs.new-version }}" \
+          -H "Authorization: Bearer ${WAAS_API_KEY}")
+        IS_BREAKING=$(echo "$RESPONSE" | jq -r '.is_breaking')
+        if [ "$IS_BREAKING" = "true" ]; then
+          echo "🚨 Breaking changes detected"
+          echo "$RESPONSE" | jq -r '.changes[] | select(.is_breaking) | "::warning::\(.path): \(.description)"'
+          echo "breaking=true" >> $GITHUB_OUTPUT
+          if [ "${{ inputs.fail-on-breaking }}" = "true" ]; then
+            exit 2
+          fi
+        else
+          echo "✅ No breaking changes"
+          echo "breaking=false" >> $GITHUB_OUTPUT
+        fi
+        echo "::endgroup::"
