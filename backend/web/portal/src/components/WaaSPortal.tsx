@@ -4,6 +4,7 @@ import { createApiClient } from '../api';
 import { EndpointList } from './EndpointList';
 import { DeliveryLogs } from './DeliveryLogs';
 import { EndpointForm } from './EndpointForm';
+import { PortalAnalytics } from './PortalAnalytics';
 
 const defaultTheme: Required<PortalTheme> = {
   primaryColor: '#6366f1',
@@ -33,9 +34,9 @@ const defaultTheme: Required<PortalTheme> = {
 export function WaaSPortal({ config, theme, className, onEndpointCreated, onEndpointDeleted, onError }: WaaSPortalProps) {
   const mergedTheme = { ...defaultTheme, ...theme };
   const api = createApiClient(config);
-  const features = { endpoints: true, deliveries: true, testSender: false, analytics: false, ...config.features };
+  const features = { endpoints: true, deliveries: true, testSender: false, analytics: true, ...config.features };
 
-  const [tab, setTab] = useState<'endpoints' | 'deliveries'>('endpoints');
+  const [tab, setTab] = useState<'endpoints' | 'deliveries' | 'analytics'>('endpoints');
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,6 +153,14 @@ export function WaaSPortal({ config, theme, className, onEndpointCreated, onEndp
             Delivery Logs
           </button>
         )}
+        {features.analytics && (
+          <button
+            className={`waas-tab ${tab === 'analytics' ? 'waas-tab--active' : ''}`}
+            onClick={() => setTab('analytics')}
+          >
+            Analytics
+          </button>
+        )}
       </div>
 
       <div className="waas-content">
@@ -171,9 +180,11 @@ export function WaaSPortal({ config, theme, className, onEndpointCreated, onEndp
               onToggle={handleToggleEndpoint}
             />
           </>
-        ) : (
+        ) : tab === 'deliveries' ? (
           <DeliveryLogs deliveries={deliveries} onRefresh={loadDeliveries} />
-        )}
+        ) : tab === 'analytics' ? (
+          <PortalAnalytics config={config} />
+        ) : null}
       </div>
     </div>
   );
