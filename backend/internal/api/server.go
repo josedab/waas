@@ -52,6 +52,7 @@ import (
 	"github.com/josedab/waas/pkg/observability"
 	"github.com/josedab/waas/pkg/openapigen"
 	"github.com/josedab/waas/pkg/otel"
+	"github.com/josedab/waas/pkg/pipeline"
 	"github.com/josedab/waas/pkg/playground"
 	"github.com/josedab/waas/pkg/pluginmarket"
 	"github.com/josedab/waas/pkg/portal"
@@ -168,6 +169,7 @@ type Server struct {
 	docgenService       *docgen.Service
 	whitelabelService   *whitelabel.Service
 	playgroundService   *playground.Service
+	pipelineService     *pipeline.Service
 	// DLQ & Observability
 	dlqService        *dlq.Service
 	openapigenService *openapigen.Service
@@ -401,6 +403,10 @@ func NewServer() (*Server, error) {
 	playgroundEngine := transform.NewEngine(transform.DefaultEngineConfig())
 	playgroundService := playground.NewService(playgroundRepo, playgroundEngine)
 
+	// Pipeline Composition
+	pipelineRepo := pipeline.NewMemoryRepository()
+	pipelineService := pipeline.NewService(pipelineRepo)
+
 	// ── Phase 9: HTTP layer (Gin router + middleware) ───────────────────
 	// Setup Gin with monitoring middleware
 	router := gin.New()
@@ -484,6 +490,7 @@ func NewServer() (*Server, error) {
 		docgenService:          docgenService,
 		whitelabelService:      whitelabelService,
 		playgroundService:      playgroundService,
+		pipelineService:        pipelineService,
 		dlqService:             dlqService,
 		openapigenService:      openapigenService,
 	}
@@ -869,6 +876,10 @@ func (s *Server) setupRoutes() {
 		// Interactive Playground v2
 		playgroundHandler := playground.NewHandler(s.playgroundService)
 		playgroundHandler.RegisterRoutes(protected)
+
+		// Delivery Pipeline Composition
+		pipelineHandler := pipeline.NewHandler(s.pipelineService)
+		pipelineHandler.RegisterRoutes(protected)
 	}
 
 	// Admin endpoints (require authentication but no rate limiting for now)
