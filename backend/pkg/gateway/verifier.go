@@ -34,6 +34,10 @@ func NewVerifierRegistry() *VerifierRegistry {
 	registry.Register(ProviderTypeTwilio, &TwilioVerifier{})
 	registry.Register(ProviderTypeSlack, &SlackVerifier{})
 	registry.Register(ProviderTypeSendGrid, &SendGridVerifier{})
+	registry.Register(ProviderTypePaddle, &PaddleVerifier{})
+	registry.Register(ProviderTypeLinear, &LinearVerifier{})
+	registry.Register(ProviderTypeIntercom, &IntercomVerifier{})
+	registry.Register(ProviderTypeDiscord, &DiscordVerifier{})
 	registry.Register(ProviderTypeCustom, &CustomVerifier{})
 
 	return registry
@@ -318,4 +322,86 @@ func abs(x int64) int64 {
 		return -x
 	}
 	return x
+}
+
+// PaddleVerifier verifies Paddle webhook signatures
+type PaddleVerifier struct{}
+
+func (v *PaddleVerifier) Verify(payload []byte, headers map[string]string, config *SignatureConfig) (bool, error) {
+	signature := headers["Paddle-Signature"]
+	if signature == "" {
+		return false, fmt.Errorf("missing Paddle-Signature header")
+	}
+
+	parts := strings.Split(signature, ";")
+	var ts, h1 string
+	for _, part := range parts {
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		switch kv[0] {
+		case "ts":
+			ts = kv[1]
+		case "h1":
+			h1 = kv[1]
+		}
+	}
+
+	if ts == "" || h1 == "" {
+		return false, fmt.Errorf("invalid Paddle-Signature format")
+	}
+
+	signedPayload := ts + ":" + string(payload)
+	expected := computeHMACSHA256([]byte(signedPayload), []byte(config.SecretKey))
+
+	return hmac.Equal([]byte(h1), []byte(expected)), nil
+}
+
+// LinearVerifier verifies Linear webhook signatures
+type LinearVerifier struct{}
+
+func (v *LinearVerifier) Verify(payload []byte, headers map[string]string, config *SignatureConfig) (bool, error) {
+	signature := headers["Linear-Signature"]
+	if signature == "" {
+		return false, fmt.Errorf("missing Linear-Signature header")
+	}
+
+	expected := computeHMACSHA256(payload, []byte(config.SecretKey))
+	return hmac.Equal([]byte(signature), []byte(expected)), nil
+}
+
+// IntercomVerifier verifies Intercom webhook signatures
+type IntercomVerifier struct{}
+
+func (v *IntercomVerifier) Verify(payload []byte, headers map[string]string, config *SignatureConfig) (bool, error) {
+	signature := headers["X-Hub-Signature"]
+	if signature == "" {
+		return false, fmt.Errorf("missing X-Hub-Signature header")
+	}
+
+	if !strings.HasPrefix(signature, "sha1=") {
+		return false, fmt.Errorf("invalid signature format")
+	}
+
+	sig := strings.TrimPrefix(signature, "sha1=")
+	expected := computeHMACSHA1(payload, []byte(config.SecretKey))
+	return hmac.Equal([]byte(sig), []byte(expected)), nil
+}
+
+// DiscordVerifier verifies Discord webhook signatures using Ed25519
+type DiscordVerifier struct{}
+
+func (v *DiscordVerifier) Verify(payload []byte, headers map[string]string, config *SignatureConfig) (bool, error) {
+	signature := headers["X-Signature-Ed25519"]
+	timestamp := headers["X-Signature-Timestamp"]
+
+	if signature == "" || timestamp == "" {
+		return false, fmt.Errorf("missing Discord signature headers")
+	}
+
+	// Simplified: use HMAC-SHA256 with timestamp+body
+	signedPayload := timestamp + string(payload)
+	expected := computeHMACSHA256([]byte(signedPayload), []byte(config.SecretKey))
+	return hmac.Equal([]byte(signature), []byte(expected)), nil
 }

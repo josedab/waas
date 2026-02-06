@@ -17,9 +17,9 @@ type DeliveryPublisher interface {
 
 // Service provides gateway functionality
 type Service struct {
-	repo       Repository
-	verifiers  *VerifierRegistry
-	publisher  DeliveryPublisher
+	repo      Repository
+	verifiers *VerifierRegistry
+	publisher DeliveryPublisher
 }
 
 // NewService creates a new gateway service
@@ -383,6 +383,25 @@ func extractEventType(providerType string, payload []byte, headers map[string]st
 		return headers["X-Shopify-Topic"]
 	case ProviderTypeSlack:
 		if t, ok := data["type"].(string); ok {
+			return t
+		}
+	case ProviderTypePaddle:
+		if t, ok := data["event_type"].(string); ok {
+			return t
+		}
+	case ProviderTypeLinear:
+		if t, ok := data["type"].(string); ok {
+			return t
+		}
+		if t, ok := data["action"].(string); ok {
+			return t
+		}
+	case ProviderTypeIntercom:
+		if t, ok := data["topic"].(string); ok {
+			return t
+		}
+	case ProviderTypeDiscord:
+		if t, ok := data["t"].(string); ok {
 			return t
 		}
 	}

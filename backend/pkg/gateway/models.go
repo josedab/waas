@@ -30,18 +30,18 @@ type SignatureConfig struct {
 
 // InboundWebhook represents a received webhook
 type InboundWebhook struct {
-	ID              string            `json:"id" db:"id"`
-	TenantID        string            `json:"tenant_id" db:"tenant_id"`
-	ProviderID      string            `json:"provider_id" db:"provider_id"`
-	ProviderType    string            `json:"provider_type" db:"provider_type"`
-	EventType       string            `json:"event_type,omitempty" db:"event_type"`
-	Payload         json.RawMessage   `json:"payload" db:"payload"`
-	Headers         map[string]string `json:"headers" db:"-"`
-	HeadersJSON     json.RawMessage   `json:"-" db:"headers"`
-	RawBody         []byte            `json:"-" db:"raw_body"`
-	SignatureValid  bool              `json:"signature_valid" db:"signature_valid"`
-	ProcessedAt     *time.Time        `json:"processed_at,omitempty" db:"processed_at"`
-	CreatedAt       time.Time         `json:"created_at" db:"created_at"`
+	ID             string            `json:"id" db:"id"`
+	TenantID       string            `json:"tenant_id" db:"tenant_id"`
+	ProviderID     string            `json:"provider_id" db:"provider_id"`
+	ProviderType   string            `json:"provider_type" db:"provider_type"`
+	EventType      string            `json:"event_type,omitempty" db:"event_type"`
+	Payload        json.RawMessage   `json:"payload" db:"payload"`
+	Headers        map[string]string `json:"headers" db:"-"`
+	HeadersJSON    json.RawMessage   `json:"-" db:"headers"`
+	RawBody        []byte            `json:"-" db:"raw_body"`
+	SignatureValid bool              `json:"signature_valid" db:"signature_valid"`
+	ProcessedAt    *time.Time        `json:"processed_at,omitempty" db:"processed_at"`
+	CreatedAt      time.Time         `json:"created_at" db:"created_at"`
 }
 
 // RoutingRule defines how to route inbound webhooks
@@ -53,8 +53,8 @@ type RoutingRule struct {
 	Description  string          `json:"description,omitempty" db:"description"`
 	Priority     int             `json:"priority" db:"priority"`
 	IsActive     bool            `json:"is_active" db:"is_active"`
-	Conditions   json.RawMessage `json:"conditions" db:"conditions"`   // Filtering conditions
-	Destinations json.RawMessage `json:"destinations" db:"destinations"` // Where to route
+	Conditions   json.RawMessage `json:"conditions" db:"conditions"`         // Filtering conditions
+	Destinations json.RawMessage `json:"destinations" db:"destinations"`     // Where to route
 	Transform    json.RawMessage `json:"transform,omitempty" db:"transform"` // Optional transformation
 	CreatedAt    time.Time       `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time       `json:"updated_at" db:"updated_at"`
@@ -69,7 +69,7 @@ type RoutingCondition struct {
 
 // RoutingDestination defines where to route a webhook
 type RoutingDestination struct {
-	Type       string `json:"type"`        // endpoint, url, queue
+	Type       string `json:"type"` // endpoint, url, queue
 	EndpointID string `json:"endpoint_id,omitempty"`
 	URL        string `json:"url,omitempty"`
 	QueueName  string `json:"queue_name,omitempty"`
@@ -77,9 +77,9 @@ type RoutingDestination struct {
 
 // FanoutResult represents the result of fanning out a webhook
 type FanoutResult struct {
-	InboundID    string            `json:"inbound_id"`
-	TotalRouted  int               `json:"total_routed"`
-	TotalFailed  int               `json:"total_failed"`
+	InboundID    string              `json:"inbound_id"`
+	TotalRouted  int                 `json:"total_routed"`
+	TotalFailed  int                 `json:"total_failed"`
 	Destinations []DestinationResult `json:"destinations"`
 }
 
@@ -96,21 +96,24 @@ type DestinationResult struct {
 
 // ProviderType constants
 const (
-	ProviderTypeStripe    = "stripe"
-	ProviderTypeGitHub    = "github"
-	ProviderTypeShopify   = "shopify"
-	ProviderTypeTwilio    = "twilio"
-	ProviderTypeSlack     = "slack"
-	ProviderTypeSendGrid  = "sendgrid"
-	ProviderTypePaddle    = "paddle"
-	ProviderTypeCustom    = "custom"
+	ProviderTypeStripe   = "stripe"
+	ProviderTypeGitHub   = "github"
+	ProviderTypeShopify  = "shopify"
+	ProviderTypeTwilio   = "twilio"
+	ProviderTypeSlack    = "slack"
+	ProviderTypeSendGrid = "sendgrid"
+	ProviderTypePaddle   = "paddle"
+	ProviderTypeLinear   = "linear"
+	ProviderTypeIntercom = "intercom"
+	ProviderTypeDiscord  = "discord"
+	ProviderTypeCustom   = "custom"
 )
 
 // CreateProviderRequest represents a request to create a provider
 type CreateProviderRequest struct {
-	Name            string          `json:"name" binding:"required,min=1,max=255"`
-	Type            string          `json:"type" binding:"required"`
-	Description     string          `json:"description,omitempty"`
+	Name            string           `json:"name" binding:"required,min=1,max=255"`
+	Type            string           `json:"type" binding:"required"`
+	Description     string           `json:"description,omitempty"`
 	SignatureConfig *SignatureConfig `json:"signature_config,omitempty"`
 }
 
