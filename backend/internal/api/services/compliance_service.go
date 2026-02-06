@@ -167,7 +167,11 @@ func (s *ComplianceService) ScanForPII(ctx context.Context, tenantID uuid.UUID, 
 	redactedText := req.Content
 	var sourceID uuid.UUID
 	if req.SourceID != "" {
-		sourceID, _ = uuid.Parse(req.SourceID)
+		var parseErr error
+		sourceID, parseErr = uuid.Parse(req.SourceID)
+		if parseErr != nil {
+			s.logger.Warn("Invalid source ID in PII scan request", map[string]interface{}{"source_id": req.SourceID, "error": parseErr.Error()})
+		}
 	}
 
 	for _, pattern := range patterns {
