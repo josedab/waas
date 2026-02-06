@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/josedab/waas/pkg/catalog"
 	"github.com/josedab/waas/pkg/database"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
@@ -51,6 +52,7 @@ type DeliveryEngine struct {
 	transformEngine *transform.Engine
 	healthMonitor   *EndpointHealthMonitor
 	healthScorer    *HealthScorer
+	catalogService  *catalog.Service
 	dlqHook         DLQHook
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -256,8 +258,8 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 		score := e.healthScorer.GetScore(message.EndpointID)
 		if score.IsPaused {
 			e.logger.Warn("Skipping delivery to health-paused endpoint", map[string]interface{}{
-				"delivery_id": message.DeliveryID,
-				"endpoint_id": message.EndpointID,
+				"delivery_id":  message.DeliveryID,
+				"endpoint_id":  message.EndpointID,
 				"health_score": score.Score,
 				"pause_reason": score.PauseReason,
 			})
@@ -290,6 +292,33 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 			"delivery_id": message.DeliveryID,
 			"endpoint_id": message.EndpointID,
 		})
+	}
+
+	// Publish-time schema validation via event catalog
+	if e.catalogService != nil && message.EventType != "" {
+		valResult := e.catalogService.ValidateForDelivery(ctx, message.TenantID, message.EventType, message.Payload)
+		if valResult != nil && !valResult.Valid {
+			e.logger.Warn("Payload failed publish-time schema validation", map[string]interface{}{
+				"delivery_id": message.DeliveryID,
+				"endpoint_id": message.EndpointID,
+				"event_type":  message.EventType,
+				"mode":        valResult.Mode,
+				"issues":      valResult.Issues,
+			})
+			if valResult.Mode == string(catalog.ValidationModeStrict) {
+				errMsg := fmt.Sprintf("schema validation failed: %v", valResult.Issues)
+				result := &queue.DeliveryResult{
+					DeliveryID:    message.DeliveryID,
+					Status:        queue.StatusFailed,
+					ErrorMessage:  &errMsg,
+					AttemptNumber: message.AttemptNumber,
+				}
+				attempt.Status = result.Status
+				attempt.ErrorMessage = result.ErrorMessage
+				_ = e.deliveryRepo.Update(ctx, attempt)
+				return result, nil
+			}
+		}
 	}
 
 	// Perform the HTTP delivery
@@ -667,6 +696,11 @@ type DLQAttemptDetail struct {
 	ResponseBody  *string   `json:"response_body,omitempty"`
 	ErrorMessage  *string   `json:"error_message,omitempty"`
 	AttemptedAt   time.Time `json:"attempted_at"`
+}
+
+// SetCatalogService sets the catalog service for publish-time schema validation
+func (e *DeliveryEngine) SetCatalogService(svc *catalog.Service) {
+	e.catalogService = svc
 }
 
 // SetDLQHook registers a hook that is called for permanently failed deliveries.
