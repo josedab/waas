@@ -167,7 +167,11 @@ func (s *BidirectionalSyncService) ReceiveSyncResponse(ctx context.Context, tena
 	}
 
 	// Fetch updated transaction
-	tx, _ = s.repo.GetTransaction(ctx, tx.ID)
+	tx, err = s.repo.GetTransaction(ctx, tx.ID)
+	if err != nil {
+		s.logger.Error("Failed to fetch updated transaction", map[string]interface{}{"transaction_id": tx.ID, "error": err.Error()})
+		return nil, fmt.Errorf("failed to fetch updated transaction: %w", err)
+	}
 
 	s.logger.Info("Sync response received", map[string]interface{}{"transaction_id": tx.ID, "correlation_id": req.CorrelationID})
 
