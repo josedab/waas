@@ -271,3 +271,212 @@ func toSnakeCase(s string) string {
 	}
 	return result.String()
 }
+
+// GenerateJavaTypes generates Java class definitions from an event type's schema
+func GenerateJavaTypes(eventType *EventType) (string, error) {
+	schema, err := parseSchema(eventType)
+	if err != nil {
+		return "", err
+	}
+
+	className := toGoName(eventType.Name)
+	var b strings.Builder
+	b.WriteString("import com.fasterxml.jackson.annotation.JsonProperty;\n\n")
+	b.WriteString(fmt.Sprintf("/** %s event payload. */\n", eventType.Name))
+	b.WriteString(fmt.Sprintf("public class %s {\n\n", className))
+
+	props, _ := schema["properties"].(map[string]interface{})
+	for name, def := range props {
+		jType := jsonTypeToJava(def)
+		fieldName := toCamelCase(name)
+		b.WriteString(fmt.Sprintf("    @JsonProperty(\"%s\")\n", name))
+		b.WriteString(fmt.Sprintf("    private %s %s;\n\n", jType, fieldName))
+	}
+
+	// Getters/setters
+	for name, def := range props {
+		jType := jsonTypeToJava(def)
+		fieldName := toCamelCase(name)
+		getterName := "get" + toGoName(name)
+		setterName := "set" + toGoName(name)
+		b.WriteString(fmt.Sprintf("    public %s %s() { return %s; }\n", jType, getterName, fieldName))
+		b.WriteString(fmt.Sprintf("    public void %s(%s %s) { this.%s = %s; }\n\n", setterName, jType, fieldName, fieldName, fieldName))
+	}
+
+	b.WriteString("}\n")
+	return b.String(), nil
+}
+
+// GenerateRubyTypes generates Ruby class definitions from an event type's schema
+func GenerateRubyTypes(eventType *EventType) (string, error) {
+	schema, err := parseSchema(eventType)
+	if err != nil {
+		return "", err
+	}
+
+	className := toGoName(eventType.Name)
+	var b strings.Builder
+	b.WriteString("# frozen_string_literal: true\n\n")
+	b.WriteString(fmt.Sprintf("# %s event payload\n", eventType.Name))
+	b.WriteString(fmt.Sprintf("class %s\n", className))
+
+	props, _ := schema["properties"].(map[string]interface{})
+	var attrNames []string
+	for name := range props {
+		attrNames = append(attrNames, ":"+toSnakeCase(name))
+	}
+	if len(attrNames) > 0 {
+		b.WriteString(fmt.Sprintf("  attr_accessor %s\n\n", strings.Join(attrNames, ", ")))
+	}
+
+	b.WriteString("  def initialize(attrs = {})\n")
+	for name := range props {
+		snakeName := toSnakeCase(name)
+		b.WriteString(fmt.Sprintf("    @%s = attrs['%s'] || attrs[:%s]\n", snakeName, name, snakeName))
+	}
+	b.WriteString("  end\n")
+	b.WriteString("end\n")
+	return b.String(), nil
+}
+
+// GeneratePHPTypes generates PHP class definitions from an event type's schema
+func GeneratePHPTypes(eventType *EventType) (string, error) {
+	schema, err := parseSchema(eventType)
+	if err != nil {
+		return "", err
+	}
+
+	className := toGoName(eventType.Name)
+	var b strings.Builder
+	b.WriteString("<?php\n\n")
+	b.WriteString(fmt.Sprintf("/** %s event payload. */\n", eventType.Name))
+	b.WriteString(fmt.Sprintf("class %s\n{\n", className))
+
+	props, _ := schema["properties"].(map[string]interface{})
+	for name, def := range props {
+		phpType := jsonTypeToPHP(def)
+		b.WriteString(fmt.Sprintf("    public %s $%s;\n", phpType, toCamelCase(name)))
+	}
+	b.WriteString("\n    public function __construct(array $data = [])\n    {\n")
+	for name := range props {
+		camelName := toCamelCase(name)
+		b.WriteString(fmt.Sprintf("        $this->%s = $data['%s'] ?? null;\n", camelName, name))
+	}
+	b.WriteString("    }\n}\n")
+	return b.String(), nil
+}
+
+// GenerateCSharpTypes generates C# class definitions from an event type's schema
+func GenerateCSharpTypes(eventType *EventType) (string, error) {
+	schema, err := parseSchema(eventType)
+	if err != nil {
+		return "", err
+	}
+
+	className := toGoName(eventType.Name)
+	var b strings.Builder
+	b.WriteString("using System.Text.Json.Serialization;\n\n")
+	b.WriteString(fmt.Sprintf("/// <summary>%s event payload.</summary>\n", eventType.Name))
+	b.WriteString(fmt.Sprintf("public class %s\n{\n", className))
+
+	props, _ := schema["properties"].(map[string]interface{})
+	for name, def := range props {
+		csType := jsonTypeToCSharp(def)
+		propName := toGoName(name)
+		b.WriteString(fmt.Sprintf("    [JsonPropertyName(\"%s\")]\n", name))
+		b.WriteString(fmt.Sprintf("    public %s %s { get; set; }\n\n", csType, propName))
+	}
+
+	b.WriteString("}\n")
+	return b.String(), nil
+}
+
+func jsonTypeToJava(fieldDef interface{}) string {
+	m, ok := fieldDef.(map[string]interface{})
+	if !ok {
+		return "Object"
+	}
+	t, _ := m["type"].(string)
+	switch t {
+	case "string":
+		return "String"
+	case "integer":
+		return "Long"
+	case "number":
+		return "Double"
+	case "boolean":
+		return "Boolean"
+	case "array":
+		items := jsonTypeToJava(m["items"])
+		return "java.util.List<" + items + ">"
+	case "object":
+		return "java.util.Map<String, Object>"
+	default:
+		return "Object"
+	}
+}
+
+func jsonTypeToPHP(fieldDef interface{}) string {
+	m, ok := fieldDef.(map[string]interface{})
+	if !ok {
+		return "mixed"
+	}
+	t, _ := m["type"].(string)
+	switch t {
+	case "string":
+		return "?string"
+	case "integer":
+		return "?int"
+	case "number":
+		return "?float"
+	case "boolean":
+		return "?bool"
+	case "array":
+		return "?array"
+	case "object":
+		return "?array"
+	default:
+		return "mixed"
+	}
+}
+
+func jsonTypeToCSharp(fieldDef interface{}) string {
+	m, ok := fieldDef.(map[string]interface{})
+	if !ok {
+		return "object"
+	}
+	t, _ := m["type"].(string)
+	switch t {
+	case "string":
+		return "string?"
+	case "integer":
+		return "long?"
+	case "number":
+		return "double?"
+	case "boolean":
+		return "bool?"
+	case "array":
+		items := jsonTypeToCSharp(m["items"])
+		return "List<" + items + ">?"
+	case "object":
+		return "Dictionary<string, object>?"
+	default:
+		return "object?"
+	}
+}
+
+func toCamelCase(s string) string {
+	words := strings.FieldsFunc(s, func(r rune) bool {
+		return r == '_' || r == '-' || r == '.'
+	})
+	if len(words) == 0 {
+		return s
+	}
+	result := strings.ToLower(words[0])
+	for _, w := range words[1:] {
+		if len(w) > 0 {
+			result += strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return result
+}

@@ -372,12 +372,15 @@ func (s *Service) GenerateOpenAPISpec(ctx context.Context, tenantID uuid.UUID) (
 			"version":     "1.0.0",
 			"description": "Event types and schemas for webhooks",
 		},
-		"webhooks": make(map[string]interface{}),
+		"webhooks":   make(map[string]interface{}),
+		"components": map[string]interface{}{"schemas": make(map[string]interface{})},
 	}
 
 	webhooks := spec["webhooks"].(map[string]interface{})
+	schemas := spec["components"].(map[string]interface{})["schemas"].(map[string]interface{})
+
 	for _, et := range result.EventTypes {
-		webhooks[et.Slug] = map[string]interface{}{
+		webhookDef := map[string]interface{}{
 			"post": map[string]interface{}{
 				"summary":     et.Name,
 				"description": et.Description,
@@ -390,8 +393,26 @@ func (s *Service) GenerateOpenAPISpec(ctx context.Context, tenantID uuid.UUID) (
 						},
 					},
 				},
+				"responses": map[string]interface{}{
+					"200": map[string]interface{}{"description": "Event received successfully"},
+					"400": map[string]interface{}{"description": "Invalid payload"},
+				},
 			},
 		}
+
+		// Attach full JSON schema if available
+		if et.Schema != nil && et.Schema.Schema != nil {
+			var schemaDef interface{}
+			if json.Unmarshal(et.Schema.Schema, &schemaDef) == nil {
+				schemaRef := toGoName(et.Slug)
+				schemas[schemaRef] = schemaDef
+				webhookDef["post"].(map[string]interface{})["requestBody"].(map[string]interface{})["content"].(map[string]interface{})["application/json"].(map[string]interface{})["schema"] = map[string]interface{}{
+					"$ref": "#/components/schemas/" + schemaRef,
+				}
+			}
+		}
+
+		webhooks[et.Slug] = webhookDef
 	}
 
 	return json.MarshalIndent(spec, "", "  ")
@@ -531,6 +552,14 @@ func (s *Service) GenerateSDKTypes(ctx context.Context, eventTypeID uuid.UUID, l
 		return GeneratePythonTypes(et)
 	case LangTypeScript:
 		return GenerateTypeScriptTypes(et)
+	case LangJava:
+		return GenerateJavaTypes(et)
+	case LangRuby:
+		return GenerateRubyTypes(et)
+	case LangPHP:
+		return GeneratePHPTypes(et)
+	case LangCSharp:
+		return GenerateCSharpTypes(et)
 	default:
 		return "", fmt.Errorf("unsupported language: %s", language)
 	}
@@ -718,7 +747,7 @@ func (s *Service) GenerateDocPortal(ctx context.Context, eventTypeID uuid.UUID) 
 
 	// Generate example code for supported languages
 	exampleCode := make(map[string]string)
-	for _, lang := range []string{LangGo, LangPython, LangTypeScript} {
+	for _, lang := range []string{LangGo, LangPython, LangTypeScript, LangJava, LangRuby, LangPHP, LangCSharp} {
 		code, err := s.GenerateSDKTypes(ctx, eventTypeID, lang)
 		if err == nil {
 			exampleCode[lang] = code
