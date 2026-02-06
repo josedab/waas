@@ -272,3 +272,115 @@ func (s *Service) GetDeliveryForReplay(ctx context.Context, tenantID, deliveryID
 func (s *Service) Cleanup(ctx context.Context) (int64, error) {
 	return s.repo.CleanupExpiredSnapshots(ctx)
 }
+
+// RunWhatIf simulates a delivery replay with modifications without actually sending
+func (s *Service) RunWhatIf(ctx context.Context, tenantID string, req *WhatIfRequest) (*WhatIfResult, error) {
+	archive, err := s.repo.GetDeliveryArchive(ctx, tenantID, req.DeliveryID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get delivery: %w", err)
+	}
+	if archive == nil {
+		return nil, fmt.Errorf("delivery not found: %s", req.DeliveryID)
+	}
+
+	result := &WhatIfResult{
+		OriginalDeliveryID: req.DeliveryID,
+		Original: &WhatIfDelivery{
+			EndpointID:  archive.EndpointID,
+			EndpointURL: archive.EndpointURL,
+			Payload:     archive.Payload,
+			Headers:     archive.Headers,
+			PayloadSize: len(archive.Payload),
+		},
+	}
+
+	// Build simulated delivery
+	simulatedPayload := archive.Payload
+	if req.ModifiedPayload != nil {
+		simulatedPayload = req.ModifiedPayload
+	}
+
+	simulatedHeaders := make(map[string]string)
+	for k, v := range archive.Headers {
+		simulatedHeaders[k] = v
+	}
+	for k, v := range req.ModifiedHeaders {
+		simulatedHeaders[k] = v
+	}
+
+	simulatedEndpoint := archive.EndpointID
+	simulatedURL := archive.EndpointURL
+	if len(req.TargetEndpoints) > 0 {
+		simulatedEndpoint = req.TargetEndpoints[0]
+		simulatedURL = "endpoint:" + simulatedEndpoint
+		for _, ep := range req.TargetEndpoints {
+			result.EndpointChanges = append(result.EndpointChanges, ep)
+		}
+	}
+
+	result.Simulated = &WhatIfDelivery{
+		EndpointID:  simulatedEndpoint,
+		EndpointURL: simulatedURL,
+		Payload:     simulatedPayload,
+		Headers:     simulatedHeaders,
+		PayloadSize: len(simulatedPayload),
+	}
+
+	// Compute payload diff
+	if req.ModifiedPayload != nil {
+		result.PayloadDiff = computePayloadDiff(archive.Payload, req.ModifiedPayload)
+	}
+
+	// Generate analysis
+	result.Analysis = generateWhatIfAnalysis(result)
+
+	return result, nil
+}
+
+func computePayloadDiff(oldPayload, newPayload json.RawMessage) []PayloadDiffItem {
+	var oldMap, newMap map[string]interface{}
+	json.Unmarshal(oldPayload, &oldMap)
+	json.Unmarshal(newPayload, &newMap)
+
+	var diffs []PayloadDiffItem
+
+	// Check for changed and removed fields
+	for key, oldVal := range oldMap {
+		newVal, exists := newMap[key]
+		if !exists {
+			diffs = append(diffs, PayloadDiffItem{
+				Path: key, Type: "removed", OldValue: oldVal,
+			})
+		} else if fmt.Sprintf("%v", oldVal) != fmt.Sprintf("%v", newVal) {
+			diffs = append(diffs, PayloadDiffItem{
+				Path: key, Type: "changed", OldValue: oldVal, NewValue: newVal,
+			})
+		}
+	}
+
+	// Check for added fields
+	for key, newVal := range newMap {
+		if _, exists := oldMap[key]; !exists {
+			diffs = append(diffs, PayloadDiffItem{
+				Path: key, Type: "added", NewValue: newVal,
+			})
+		}
+	}
+
+	return diffs
+}
+
+func generateWhatIfAnalysis(result *WhatIfResult) string {
+	changes := len(result.PayloadDiff)
+	endpoints := len(result.EndpointChanges)
+	sizeDiff := result.Simulated.PayloadSize - result.Original.PayloadSize
+
+	analysis := fmt.Sprintf("What-if simulation: %d payload field(s) changed", changes)
+	if endpoints > 0 {
+		analysis += fmt.Sprintf(", %d endpoint(s) retargeted", endpoints)
+	}
+	if sizeDiff != 0 {
+		analysis += fmt.Sprintf(", payload size delta: %+d bytes", sizeDiff)
+	}
+	return analysis
+}

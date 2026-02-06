@@ -7,10 +7,10 @@ import (
 
 // ReplayRequest represents a request to replay a delivery
 type ReplayRequest struct {
-	DeliveryID     string `json:"delivery_id" binding:"required"`
-	EndpointID     string `json:"endpoint_id,omitempty"`    // Override original endpoint
-	ModifyPayload  bool   `json:"modify_payload,omitempty"` // Allow payload modification
-	Payload        []byte `json:"payload,omitempty"`        // Modified payload if allowed
+	DeliveryID    string `json:"delivery_id" binding:"required"`
+	EndpointID    string `json:"endpoint_id,omitempty"`    // Override original endpoint
+	ModifyPayload bool   `json:"modify_payload,omitempty"` // Allow payload modification
+	Payload       []byte `json:"payload,omitempty"`        // Modified payload if allowed
 }
 
 // ReplayResult represents the result of a replay operation
@@ -24,14 +24,14 @@ type ReplayResult struct {
 
 // BulkReplayRequest represents a request to replay multiple deliveries
 type BulkReplayRequest struct {
-	DeliveryIDs  []string  `json:"delivery_ids,omitempty"`   // Specific delivery IDs
-	EndpointID   string    `json:"endpoint_id,omitempty"`    // Filter by endpoint
-	Status       string    `json:"status,omitempty"`         // Filter by status (failed, delivered)
-	StartTime    time.Time `json:"start_time,omitempty"`     // Filter by time range
-	EndTime      time.Time `json:"end_time,omitempty"`
-	Limit        int       `json:"limit,omitempty"`          // Max deliveries to replay
-	DryRun       bool      `json:"dry_run,omitempty"`        // Preview without replaying
-	RateLimit    int       `json:"rate_limit,omitempty"`     // Max replays per second
+	DeliveryIDs []string  `json:"delivery_ids,omitempty"` // Specific delivery IDs
+	EndpointID  string    `json:"endpoint_id,omitempty"`  // Filter by endpoint
+	Status      string    `json:"status,omitempty"`       // Filter by status (failed, delivered)
+	StartTime   time.Time `json:"start_time,omitempty"`   // Filter by time range
+	EndTime     time.Time `json:"end_time,omitempty"`
+	Limit       int       `json:"limit,omitempty"`      // Max deliveries to replay
+	DryRun      bool      `json:"dry_run,omitempty"`    // Preview without replaying
+	RateLimit   int       `json:"rate_limit,omitempty"` // Max replays per second
 }
 
 // BulkReplayResult represents the result of a bulk replay operation
@@ -88,23 +88,58 @@ type ReplayFromSnapshotRequest struct {
 
 // DeliveryArchive represents an archived delivery with full payload
 type DeliveryArchive struct {
-	ID               string            `json:"id" db:"id"`
-	TenantID         string            `json:"tenant_id" db:"tenant_id"`
-	EndpointID       string            `json:"endpoint_id" db:"endpoint_id"`
-	EndpointURL      string            `json:"endpoint_url" db:"endpoint_url"`
-	Payload          json.RawMessage   `json:"payload" db:"payload"`
-	Headers          map[string]string `json:"headers" db:"-"`
-	HeadersJSON      json.RawMessage   `json:"-" db:"headers"`
-	Status           string            `json:"status" db:"status"`
-	AttemptCount     int               `json:"attempt_count" db:"attempt_count"`
-	LastHTTPStatus   int               `json:"last_http_status,omitempty" db:"last_http_status"`
-	LastError        string            `json:"last_error,omitempty" db:"last_error"`
-	CreatedAt        time.Time         `json:"created_at" db:"created_at"`
-	CompletedAt      *time.Time        `json:"completed_at,omitempty" db:"completed_at"`
+	ID             string            `json:"id" db:"id"`
+	TenantID       string            `json:"tenant_id" db:"tenant_id"`
+	EndpointID     string            `json:"endpoint_id" db:"endpoint_id"`
+	EndpointURL    string            `json:"endpoint_url" db:"endpoint_url"`
+	Payload        json.RawMessage   `json:"payload" db:"payload"`
+	Headers        map[string]string `json:"headers" db:"-"`
+	HeadersJSON    json.RawMessage   `json:"-" db:"headers"`
+	Status         string            `json:"status" db:"status"`
+	AttemptCount   int               `json:"attempt_count" db:"attempt_count"`
+	LastHTTPStatus int               `json:"last_http_status,omitempty" db:"last_http_status"`
+	LastError      string            `json:"last_error,omitempty" db:"last_error"`
+	CreatedAt      time.Time         `json:"created_at" db:"created_at"`
+	CompletedAt    *time.Time        `json:"completed_at,omitempty" db:"completed_at"`
 }
 
 // TimeRange represents a time range for queries
 type TimeRange struct {
 	Start time.Time `json:"start"`
 	End   time.Time `json:"end"`
+}
+
+// WhatIfRequest represents a what-if scenario simulation request
+type WhatIfRequest struct {
+	DeliveryID      string            `json:"delivery_id" binding:"required"`
+	ModifiedPayload json.RawMessage   `json:"modified_payload,omitempty"`
+	TargetEndpoints []string          `json:"target_endpoints,omitempty"`
+	ModifiedHeaders map[string]string `json:"modified_headers,omitempty"`
+}
+
+// WhatIfResult represents the result of a what-if simulation
+type WhatIfResult struct {
+	OriginalDeliveryID string            `json:"original_delivery_id"`
+	Original           *WhatIfDelivery   `json:"original"`
+	Simulated          *WhatIfDelivery   `json:"simulated"`
+	PayloadDiff        []PayloadDiffItem `json:"payload_diff,omitempty"`
+	EndpointChanges    []string          `json:"endpoint_changes,omitempty"`
+	Analysis           string            `json:"analysis"`
+}
+
+// WhatIfDelivery represents delivery details in a what-if scenario
+type WhatIfDelivery struct {
+	EndpointID  string            `json:"endpoint_id"`
+	EndpointURL string            `json:"endpoint_url"`
+	Payload     json.RawMessage   `json:"payload"`
+	Headers     map[string]string `json:"headers"`
+	PayloadSize int               `json:"payload_size"`
+}
+
+// PayloadDiffItem represents a diff between original and modified payloads
+type PayloadDiffItem struct {
+	Path     string      `json:"path"`
+	Type     string      `json:"type"` // added, removed, changed
+	OldValue interface{} `json:"old_value,omitempty"`
+	NewValue interface{} `json:"new_value,omitempty"`
 }
