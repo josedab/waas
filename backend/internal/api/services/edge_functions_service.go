@@ -637,15 +637,35 @@ func (s *EdgeFunctionsService) GetDashboard(ctx context.Context, tenantID uuid.U
 		LocationCoverage:   make(map[string]int),
 	}
 
-	dashboard.TotalFunctions, _ = s.repo.CountFunctions(ctx, tenantID)
-	dashboard.ActiveFunctions, _ = s.repo.CountActiveFunctions(ctx, tenantID)
-	dashboard.TotalDeployments, _ = s.repo.CountDeployments(ctx, tenantID)
+	var err error
+
+	dashboard.TotalFunctions, err = s.repo.CountFunctions(ctx, tenantID)
+	if err != nil {
+		s.logger.Warn("Failed to count functions for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	dashboard.ActiveFunctions, err = s.repo.CountActiveFunctions(ctx, tenantID)
+	if err != nil {
+		s.logger.Warn("Failed to count active functions for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	dashboard.TotalDeployments, err = s.repo.CountDeployments(ctx, tenantID)
+	if err != nil {
+		s.logger.Warn("Failed to count deployments for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 
 	since := time.Now().Add(-24 * time.Hour)
-	dashboard.TotalInvocations, _ = s.repo.CountInvocations(ctx, tenantID, since)
-	dashboard.ErrorRate, _ = s.repo.GetErrorRate(ctx, tenantID, since)
+	dashboard.TotalInvocations, err = s.repo.CountInvocations(ctx, tenantID, since)
+	if err != nil {
+		s.logger.Warn("Failed to count invocations for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	dashboard.ErrorRate, err = s.repo.GetErrorRate(ctx, tenantID, since)
+	if err != nil {
+		s.logger.Warn("Failed to get error rate for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 
-	recentInvocations, _ := s.repo.GetRecentInvocations(ctx, tenantID, 10)
+	recentInvocations, err := s.repo.GetRecentInvocations(ctx, tenantID, 10)
+	if err != nil {
+		s.logger.Warn("Failed to get recent invocations for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	dashboard.RecentInvocations = recentInvocations
 
 	// Calculate avg duration
@@ -658,7 +678,10 @@ func (s *EdgeFunctionsService) GetDashboard(ctx context.Context, tenantID uuid.U
 	}
 
 	// Get runtime distribution
-	functions, _ := s.repo.GetFunctionsByTenant(ctx, tenantID)
+	functions, err := s.repo.GetFunctionsByTenant(ctx, tenantID)
+	if err != nil {
+		s.logger.Warn("Failed to get functions for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	for _, fn := range functions {
 		dashboard.FunctionsByRuntime[fn.Runtime]++
 	}
