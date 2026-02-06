@@ -43,7 +43,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 	if config == nil {
 		config = DefaultServiceConfig()
 	}
-	
+
 	return &Service{
 		repo:      repo,
 		predictor: NewPredictor(),
@@ -187,7 +187,7 @@ func (s *Service) ShouldThrottle(ctx context.Context, tenantID, endpointID strin
 // RecordDeliveryResult records the result of a delivery attempt
 func (s *Service) RecordDeliveryResult(ctx context.Context, tenantID, endpointID, deliveryID string, statusCode int, latencyMs int64, wasRateLimited bool) error {
 	config, _ := s.repo.GetConfig(ctx, tenantID, endpointID)
-	
+
 	// Update throttler state
 	if throttler, ok := s.throttlers.Load(tenantID + ":" + endpointID); ok {
 		t := throttler.(*Throttler)
@@ -198,14 +198,14 @@ func (s *Service) RecordDeliveryResult(ctx context.Context, tenantID, endpointID
 	if config != nil && config.LearningEnabled {
 		now := time.Now()
 		data := &LearningDataPoint{
-			ID:          uuid.New().String(),
-			TenantID:    tenantID,
-			EndpointID:  endpointID,
-			Timestamp:   now,
-			HourOfDay:   now.Hour(),
-			DayOfWeek:   int(now.Weekday()),
-			AvgLatency:  float64(latencyMs),
-			RateLimited: wasRateLimited,
+			ID:           uuid.New().String(),
+			TenantID:     tenantID,
+			EndpointID:   endpointID,
+			Timestamp:    now,
+			HourOfDay:    now.Hour(),
+			DayOfWeek:    int(now.Weekday()),
+			AvgLatency:   float64(latencyMs),
+			RateLimited:  wasRateLimited,
 			ResponseCode: statusCode,
 		}
 		if statusCode >= 200 && statusCode < 300 {
@@ -254,7 +254,7 @@ func (s *Service) TrainModel(ctx context.Context, tenantID, endpointID string) (
 	// Get learning data
 	start := time.Now().Add(-30 * 24 * time.Hour) // Last 30 days
 	end := time.Now()
-	
+
 	data, err := s.repo.GetLearningData(ctx, tenantID, endpointID, start, end)
 	if err != nil {
 		return nil, err
@@ -273,7 +273,7 @@ func (s *Service) TrainModel(ctx context.Context, tenantID, endpointID string) (
 
 	// Train model
 	model := s.predictor.Train(tenantID, endpointID, data, version)
-	
+
 	if err := s.repo.SaveModel(ctx, model); err != nil {
 		return nil, err
 	}
@@ -283,7 +283,7 @@ func (s *Service) TrainModel(ctx context.Context, tenantID, endpointID string) (
 
 func (s *Service) getOrCreateThrottler(tenantID string, config *AdaptiveRateConfig) *Throttler {
 	key := tenantID + ":" + config.EndpointID
-	
+
 	if throttler, ok := s.throttlers.Load(key); ok {
 		return throttler.(*Throttler)
 	}
@@ -295,16 +295,17 @@ func (s *Service) getOrCreateThrottler(tenantID string, config *AdaptiveRateConf
 
 // Throttler implements adaptive rate limiting for a single endpoint
 type Throttler struct {
-	config       *AdaptiveRateConfig
-	mu           sync.Mutex
-	currentRate  float64
-	tokens       float64
-	lastUpdate   time.Time
-	windowStart  time.Time
-	requestCount int64
-	successCount int64
-	failCount    int64
+	config        *AdaptiveRateConfig
+	mu            sync.Mutex
+	currentRate   float64
+	tokens        float64
+	lastUpdate    time.Time
+	windowStart   time.Time
+	requestCount  int64
+	successCount  int64
+	failCount     int64
 	rateLimitHits int64
+	retryAfter    *time.Time
 }
 
 // NewThrottler creates a new throttler
@@ -324,13 +325,33 @@ func (t *Throttler) Allow() (*ThrottleDecision, error) {
 	defer t.mu.Unlock()
 
 	now := time.Now()
+
+	// Respect Retry-After signals from the endpoint
+	if t.retryAfter != nil && now.Before(*t.retryAfter) {
+		waitDuration := t.retryAfter.Sub(now)
+		return &ThrottleDecision{
+			EndpointID:     t.config.EndpointID,
+			Allowed:        false,
+			WaitDuration:   waitDuration,
+			Reason:         "respecting endpoint Retry-After signal",
+			CurrentRate:    t.currentRate,
+			AllowedRate:    t.currentRate,
+			RemainingBurst: 0,
+			ResetAt:        *t.retryAfter,
+		}, nil
+	}
+	// Clear expired retry-after
+	if t.retryAfter != nil && now.After(*t.retryAfter) {
+		t.retryAfter = nil
+	}
+
 	elapsed := now.Sub(t.lastUpdate).Seconds()
 	t.lastUpdate = now
 
 	// Refill tokens based on rate
 	t.tokens = math.Min(
 		float64(t.config.BurstSize),
-		t.tokens + elapsed*t.currentRate,
+		t.tokens+elapsed*t.currentRate,
 	)
 
 	// Check window reset
@@ -382,7 +403,7 @@ func (t *Throttler) RecordResult(statusCode int, wasRateLimited bool) {
 		// Backoff
 		t.currentRate = math.Max(
 			t.config.MinRatePerSec,
-			t.currentRate * t.config.BackoffFactor,
+			t.currentRate*t.config.BackoffFactor,
 		)
 	} else if statusCode >= 200 && statusCode < 300 {
 		t.successCount++
@@ -390,7 +411,7 @@ func (t *Throttler) RecordResult(statusCode int, wasRateLimited bool) {
 		if t.rateLimitHits == 0 && t.successCount > 10 {
 			t.currentRate = math.Min(
 				t.config.MaxRatePerSec,
-				t.currentRate * t.config.RecoveryFactor,
+				t.currentRate*t.config.RecoveryFactor,
 			)
 		}
 	} else {
@@ -475,7 +496,7 @@ func (p *Predictor) Train(tenantID, endpointID string, data []LearningDataPoint,
 	// Simple linear regression on rate-limited vs not
 	var sumRate, sumLatency float64
 	var rateLimitedCount, successCount int64
-	
+
 	for _, point := range data {
 		sumRate += point.RequestRate
 		sumLatency += point.AvgLatency
@@ -490,12 +511,12 @@ func (p *Predictor) Train(tenantID, endpointID string, data []LearningDataPoint,
 	if n > 0 {
 		avgRate := sumRate / n
 		avgLatency := sumLatency / n
-		
+
 		// Store coefficients
 		model.Coefficients["avg_rate"] = avgRate
 		model.Coefficients["avg_latency"] = avgLatency
 		model.Coefficients["rate_limit_ratio"] = float64(rateLimitedCount) / n
-		
+
 		// Estimate safe rate (rate where 95% success)
 		if successCount > 0 {
 			safeRate := avgRate * (float64(successCount) / n) * 0.95
@@ -511,4 +532,120 @@ func (p *Predictor) Train(tenantID, endpointID string, data []LearningDataPoint,
 	}
 
 	return model
+}
+
+// AutoTuneResult captures the result of auto-tuning for a single endpoint
+type AutoTuneResult struct {
+	EndpointID     string          `json:"endpoint_id"`
+	OldRate        float64         `json:"old_rate_per_sec"`
+	NewRate        float64         `json:"new_rate_per_sec"`
+	Confidence     float64         `json:"confidence"`
+	Trend          ThroughputTrend `json:"trend"`
+	Reason         string          `json:"reason"`
+	ModelRetrained bool            `json:"model_retrained"`
+}
+
+// AutoTuneBatchResult captures results for a batch auto-tune operation
+type AutoTuneBatchResult struct {
+	TenantID       string           `json:"tenant_id"`
+	TunedEndpoints int              `json:"tuned_endpoints"`
+	SkippedCount   int              `json:"skipped_count"`
+	Results        []AutoTuneResult `json:"results"`
+	TunedAt        time.Time        `json:"tuned_at"`
+}
+
+// AutoTuneAll automatically adjusts rate limits for all learning-enabled endpoints
+func (s *Service) AutoTuneAll(ctx context.Context, tenantID string) (*AutoTuneBatchResult, error) {
+	configs, err := s.repo.ListConfigs(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &AutoTuneBatchResult{
+		TenantID: tenantID,
+		TunedAt:  time.Now(),
+	}
+
+	for _, config := range configs {
+		if !config.Enabled || !config.LearningEnabled {
+			result.SkippedCount++
+			continue
+		}
+
+		tuneResult := s.autoTuneEndpoint(ctx, tenantID, config.EndpointID, &config)
+		if tuneResult != nil {
+			result.Results = append(result.Results, *tuneResult)
+			result.TunedEndpoints++
+		} else {
+			result.SkippedCount++
+		}
+	}
+
+	return result, nil
+}
+
+func (s *Service) autoTuneEndpoint(ctx context.Context, tenantID, endpointID string, config *AdaptiveRateConfig) *AutoTuneResult {
+	rec, err := s.analyzer.GetRecommendation(ctx, tenantID, endpointID, config)
+	if err != nil || rec == nil || rec.Confidence < 0.5 {
+		return nil
+	}
+
+	result := &AutoTuneResult{
+		EndpointID: endpointID,
+		Confidence: rec.Confidence,
+		Trend:      rec.Trend,
+		Reason:     rec.Reason,
+	}
+
+	// Get current throttler rate
+	if throttler, ok := s.throttlers.Load(tenantID + ":" + endpointID); ok {
+		t := throttler.(*Throttler)
+		t.mu.Lock()
+		result.OldRate = t.currentRate
+		t.mu.Unlock()
+		t.ApplyRecommendation(rec)
+		t.mu.Lock()
+		result.NewRate = t.currentRate
+		t.mu.Unlock()
+	}
+
+	// Retrain model if enough new data
+	model, err := s.TrainModel(ctx, tenantID, endpointID)
+	if err == nil && model != nil {
+		result.ModelRetrained = true
+	}
+
+	return result
+}
+
+// RecordRetryAfterSignal processes a Retry-After header from an endpoint response.
+// This adjusts the throttler to respect the endpoint's requested backoff.
+func (s *Service) RecordRetryAfterSignal(ctx context.Context, tenantID, endpointID string, retryAfterSeconds int) {
+	key := tenantID + ":" + endpointID
+	if throttler, ok := s.throttlers.Load(key); ok {
+		t := throttler.(*Throttler)
+		t.mu.Lock()
+		defer t.mu.Unlock()
+
+		// Drastically reduce rate when server explicitly requests backoff
+		t.currentRate = math.Max(t.config.MinRatePerSec, t.currentRate*0.25)
+
+		// Schedule recovery after the retry-after period
+		retryAt := time.Now().Add(time.Duration(retryAfterSeconds) * time.Second)
+		t.retryAfter = &retryAt
+	}
+
+	// Also record as a learning data point
+	now := time.Now()
+	data := &LearningDataPoint{
+		ID:           uuid.New().String(),
+		TenantID:     tenantID,
+		EndpointID:   endpointID,
+		Timestamp:    now,
+		HourOfDay:    now.Hour(),
+		DayOfWeek:    int(now.Weekday()),
+		RateLimited:  true,
+		ResponseCode: 429,
+	}
+	s.repo.SaveLearningData(ctx, data)
 }
