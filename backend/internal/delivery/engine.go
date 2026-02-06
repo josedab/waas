@@ -114,7 +114,12 @@ func NewEngine() (*DeliveryEngine, error) {
 		})
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		_ = webhookRepo.UpdateStatus(ctx, endpointID, false)
+		if err := webhookRepo.UpdateStatus(ctx, endpointID, false); err != nil {
+			logger.Error("Failed to pause unhealthy endpoint", map[string]interface{}{
+				"endpoint_id": endpointID,
+				"error":       err.Error(),
+			})
+		}
 	})
 	healthScorer.SetResumeCallback(func(endpointID uuid.UUID) {
 		logger.Info("Auto-resuming recovered endpoint", map[string]interface{}{
@@ -122,7 +127,12 @@ func NewEngine() (*DeliveryEngine, error) {
 		})
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		_ = webhookRepo.UpdateStatus(ctx, endpointID, true)
+		if err := webhookRepo.UpdateStatus(ctx, endpointID, true); err != nil {
+			logger.Error("Failed to resume recovered endpoint", map[string]interface{}{
+				"endpoint_id": endpointID,
+				"error":       err.Error(),
+			})
+		}
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -272,7 +282,12 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 			}
 			attempt.Status = result.Status
 			attempt.ErrorMessage = result.ErrorMessage
-			_ = e.deliveryRepo.Update(ctx, attempt)
+			if err := e.deliveryRepo.Update(ctx, attempt); err != nil {
+				e.logger.Error("Failed to update delivery attempt", map[string]interface{}{
+					"delivery_id": message.DeliveryID,
+					"error":       err.Error(),
+				})
+			}
 			return result, nil
 		}
 	}
@@ -315,7 +330,12 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 				}
 				attempt.Status = result.Status
 				attempt.ErrorMessage = result.ErrorMessage
-				_ = e.deliveryRepo.Update(ctx, attempt)
+				if err := e.deliveryRepo.Update(ctx, attempt); err != nil {
+					e.logger.Error("Failed to update delivery attempt", map[string]interface{}{
+						"delivery_id": message.DeliveryID,
+						"error":       err.Error(),
+					})
+				}
 				return result, nil
 			}
 		}
