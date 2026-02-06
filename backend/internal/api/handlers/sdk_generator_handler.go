@@ -205,15 +205,20 @@ func (h *SDKGeneratorHandler) DownloadSDK(c *gin.Context) {
 		return
 	}
 
-	// Record download
-	_ = h.service.RecordDownload(
+	// Record download (best-effort, don't block the response)
+	if err := h.service.RecordDownload(
 		c.Request.Context(),
 		tenantID.(uuid.UUID),
 		generationID,
 		"direct",
 		c.ClientIP(),
 		c.Request.UserAgent(),
-	)
+	); err != nil {
+		h.logger.Warn("Failed to record SDK download", map[string]interface{}{
+			"generation_id": generationID,
+			"error":         err.Error(),
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"artifact_url": generation.ArtifactURL,
