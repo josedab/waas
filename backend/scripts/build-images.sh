@@ -139,9 +139,9 @@ build_all_images() {
     
     # Define services and their corresponding Dockerfiles
     declare -A services=(
-        ["api-service"]="Dockerfile.api.prod"
-        ["delivery-engine"]="Dockerfile.delivery.prod"
-        ["analytics-service"]="Dockerfile.analytics.prod"
+        ["api-service"]="docker/Dockerfile.api.prod"
+        ["delivery-engine"]="docker/Dockerfile.delivery.prod"
+        ["analytics-service"]="docker/Dockerfile.analytics.prod"
     )
     
     # Build each service

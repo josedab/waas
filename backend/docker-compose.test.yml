@@ -40,7 +40,7 @@ services:
   test-runner:
     build:
       context: .
-      dockerfile: Dockerfile.test
+      dockerfile: docker/Dockerfile.test
     environment:
       - TEST_DATABASE_URL=postgres://postgres:password@postgres:5432/webhook_platform_test?sslmode=disable
       - TEST_REDIS_URL=redis://redis:6379/0

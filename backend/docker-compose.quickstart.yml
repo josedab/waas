@@ -10,7 +10,7 @@ services:
   waas:
     build:
       context: .
-      dockerfile: Dockerfile.quickstart
+      dockerfile: docker/Dockerfile.quickstart
     ports:
       - "8080:8080"
     environment:
