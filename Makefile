@@ -6,7 +6,7 @@ BACKEND := backend
 .DEFAULT_GOAL := help
 
 # ─── Development setup ──────────────────────────────────────────────
-.PHONY: dev-setup dev-setup-full validate-setup ensure-env validate-env
+.PHONY: dev-setup dev-setup-full validate-setup ensure-env validate-env doctor
 
 dev-setup: ## One-command dev setup (env, containers, core migrations)
 	$(MAKE) -C $(BACKEND) dev-setup
@@ -22,6 +22,9 @@ ensure-env: ## Create backend/.env from template if missing
 
 validate-env: ## Validate backend/.env for required variables
 	$(MAKE) -C $(BACKEND) validate-env
+
+doctor: ## Full environment diagnostics in one shot
+	$(MAKE) -C $(BACKEND) doctor
 
 # ─── Run services ───────────────────────────────────────────────────
 .PHONY: run-api run-delivery run-analytics run-all run-dashboard dev dev-all dev-logs

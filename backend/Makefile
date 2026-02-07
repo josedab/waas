@@ -6,7 +6,7 @@
        smoke-test run-all run-dashboard \
        install-hooks uninstall-hooks \
        test-coverage test-status audit-deps validate-env \
-       dev dev-all dev-logs check seed
+       dev dev-all dev-logs check seed _ensure-air doctor
 
 # Configuration — DATABASE_URL must be set in the environment or .env file.
 # Run "make ensure-env" to create .env from template.
@@ -380,6 +380,37 @@ validate-setup: ## Check that all prerequisites are installed
 	@printf "  %-20s" "Port 8082 (Analytics):" ; \
 		(lsof -i :8082 >/dev/null 2>&1 && echo "IN USE") || echo "Available"
 	@echo ""
+
+doctor: ## Full environment diagnostics (prerequisites + env + Docker + ports)
+	@echo "🩺 WaaS Doctor — Environment Diagnostics"
+	@echo "========================================="
+	@echo ""
+	@echo "--- Prerequisites ---"
+	@$(MAKE) --no-print-directory validate-setup
+	@echo "--- Environment File ---"
+	@if [ -f .env ]; then \
+		$(MAKE) --no-print-directory validate-env; \
+	else \
+		echo "  ⚠️  .env not found. Run 'make ensure-env' to create it."; \
+	fi
+	@echo ""
+	@echo "--- Docker Connectivity ---"
+	@printf "  %-20s" "Docker daemon:" ; \
+		docker info >/dev/null 2>&1 && echo "✅ Running" || echo "❌ Not running — start Docker Desktop or 'sudo systemctl start docker'"
+	@printf "  %-20s" "Compose services:" ; \
+		docker-compose ps --services >/dev/null 2>&1 && echo "✅ Compose file OK" || echo "⚠️  Could not read docker-compose.yml"
+	@printf "  %-20s" "PostgreSQL:" ; \
+		docker-compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1 && echo "✅ Accepting connections" || echo "⚠️  Not reachable (run 'make docker-up')"
+	@printf "  %-20s" "Redis:" ; \
+		docker-compose exec -T redis redis-cli ping >/dev/null 2>&1 && echo "✅ PONG" || echo "⚠️  Not reachable (run 'make docker-up')"
+	@echo ""
+	@echo "--- Port Availability ---"
+	@printf "  %-22s" "5432 (PostgreSQL):" ; (lsof -i :5432 >/dev/null 2>&1 && echo "IN USE") || echo "Available"
+	@printf "  %-22s" "6379 (Redis):" ; (lsof -i :6379 >/dev/null 2>&1 && echo "IN USE") || echo "Available"
+	@printf "  %-22s" "8080 (API):" ; (lsof -i :8080 >/dev/null 2>&1 && echo "IN USE") || echo "Available"
+	@printf "  %-22s" "8082 (Analytics):" ; (lsof -i :8082 >/dev/null 2>&1 && echo "IN USE") || echo "Available"
+	@echo ""
+	@echo "Done. Fix any ❌ items above before running services."
 
 # Git hooks
 GIT_HOOKS_DIR := $(shell git rev-parse --git-dir 2>/dev/null)/hooks
