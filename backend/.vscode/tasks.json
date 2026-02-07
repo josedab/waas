@@ -1,0 +1,97 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "make build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Test",
+      "type": "shell",
+      "command": "make test",
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Test All",
+      "type": "shell",
+      "command": "make test-all",
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Lint",
+      "type": "shell",
+      "command": "make lint",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Format Check",
+      "type": "shell",
+      "command": "make fmt",
+      "problemMatcher": []
+    },
+    {
+      "label": "Vet",
+      "type": "shell",
+      "command": "make vet",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Check (fmt + vet + lint + test)",
+      "type": "shell",
+      "command": "make check",
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Dev (hot-reload)",
+      "type": "shell",
+      "command": "make dev",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker Up",
+      "type": "shell",
+      "command": "make docker-up",
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker Down",
+      "type": "shell",
+      "command": "make docker-down",
+      "problemMatcher": []
+    },
+    {
+      "label": "Migrate Up",
+      "type": "shell",
+      "command": "make migrate-up",
+      "problemMatcher": []
+    },
+    {
+      "label": "Generate Docs",
+      "type": "shell",
+      "command": "make docs",
+      "problemMatcher": []
+    },
+    {
+      "label": "Doctor",
+      "type": "shell",
+      "command": "make doctor",
+      "problemMatcher": []
+    },
+    {
+      "label": "Clean",
+      "type": "shell",
+      "command": "make clean",
+      "problemMatcher": []
+    }
+  ]
+}

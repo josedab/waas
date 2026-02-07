@@ -3,6 +3,7 @@
     "golang.go",
     "editorconfig.editorconfig",
     "ms-azuretools.vscode-docker",
-    "redhat.vscode-yaml"
+    "redhat.vscode-yaml",
+    "securecodewarrior.gosec"
   ]
 }
