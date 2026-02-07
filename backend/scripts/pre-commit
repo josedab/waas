@@ -54,3 +54,26 @@ if ! go vet $PACKAGES 2>&1; then
 fi
 
 echo "pre-commit: all checks passed."
+
+# Validate .env.example completeness (advisory, non-blocking)
+if [ -f .env.example ]; then
+    ENV_VARS_IN_CODE=$(grep -roh 'os\.Getenv("[^"]*")' --include='*.go' . 2>/dev/null \
+        | grep -v '_test\.go' \
+        | sed 's/os\.Getenv("//;s/")//' \
+        | grep -v -E '^(RUN_|TEST_)' \
+        | sort -u)
+    MISSING_VARS=""
+    for var in $ENV_VARS_IN_CODE; do
+        if ! grep -q "^${var}=" .env.example 2>/dev/null && ! grep -q "^# *${var}=" .env.example 2>/dev/null; then
+            MISSING_VARS="$MISSING_VARS $var"
+        fi
+    done
+    if [ -n "$MISSING_VARS" ]; then
+        echo ""
+        echo "pre-commit: ⚠️  These env vars are used in code but missing from .env.example:"
+        for var in $MISSING_VARS; do
+            echo "    $var"
+        done
+        echo "  Consider adding them to .env.example for contributor discoverability."
+    fi
+fi
