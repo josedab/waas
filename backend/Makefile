@@ -95,6 +95,23 @@ test: ## Run core tests with coverage summary
 test-all: ## Run all tests including enterprise packages
 	go test -v ./...
 
+test-watch: ## Watch for changes and re-run tests (requires entr or fswatch)
+	@if command -v entr >/dev/null 2>&1; then \
+		echo "Watching for changes (entr)... Ctrl+C to stop"; \
+		find . -name "*.go" | entr -c go test -short -race ./...; \
+	elif command -v fswatch >/dev/null 2>&1; then \
+		echo "Watching for changes (fswatch)... Ctrl+C to stop"; \
+		fswatch -o --include='\.go$$' -r . | while read; do \
+			echo "--- Change detected, running tests ---"; \
+			go test -short -race ./...; \
+		done; \
+	else \
+		echo "Install 'entr' or 'fswatch' for file watching:"; \
+		echo "  macOS:  brew install entr    # or: brew install fswatch"; \
+		echo "  Linux:  apt install entr     # or: apt install fswatch"; \
+		exit 1; \
+	fi
+
 test-coverage: ## Run tests with per-package coverage breakdown
 	@echo "Running tests with per-package coverage..."
 	@go test -short -coverprofile=coverage.out ./internal/... ./pkg/...

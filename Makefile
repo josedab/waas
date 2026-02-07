@@ -51,13 +51,16 @@ dev-logs: ## Run all services with colored log output
 	$(MAKE) -C $(BACKEND) dev-logs
 
 # ─── Testing & quality ──────────────────────────────────────────────
-.PHONY: test test-all test-coverage test-integration lint fmt vet check
+.PHONY: test test-all test-watch test-coverage test-integration lint fmt vet check
 
 test: ## Run core tests with coverage summary
 	$(MAKE) -C $(BACKEND) test
 
 test-all: ## Run all tests including enterprise packages
 	$(MAKE) -C $(BACKEND) test-all
+
+test-watch: ## Watch for changes and re-run tests (requires entr or fswatch)
+	$(MAKE) -C $(BACKEND) test-watch
 
 test-coverage: ## Per-package coverage breakdown
 	$(MAKE) -C $(BACKEND) test-coverage
