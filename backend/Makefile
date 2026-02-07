@@ -62,12 +62,18 @@ dev-logs: ## Run all services with colored, prefixed log output
 		go run ./cmd/analytics-service 2>&1 | sed 's/^/\x1b[35m[analytics] \x1b[0m /' & \
 		wait
 
-dev: ## Run API service with hot-reload (requires Air: go install github.com/air-verse/air@latest)
-	@command -v air >/dev/null 2>&1 || { echo "Air not found. Install: go install github.com/air-verse/air@latest"; exit 1; }
+_ensure-air:
+	@command -v air >/dev/null 2>&1 || { \
+		echo "Air is not installed. It enables hot-reload for Go services."; \
+		printf "Install via 'go install github.com/air-verse/air@latest'? [y/N] "; \
+		read ans; \
+		case "$$ans" in [yY]*) go install github.com/air-verse/air@latest ;; *) echo "Aborted."; exit 1 ;; esac; \
+	}
+
+dev: _ensure-air ## Run API service with hot-reload (requires Air)
 	air
 
-dev-all: ## Run all services with hot-reload (requires Air)
-	@command -v air >/dev/null 2>&1 || { echo "Air not found. Install: go install github.com/air-verse/air@latest"; exit 1; }
+dev-all: _ensure-air ## Run all services with hot-reload (requires Air)
 	@echo "Starting all services with hot-reload..."
 	@echo "  \033[36m[api]\033[0m       .air.toml"
 	@echo "  \033[33m[delivery]\033[0m  .air.delivery.toml"
