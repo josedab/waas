@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Production Docker Compose Configuration
 # This file is for reference and local production testing only
 # Use Kubernetes manifests for actual production deployment

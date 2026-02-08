@@ -4,8 +4,6 @@
 # Everything runs in a single container for easy evaluation.
 # For production, use docker-compose.yml or docker-compose.prod.yml.
 
-version: '3.8'
-
 services:
   waas:
     build:
