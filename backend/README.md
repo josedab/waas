@@ -159,7 +159,37 @@ make vet            # Run go vet
 
 ### Available Commands
 
-Run `make help` to see all development targets, or `make -f Makefile.test help` for test commands, or `make -f Makefile.prod help` for production operations.
+This project uses three Makefiles. Run `make help` in any of them to see the full list.
+
+| Makefile | Purpose | Help command |
+|----------|---------|--------------|
+| `Makefile` | Day-to-day development (build, run, test, lint, migrate, docker) | `make help` |
+| `Makefile.test` | Extended test suites (integration, e2e, performance, chaos, benchmarks) | `make -f Makefile.test help` |
+| `Makefile.prod` | Production operations (build images, deploy, scale, rollback) | `make -f Makefile.prod help` |
+
+**Quick reference — most-used targets:**
+
+```bash
+# Setup & diagnostics
+make dev-setup          # One-command environment setup
+make doctor             # Full environment health check
+
+# Run services
+make dev                # API with hot-reload (auto-installs Air)
+make dev-all            # All services with hot-reload
+make run-all            # All services without hot-reload
+
+# Quality
+make check              # fmt + vet + lint + test in one shot
+make test-watch         # Re-run tests on file changes
+
+# Database
+make migrate-up         # Apply all migrations
+make migrate-core       # Apply core-only migrations (5 tables)
+make migrate-status     # Show current version
+```
+
+> **Tip:** All targets in `backend/Makefile` are also available from the repository root — just run `make <target>` from the top-level directory.
 
 ## Services
 
@@ -205,6 +235,79 @@ See [`.env.example`](.env.example) for the full list with defaults. Key variable
 ## Troubleshooting
 
 <details>
+<summary><strong>Port conflicts — "address already in use"</strong></summary>
+
+Another process is occupying a port the platform needs (5432, 6379, 8080, or 8082).
+
+```bash
+# Identify what's using the port (e.g. 8080)
+lsof -i :8080
+
+# Kill the process (replace <PID> with the actual PID)
+kill <PID>
+
+# Or change the port via .env
+echo "API_PORT=9090" >> .env
+```
+
+Run `make validate-setup` to see which ports are available at a glance.
+</details>
+
+<details>
+<summary><strong>Docker not running or <code>docker-compose</code> errors</strong></summary>
+
+Many make targets depend on Docker. If you see "Cannot connect to the Docker daemon" or similar:
+
+```bash
+# Verify Docker is running
+docker info >/dev/null 2>&1 && echo "Docker OK" || echo "Docker not running"
+
+# macOS: start Docker Desktop from Applications, or:
+open -a Docker
+
+# Linux: start the daemon
+sudo systemctl start docker
+```
+
+If `docker-compose` is not found, Docker Compose V2 ships as a `docker` subcommand:
+
+```bash
+docker compose version   # V2 (preferred)
+docker-compose --version # V1 (legacy)
+```
+</details>
+
+<details>
+<summary><strong>Migration errors — "dirty database" or version mismatch</strong></summary>
+
+If a migration failed mid-way, the schema version can be left in a "dirty" state.
+
+```bash
+# Check current version and dirty flag
+make migrate-status
+
+# Force-set the version to the last successful migration (e.g. version 5)
+migrate -path migrations -database "$DATABASE_URL" force 5
+
+# Then re-run migrations
+make migrate-up
+```
+
+If the `migrate` CLI isn't installed locally, use the Docker fallback:
+
+```bash
+docker run --rm --network host -v $(pwd)/migrations:/migrations \
+  migrate/migrate -path=/migrations -database "$DATABASE_URL" force 5
+```
+
+As a last resort, reset everything (destroys all data):
+
+```bash
+make migrate-reset
+```
+</details>
+
+<details>
 <summary><strong>PostgreSQL fails to start or <code>pg_isready</code> hangs</strong></summary>
 
 Port 5432 may already be in use by another PostgreSQL instance.
@@ -215,6 +318,18 @@ lsof -i :5432
 
 # Stop existing containers and retry
 docker-compose down && docker-compose up -d
+```
+</details>
+
+<details>
+<summary><strong><code>make migrate-up</code> fails with "connection refused"</strong></summary>
+
+PostgreSQL may not be ready yet. Wait a few seconds after `docker-compose up -d`:
+
+```bash
+docker-compose exec postgres pg_isready -U postgres
+# Once it reports "accepting connections", retry:
+make migrate-up
 ```
 </details>
 
@@ -233,18 +348,6 @@ The response includes your `api_key`. Pass it via the `Authorization` header:
 
 ```bash
 curl -H "Authorization: Bearer YOUR_KEY_HERE" http://localhost:8080/api/v1/endpoints
-```
-</details>
-
-<details>
-<summary><strong><code>make migrate-up</code> fails with "connection refused"</strong></summary>
-
-PostgreSQL may not be ready yet. Wait a few seconds after `docker-compose up -d`:
-
-```bash
-docker-compose exec postgres pg_isready -U postgres
-# Once it reports "accepting connections", retry:
-make migrate-up
 ```
 </details>
 
