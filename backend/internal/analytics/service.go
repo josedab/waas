@@ -25,7 +25,10 @@ type Service struct {
 }
 
 func NewService() (*Service, error) {
-	config := utils.LoadConfig()
+	config, err := utils.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("configuration error: %w", err)
+	}
 	logger := utils.NewLogger("analytics-service")
 
 	db, err := database.NewConnection()

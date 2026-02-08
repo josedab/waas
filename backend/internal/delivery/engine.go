@@ -72,7 +72,10 @@ type DeliveryConfig struct {
 
 // NewEngine creates a new delivery engine instance
 func NewEngine() (*DeliveryEngine, error) {
-	config := utils.LoadConfig()
+	config, err := utils.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("configuration error: %w", err)
+	}
 	logger := utils.NewLogger("delivery-engine")
 
 	db, err := database.NewConnection()

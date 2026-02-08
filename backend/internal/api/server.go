@@ -198,7 +198,10 @@ type Server struct {
 // 10. Route registration — handler setup and route binding
 func NewServer() (*Server, error) {
 	// ── Phase 1: Infrastructure (config, databases, migrations) ─────────
-	config := utils.LoadConfig()
+	config, err := utils.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("configuration error: %w", err)
+	}
 	logger := utils.NewLogger("api-service")
 
 	// Connect to database
