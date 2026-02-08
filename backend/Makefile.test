@@ -78,7 +78,7 @@ test-short: ## Run short tests only
 test-deps: ## Check and install test dependencies
 	@echo "Checking test dependencies..."
 	@command -v docker >/dev/null 2>&1 || { echo "Docker is required but not installed. Aborting." >&2; exit 1; }
-	@command -v docker-compose >/dev/null 2>&1 || { echo "Docker Compose is required but not installed. Aborting." >&2; exit 1; }
+	@(command -v docker-compose >/dev/null 2>&1 || docker compose version >/dev/null 2>&1) || { echo "Docker Compose is required but not installed. Aborting." >&2; exit 1; }
 	@go mod download
 	@go mod tidy
 
@@ -172,7 +172,7 @@ test-pkg: ## Run tests for specific package (usage: make test-pkg PKG=./pkg/auth
 # Test with different Go versions (requires Docker)
 test-go-versions: ## Test with multiple Go versions
 	@echo "Testing with multiple Go versions..."
-	@for version in 1.21 1.22 1.23; do \
+	@for version in 1.24; do \
 		echo "Testing with Go $$version..."; \
 		docker run --rm -v $(PWD):/app -w /app golang:$$version go test ./...; \
 	done
