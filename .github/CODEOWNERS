@@ -1,0 +1,37 @@
+# WaaS CODEOWNERS
+# Each line maps a file pattern to one or more reviewers.
+# Order matters — later rules take precedence.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: core maintainers review everything not matched below
+*                                       @josedab
+
+# ── Core packages ───────────────────────────────────────────────
+backend/internal/                       @josedab
+backend/pkg/models/                     @josedab
+backend/pkg/repository/                 @josedab
+backend/pkg/database/                   @josedab
+backend/pkg/queue/                      @josedab
+backend/pkg/auth/                       @josedab
+backend/pkg/errors/                     @josedab
+backend/pkg/signatures/                 @josedab
+backend/pkg/utils/                      @josedab
+backend/cmd/                            @josedab
+
+# ── Enterprise packages ────────────────────────────────────────
+backend/pkg/analytics/                  @josedab
+backend/pkg/compliance/                 @josedab
+backend/pkg/ratelimit/                  @josedab
+backend/pkg/multitenancy/              @josedab
+
+# ── SDKs ────────────────────────────────────────────────────────
+backend/sdk/                            @josedab
+
+# ── Frontend / Dashboard ───────────────────────────────────────
+backend/web/                            @josedab
+
+# ── Infrastructure & CI ────────────────────────────────────────
+backend/deploy/                         @josedab
+backend/k8s/                            @josedab
+backend/docker/                         @josedab
+.github/                                @josedab
