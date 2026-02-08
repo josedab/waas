@@ -6,7 +6,7 @@
        smoke-test run-all run-dashboard \
        install-hooks uninstall-hooks \
        test-coverage test-status audit-deps validate-env \
-       dev dev-all dev-logs check seed _ensure-air doctor
+       dev dev-all dev-logs check seed _ensure-air _ensure-golangci-lint doctor
 
 # Configuration — DATABASE_URL must be set in the environment or .env file.
 # Run "make ensure-env" to create .env from template.
@@ -61,6 +61,14 @@ dev-logs: ## Run all services with colored, prefixed log output
 		go run ./cmd/delivery-engine 2>&1   | sed 's/^/\x1b[33m[delivery]  \x1b[0m /' & \
 		go run ./cmd/analytics-service 2>&1 | sed 's/^/\x1b[35m[analytics] \x1b[0m /' & \
 		wait
+
+_ensure-golangci-lint:
+	@command -v golangci-lint >/dev/null 2>&1 || { \
+		echo "golangci-lint is not installed. It runs static analysis on Go code."; \
+		printf "Install via 'go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest'? [y/N] "; \
+		read ans; \
+		case "$$ans" in [yY]*) go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest ;; *) echo "Aborted."; exit 1 ;; esac; \
+	}
 
 _ensure-air:
 	@command -v air >/dev/null 2>&1 || { \
@@ -160,8 +168,7 @@ test-integration: ## Run integration tests in Docker (isolated from dev environm
 	@echo "Integration tests complete. Test environment cleaned up."
 
 # Code quality
-lint: ## Run golangci-lint
-	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found. Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; exit 1; }
+lint: _ensure-golangci-lint ## Run golangci-lint
 	golangci-lint run ./...
 
 fmt: ## Check code formatting (fails if unformatted)
