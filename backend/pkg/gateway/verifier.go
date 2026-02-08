@@ -40,6 +40,22 @@ func NewVerifierRegistry() *VerifierRegistry {
 	registry.Register(ProviderTypeDiscord, &DiscordVerifier{})
 	registry.Register(ProviderTypeCustom, &CustomVerifier{})
 
+	// Extended providers
+	registry.Register(ProviderTypeGitLab, &GitLabVerifier{})
+	registry.Register(ProviderTypeBitbucket, &BitbucketVerifier{})
+	registry.Register(ProviderTypeZoom, &ZoomVerifier{})
+	registry.Register(ProviderTypeSquare, &SquareVerifier{})
+	registry.Register(ProviderTypeHubSpot, &HubSpotVerifier{})
+	registry.Register(ProviderTypeMailgun, &MailgunVerifier{})
+	registry.Register(ProviderTypeDocuSign, &DocuSignVerifier{})
+	registry.Register(ProviderTypeTypeform, &TypeformVerifier{})
+	registry.Register(ProviderTypeJira, &JiraVerifier{})
+	registry.Register(ProviderTypePagerDuty, &PagerDutyVerifier{})
+	registry.Register(ProviderTypeZendesk, &ZendeskVerifier{})
+	registry.Register(ProviderTypeAsana, &AsanaVerifier{})
+	registry.Register(ProviderTypeCloudflare, &CloudflareVerifier{})
+	registry.Register(ProviderTypeFigma, &FigmaVerifier{})
+
 	return registry
 }
 
