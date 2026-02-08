@@ -29,8 +29,7 @@ linters-settings:
     disabled-checks:
       - hugeParam
   gosec:
-    excludes:
-      - G104 # unhandled errors - too noisy for early development
+    excludes: []
   misspell:
     locale: US
 
