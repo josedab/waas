@@ -15,8 +15,17 @@ type Config struct {
 	Environment   string
 }
 
-func LoadConfig() *Config {
-	return &Config{
+func LoadConfig() (*Config, error) {
+	var missing []string
+	requireEnv := func(key string) string {
+		value := os.Getenv(key)
+		if value == "" {
+			missing = append(missing, key)
+		}
+		return value
+	}
+
+	cfg := &Config{
 		DatabaseURL:   requireEnv("DATABASE_URL"),
 		RedisURL:      requireEnv("REDIS_URL"),
 		APIPort:       getEnv("API_PORT", "8080"),
@@ -24,14 +33,23 @@ func LoadConfig() *Config {
 		JWTSecret:     requireEnv("JWT_SECRET"),
 		Environment:   getEnv("ENVIRONMENT", "development"),
 	}
+
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("❌ required environment variable(s) not set: %s. Run 'make ensure-env' first", joinStrings(missing, ", "))
+	}
+
+	return cfg, nil
 }
 
-func requireEnv(key string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		panic(fmt.Sprintf("required environment variable %s is not set", key))
+func joinStrings(ss []string, sep string) string {
+	result := ""
+	for i, s := range ss {
+		if i > 0 {
+			result += sep
+		}
+		result += s
 	}
-	return value
+	return result
 }
 
 func getEnv(key, defaultValue string) string {
