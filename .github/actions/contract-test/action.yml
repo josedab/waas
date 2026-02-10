@@ -1,7 +1,7 @@
 # WaaS Contract Testing GitHub Action
 #
-# Validates webhook payload schemas against defined contracts.
-# Use in CI/CD to detect breaking changes before deployment.
+# Validates webhook payload schemas against defined contracts,
+# runs contract test suites, and optionally injects chaos to verify resilience.
 #
 # Usage in workflow:
 #   - uses: ./.github/actions/contract-test
@@ -10,9 +10,18 @@
 #       api-key: ${{ secrets.WAAS_API_KEY }}
 #       contract-id: 'your-contract-id'
 #       payload-file: 'tests/fixtures/webhook-payload.json'
+#
+#   # Full test suite with chaos:
+#   - uses: ./.github/actions/contract-test
+#     with:
+#       api-url: ${{ secrets.WAAS_API_URL }}
+#       api-key: ${{ secrets.WAAS_API_KEY }}
+#       test-suite: 'tests/contracts/suite.yaml'
+#       chaos-enabled: 'true'
+#       chaos-error-rate: '0.1'
 
 name: 'WaaS Contract Test'
-description: 'Validate webhook payloads against WaaS contracts'
+description: 'Validate webhook payloads against WaaS contracts with chaos testing support'
 inputs:
   api-url:
     description: 'WaaS API URL'
@@ -22,9 +31,12 @@ inputs:
     required: true
   contract-id:
     description: 'Contract ID to validate against'
-    required: true
+    required: false
   payload-file:
     description: 'Path to JSON payload file to validate'
+    required: false
+  test-suite:
+    description: 'Path to YAML test suite definition'
     required: false
   check-breaking:
     description: 'Check for breaking changes in contract schema'
@@ -40,21 +52,47 @@ inputs:
     description: 'Fail if breaking changes are detected'
     required: false
     default: 'true'
+  chaos-enabled:
+    description: 'Enable chaos injection during tests'
+    required: false
+    default: 'false'
+  chaos-error-rate:
+    description: 'Error injection rate (0-1)'
+    required: false
+    default: '0.1'
+  chaos-latency-ms:
+    description: 'Max injected latency in milliseconds'
+    required: false
+    default: '2000'
+  fail-fast:
+    description: 'Stop on first failure'
+    required: false
+    default: 'false'
+  timeout:
+    description: 'Test timeout in seconds'
+    required: false
+    default: '300'
 
 outputs:
   passed:
     description: 'Whether all validations passed'
-    value: ${{ steps.validate.outputs.passed }}
+    value: ${{ steps.validate.outputs.passed || steps.run-suite.outputs.passed }}
   breaking-changes:
     description: 'Whether breaking changes were detected'
     value: ${{ steps.diff.outputs.breaking }}
+  total-tests:
+    description: 'Total number of tests run'
+    value: ${{ steps.run-suite.outputs.total }}
+  failed-tests:
+    description: 'Number of failed tests'
+    value: ${{ steps.run-suite.outputs.failed }}
 
 runs:
   using: 'composite'
   steps:
     - name: Validate payload
       id: validate
-      if: inputs.payload-file != ''
+      if: inputs.payload-file != '' && inputs.contract-id != ''
       shell: bash
       env:
         WAAS_API_URL: ${{ inputs.api-url }}
@@ -86,9 +124,68 @@ runs:
         fi
         echo "::endgroup::"
 
+    - name: Run contract test suite
+      id: run-suite
+      if: inputs.test-suite != ''
+      shell: bash
+      env:
+        WAAS_API_URL: ${{ inputs.api-url }}
+        WAAS_API_KEY: ${{ inputs.api-key }}
+      run: |
+        echo "::group::WaaS Contract Test Suite"
+        SUITE_FILE="${{ inputs.test-suite }}"
+        if [ ! -f "$SUITE_FILE" ]; then
+          echo "::error::Test suite file not found: $SUITE_FILE"
+          exit 1
+        fi
+
+        CHAOS_PARAM=""
+        if [ "${{ inputs.chaos-enabled }}" = "true" ]; then
+          echo "🔥 Chaos testing enabled (error_rate=${{ inputs.chaos-error-rate }}, max_latency=${{ inputs.chaos-latency-ms }}ms)"
+          CHAOS_PARAM="&chaos=true&chaos_error_rate=${{ inputs.chaos-error-rate }}&chaos_latency_ms=${{ inputs.chaos-latency-ms }}"
+        fi
+
+        RESPONSE=$(curl -s -w "\n%{http_code}" \
+          -X POST "${WAAS_API_URL}/api/v1/contracts/test-suite?fail_fast=${{ inputs.fail-fast }}&timeout=${{ inputs.timeout }}${CHAOS_PARAM}" \
+          -H "Authorization: Bearer ${WAAS_API_KEY}" \
+          -H "Content-Type: application/yaml" \
+          --data-binary "@${SUITE_FILE}")
+
+        HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
+
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "::error::API error $HTTP_CODE: $BODY"
+          echo "passed=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        TOTAL=$(echo "$BODY" | jq -r '.total_tests // 0')
+        PASSED_COUNT=$(echo "$BODY" | jq -r '.passed_tests // 0')
+        FAILED_COUNT=$(echo "$BODY" | jq -r '.failed_tests // 0')
+        SUITE_PASSED=$(echo "$BODY" | jq -r '.passed')
+
+        echo "total=$TOTAL" >> $GITHUB_OUTPUT
+        echo "failed=$FAILED_COUNT" >> $GITHUB_OUTPUT
+
+        echo "📊 Results: $PASSED_COUNT/$TOTAL passed, $FAILED_COUNT failed"
+
+        # Report failures
+        echo "$BODY" | jq -r '.results[] | select(.passed == false) | "::error::\(.name): \(.error)"' 2>/dev/null || true
+
+        if [ "$SUITE_PASSED" = "true" ]; then
+          echo "✅ All contract tests passed"
+          echo "passed=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Contract tests failed"
+          echo "passed=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        echo "::endgroup::"
+
     - name: Check breaking changes
       id: diff
-      if: inputs.check-breaking == 'true'
+      if: inputs.check-breaking == 'true' && inputs.contract-id != ''
       shell: bash
       env:
         WAAS_API_URL: ${{ inputs.api-url }}
