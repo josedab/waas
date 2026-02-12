@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	stdlog "log"
 	"strings"
 	"sync"
 	"time"
@@ -188,7 +189,9 @@ func (s *Service) CreateMonitor(ctx context.Context, tenantID string, req *Creat
 			Source:          "user",
 			CreatedAt:       now,
 		}
-		_ = s.repo.SaveABI(ctx, contractABI)
+		if err := s.repo.SaveABI(ctx, contractABI); err != nil {
+			stdlog.Printf("failed to save contract ABI: %v", err)
+		}
 	}
 
 	// Save monitor
@@ -341,7 +344,9 @@ func (s *Service) startMonitorWorker(monitor *ContractMonitor) {
 	if err != nil {
 		monitor.Status = MonitorStatusError
 		monitor.ErrorMessage = err.Error()
-		_ = s.repo.UpdateMonitor(context.Background(), monitor)
+		if err := s.repo.UpdateMonitor(context.Background(), monitor); err != nil {
+			stdlog.Printf("failed to update monitor status to error: %v", err)
+		}
 		return
 	}
 
@@ -463,7 +468,9 @@ func (w *monitorWorker) processBlocks(s *Service) {
 
 		// Process event (send webhooks)
 		if s.processor != nil {
-			_ = s.processor.ProcessEvent(ctx, event, w.monitor)
+			if err := s.processor.ProcessEvent(ctx, event, w.monitor); err != nil {
+				stdlog.Printf("failed to process blockchain event %s: %v", event.ID, err)
+			}
 		} else {
 			s.sendWebhooks(ctx, event, w.monitor)
 		}
@@ -483,8 +490,12 @@ func (w *monitorWorker) processBlocks(s *Service) {
 	if len(logs) > 0 {
 		w.monitor.LastEventAt = &now
 	}
-	_ = s.repo.UpdateMonitor(ctx, w.monitor)
-	_ = s.repo.SaveCheckpoint(ctx, w.monitor.ID, toBlock)
+	if err := s.repo.UpdateMonitor(ctx, w.monitor); err != nil {
+		stdlog.Printf("failed to update monitor checkpoint: %v", err)
+	}
+	if err := s.repo.SaveCheckpoint(ctx, w.monitor.ID, toBlock); err != nil {
+		stdlog.Printf("failed to save block checkpoint: %v", err)
+	}
 }
 
 // buildTopicFilters builds EVM topic filters from event configurations
@@ -586,7 +597,11 @@ func (s *Service) sendWebhooks(ctx context.Context, event *ContractEvent, monito
 			Confirmations:   monitor.Config.ConfirmationBlocks,
 		}
 
-		payloadBytes, _ := json.Marshal(payload)
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			stdlog.Printf("failed to marshal webhook payload for event %s: %v", event.ID, err)
+			continue
+		}
 
 		// Create delivery record
 		delivery := &WebhookDelivery{
@@ -601,7 +616,9 @@ func (s *Service) sendWebhooks(ctx context.Context, event *ContractEvent, monito
 			CreatedAt:  time.Now(),
 		}
 
-		_ = s.repo.CreateDelivery(ctx, delivery)
+		if err := s.repo.CreateDelivery(ctx, delivery); err != nil {
+			stdlog.Printf("failed to create webhook delivery record: %v", err)
+		}
 
 		// Send webhook
 		if s.webhookSender != nil {
@@ -615,7 +632,9 @@ func (s *Service) sendWebhooks(ctx context.Context, event *ContractEvent, monito
 				delivery.DeliveredAt = &now
 				monitor.Stats.WebhooksDelivered++
 			}
-			_ = s.repo.UpdateDelivery(ctx, delivery)
+			if err := s.repo.UpdateDelivery(ctx, delivery); err != nil {
+				stdlog.Printf("failed to update webhook delivery status: %v", err)
+			}
 		}
 	}
 }
