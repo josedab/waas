@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -128,7 +129,9 @@ func (s *Service) CreateBridge(ctx context.Context, tenantID string, req *Create
 	if len(credentials) > 0 {
 		if err := s.repo.SaveCredentials(ctx, bridge.ID, credentials); err != nil {
 			// Rollback bridge creation
-			_ = s.repo.DeleteBridge(ctx, tenantID, bridge.ID)
+			if delErr := s.repo.DeleteBridge(ctx, tenantID, bridge.ID); delErr != nil {
+				log.Printf("streaming: failed to rollback bridge %s after credential save failure: %v", bridge.ID, delErr)
+			}
 			return nil, fmt.Errorf("failed to save credentials: %w", err)
 		}
 	}
@@ -137,7 +140,9 @@ func (s *Service) CreateBridge(ctx context.Context, tenantID string, req *Create
 	if err := s.initializeBridge(ctx, bridge, credentials); err != nil {
 		bridge.Status = BridgeStatusError
 		bridge.ErrorMessage = err.Error()
-		_ = s.repo.UpdateBridge(ctx, bridge)
+		if updateErr := s.repo.UpdateBridge(ctx, bridge); updateErr != nil {
+			log.Printf("streaming: failed to update bridge %s error status: %v", bridge.ID, updateErr)
+		}
 		return bridge, nil // Return bridge with error status
 	}
 
@@ -391,7 +396,9 @@ func (s *Service) runConsumer(bridge *StreamingBridge) {
 		return s.handleInboundEvent(ctx, bridge, event)
 	}
 
-	_ = consumer.Start(ctx, handler)
+	if err := consumer.Start(ctx, handler); err != nil {
+		log.Printf("streaming: consumer failed for bridge %s: %v", bridge.ID, err)
+	}
 }
 
 // handleInboundEvent processes an inbound streaming event
@@ -410,7 +417,9 @@ func (s *Service) handleInboundEvent(ctx context.Context, bridge *StreamingBridg
 		if err != nil {
 			event.Status = "transform_failed"
 			event.ErrorMessage = err.Error()
-			_ = s.repo.SaveEvent(ctx, event)
+			if saveErr := s.repo.SaveEvent(ctx, event); saveErr != nil {
+				log.Printf("streaming: failed to save transform_failed event for bridge %s: %v", bridge.ID, saveErr)
+			}
 			return err
 		}
 		payload = transformed
@@ -431,7 +440,9 @@ func (s *Service) handleInboundEvent(ctx context.Context, bridge *StreamingBridg
 	if err := s.webhookQueue.PublishDelivery(ctx, deliveryMsg); err != nil {
 		event.Status = "queue_failed"
 		event.ErrorMessage = err.Error()
-		_ = s.repo.SaveEvent(ctx, event)
+		if saveErr := s.repo.SaveEvent(ctx, event); saveErr != nil {
+			log.Printf("streaming: failed to save queue_failed event for bridge %s: %v", bridge.ID, saveErr)
+		}
 		return err
 	}
 
@@ -439,10 +450,14 @@ func (s *Service) handleInboundEvent(ctx context.Context, bridge *StreamingBridg
 	event.DeliveryID = deliveryMsg.DeliveryID.String()
 	now := time.Now()
 	event.ProcessedAt = &now
-	_ = s.repo.SaveEvent(ctx, event)
+	if err := s.repo.SaveEvent(ctx, event); err != nil {
+		log.Printf("streaming: failed to save forwarded event for bridge %s: %v", bridge.ID, err)
+	}
 
 	// Update metrics
-	_ = s.repo.IncrementEventCounters(ctx, bridge.ID, 1, 1, 0)
+	if err := s.repo.IncrementEventCounters(ctx, bridge.ID, 1, 1, 0); err != nil {
+		log.Printf("streaming: failed to increment event counters for bridge %s: %v", bridge.ID, err)
+	}
 
 	return nil
 }
@@ -579,7 +594,9 @@ func (s *Service) pauseBridge(bridgeID string) {
 	s.mu.RUnlock()
 
 	if ok {
-		_ = consumer.Pause()
+		if err := consumer.Pause(); err != nil {
+			log.Printf("streaming: failed to pause consumer for bridge %s: %v", bridgeID, err)
+		}
 	}
 }
 
@@ -590,7 +607,9 @@ func (s *Service) resumeBridge(bridgeID string) {
 	s.mu.RUnlock()
 
 	if ok {
-		_ = consumer.Resume()
+		if err := consumer.Resume(); err != nil {
+			log.Printf("streaming: failed to resume consumer for bridge %s: %v", bridgeID, err)
+		}
 	}
 }
 
@@ -604,21 +623,29 @@ func (s *Service) DeleteBridge(ctx context.Context, tenantID, bridgeID string) e
 	// Stop and remove producer/consumer
 	s.mu.Lock()
 	if producer, ok := s.producers[bridgeID]; ok {
-		_ = producer.Close()
+		if err := producer.Close(); err != nil {
+			log.Printf("streaming: failed to close producer for bridge %s: %v", bridgeID, err)
+		}
 		delete(s.producers, bridgeID)
 	}
 	if consumer, ok := s.consumers[bridgeID]; ok {
-		_ = consumer.Close()
+		if err := consumer.Close(); err != nil {
+			log.Printf("streaming: failed to close consumer for bridge %s: %v", bridgeID, err)
+		}
 		delete(s.consumers, bridgeID)
 	}
 	s.mu.Unlock()
 
 	// Delete credentials
-	_ = s.repo.DeleteCredentials(ctx, bridgeID)
+	if err := s.repo.DeleteCredentials(ctx, bridgeID); err != nil {
+		log.Printf("streaming: failed to delete credentials for bridge %s: %v", bridgeID, err)
+	}
 
 	// Update status to deleting
 	bridge.Status = BridgeStatusDeleting
-	_ = s.repo.UpdateBridge(ctx, bridge)
+	if err := s.repo.UpdateBridge(ctx, bridge); err != nil {
+		log.Printf("streaming: failed to update bridge %s to deleting status: %v", bridgeID, err)
+	}
 
 	// Delete bridge
 	return s.repo.DeleteBridge(ctx, tenantID, bridgeID)
@@ -707,11 +734,15 @@ func (s *Service) SendToStream(ctx context.Context, tenantID, bridgeID string, p
 	}
 
 	if err := producer.Send(ctx, event); err != nil {
-		_ = s.repo.IncrementEventCounters(ctx, bridgeID, 0, 0, 1)
+		if counterErr := s.repo.IncrementEventCounters(ctx, bridgeID, 0, 0, 1); counterErr != nil {
+			log.Printf("streaming: failed to increment error counters for bridge %s: %v", bridgeID, counterErr)
+		}
 		return err
 	}
 
-	_ = s.repo.IncrementEventCounters(ctx, bridgeID, 0, 1, 0)
+	if err := s.repo.IncrementEventCounters(ctx, bridgeID, 0, 1, 0); err != nil {
+		log.Printf("streaming: failed to increment success counters for bridge %s: %v", bridgeID, err)
+	}
 	return nil
 }
 
@@ -768,15 +799,21 @@ func (s *Service) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, producer := range s.producers {
-		_ = producer.Close()
+	for id, producer := range s.producers {
+		if err := producer.Close(); err != nil {
+			log.Printf("streaming: failed to close producer %s: %v", id, err)
+		}
 	}
-	for _, consumer := range s.consumers {
-		_ = consumer.Close()
+	for id, consumer := range s.consumers {
+		if err := consumer.Close(); err != nil {
+			log.Printf("streaming: failed to close consumer %s: %v", id, err)
+		}
 	}
 
 	if s.schemaRegistry != nil {
-		_ = s.schemaRegistry.Close()
+		if err := s.schemaRegistry.Close(); err != nil {
+			log.Printf("streaming: failed to close schema registry: %v", err)
+		}
 	}
 
 	return nil
