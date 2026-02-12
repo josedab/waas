@@ -392,8 +392,3 @@ func (f *FaultConfig) Validate() error {
 	}
 	return nil
 }
-
-// Type and Percentage and Duration fields for test compatibility
-func init() {
-	// This is handled by the FaultConfig struct fields
-}

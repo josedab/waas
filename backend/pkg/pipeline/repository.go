@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
-	"time"
 )
 
 // MemoryRepository is an in-memory implementation of the pipeline repository
@@ -135,7 +134,3 @@ func (r *MemoryRepository) ListExecutions(ctx context.Context, tenantID, pipelin
 }
 
 // --- Pipeline execution test ---
-
-func init() {
-	_ = time.Now // ensure time is used
-}
