@@ -28,18 +28,9 @@ We take the security of WaaS seriously. If you discover a security vulnerability
 - **Resolution**: We aim to release a fix within **30 days** of confirming the vulnerability, depending on complexity.
 - **Disclosure**: We will coordinate public disclosure with you after the fix is released.
 
-### GPG Key for Encrypted Reports
+### Encrypted Reports
 
-If you need to send sensitive information, you can encrypt your message using our GPG key:
-
-```
-Key ID: 0xSECURITY_KEY_PLACEHOLDER
-Fingerprint: XXXX XXXX XXXX XXXX XXXX  XXXX XXXX XXXX XXXX XXXX
-```
-
-The full public key can be found at: https://github.com/waas-project/waas/security
-
-> **Note**: Replace the placeholder above with an actual GPG key before first use.
+If you need to send sensitive information, you can use [GitHub's private vulnerability reporting](https://github.com/waas-project/waas/security/advisories/new) to securely share details with the maintainers.
 
 ## Scope
 
