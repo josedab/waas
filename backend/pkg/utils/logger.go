@@ -2,13 +2,18 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
 type Logger struct {
-	logger *log.Logger
+	logger   *log.Logger
+	service  string
+	minLevel int
+	format   string // "json" or "text"
 }
 
 type LogEntry struct {
@@ -24,15 +29,37 @@ type LogEntry struct {
 	Fields        map[string]interface{} `json:"fields,omitempty"`
 }
 
+var levelValues = map[string]int{
+	"DEBUG": 0,
+	"INFO":  1,
+	"WARN":  2,
+	"ERROR": 3,
+}
+
+func parseLogLevel(level string) int {
+	if v, ok := levelValues[strings.ToUpper(level)]; ok {
+		return v
+	}
+	return 1 // default to INFO
+}
+
 func NewLogger(service string) *Logger {
+	logLevel := getEnv("LOG_LEVEL", "info")
+	logFormat := getEnv("LOG_FORMAT", "json")
 	return &Logger{
-		logger: log.New(os.Stdout, "", 0),
+		logger:   log.New(os.Stdout, "", 0),
+		service:  service,
+		minLevel: parseLogLevel(logLevel),
+		format:   strings.ToLower(logFormat),
 	}
 }
 
 func (l *Logger) WithCorrelationID(correlationID string) *Logger {
 	return &Logger{
-		logger: l.logger,
+		logger:   l.logger,
+		service:  l.service,
+		minLevel: l.minLevel,
+		format:   l.format,
 	}
 }
 
@@ -68,11 +95,51 @@ func (l *Logger) Debug(message string, fields map[string]interface{}) {
 	l.log("DEBUG", message, fields)
 }
 
+func (l *Logger) shouldLog(level string) bool {
+	return parseLogLevel(level) >= l.minLevel
+}
+
+func (l *Logger) formatText(entry LogEntry) string {
+	msg := fmt.Sprintf("%s [%s] %s: %s",
+		entry.Timestamp.Format(time.RFC3339), entry.Level, l.service, entry.Message)
+	if entry.RequestID != "" {
+		msg += fmt.Sprintf(" request_id=%s", entry.RequestID)
+	}
+	if entry.CorrelationID != "" {
+		msg += fmt.Sprintf(" correlation_id=%s", entry.CorrelationID)
+	}
+	if entry.TenantID != "" {
+		msg += fmt.Sprintf(" tenant_id=%s", entry.TenantID)
+	}
+	if entry.DeliveryID != "" {
+		msg += fmt.Sprintf(" delivery_id=%s", entry.DeliveryID)
+	}
+	if entry.EndpointID != "" {
+		msg += fmt.Sprintf(" endpoint_id=%s", entry.EndpointID)
+	}
+	if entry.Fields != nil {
+		for k, v := range entry.Fields {
+			// Skip fields already extracted as top-level
+			switch k {
+			case "request_id", "tenant_id", "delivery_id", "endpoint_id":
+				continue
+			}
+			msg += fmt.Sprintf(" %s=%v", k, v)
+		}
+	}
+	return msg
+}
+
 func (l *Logger) log(level, message string, fields map[string]interface{}) {
+	if !l.shouldLog(level) {
+		return
+	}
+
 	entry := LogEntry{
 		Level:     level,
 		Message:   message,
 		Timestamp: time.Now().UTC(),
+		Service:   l.service,
 		Fields:    fields,
 	}
 
@@ -92,6 +159,11 @@ func (l *Logger) log(level, message string, fields map[string]interface{}) {
 		}
 	}
 
+	if l.format == "text" {
+		l.logger.Println(l.formatText(entry))
+		return
+	}
+
 	jsonData, err := json.Marshal(entry)
 	if err != nil {
 		l.logger.Printf("Failed to marshal log entry: %v", err)
@@ -102,10 +174,15 @@ func (l *Logger) log(level, message string, fields map[string]interface{}) {
 }
 
 func (l *Logger) logWithCorrelation(level, message, correlationID string, fields map[string]interface{}) {
+	if !l.shouldLog(level) {
+		return
+	}
+
 	entry := LogEntry{
 		Level:         level,
 		Message:       message,
 		Timestamp:     time.Now().UTC(),
+		Service:       l.service,
 		CorrelationID: correlationID,
 		Fields:        fields,
 	}
@@ -124,6 +201,11 @@ func (l *Logger) logWithCorrelation(level, message, correlationID string, fields
 		if endpointID, ok := fields["endpoint_id"].(string); ok {
 			entry.EndpointID = endpointID
 		}
+	}
+
+	if l.format == "text" {
+		l.logger.Println(l.formatText(entry))
+		return
 	}
 
 	jsonData, err := json.Marshal(entry)

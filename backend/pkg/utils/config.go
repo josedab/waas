@@ -13,6 +13,8 @@ type Config struct {
 	AnalyticsPort string
 	JWTSecret     string
 	Environment   string
+	LogLevel      string
+	LogFormat     string
 }
 
 func LoadConfig() (*Config, error) {
@@ -32,6 +34,8 @@ func LoadConfig() (*Config, error) {
 		AnalyticsPort: getEnv("ANALYTICS_PORT", "8082"),
 		JWTSecret:     requireEnv("JWT_SECRET"),
 		Environment:   getEnv("ENVIRONMENT", "development"),
+		LogLevel:      getEnv("LOG_LEVEL", "info"),
+		LogFormat:     getEnv("LOG_FORMAT", "json"),
 	}
 
 	if len(missing) > 0 {
