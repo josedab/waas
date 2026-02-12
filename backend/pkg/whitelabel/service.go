@@ -3,6 +3,7 @@ package whitelabel
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -178,9 +179,14 @@ func (s *Service) ProvisionSSL(ctx context.Context, tenantID string) (*Whitelabe
 
 	// In production, this would trigger async SSL provisioning via Let's Encrypt or similar
 	go func() {
+		sslCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
 		config.SSLStatus = SSLActive
 		config.UpdatedAt = time.Now()
-		_ = s.repo.UpdateConfig(context.Background(), config)
+		if err := s.repo.UpdateConfig(sslCtx, config); err != nil {
+			log.Printf("failed to update SSL status to active for tenant %s: %v", tenantID, err)
+		}
 	}()
 
 	return config, nil
