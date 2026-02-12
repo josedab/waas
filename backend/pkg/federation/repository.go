@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -76,9 +77,18 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 
 // SaveMember saves a federation member
 func (r *PostgresRepository) SaveMember(ctx context.Context, member *FederationMember) error {
-	endpointsJSON, _ := json.Marshal(member.Endpoints)
-	capsJSON, _ := json.Marshal(member.Capabilities)
-	metaJSON, _ := json.Marshal(member.Metadata)
+	endpointsJSON, err := json.Marshal(member.Endpoints)
+	if err != nil {
+		return fmt.Errorf("failed to marshal member endpoints: %w", err)
+	}
+	capsJSON, err := json.Marshal(member.Capabilities)
+	if err != nil {
+		return fmt.Errorf("failed to marshal member capabilities: %w", err)
+	}
+	metaJSON, err := json.Marshal(member.Metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal member metadata: %w", err)
+	}
 
 	query := `
 		INSERT INTO federation_members (
@@ -97,7 +107,7 @@ func (r *PostgresRepository) SaveMember(ctx context.Context, member *FederationM
 			last_seen_at = EXCLUDED.last_seen_at,
 			updated_at = EXCLUDED.updated_at`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		member.ID, member.TenantID, member.OrganizationID, member.Name, member.Domain,
 		member.Status, member.PublicKey, endpointsJSON, capsJSON, member.TrustLevel,
 		metaJSON, member.JoinedAt, member.LastSeenAt, member.CreatedAt, member.UpdatedAt)
@@ -129,9 +139,15 @@ func (r *PostgresRepository) GetMember(ctx context.Context, memberID string) (*F
 		return nil, err
 	}
 
-	json.Unmarshal(endpointsJSON, &m.Endpoints)
-	json.Unmarshal(capsJSON, &m.Capabilities)
-	json.Unmarshal(metaJSON, &m.Metadata)
+	if err := json.Unmarshal(endpointsJSON, &m.Endpoints); err != nil {
+		log.Printf("federation: failed to unmarshal member %s endpoints: %v", memberID, err)
+	}
+	if err := json.Unmarshal(capsJSON, &m.Capabilities); err != nil {
+		log.Printf("federation: failed to unmarshal member %s capabilities: %v", memberID, err)
+	}
+	if err := json.Unmarshal(metaJSON, &m.Metadata); err != nil {
+		log.Printf("federation: failed to unmarshal member %s metadata: %v", memberID, err)
+	}
 
 	return &m, nil
 }
@@ -186,9 +202,15 @@ func (r *PostgresRepository) ListMembers(ctx context.Context, tenantID string, s
 			continue
 		}
 
-		json.Unmarshal(endpointsJSON, &m.Endpoints)
-		json.Unmarshal(capsJSON, &m.Capabilities)
-		json.Unmarshal(metaJSON, &m.Metadata)
+		if err := json.Unmarshal(endpointsJSON, &m.Endpoints); err != nil {
+			log.Printf("federation: failed to unmarshal member %s endpoints: %v", m.ID, err)
+		}
+		if err := json.Unmarshal(capsJSON, &m.Capabilities); err != nil {
+			log.Printf("federation: failed to unmarshal member %s capabilities: %v", m.ID, err)
+		}
+		if err := json.Unmarshal(metaJSON, &m.Metadata); err != nil {
+			log.Printf("federation: failed to unmarshal member %s metadata: %v", m.ID, err)
+		}
 
 		members = append(members, m)
 	}
@@ -205,7 +227,10 @@ func (r *PostgresRepository) DeleteMember(ctx context.Context, memberID string) 
 
 // SaveTrustRelationship saves a trust relationship
 func (r *PostgresRepository) SaveTrustRelationship(ctx context.Context, trust *TrustRelationship) error {
-	permsJSON, _ := json.Marshal(trust.Permissions)
+	permsJSON, err := json.Marshal(trust.Permissions)
+	if err != nil {
+		return fmt.Errorf("failed to marshal trust permissions: %w", err)
+	}
 
 	query := `
 		INSERT INTO federation_trust (
@@ -219,7 +244,7 @@ func (r *PostgresRepository) SaveTrustRelationship(ctx context.Context, trust *T
 			expires_at = EXCLUDED.expires_at,
 			updated_at = EXCLUDED.updated_at`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		trust.ID, trust.TenantID, trust.SourceMemberID, trust.TargetMemberID,
 		trust.Status, trust.TrustLevel, permsJSON, trust.ExpiresAt,
 		trust.CreatedAt, trust.UpdatedAt)
@@ -250,7 +275,9 @@ func (r *PostgresRepository) GetTrustRelationship(ctx context.Context, trustID s
 		return nil, err
 	}
 
-	json.Unmarshal(permsJSON, &t.Permissions)
+	if err := json.Unmarshal(permsJSON, &t.Permissions); err != nil {
+		log.Printf("federation: failed to unmarshal trust %s permissions: %v", trustID, err)
+	}
 	if expiresAt.Valid {
 		t.ExpiresAt = &expiresAt.Time
 	}
@@ -304,7 +331,9 @@ func (r *PostgresRepository) ListTrustRelationships(ctx context.Context, tenantI
 			continue
 		}
 
-		json.Unmarshal(permsJSON, &t.Permissions)
+		if err := json.Unmarshal(permsJSON, &t.Permissions); err != nil {
+			log.Printf("federation: failed to unmarshal trust %s permissions in list: %v", t.ID, err)
+		}
 		if expiresAt.Valid {
 			t.ExpiresAt = &expiresAt.Time
 		}
@@ -317,7 +346,10 @@ func (r *PostgresRepository) ListTrustRelationships(ctx context.Context, tenantI
 
 // SaveTrustRequest saves a trust request
 func (r *PostgresRepository) SaveTrustRequest(ctx context.Context, req *TrustRequest) error {
-	permsJSON, _ := json.Marshal(req.Permissions)
+	permsJSON, err := json.Marshal(req.Permissions)
+	if err != nil {
+		return fmt.Errorf("failed to marshal trust request permissions: %w", err)
+	}
 
 	query := `
 		INSERT INTO federation_trust_requests (
@@ -329,7 +361,7 @@ func (r *PostgresRepository) SaveTrustRequest(ctx context.Context, req *TrustReq
 			responded_at = EXCLUDED.responded_at,
 			response = EXCLUDED.response`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		req.ID, req.TenantID, req.RequesterID, req.TargetMemberID, req.RequestedLevel,
 		permsJSON, req.Message, req.Status, req.ExpiresAt, req.RespondedAt,
 		req.Response, req.CreatedAt)
@@ -362,7 +394,9 @@ func (r *PostgresRepository) GetTrustRequest(ctx context.Context, reqID string) 
 		return nil, err
 	}
 
-	json.Unmarshal(permsJSON, &req.Permissions)
+	if err := json.Unmarshal(permsJSON, &req.Permissions); err != nil {
+		log.Printf("federation: failed to unmarshal trust request %s permissions: %v", reqID, err)
+	}
 	if expiresAt.Valid {
 		req.ExpiresAt = &expiresAt.Time
 	}
@@ -413,7 +447,9 @@ func (r *PostgresRepository) ListTrustRequests(ctx context.Context, tenantID str
 			continue
 		}
 
-		json.Unmarshal(permsJSON, &req.Permissions)
+		if err := json.Unmarshal(permsJSON, &req.Permissions); err != nil {
+			log.Printf("federation: failed to unmarshal trust request %s permissions in list: %v", req.ID, err)
+		}
 		if expiresAt.Valid {
 			req.ExpiresAt = &expiresAt.Time
 		}
@@ -441,7 +477,10 @@ func (r *PostgresRepository) UpdateTrustRequestStatus(ctx context.Context, reqID
 
 // SaveCatalog saves an event catalog
 func (r *PostgresRepository) SaveCatalog(ctx context.Context, catalog *EventCatalog) error {
-	eventsJSON, _ := json.Marshal(catalog.EventTypes)
+	eventsJSON, err := json.Marshal(catalog.EventTypes)
+	if err != nil {
+		return fmt.Errorf("failed to marshal catalog event types: %w", err)
+	}
 
 	query := `
 		INSERT INTO federation_catalogs (
@@ -456,7 +495,7 @@ func (r *PostgresRepository) SaveCatalog(ctx context.Context, catalog *EventCata
 			public = EXCLUDED.public,
 			updated_at = EXCLUDED.updated_at`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		catalog.ID, catalog.TenantID, catalog.MemberID, catalog.Name,
 		catalog.Description, eventsJSON, catalog.Version, catalog.Public,
 		catalog.CreatedAt, catalog.UpdatedAt)
@@ -486,7 +525,9 @@ func (r *PostgresRepository) GetCatalog(ctx context.Context, catalogID string) (
 		return nil, err
 	}
 
-	json.Unmarshal(eventsJSON, &c.EventTypes)
+	if err := json.Unmarshal(eventsJSON, &c.EventTypes); err != nil {
+		log.Printf("federation: failed to unmarshal catalog %s event types: %v", catalogID, err)
+	}
 
 	return &c, nil
 }
@@ -523,7 +564,9 @@ func (r *PostgresRepository) ListCatalogs(ctx context.Context, tenantID string, 
 			continue
 		}
 
-		json.Unmarshal(eventsJSON, &c.EventTypes)
+		if err := json.Unmarshal(eventsJSON, &c.EventTypes); err != nil {
+			log.Printf("federation: failed to unmarshal catalog %s event types in list: %v", c.ID, err)
+		}
 		catalogs = append(catalogs, c)
 	}
 
@@ -557,7 +600,9 @@ func (r *PostgresRepository) ListPublicCatalogs(ctx context.Context) ([]EventCat
 			continue
 		}
 
-		json.Unmarshal(eventsJSON, &c.EventTypes)
+		if err := json.Unmarshal(eventsJSON, &c.EventTypes); err != nil {
+			log.Printf("federation: failed to unmarshal public catalog %s event types: %v", c.ID, err)
+		}
 		catalogs = append(catalogs, c)
 	}
 
@@ -566,9 +611,18 @@ func (r *PostgresRepository) ListPublicCatalogs(ctx context.Context) ([]EventCat
 
 // SaveSubscription saves a subscription
 func (r *PostgresRepository) SaveSubscription(ctx context.Context, sub *FederatedSubscription) error {
-	eventsJSON, _ := json.Marshal(sub.EventTypes)
-	filterJSON, _ := json.Marshal(sub.Filter)
-	deliveryJSON, _ := json.Marshal(sub.DeliveryConfig)
+	eventsJSON, err := json.Marshal(sub.EventTypes)
+	if err != nil {
+		return fmt.Errorf("failed to marshal subscription event types: %w", err)
+	}
+	filterJSON, err := json.Marshal(sub.Filter)
+	if err != nil {
+		return fmt.Errorf("failed to marshal subscription filter: %w", err)
+	}
+	deliveryJSON, err := json.Marshal(sub.DeliveryConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal subscription delivery config: %w", err)
+	}
 
 	query := `
 		INSERT INTO federation_subscriptions (
@@ -582,7 +636,7 @@ func (r *PostgresRepository) SaveSubscription(ctx context.Context, sub *Federate
 			delivery_config = EXCLUDED.delivery_config,
 			updated_at = EXCLUDED.updated_at`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		sub.ID, sub.TenantID, sub.SourceMemberID, sub.TargetMemberID, sub.CatalogID,
 		eventsJSON, filterJSON, sub.Status, deliveryJSON, sub.CreatedAt, sub.UpdatedAt)
 
@@ -611,12 +665,19 @@ func (r *PostgresRepository) GetSubscription(ctx context.Context, subID string) 
 		return nil, err
 	}
 
-	json.Unmarshal(eventsJSON, &s.EventTypes)
-	json.Unmarshal(deliveryJSON, &s.DeliveryConfig)
+	if err := json.Unmarshal(eventsJSON, &s.EventTypes); err != nil {
+		log.Printf("federation: failed to unmarshal subscription %s event types: %v", subID, err)
+	}
+	if err := json.Unmarshal(deliveryJSON, &s.DeliveryConfig); err != nil {
+		log.Printf("federation: failed to unmarshal subscription %s delivery config: %v", subID, err)
+	}
 	if len(filterJSON) > 0 {
 		var f EventFilter
-		json.Unmarshal(filterJSON, &f)
-		s.Filter = &f
+		if err := json.Unmarshal(filterJSON, &f); err != nil {
+			log.Printf("federation: failed to unmarshal subscription %s filter: %v", subID, err)
+		} else {
+			s.Filter = &f
+		}
 	}
 
 	return &s, nil
@@ -656,12 +717,19 @@ func (r *PostgresRepository) ListSubscriptions(ctx context.Context, tenantID str
 			continue
 		}
 
-		json.Unmarshal(eventsJSON, &s.EventTypes)
-		json.Unmarshal(deliveryJSON, &s.DeliveryConfig)
+		if err := json.Unmarshal(eventsJSON, &s.EventTypes); err != nil {
+			log.Printf("federation: failed to unmarshal subscription %s event types in list: %v", s.ID, err)
+		}
+		if err := json.Unmarshal(deliveryJSON, &s.DeliveryConfig); err != nil {
+			log.Printf("federation: failed to unmarshal subscription %s delivery config in list: %v", s.ID, err)
+		}
 		if len(filterJSON) > 0 {
 			var f EventFilter
-			json.Unmarshal(filterJSON, &f)
-			s.Filter = &f
+			if err := json.Unmarshal(filterJSON, &f); err != nil {
+				log.Printf("federation: failed to unmarshal subscription %s filter in list: %v", s.ID, err)
+			} else {
+				s.Filter = &f
+			}
 		}
 
 		subs = append(subs, s)
@@ -696,12 +764,19 @@ func (r *PostgresRepository) ListSubscriptionsByMember(ctx context.Context, memb
 			continue
 		}
 
-		json.Unmarshal(eventsJSON, &s.EventTypes)
-		json.Unmarshal(deliveryJSON, &s.DeliveryConfig)
+		if err := json.Unmarshal(eventsJSON, &s.EventTypes); err != nil {
+			log.Printf("federation: failed to unmarshal subscription %s event types by member: %v", s.ID, err)
+		}
+		if err := json.Unmarshal(deliveryJSON, &s.DeliveryConfig); err != nil {
+			log.Printf("federation: failed to unmarshal subscription %s delivery config by member: %v", s.ID, err)
+		}
 		if len(filterJSON) > 0 {
 			var f EventFilter
-			json.Unmarshal(filterJSON, &f)
-			s.Filter = &f
+			if err := json.Unmarshal(filterJSON, &f); err != nil {
+				log.Printf("federation: failed to unmarshal subscription %s filter by member: %v", s.ID, err)
+			} else {
+				s.Filter = &f
+			}
 		}
 
 		subs = append(subs, s)
@@ -712,7 +787,10 @@ func (r *PostgresRepository) ListSubscriptionsByMember(ctx context.Context, memb
 
 // SaveDelivery saves a delivery
 func (r *PostgresRepository) SaveDelivery(ctx context.Context, delivery *FederatedDelivery) error {
-	payloadJSON, _ := json.Marshal(delivery.Payload)
+	payloadJSON, err := json.Marshal(delivery.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal delivery payload: %w", err)
+	}
 
 	query := `
 		INSERT INTO federation_deliveries (
@@ -732,7 +810,7 @@ func (r *PostgresRepository) SaveDelivery(ctx context.Context, delivery *Federat
 			latency = EXCLUDED.latency,
 			delivered_at = EXCLUDED.delivered_at`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		delivery.ID, delivery.TenantID, delivery.SubscriptionID,
 		delivery.SourceMemberID, delivery.TargetMemberID, delivery.EventType,
 		delivery.EventID, payloadJSON, delivery.Status, delivery.Attempts,
@@ -772,7 +850,9 @@ func (r *PostgresRepository) GetDelivery(ctx context.Context, deliveryID string)
 		return nil, err
 	}
 
-	json.Unmarshal(payloadJSON, &d.Payload)
+	if err := json.Unmarshal(payloadJSON, &d.Payload); err != nil {
+		log.Printf("federation: failed to unmarshal delivery %s payload: %v", deliveryID, err)
+	}
 	if lastAttemptAt.Valid {
 		d.LastAttemptAt = &lastAttemptAt.Time
 	}
@@ -856,7 +936,9 @@ func (r *PostgresRepository) scanDeliveries(rows *sql.Rows) ([]FederatedDelivery
 			continue
 		}
 
-		json.Unmarshal(payloadJSON, &d.Payload)
+		if err := json.Unmarshal(payloadJSON, &d.Payload); err != nil {
+			log.Printf("federation: failed to unmarshal delivery %s payload in scan: %v", d.ID, err)
+		}
 		if lastAttemptAt.Valid {
 			d.LastAttemptAt = &lastAttemptAt.Time
 		}
@@ -901,8 +983,14 @@ func (r *PostgresRepository) UpdateDeliveryStatus(ctx context.Context, deliveryI
 
 // SavePolicy saves federation policy
 func (r *PostgresRepository) SavePolicy(ctx context.Context, policy *FederationPolicy) error {
-	allowedJSON, _ := json.Marshal(policy.AllowedDomains)
-	blockedJSON, _ := json.Marshal(policy.BlockedDomains)
+	allowedJSON, err := json.Marshal(policy.AllowedDomains)
+	if err != nil {
+		return fmt.Errorf("failed to marshal allowed domains: %w", err)
+	}
+	blockedJSON, err := json.Marshal(policy.BlockedDomains)
+	if err != nil {
+		return fmt.Errorf("failed to marshal blocked domains: %w", err)
+	}
 
 	query := `
 		INSERT INTO federation_policies (
@@ -922,7 +1010,7 @@ func (r *PostgresRepository) SavePolicy(ctx context.Context, policy *FederationP
 			rate_limit_per_member = EXCLUDED.rate_limit_per_member,
 			updated_at = EXCLUDED.updated_at`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		policy.ID, policy.TenantID, policy.Enabled, policy.AutoAcceptTrust,
 		policy.MinTrustLevel, allowedJSON, blockedJSON, policy.RequireEncryption,
 		policy.AllowRelay, policy.MaxSubscriptions, policy.RateLimitPerMember,
@@ -955,8 +1043,12 @@ func (r *PostgresRepository) GetPolicy(ctx context.Context, tenantID string) (*F
 		return nil, err
 	}
 
-	json.Unmarshal(allowedJSON, &p.AllowedDomains)
-	json.Unmarshal(blockedJSON, &p.BlockedDomains)
+	if err := json.Unmarshal(allowedJSON, &p.AllowedDomains); err != nil {
+		log.Printf("federation: failed to unmarshal policy allowed domains for tenant %s: %v", tenantID, err)
+	}
+	if err := json.Unmarshal(blockedJSON, &p.BlockedDomains); err != nil {
+		log.Printf("federation: failed to unmarshal policy blocked domains for tenant %s: %v", tenantID, err)
+	}
 
 	return &p, nil
 }
