@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -162,7 +163,9 @@ func (s *Service) deployFunctionAsync(ctx context.Context, fn *EdgeFunction) {
 	deployment, err := s.DeployFunction(ctx, fn.TenantID, fn.ID)
 	if err != nil {
 		fn.Status = FunctionStatusFailed
-		_ = s.repo.UpdateFunction(ctx, fn)
+		if updateErr := s.repo.UpdateFunction(ctx, fn); updateErr != nil {
+			log.Printf("edge: failed to update function %s to failed status: %v", fn.ID, updateErr)
+		}
 		return
 	}
 
@@ -170,7 +173,9 @@ func (s *Service) deployFunctionAsync(ctx context.Context, fn *EdgeFunction) {
 		fn.Status = FunctionStatusActive
 		fn.LastDeployedAt = deployment.CompletedAt
 		fn.DeploymentURLs = deployment.DeploymentURLs
-		_ = s.repo.UpdateFunction(ctx, fn)
+		if updateErr := s.repo.UpdateFunction(ctx, fn); updateErr != nil {
+			log.Printf("edge: failed to update function %s after deployment: %v", fn.ID, updateErr)
+		}
 	}
 }
 
@@ -249,7 +254,9 @@ func (s *Service) DeleteFunction(ctx context.Context, tenantID, functionID strin
 	provider, ok := s.providers[fn.Runtime]
 	s.mu.RUnlock()
 	if ok && fn.Status == FunctionStatusActive {
-		_ = provider.Undeploy(ctx, fn)
+		if err := provider.Undeploy(ctx, fn); err != nil {
+			log.Printf("edge: failed to undeploy function %s: %v", functionID, err)
+		}
 	}
 
 	return s.repo.DeleteFunction(ctx, tenantID, functionID)
@@ -298,7 +305,9 @@ func (s *Service) DeployFunction(ctx context.Context, tenantID, functionID strin
 
 	// Update status to deploying
 	fn.Status = FunctionStatusDeploying
-	_ = s.repo.UpdateFunction(ctx, fn)
+	if err := s.repo.UpdateFunction(ctx, fn); err != nil {
+		log.Printf("edge: failed to update function %s to deploying status: %v", fn.ID, err)
+	}
 
 	// Create deployment record
 	deployment := &FunctionDeployment{
@@ -311,7 +320,9 @@ func (s *Service) DeployFunction(ctx context.Context, tenantID, functionID strin
 		Regions:    fn.Regions,
 		StartedAt:  time.Now(),
 	}
-	_ = s.repo.CreateDeployment(ctx, deployment)
+	if err := s.repo.CreateDeployment(ctx, deployment); err != nil {
+		log.Printf("edge: failed to create deployment record for function %s: %v", fn.ID, err)
+	}
 
 	// Deploy
 	result, err := provider.Deploy(ctx, fn)
@@ -321,10 +332,14 @@ func (s *Service) DeployFunction(ctx context.Context, tenantID, functionID strin
 		completedAt := time.Now()
 		deployment.CompletedAt = &completedAt
 		deployment.Duration = completedAt.Sub(deployment.StartedAt).Milliseconds()
-		_ = s.repo.UpdateDeployment(ctx, deployment)
+		if updateErr := s.repo.UpdateDeployment(ctx, deployment); updateErr != nil {
+			log.Printf("edge: failed to update failed deployment %s: %v", deployment.ID, updateErr)
+		}
 
 		fn.Status = FunctionStatusFailed
-		_ = s.repo.UpdateFunction(ctx, fn)
+		if updateErr := s.repo.UpdateFunction(ctx, fn); updateErr != nil {
+			log.Printf("edge: failed to update function %s to failed status after deploy: %v", fn.ID, updateErr)
+		}
 
 		return deployment, err
 	}
@@ -335,17 +350,23 @@ func (s *Service) DeployFunction(ctx context.Context, tenantID, functionID strin
 	completedAt := time.Now()
 	deployment.CompletedAt = &completedAt
 	deployment.Duration = completedAt.Sub(deployment.StartedAt).Milliseconds()
-	_ = s.repo.UpdateDeployment(ctx, deployment)
+	if err := s.repo.UpdateDeployment(ctx, deployment); err != nil {
+		log.Printf("edge: failed to update successful deployment %s: %v", deployment.ID, err)
+	}
 
 	// Update function
 	fn.Status = FunctionStatusActive
 	fn.LastDeployedAt = &completedAt
 	fn.DeploymentURLs = result.DeploymentURLs
-	_ = s.repo.UpdateFunction(ctx, fn)
+	if err := s.repo.UpdateFunction(ctx, fn); err != nil {
+		log.Printf("edge: failed to update function %s after successful deploy: %v", fn.ID, err)
+	}
 
 	// Update router
 	if s.router != nil {
-		_ = s.router.UpdateRoutes(ctx, tenantID)
+		if err := s.router.UpdateRoutes(ctx, tenantID); err != nil {
+			log.Printf("edge: failed to update routes for tenant %s: %v", tenantID, err)
+		}
 	}
 
 	return deployment, nil
@@ -395,35 +416,45 @@ func (s *Service) InvokeFunction(ctx context.Context, tenantID, functionID strin
 
 	// Record invocation
 	invocation := &FunctionInvocation{
-		ID:         uuid.New().String(),
-		FunctionID: fn.ID,
-		TenantID:   fn.TenantID,
-		Region:     region,
+		ID:          uuid.New().String(),
+		FunctionID:  fn.ID,
+		TenantID:    fn.TenantID,
+		Region:      region,
 		TriggerType: TriggerTypeHTTPRoute,
-		Input:      req.Input,
-		DurationMs: duration,
-		InvokedAt:  startTime,
+		Input:       req.Input,
+		DurationMs:  duration,
+		InvokedAt:   startTime,
 	}
 
 	if err != nil {
 		invocation.Status = "error"
 		invocation.ErrorMessage = err.Error()
-		_ = s.repo.CreateInvocation(ctx, invocation)
-		_ = s.repo.IncrementCounters(ctx, fn.ID, 1, 1)
+		if createErr := s.repo.CreateInvocation(ctx, invocation); createErr != nil {
+			log.Printf("edge: failed to save error invocation for function %s: %v", fn.ID, createErr)
+		}
+		if counterErr := s.repo.IncrementCounters(ctx, fn.ID, 1, 1); counterErr != nil {
+			log.Printf("edge: failed to increment error counters for function %s: %v", fn.ID, counterErr)
+		}
 		return nil, err
 	}
 
 	invocation.Status = "success"
 	invocation.Output = response.Output
 	invocation.CacheHit = response.CacheHit
-	_ = s.repo.CreateInvocation(ctx, invocation)
-	_ = s.repo.IncrementCounters(ctx, fn.ID, 1, 0)
+	if createErr := s.repo.CreateInvocation(ctx, invocation); createErr != nil {
+		log.Printf("edge: failed to save success invocation for function %s: %v", fn.ID, createErr)
+	}
+	if counterErr := s.repo.IncrementCounters(ctx, fn.ID, 1, 0); counterErr != nil {
+		log.Printf("edge: failed to increment counters for function %s: %v", fn.ID, counterErr)
+	}
 
 	// Update last invoked
 	now := time.Now()
 	fn.LastInvokedAt = &now
 	fn.InvocationCount++
-	_ = s.repo.UpdateFunction(ctx, fn)
+	if updateErr := s.repo.UpdateFunction(ctx, fn); updateErr != nil {
+		log.Printf("edge: failed to update function %s last invoked: %v", fn.ID, updateErr)
+	}
 
 	response.InvocationID = invocation.ID
 	response.DurationMs = duration
