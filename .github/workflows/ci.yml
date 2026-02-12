@@ -42,6 +42,27 @@ jobs:
         args: --timeout=5m
         working-directory: backend
 
+    - name: Validate .env.example completeness
+      run: |
+        if [ -f .env.example ]; then
+          ENV_VARS_IN_CODE=$(grep -roh 'os\.Getenv("[^"]*")' --include='*.go' . 2>/dev/null \
+            | grep -v '_test\.go' \
+            | sed 's/os\.Getenv("//;s/")//' \
+            | grep -v -E '^(RUN_|TEST_)' \
+            | sort -u)
+          MISSING=""
+          for var in $ENV_VARS_IN_CODE; do
+            if ! grep -q "^${var}=" .env.example 2>/dev/null && ! grep -q "^# *${var}=" .env.example 2>/dev/null; then
+              MISSING="$MISSING $var"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::The following env vars are used in code but missing from .env.example:$MISSING"
+            exit 1
+          fi
+          echo ".env.example is up to date."
+        fi
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
