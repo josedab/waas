@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -96,13 +97,18 @@ func (s *Service) CreateAction(ctx context.Context, tenantID string, req *Create
 	if s.endpointUpdater != nil {
 		state, err := s.endpointUpdater.GetEndpointState(ctx, tenantID, req.EndpointID)
 		if err == nil {
-			previousState, _ = json.Marshal(state)
+			marshaled, marshalErr := json.Marshal(state)
+			if marshalErr != nil {
+				log.Printf("remediation: failed to marshal previous state for endpoint %s: %v", req.EndpointID, marshalErr)
+			} else {
+				previousState = marshaled
+			}
 		}
 	}
 
 	now := time.Now()
 	confidenceLevel := GetConfidenceLevel(req.ConfidenceScore)
-	
+
 	// Calculate expiry
 	var expiresAt *time.Time
 	if policy.ActionExpirySec > 0 {
@@ -131,7 +137,7 @@ func (s *Service) CreateAction(ctx context.Context, tenantID string, req *Create
 
 	// Check if action should be auto-approved
 	shouldAutoApprove := s.shouldAutoApprove(ctx, action, policy)
-	
+
 	if shouldAutoApprove {
 		action.AutoApproved = true
 		action.Status = ActionStatusApproved
@@ -151,9 +157,13 @@ func (s *Service) CreateAction(ctx context.Context, tenantID string, req *Create
 	// Send notification
 	if s.notifier != nil && policy.NotifyOnAction {
 		if shouldAutoApprove {
-			_ = s.notifier.SendActionApproved(ctx, action)
+			if err := s.notifier.SendActionApproved(ctx, action); err != nil {
+				log.Printf("remediation: failed to send action approved notification for %s: %v", action.ID, err)
+			}
 		} else {
-			_ = s.notifier.SendActionPending(ctx, action)
+			if err := s.notifier.SendActionPending(ctx, action); err != nil {
+				log.Printf("remediation: failed to send action pending notification for %s: %v", action.ID, err)
+			}
 		}
 	}
 
@@ -228,7 +238,9 @@ func (s *Service) ApproveAction(ctx context.Context, tenantID, actionID, approve
 	s.createAuditLog(ctx, action, "approved", approvedBy, nil)
 
 	if s.notifier != nil {
-		_ = s.notifier.SendActionApproved(ctx, action)
+		if err := s.notifier.SendActionApproved(ctx, action); err != nil {
+			log.Printf("remediation: failed to send action approved notification for %s: %v", action.ID, err)
+		}
 	}
 
 	// Execute async
@@ -271,7 +283,9 @@ func (s *Service) executeActionAsync(ctx context.Context, action *RemediationAct
 	now := time.Now()
 	action.ExecutedAt = &now
 	action.UpdatedAt = now
-	_ = s.repo.UpdateAction(ctx, action)
+	if err := s.repo.UpdateAction(ctx, action); err != nil {
+		log.Printf("remediation: failed to update action %s to executing: %v", action.ID, err)
+	}
 
 	// Execute the action
 	err := s.executor.Execute(ctx, action)
@@ -289,7 +303,12 @@ func (s *Service) executeActionAsync(ctx context.Context, action *RemediationAct
 		if s.endpointUpdater != nil {
 			state, err := s.endpointUpdater.GetEndpointState(ctx, action.TenantID, action.EndpointID)
 			if err == nil {
-				action.NewState, _ = json.Marshal(state)
+				marshaled, marshalErr := json.Marshal(state)
+				if marshalErr != nil {
+					log.Printf("remediation: failed to marshal new state for action %s: %v", action.ID, marshalErr)
+				} else {
+					action.NewState = marshaled
+				}
 			}
 		}
 
@@ -297,23 +316,31 @@ func (s *Service) executeActionAsync(ctx context.Context, action *RemediationAct
 	}
 
 	action.UpdatedAt = time.Now()
-	_ = s.repo.UpdateAction(ctx, action)
+	if err := s.repo.UpdateAction(ctx, action); err != nil {
+		log.Printf("remediation: failed to update action %s after execution: %v", action.ID, err)
+	}
 
 	// Notify
 	if s.notifier != nil {
-		_ = s.notifier.SendActionExecuted(ctx, action, action.Status == ActionStatusCompleted)
+		if err := s.notifier.SendActionExecuted(ctx, action, action.Status == ActionStatusCompleted); err != nil {
+			log.Printf("remediation: failed to send execution notification for action %s: %v", action.ID, err)
+		}
 	}
 
 	// Set cooldown
 	policy, _ := s.repo.GetPolicy(ctx, action.TenantID)
 	if policy != nil && policy.CooldownPeriodSec > 0 {
-		_ = s.repo.SetCooldown(ctx, action.TenantID, action.EndpointID, 
-			time.Duration(policy.CooldownPeriodSec)*time.Second)
+		if err := s.repo.SetCooldown(ctx, action.TenantID, action.EndpointID,
+			time.Duration(policy.CooldownPeriodSec)*time.Second); err != nil {
+			log.Printf("remediation: failed to set cooldown for action %s: %v", action.ID, err)
+		}
 	}
 
 	// Increment auto action count if auto-approved
 	if action.AutoApproved {
-		_, _ = s.repo.IncrementAutoActionCount(ctx, action.TenantID)
+		if _, err := s.repo.IncrementAutoActionCount(ctx, action.TenantID); err != nil {
+			log.Printf("remediation: failed to increment auto action count for tenant %s: %v", action.TenantID, err)
+		}
 	}
 }
 
@@ -422,10 +449,15 @@ func (s *Service) GetAuditLogs(ctx context.Context, actionID string) ([]ActionAu
 func (s *Service) createAuditLog(ctx context.Context, action *RemediationAction, event, actor string, details map[string]string) {
 	var detailsJSON json.RawMessage
 	if details != nil {
-		detailsJSON, _ = json.Marshal(details)
+		marshaled, marshalErr := json.Marshal(details)
+		if marshalErr != nil {
+			log.Printf("remediation: failed to marshal audit log details for action %s: %v", action.ID, marshalErr)
+		} else {
+			detailsJSON = marshaled
+		}
 	}
 
-	log := &ActionAuditLog{
+	auditLog := &ActionAuditLog{
 		ID:        uuid.New().String(),
 		ActionID:  action.ID,
 		TenantID:  action.TenantID,
@@ -435,7 +467,9 @@ func (s *Service) createAuditLog(ctx context.Context, action *RemediationAction,
 		CreatedAt: time.Now(),
 	}
 
-	_ = s.repo.CreateAuditLog(ctx, log)
+	if err := s.repo.CreateAuditLog(ctx, auditLog); err != nil {
+		log.Printf("remediation: failed to create audit log for action %s event %s: %v", action.ID, event, err)
+	}
 }
 
 // CleanupExpiredActions marks expired pending actions
@@ -449,7 +483,9 @@ func (s *Service) CleanupExpiredActions(ctx context.Context) error {
 		action.Status = ActionStatusFailed
 		action.ErrorMessage = "Action expired"
 		action.UpdatedAt = time.Now()
-		_ = s.repo.UpdateAction(ctx, &action)
+		if err := s.repo.UpdateAction(ctx, &action); err != nil {
+			log.Printf("remediation: failed to mark expired action %s as failed: %v", action.ID, err)
+		}
 		s.createAuditLog(ctx, &action, "expired", "system", nil)
 	}
 
@@ -497,7 +533,7 @@ func (e *DefaultExecutor) Execute(ctx context.Context, action *RemediationAction
 		return e.updater.UpdateTimeout(ctx, action.TenantID, action.EndpointID, action.Parameters.NewTimeoutMs)
 
 	case ActionTypeRetryConfig:
-		return e.updater.UpdateRetryConfig(ctx, action.TenantID, action.EndpointID, 
+		return e.updater.UpdateRetryConfig(ctx, action.TenantID, action.EndpointID,
 			action.Parameters.NewMaxRetries, action.Parameters.NewBackoffMs)
 
 	case ActionTypeEndpointDisable:
