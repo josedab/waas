@@ -55,6 +55,18 @@ fi
 
 echo "pre-commit: all checks passed."
 
+# Optional: run golangci-lint on staged packages (non-blocking)
+if command -v golangci-lint >/dev/null 2>&1; then
+    LINT_PACKAGES=$(echo "$STAGED_GO_FILES" | xargs -n1 dirname | sort -u | sed 's|^|./|')
+    echo "pre-commit: running golangci-lint --fast on staged packages..."
+    if ! golangci-lint run --fast $LINT_PACKAGES 2>&1; then
+        echo ""
+        echo "pre-commit: ⚠️  golangci-lint found issues (non-blocking)."
+        echo "  Fix them before pushing, or CI will fail."
+        echo "  To skip: git commit --no-verify"
+    fi
+fi
+
 # Validate .env.example completeness (advisory, non-blocking)
 if [ -f .env.example ]; then
     ENV_VARS_IN_CODE=$(grep -roh 'os\.Getenv("[^"]*")' --include='*.go' . 2>/dev/null \
