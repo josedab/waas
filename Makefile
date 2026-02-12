@@ -54,7 +54,7 @@ dev-logs: ## Run all services with colored log output
 	$(MAKE) -C $(BACKEND) dev-logs
 
 # ─── Testing & quality ──────────────────────────────────────────────
-.PHONY: test test-all test-watch test-coverage test-integration lint fmt vet check
+.PHONY: test test-all test-watch test-coverage test-integration test-pkg lint lint-fast fmt vet check
 
 test: ## Run core tests with coverage summary
 	$(MAKE) -C $(BACKEND) test
@@ -71,8 +71,14 @@ test-coverage: ## Per-package coverage breakdown
 test-integration: ## Integration tests in Docker
 	$(MAKE) -C $(BACKEND) test-integration
 
+test-pkg: ## Run tests for a single package (usage: make test-pkg PKG=./pkg/auth)
+	$(MAKE) -C $(BACKEND) -f Makefile.test test-pkg PKG=$(PKG)
+
 lint: ## Run golangci-lint
 	$(MAKE) -C $(BACKEND) lint
+
+lint-fast: ## Run golangci-lint --fast on changed packages only
+	$(MAKE) -C $(BACKEND) lint-fast
 
 fmt: ## Check code formatting
 	$(MAKE) -C $(BACKEND) fmt

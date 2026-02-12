@@ -2,7 +2,7 @@
        docker-up docker-down docker-build \
        migrate-up migrate-down migrate-core migrate-status migrate-reset migrate-rollback dev-setup dev-setup-full ensure-env deps \
        docs docs-generate docs-serve docs-test \
-       lint fmt vet help validate-setup \
+       lint lint-fast fmt vet help validate-setup \
        smoke-test run-all run-dashboard \
        install-hooks uninstall-hooks \
        test-coverage test-status audit-deps validate-env \
@@ -170,6 +170,11 @@ test-integration: ## Run integration tests in Docker (isolated from dev environm
 # Code quality
 lint: _ensure-golangci-lint ## Run golangci-lint
 	golangci-lint run ./...
+
+lint-fast: _ensure-golangci-lint ## Run golangci-lint --fast on changed packages only
+	@CHANGED=$$(git diff --name-only --diff-filter=ACM HEAD | grep '\.go$$' | xargs -n1 dirname 2>/dev/null | sort -u | sed 's|^|./|'); \
+	if [ -z "$$CHANGED" ]; then echo "No changed Go packages to lint."; \
+	else echo "Linting changed packages: $$CHANGED"; golangci-lint run --fast $$CHANGED; fi
 
 fmt: ## Check code formatting (fails if unformatted)
 	@unformatted=$$(gofmt -l .); \
