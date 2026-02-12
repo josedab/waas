@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"strings"
-	"time"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/utils"
+	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -271,8 +271,12 @@ func (h *TestingHandler) CreateTestEndpoint(c *gin.Context) {
 
 	// Generate test endpoint
 	endpointID := uuid.New()
-	// In production, this would be your actual domain
-	testURL := fmt.Sprintf("http://localhost:8080/test/%s", endpointID.String())
+	// Derive base URL from the incoming request
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	testURL := fmt.Sprintf("%s://%s/test/%s", scheme, c.Request.Host, endpointID.String())
 
 	now := time.Now()
 	expiresAt := now.Add(time.Duration(req.TTL) * time.Second)
