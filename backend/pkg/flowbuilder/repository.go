@@ -140,8 +140,14 @@ func (r *PostgresRepository) SaveNodes(ctx context.Context, workflowID string, n
 		node.WorkflowID = workflowID
 		node.CreatedAt = time.Now()
 
-		configJSON, _ := json.Marshal(node.Config)
-		posJSON, _ := json.Marshal(node.Position)
+		configJSON, err := json.Marshal(node.Config)
+		if err != nil {
+			return fmt.Errorf("marshal node config: %w", err)
+		}
+		posJSON, err := json.Marshal(node.Position)
+		if err != nil {
+			return fmt.Errorf("marshal node position: %w", err)
+		}
 
 		query := `INSERT INTO flow_nodes (id, workflow_id, type, name, config, position, timeout_seconds, retry_count, created_at)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
@@ -192,20 +198,26 @@ func (r *PostgresRepository) CreateExecution(ctx context.Context, exec *Workflow
 	}
 	exec.StartedAt = time.Now()
 
-	triggerJSON, _ := json.Marshal(exec.TriggerData)
+	triggerJSON, err := json.Marshal(exec.TriggerData)
+	if err != nil {
+		return fmt.Errorf("marshal trigger data: %w", err)
+	}
 
 	query := `INSERT INTO flow_executions (id, workflow_id, tenant_id, status, trigger_data, error, started_at, duration_ms)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		exec.ID, exec.WorkflowID, exec.TenantID, exec.Status,
 		string(triggerJSON), exec.Error, exec.StartedAt, 0)
 	return err
 }
 
 func (r *PostgresRepository) UpdateExecution(ctx context.Context, exec *WorkflowExecution) error {
-	resultJSON, _ := json.Marshal(exec.Result)
+	resultJSON, err := json.Marshal(exec.Result)
+	if err != nil {
+		return fmt.Errorf("marshal execution result: %w", err)
+	}
 	query := `UPDATE flow_executions SET status=$1, result=$2, error=$3, completed_at=$4, duration_ms=$5 WHERE id=$6`
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		exec.Status, string(resultJSON), exec.Error, exec.CompletedAt, exec.DurationMs, exec.ID)
 	return err
 }
@@ -243,11 +255,17 @@ func (r *PostgresRepository) ListExecutions(ctx context.Context, workflowID stri
 }
 
 func (r *PostgresRepository) SaveNodeResult(ctx context.Context, result *NodeExecResult) error {
-	inputJSON, _ := json.Marshal(result.Input)
-	outputJSON, _ := json.Marshal(result.Output)
+	inputJSON, err := json.Marshal(result.Input)
+	if err != nil {
+		return fmt.Errorf("marshal node input: %w", err)
+	}
+	outputJSON, err := json.Marshal(result.Output)
+	if err != nil {
+		return fmt.Errorf("marshal node output: %w", err)
+	}
 	query := `INSERT INTO flow_node_results (node_id, execution_id, status, input, output, error, started_at, duration_ms)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		result.NodeID, result.ExecID, result.Status,
 		string(inputJSON), string(outputJSON), result.Error, result.StartedAt, result.DurationMs)
 	return err
@@ -309,14 +327,22 @@ func (r *PostgresRepository) CreateTemplate(ctx context.Context, t *WorkflowTemp
 func (r *PostgresRepository) GetAnalytics(ctx context.Context, workflowID string) (*WorkflowAnalytics, error) {
 	analytics := &WorkflowAnalytics{WorkflowID: workflowID}
 
-	_ = r.db.GetContext(ctx, &analytics.TotalExecutions,
-		`SELECT COUNT(*) FROM flow_executions WHERE workflow_id = $1`, workflowID)
-	_ = r.db.GetContext(ctx, &analytics.SuccessfulExecs,
-		`SELECT COUNT(*) FROM flow_executions WHERE workflow_id = $1 AND status = 'completed'`, workflowID)
-	_ = r.db.GetContext(ctx, &analytics.FailedExecs,
-		`SELECT COUNT(*) FROM flow_executions WHERE workflow_id = $1 AND status = 'failed'`, workflowID)
-	_ = r.db.GetContext(ctx, &analytics.AvgDurationMs,
-		`SELECT COALESCE(AVG(duration_ms), 0) FROM flow_executions WHERE workflow_id = $1`, workflowID)
+	if err := r.db.GetContext(ctx, &analytics.TotalExecutions,
+		`SELECT COUNT(*) FROM flow_executions WHERE workflow_id = $1`, workflowID); err != nil {
+		return nil, fmt.Errorf("count total executions: %w", err)
+	}
+	if err := r.db.GetContext(ctx, &analytics.SuccessfulExecs,
+		`SELECT COUNT(*) FROM flow_executions WHERE workflow_id = $1 AND status = 'completed'`, workflowID); err != nil {
+		return nil, fmt.Errorf("count successful executions: %w", err)
+	}
+	if err := r.db.GetContext(ctx, &analytics.FailedExecs,
+		`SELECT COUNT(*) FROM flow_executions WHERE workflow_id = $1 AND status = 'failed'`, workflowID); err != nil {
+		return nil, fmt.Errorf("count failed executions: %w", err)
+	}
+	if err := r.db.GetContext(ctx, &analytics.AvgDurationMs,
+		`SELECT COALESCE(AVG(duration_ms), 0) FROM flow_executions WHERE workflow_id = $1`, workflowID); err != nil {
+		return nil, fmt.Errorf("avg duration: %w", err)
+	}
 
 	if analytics.TotalExecutions > 0 {
 		analytics.SuccessRate = float64(analytics.SuccessfulExecs) / float64(analytics.TotalExecutions) * 100
