@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -129,7 +130,7 @@ func (s *Service) ProcessInboundWebhook(ctx context.Context, sourceID string, pa
 	// Marshal headers for storage
 	headersJSON, err := json.Marshal(headers)
 	if err != nil {
-		headersJSON = []byte("{}")
+		return nil, fmt.Errorf("marshal headers: %w", err)
 	}
 
 	now := time.Now()
@@ -174,16 +175,22 @@ func (s *Service) ProcessInboundWebhook(ctx context.Context, sourceID string, pa
 				errMsg = verifyErr.Error()
 			}
 			event.ErrorMessage = errMsg
-			_ = s.repo.UpdateEventStatus(ctx, event.ID, EventStatusFailed, errMsg)
+			if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusFailed, errMsg); err != nil {
+				log.Printf("failed to update event status to failed: %v", err)
+			}
 			return event, fmt.Errorf("signature verification failed: %s", errMsg)
 		}
 
 		event.Status = EventStatusValidated
-		_ = s.repo.UpdateEventStatus(ctx, event.ID, EventStatusValidated, "")
+		if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusValidated, ""); err != nil {
+			log.Printf("failed to update event status to validated: %v", err)
+		}
 	} else {
 		event.SignatureValid = true
 		event.Status = EventStatusValidated
-		_ = s.repo.UpdateEventStatus(ctx, event.ID, EventStatusValidated, "")
+		if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusValidated, ""); err != nil {
+			log.Printf("failed to update event status to validated: %v", err)
+		}
 	}
 
 	// Route the event
@@ -191,14 +198,18 @@ func (s *Service) ProcessInboundWebhook(ctx context.Context, sourceID string, pa
 	if err == nil && len(rules) > 0 {
 		if routeErr := s.RouteEvent(ctx, event, rules); routeErr != nil {
 			event.Status = EventStatusFailed
-			_ = s.repo.UpdateEventStatus(ctx, event.ID, EventStatusFailed, routeErr.Error())
+			if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusFailed, routeErr.Error()); err != nil {
+				log.Printf("failed to update event status to failed after routing error: %v", err)
+			}
 			return event, nil // Return event even if routing fails
 		}
 	}
 
 	event.Status = EventStatusRouted
 	event.ProcessedAt = &now
-	_ = s.repo.UpdateEventStatus(ctx, event.ID, EventStatusRouted, "")
+	if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusRouted, ""); err != nil {
+		log.Printf("failed to update event status to routed: %v", err)
+	}
 
 	return event, nil
 }
@@ -410,7 +421,9 @@ func (s *Service) ReplayInboundEvent(ctx context.Context, tenantID, eventID stri
 	if len(rules) > 0 {
 		if routeErr := s.RouteEvent(ctx, event, rules); routeErr != nil {
 			event.Status = EventStatusFailed
-			_ = s.repo.UpdateEventStatus(ctx, event.ID, EventStatusFailed, routeErr.Error())
+			if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusFailed, routeErr.Error()); err != nil {
+				log.Printf("failed to update event status to failed during replay: %v", err)
+			}
 			return event, routeErr
 		}
 	}
@@ -418,7 +431,9 @@ func (s *Service) ReplayInboundEvent(ctx context.Context, tenantID, eventID stri
 	now := time.Now()
 	event.Status = EventStatusRouted
 	event.ProcessedAt = &now
-	_ = s.repo.UpdateEventStatus(ctx, event.ID, EventStatusRouted, "")
+	if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusRouted, ""); err != nil {
+		log.Printf("failed to update event status to routed during replay: %v", err)
+	}
 
 	return event, nil
 }
@@ -459,7 +474,9 @@ func (s *Service) ReplayDLQEntry(ctx context.Context, tenantID, entryID string) 
 	}
 
 	// Mark the DLQ entry as replayed
-	_ = s.repo.MarkDLQEntryReplayed(ctx, entryID)
+	if err := s.repo.MarkDLQEntryReplayed(ctx, entryID); err != nil {
+		log.Printf("failed to mark DLQ entry as replayed: %v", err)
+	}
 
 	return event, nil
 }
