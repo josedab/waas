@@ -25,7 +25,8 @@ func runHealth(cmd *cobra.Command, args []string) error {
 	url := getAPIURL() + "/health"
 
 	start := time.Now()
-	resp, err := http.Get(url)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
 	latency := time.Since(start)
 
 	if err != nil {
