@@ -56,7 +56,10 @@ type wsEvent struct {
 
 func runListen(cmd *cobra.Command, args []string) error {
 	apiURL := getAPIURL()
-	apiKey := getAPIKey()
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
 
 	// Convert HTTP URL to WebSocket URL
 	wsURL, err := buildWSURL(apiURL, apiKey)

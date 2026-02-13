@@ -26,8 +26,12 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	deliveryID := args[0]
 	url := getAPIURL() + "/api/v1/webhooks/deliveries/" + deliveryID + "/inspect"
 
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("X-API-Key", getAPIKey())
+	req.Header.Set("X-API-Key", apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

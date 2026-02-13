@@ -73,7 +73,11 @@ func init() {
 }
 
 func runDeliveryList(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	deliveries, err := client.ListDeliveries(deliveryEndpoint, deliveryLimit)
 	if err != nil {
@@ -125,7 +129,11 @@ func runDeliveryList(cmd *cobra.Command, args []string) error {
 }
 
 func runDeliveryInspect(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 	deliveryID := args[0]
 
 	detail, err := client.InspectDelivery(deliveryID)
@@ -193,7 +201,11 @@ func runDeliveryInspect(cmd *cobra.Command, args []string) error {
 }
 
 func runDeliveryRetry(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 	deliveryID := args[0]
 
 	resp, err := client.RetryDelivery(deliveryID)

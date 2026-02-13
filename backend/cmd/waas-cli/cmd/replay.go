@@ -27,7 +27,11 @@ func init() {
 }
 
 func runReplay(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 	deliveryID := args[0]
 
 	// Get original delivery to show what we're replaying
@@ -90,7 +94,11 @@ func init() {
 }
 
 func runBulkReplay(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	// Get deliveries matching criteria
 	deliveries, err := client.ListDeliveries(bulkReplayEndpoint, bulkReplayLimit)

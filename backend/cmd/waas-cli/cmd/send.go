@@ -50,11 +50,14 @@ func runSend(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("either --endpoint or --topic is required")
 	}
 
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	// Determine payload source
 	var payload []byte
-	var err error
 
 	if sendData != "" {
 		payload = []byte(sendData)

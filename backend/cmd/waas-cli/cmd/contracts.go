@@ -102,7 +102,11 @@ func init() {
 }
 
 func contractsAPICall(method, path string, body interface{}) ([]byte, error) {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return nil, err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 	resp, err := client.doRequest(method, path, body)
 	if err != nil {
 		return nil, err
@@ -244,8 +248,7 @@ func runContractsValidate(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Printf("  %s [%s] %s: %s\n", icon, v.Severity, v.Path, v.Message)
 	}
-	os.Exit(1)
-	return nil
+	return fmt.Errorf("contract validation failed")
 }
 
 func runContractsDiff(cmd *cobra.Command, args []string) error {
@@ -298,7 +301,7 @@ func runContractsDiff(cmd *cobra.Command, args []string) error {
 	}
 
 	if result.IsBreaking {
-		os.Exit(2)
+		return fmt.Errorf("breaking changes detected")
 	}
 	return nil
 }
@@ -371,7 +374,7 @@ func runContractsTest(cmd *cobra.Command, args []string) error {
 			if contractCI {
 				fmt.Println("::endgroup::")
 			}
-			os.Exit(1)
+			return fmt.Errorf("contract test failed")
 		}
 	}
 

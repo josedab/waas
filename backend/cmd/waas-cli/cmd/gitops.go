@@ -79,7 +79,11 @@ func init() {
 }
 
 func runApply(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	files, err := resolveFiles(applyFile, applyRecursive)
 	if err != nil {
@@ -210,7 +214,11 @@ func runApply(cmd *cobra.Command, args []string) error {
 }
 
 func runDiff(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	content, err := readManifestWithOverlay(diffFile, diffEnv)
 	if err != nil {
@@ -254,7 +262,11 @@ func runDiff(cmd *cobra.Command, args []string) error {
 }
 
 func runDrift(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	resp, err := client.doRequest("GET", "/api/v1/gitops/drift", nil)
 	if err != nil {

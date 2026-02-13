@@ -93,7 +93,11 @@ func runMigrateStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("file not found: %s", migrateFile)
 	}
 
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	result, err := client.StartMigration(migrateSource, migrateFile, migrateDryRun)
 	if err != nil {
@@ -125,7 +129,11 @@ func runMigrateStart(cmd *cobra.Command, args []string) error {
 }
 
 func runMigrateStatus(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	jobs, err := client.GetMigrationStatus()
 	if err != nil {
@@ -165,7 +173,11 @@ func runMigrateStatus(cmd *cobra.Command, args []string) error {
 }
 
 func runMigrateRollback(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	result, err := client.RollbackMigration(migrateJobID)
 	if err != nil {

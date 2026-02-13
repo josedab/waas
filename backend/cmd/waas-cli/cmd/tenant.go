@@ -91,7 +91,11 @@ func runTenantCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runTenantShow(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	tenant, err := client.GetTenant()
 	if err != nil {
@@ -114,7 +118,11 @@ func runTenantShow(cmd *cobra.Command, args []string) error {
 }
 
 func runTenantRegenerateKey(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	result, err := client.RegenerateAPIKey()
 	if err != nil {

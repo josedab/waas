@@ -49,7 +49,11 @@ func init() {
 func runTunnel(cmd *cobra.Command, args []string) error {
 	fmt.Println("🔗 Creating tunnel endpoint...")
 
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	// Create a temporary test endpoint
 	createURL := getAPIURL() + "/api/v1/webhooks/test/endpoints"
@@ -60,7 +64,7 @@ func runTunnel(cmd *cobra.Command, args []string) error {
 
 	req, _ := http.NewRequest("POST", createURL, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-API-Key", getAPIKey())
+	req.Header.Set("X-API-Key", apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -133,7 +137,10 @@ func runTunnel(cmd *cobra.Command, args []string) error {
 
 func tunnelStreamWS(endpointID, localTarget string, delivered, failed *uint64) {
 	apiURL := getAPIURL()
-	apiKey := getAPIKey()
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return
+	}
 
 	u, err := url.Parse(apiURL)
 	if err != nil {
@@ -201,8 +208,12 @@ func tunnelStreamWS(endpointID, localTarget string, delivered, failed *uint64) {
 
 func tunnelForwardWebhooks(endpointID, localTarget string, delivered, failed *uint64) {
 	url := fmt.Sprintf("%s/test/%s/receives", getAPIURL(), endpointID)
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return
+	}
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("X-API-Key", getAPIKey())
+	req.Header.Set("X-API-Key", apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

@@ -107,7 +107,11 @@ func init() {
 }
 
 func runEndpointsList(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	endpoints, err := client.ListEndpoints()
 	if err != nil {
@@ -161,7 +165,11 @@ func runEndpointsList(cmd *cobra.Command, args []string) error {
 }
 
 func runEndpointsGet(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	endpoint, err := client.GetEndpoint(args[0])
 	if err != nil {
@@ -198,7 +206,11 @@ func runEndpointsGet(cmd *cobra.Command, args []string) error {
 }
 
 func runEndpointsCreate(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	headers := make(map[string]string)
 	for _, h := range endpointHeaders {
@@ -238,7 +250,11 @@ func runEndpointsCreate(cmd *cobra.Command, args []string) error {
 }
 
 func runEndpointsDelete(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	if err := client.DeleteEndpoint(args[0]); err != nil {
 		return fmt.Errorf("failed to delete endpoint: %w", err)
@@ -263,7 +279,11 @@ func boolToStatus(b bool) string {
 }
 
 func runEndpointsUpdate(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 	id := args[0]
 
 	req := &UpdateEndpointRequest{}

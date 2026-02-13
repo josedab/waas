@@ -48,7 +48,11 @@ func init() {
 }
 
 func runLogs(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	// If delivery ID is provided, show detailed logs
 	if len(args) > 0 {
@@ -191,7 +195,10 @@ func streamLogs(client *Client) error {
 	fmt.Println()
 
 	apiURL := getAPIURL()
-	apiKey := getAPIKey()
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
 
 	u, err := url.Parse(apiURL)
 	if err != nil {

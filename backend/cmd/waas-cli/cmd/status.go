@@ -25,7 +25,11 @@ func init() {
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	tenant, err := client.GetTenant()
 	if err != nil {

@@ -177,7 +177,11 @@ func init() {
 }
 
 func runMockList(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	resp, err := client.doRequest("GET", "/api/v1/mocking/endpoints", nil)
 	if err != nil {

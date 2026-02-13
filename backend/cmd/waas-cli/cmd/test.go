@@ -44,7 +44,11 @@ func init() {
 }
 
 func runTest(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	timeout, err := time.ParseDuration(testTimeout)
 	if err != nil {
@@ -162,7 +166,11 @@ func init() {
 }
 
 func runTestResults(cmd *cobra.Command, args []string) error {
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	deliveries, err := client.ListDeliveries("", 20)
 	if err != nil {

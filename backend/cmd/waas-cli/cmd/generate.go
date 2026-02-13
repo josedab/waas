@@ -48,7 +48,11 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read spec file: %w", err)
 	}
 
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	result, err := client.GenerateFromOpenAPI(string(specContent))
 	if err != nil {

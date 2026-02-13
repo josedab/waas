@@ -74,10 +74,13 @@ func runExport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid format %q: must be one of json, csv", exportFormat)
 	}
 
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	var data interface{}
-	var err error
 
 	switch exportType {
 	case "endpoints":
@@ -141,7 +144,11 @@ func runImport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse import file: %w", err)
 	}
 
-	client := NewClient(getAPIURL(), getAPIKey())
+	apiKey, err := getAPIKey()
+	if err != nil {
+		return err
+	}
+	client := NewClient(getAPIURL(), apiKey)
 
 	result, err := client.ImportEndpoints(entries, importDryRun)
 	if err != nil {
