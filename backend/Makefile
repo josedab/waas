@@ -1,8 +1,8 @@
 .PHONY: build run-api run-delivery run-analytics test test-all clean \
        docker-up docker-down docker-build \
        migrate-up migrate-down migrate-core migrate-status migrate-reset migrate-rollback dev-setup dev-setup-full ensure-env deps \
-       docs docs-generate docs-serve docs-test \
-       lint lint-fast fmt vet help validate-setup \
+       docs docs-generate docs-serve docs-test open-docs \
+       lint lint-fast fmt fmt-fix fix vet help validate-setup \
        smoke-test run-all run-dashboard \
        install-hooks uninstall-hooks \
        test-coverage test-status audit-deps validate-env \
@@ -98,6 +98,10 @@ test: ## Run core tests with coverage summary
 	@go test -short -coverprofile=coverage.out ./internal/... ./pkg/database/... ./pkg/repository/... ./pkg/auth/... ./pkg/queue/... ./pkg/models/... ./pkg/errors/... ./pkg/signatures/...
 	@echo ""
 	@go tool cover -func=coverage.out | grep total: | awk '{printf "Coverage: %s\n", $$3}'
+	@COVERAGE=$$(go tool cover -func=coverage.out | grep total: | awk '{gsub(/%/,""); print $$3}'); \
+	if [ "$$(echo "$$COVERAGE < 50" | bc -l 2>/dev/null || echo 0)" = "1" ]; then \
+		echo "⚠️  WARNING: Coverage $${COVERAGE}% is below the 50% CI threshold."; \
+	fi
 	@echo "Detailed report: go tool cover -html=coverage.out"
 
 test-all: ## Run all tests including enterprise packages
@@ -180,9 +184,17 @@ fmt: ## Check code formatting (fails if unformatted)
 	@unformatted=$$(gofmt -l .); \
 	if [ -n "$$unformatted" ]; then \
 		echo "Unformatted files:"; echo "$$unformatted"; \
-		echo "Run 'gofmt -w .' to fix."; exit 1; \
+		echo "Run 'make fmt-fix' to fix."; exit 1; \
 	fi; \
 	echo "All files formatted."
+
+fmt-fix: ## Auto-format all Go source files
+	gofmt -w .
+	@echo "All files formatted."
+
+fix: fmt-fix ## Auto-format and tidy modules
+	go mod tidy
+	@echo "Format and tidy complete."
 
 vet: ## Run go vet
 	go vet ./...
@@ -340,6 +352,16 @@ docs-generate: ## Generate and validate all documentation
 
 docs-serve: docs ## Generate docs and print access URL
 	@echo "API documentation available at: http://localhost:8080/docs/index.html"
+
+open-docs: docs ## Generate docs and open in browser (requires running API)
+	@echo "Opening API docs in browser..."
+	@if command -v open >/dev/null 2>&1; then \
+		open http://localhost:8080/docs/index.html; \
+	elif command -v xdg-open >/dev/null 2>&1; then \
+		xdg-open http://localhost:8080/docs/index.html; \
+	else \
+		echo "Could not detect browser opener. Visit: http://localhost:8080/docs/index.html"; \
+	fi
 
 docs-test: ## Run documentation tests
 	go test ./docs -v

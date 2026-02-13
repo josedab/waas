@@ -54,7 +54,7 @@ dev-logs: ## Run all services with colored log output
 	$(MAKE) -C $(BACKEND) dev-logs
 
 # ─── Testing & quality ──────────────────────────────────────────────
-.PHONY: test test-all test-watch test-coverage test-integration test-pkg lint lint-fast fmt vet check
+.PHONY: test test-all test-watch test-coverage test-integration test-pkg lint lint-fast fmt fmt-fix fix vet check
 
 test: ## Run core tests with coverage summary
 	$(MAKE) -C $(BACKEND) test
@@ -82,6 +82,12 @@ lint-fast: ## Run golangci-lint --fast on changed packages only
 
 fmt: ## Check code formatting
 	$(MAKE) -C $(BACKEND) fmt
+
+fmt-fix: ## Auto-format all Go source files
+	$(MAKE) -C $(BACKEND) fmt-fix
+
+fix: ## Auto-format and tidy modules
+	$(MAKE) -C $(BACKEND) fix
 
 vet: ## Run go vet
 	$(MAKE) -C $(BACKEND) vet
@@ -135,13 +141,16 @@ up: docker-up ## Alias for docker-up
 down: docker-down ## Alias for docker-down
 
 # ─── Documentation ──────────────────────────────────────────────────
-.PHONY: docs docs-serve smoke-test seed
+.PHONY: docs docs-serve open-docs smoke-test seed
 
 docs: ## Generate Swagger/OpenAPI docs
 	$(MAKE) -C $(BACKEND) docs
 
 docs-serve: ## Generate docs and print access URL
 	$(MAKE) -C $(BACKEND) docs-serve
+
+open-docs: ## Generate docs and open in browser
+	$(MAKE) -C $(BACKEND) open-docs
 
 smoke-test: ## Quick smoke test against running API
 	$(MAKE) -C $(BACKEND) smoke-test
