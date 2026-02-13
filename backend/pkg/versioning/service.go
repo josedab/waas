@@ -31,20 +31,20 @@ func (s *Service) CreateVersion(ctx context.Context, tenantID string, req *Creat
 	}
 
 	version := &Version{
-		ID:        uuid.New().String(),
-		TenantID:  tenantID,
-		WebhookID: req.WebhookID,
-		Major:     sv.Major,
-		Minor:     sv.Minor,
-		Patch:     sv.Patch,
-		Label:     req.Label,
-		SchemaID:  req.SchemaID,
-		Status:    StatusDraft,
-		Changelog: req.Changelog,
-		Breaking:  req.Breaking,
+		ID:         uuid.New().String(),
+		TenantID:   tenantID,
+		WebhookID:  req.WebhookID,
+		Major:      sv.Major,
+		Minor:      sv.Minor,
+		Patch:      sv.Patch,
+		Label:      req.Label,
+		SchemaID:   req.SchemaID,
+		Status:     StatusDraft,
+		Changelog:  req.Changelog,
+		Breaking:   req.Breaking,
 		Transforms: req.Transforms,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	if err := s.repo.SaveVersion(ctx, version); err != nil {
@@ -124,7 +124,11 @@ func (s *Service) DeprecateVersion(ctx context.Context, tenantID, versionID stri
 	}
 
 	// Send deprecation notices to subscribers
-	go s.sendDeprecationNotices(context.Background(), version)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.sendDeprecationNotices(ctx, version)
+	}()
 
 	return version, nil
 }
@@ -144,7 +148,11 @@ func (s *Service) SunsetVersion(ctx context.Context, tenantID, versionID string)
 	}
 
 	// Send sunset notices
-	go s.sendSunsetNotices(context.Background(), version)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.sendSunsetNotices(ctx, version)
+	}()
 
 	return version, nil
 }
@@ -397,7 +405,11 @@ func (s *Service) StartMigration(ctx context.Context, tenantID string, req *Star
 	}
 
 	// Start migration in background
-	go s.executeMigration(context.Background(), migration, subs)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.executeMigration(ctx, migration, subs)
+	}()
 
 	return migration, nil
 }

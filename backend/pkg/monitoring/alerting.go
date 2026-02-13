@@ -28,30 +28,30 @@ const (
 
 // Alert represents a monitoring alert
 type Alert struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Severity    AlertSeverity          `json:"severity"`
-	Status      AlertStatus            `json:"status"`
-	Labels      map[string]string      `json:"labels"`
-	Annotations map[string]string      `json:"annotations"`
-	StartsAt    time.Time              `json:"starts_at"`
-	EndsAt      *time.Time             `json:"ends_at,omitempty"`
-	Value       float64                `json:"value"`
-	Threshold   float64                `json:"threshold"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Severity    AlertSeverity     `json:"severity"`
+	Status      AlertStatus       `json:"status"`
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+	StartsAt    time.Time         `json:"starts_at"`
+	EndsAt      *time.Time        `json:"ends_at,omitempty"`
+	Value       float64           `json:"value"`
+	Threshold   float64           `json:"threshold"`
 }
 
 // AlertRule defines conditions for triggering alerts
 type AlertRule struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Severity    AlertSeverity          `json:"severity"`
-	Condition   AlertCondition         `json:"condition"`
-	Threshold   float64                `json:"threshold"`
-	Duration    time.Duration          `json:"duration"`
-	Labels      map[string]string      `json:"labels"`
-	Annotations map[string]string      `json:"annotations"`
-	Enabled     bool                   `json:"enabled"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Severity    AlertSeverity     `json:"severity"`
+	Condition   AlertCondition    `json:"condition"`
+	Threshold   float64           `json:"threshold"`
+	Duration    time.Duration     `json:"duration"`
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+	Enabled     bool              `json:"enabled"`
 }
 
 // AlertCondition defines the condition type for alert rules
@@ -68,12 +68,12 @@ const (
 
 // AlertManager manages alert rules and active alerts
 type AlertManager struct {
-	rules       map[string]*AlertRule
+	rules        map[string]*AlertRule
 	activeAlerts map[string]*Alert
 	alertHistory []*Alert
-	mutex       sync.RWMutex
-	logger      *utils.Logger
-	notifiers   []AlertNotifier
+	mutex        sync.RWMutex
+	logger       *utils.Logger
+	notifiers    []AlertNotifier
 }
 
 // AlertNotifier interface for sending alert notifications
@@ -94,7 +94,7 @@ func NewAlertManager(logger *utils.Logger) *AlertManager {
 
 	// Initialize default alert rules
 	am.initializeDefaultRules()
-	
+
 	return am
 }
 
@@ -135,7 +135,7 @@ func (am *AlertManager) EvaluateMetric(metricName string, value float64, labels 
 		}
 
 		alertID := am.generateAlertID(rule.Name, labels)
-		
+
 		if am.evaluateCondition(rule.Condition, value, rule.Threshold) {
 			// Condition met - fire alert if not already active
 			if _, exists := am.activeAlerts[alertID]; !exists {
@@ -151,21 +151,25 @@ func (am *AlertManager) EvaluateMetric(metricName string, value float64, labels 
 					Value:       value,
 					Threshold:   rule.Threshold,
 				}
-				
+
 				am.activeAlerts[alertID] = alert
 				am.alertHistory = append(am.alertHistory, alert)
-				
+
 				am.logger.Warn("Alert fired", map[string]interface{}{
-					"alert_id":    alertID,
-					"alert_name":  rule.Name,
-					"severity":    rule.Severity,
-					"value":       value,
-					"threshold":   rule.Threshold,
-					"labels":      labels,
+					"alert_id":   alertID,
+					"alert_name": rule.Name,
+					"severity":   rule.Severity,
+					"value":      value,
+					"threshold":  rule.Threshold,
+					"labels":     labels,
 				})
-				
+
 				// Send notifications asynchronously
-				go am.sendNotifications(context.Background(), alert)
+				go func() {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					defer cancel()
+					am.sendNotifications(ctx, alert)
+				}()
 			}
 		} else {
 			// Condition not met - resolve alert if active
@@ -173,17 +177,21 @@ func (am *AlertManager) EvaluateMetric(metricName string, value float64, labels 
 				now := time.Now()
 				alert.Status = AlertStatusResolved
 				alert.EndsAt = &now
-				
+
 				delete(am.activeAlerts, alertID)
-				
+
 				am.logger.Info("Alert resolved", map[string]interface{}{
 					"alert_id":   alertID,
 					"alert_name": rule.Name,
 					"duration":   now.Sub(alert.StartsAt).String(),
 				})
-				
+
 				// Send resolution notifications asynchronously
-				go am.sendNotifications(context.Background(), alert)
+				go func() {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					defer cancel()
+					am.sendNotifications(ctx, alert)
+				}()
 			}
 		}
 	}

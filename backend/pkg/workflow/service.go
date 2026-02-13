@@ -388,7 +388,11 @@ func (s *Service) ExecuteWorkflow(ctx context.Context, tenantID, workflowID stri
 	}
 
 	// Execute asynchronously
-	go s.executor.Execute(context.Background(), wf, exec)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.executor.Execute(ctx, wf, exec)
+	}()
 
 	return exec, nil
 }
@@ -447,9 +451,9 @@ func (s *Service) GetTemplate(ctx context.Context, templateID string) (*Workflow
 
 // Executor handles workflow execution
 type Executor struct {
-	repo      Repository
-	config    *ServiceConfig
-	running   sync.Map // map[execID]context.CancelFunc
+	repo    Repository
+	config  *ServiceConfig
+	running sync.Map // map[execID]context.CancelFunc
 }
 
 // NewExecutor creates a new executor

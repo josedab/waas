@@ -12,10 +12,10 @@ import (
 
 // Service provides chaos engineering functionality
 type Service struct {
-	repo       Repository
-	agents     sync.Map // map[experimentID]*Agent
-	scheduler  *Scheduler
-	config     *ServiceConfig
+	repo      Repository
+	agents    sync.Map // map[experimentID]*Agent
+	scheduler *Scheduler
+	config    *ServiceConfig
 }
 
 // ServiceConfig holds service configuration
@@ -30,10 +30,10 @@ func DefaultServiceConfig() *ServiceConfig {
 	return &ServiceConfig{
 		MaxConcurrentExperiments: 5,
 		DefaultBlastRadius: BlastRadius{
-			MaxAffectedEndpoints:   10,
-			MaxAffectedDeliveries:  1000,
-			MaxErrorRate:           0.5,
-			AutoRollbackThreshold:  0.3,
+			MaxAffectedEndpoints:  10,
+			MaxAffectedDeliveries: 1000,
+			MaxErrorRate:          0.5,
+			AutoRollbackThreshold: 0.3,
 		},
 		SafetyChecksEnabled: true,
 	}
@@ -44,13 +44,13 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 	if config == nil {
 		config = DefaultServiceConfig()
 	}
-	
+
 	svc := &Service{
 		repo:   repo,
 		config: config,
 	}
 	svc.scheduler = NewScheduler(svc)
-	
+
 	return svc
 }
 
@@ -626,12 +626,18 @@ func (s *Scheduler) Schedule(exp *ChaosExperiment) {
 	delay := time.Until(exp.Schedule.StartTime)
 	if delay <= 0 {
 		// Start immediately
-		go s.svc.StartExperiment(context.Background(), exp.TenantID, exp.ID)
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			s.svc.StartExperiment(ctx, exp.TenantID, exp.ID)
+		}()
 		return
 	}
 
 	timer := time.AfterFunc(delay, func() {
-		s.svc.StartExperiment(context.Background(), exp.TenantID, exp.ID)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.svc.StartExperiment(ctx, exp.TenantID, exp.ID)
 		s.scheduled.Delete(exp.ID)
 	})
 

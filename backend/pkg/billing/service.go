@@ -12,22 +12,22 @@ import (
 
 // PricingConfig defines pricing for resources
 type PricingConfig struct {
-	WebhookRequestCost  float64 // per request
-	RetryAttemptCost    float64 // per retry
-	DataTransferCost    float64 // per GB
-	TransformationCost  float64 // per transform
-	StorageCost         float64 // per GB per month
-	Currency            string
+	WebhookRequestCost float64 // per request
+	RetryAttemptCost   float64 // per retry
+	DataTransferCost   float64 // per GB
+	TransformationCost float64 // per transform
+	StorageCost        float64 // per GB per month
+	Currency           string
 }
 
 // DefaultPricing provides default pricing
 var DefaultPricing = PricingConfig{
-	WebhookRequestCost:  0.0001,  // $0.10 per 1000 requests
-	RetryAttemptCost:    0.00005, // $0.05 per 1000 retries
-	DataTransferCost:    0.10,    // $0.10 per GB
-	TransformationCost:  0.00002, // $0.02 per 1000 transforms
-	StorageCost:         0.023,   // $0.023 per GB per month
-	Currency:            "USD",
+	WebhookRequestCost: 0.0001,  // $0.10 per 1000 requests
+	RetryAttemptCost:   0.00005, // $0.05 per 1000 retries
+	DataTransferCost:   0.10,    // $0.10 per GB
+	TransformationCost: 0.00002, // $0.02 per 1000 transforms
+	StorageCost:        0.023,   // $0.023 per GB per month
+	Currency:           "USD",
 }
 
 // Notifier sends billing alerts
@@ -139,7 +139,11 @@ func (s *Service) RecordWebhookUsage(ctx context.Context, tenantID, webhookID st
 	}
 
 	// Check budgets for alerts
-	go s.checkBudgetAlerts(context.Background(), tenantID)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.checkBudgetAlerts(ctx, tenantID)
+	}()
 
 	return nil
 }

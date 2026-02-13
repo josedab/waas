@@ -379,7 +379,11 @@ func (s *Service) PublishEvent(ctx context.Context, event *FederationEvent) erro
 		}
 
 		// Deliver asynchronously
-		go s.deliverEvent(context.Background(), delivery, &sub)
+		go func(d *FederatedDelivery, sub *FederatedSubscription) {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			s.deliverEvent(ctx, d, sub)
+		}(delivery, &sub)
 	}
 
 	return nil
@@ -391,11 +395,11 @@ func (s *Service) deliverEvent(ctx context.Context, delivery *FederatedDelivery,
 
 	// Build request
 	payload, _ := json.Marshal(map[string]any{
-		"event_id":    delivery.EventID,
-		"event_type":  delivery.EventType,
-		"source":      delivery.SourceMemberID,
-		"payload":     delivery.Payload,
-		"timestamp":   delivery.CreatedAt.Format(time.RFC3339),
+		"event_id":   delivery.EventID,
+		"event_type": delivery.EventType,
+		"source":     delivery.SourceMemberID,
+		"payload":    delivery.Payload,
+		"timestamp":  delivery.CreatedAt.Format(time.RFC3339),
 	})
 
 	req, err := http.NewRequestWithContext(ctx, sub.DeliveryConfig.Method, sub.DeliveryConfig.Endpoint, bytes.NewReader(payload))

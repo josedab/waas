@@ -186,7 +186,11 @@ func (s *FinOpsService) RecordDeliveryCost(ctx context.Context, tenantID, endpoi
 	}
 
 	// Check budget
-	go s.checkBudget(context.Background(), tenantID)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.checkBudget(ctx, tenantID)
+	}()
 
 	return attr, nil
 }

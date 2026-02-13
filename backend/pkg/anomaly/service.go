@@ -104,7 +104,11 @@ func (s *Service) CheckMetric(ctx context.Context, tenantID, endpointID string, 
 		}
 
 		// Send alerts
-		go s.sendAlerts(context.Background(), anomaly)
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			s.sendAlerts(ctx, anomaly)
+		}()
 	}
 
 	return result, nil
@@ -170,7 +174,7 @@ func (s *Service) GetBaselines(ctx context.Context, tenantID, endpointID string)
 	// Get baselines for all metric types
 	var baselines []Baseline
 	metricTypes := []MetricType{MetricTypeErrorRate, MetricTypeLatencyP95, MetricTypeDeliveryRate, MetricTypeRetryRate}
-	
+
 	for _, mt := range metricTypes {
 		baseline, err := s.repo.GetBaseline(ctx, tenantID, endpointID, mt)
 		if err == nil && baseline != nil {
@@ -183,7 +187,7 @@ func (s *Service) GetBaselines(ctx context.Context, tenantID, endpointID string)
 // RecalculateBaselines triggers baseline recalculation
 func (s *Service) RecalculateBaselines(ctx context.Context, tenantID, endpointID string) error {
 	metricTypes := []MetricType{MetricTypeErrorRate, MetricTypeLatencyP95, MetricTypeDeliveryRate, MetricTypeRetryRate}
-	
+
 	for _, mt := range metricTypes {
 		s.UpdateBaseline(ctx, tenantID, endpointID, mt, 24*time.Hour)
 	}

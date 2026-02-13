@@ -152,7 +152,11 @@ func (s *Service) CreateFunction(ctx context.Context, tenantID string, req *Crea
 
 	// Auto-deploy if requested
 	if req.AutoDeploy {
-		go s.deployFunctionAsync(context.Background(), fn)
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			s.deployFunctionAsync(ctx, fn)
+		}()
 	}
 
 	return fn, nil

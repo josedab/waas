@@ -121,7 +121,11 @@ func (s *Service) RegisterDevice(ctx context.Context, tenantID string, req *Regi
 	}
 
 	// Deliver any queued notifications
-	go s.deliverQueuedNotifications(context.Background(), device)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.deliverQueuedNotifications(ctx, device)
+	}()
 
 	return device, nil
 }
