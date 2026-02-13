@@ -77,6 +77,12 @@ make validate-setup
 
 This will create `.env` from the template (if needed), start PostgreSQL and Redis containers, wait for them to be healthy, and run database migrations.
 
+3. *(Optional)* Seed sample data after starting the API:
+   ```bash
+   make run-api      # Start the API first
+   make seed         # Seed sample tenants, endpoints, and deliveries
+   ```
+
 ### Running Services
 
 Start all services with Docker:

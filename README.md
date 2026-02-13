@@ -14,6 +14,7 @@ git clone https://github.com/josedab/waas.git
 cd waas/backend
 make dev-setup    # starts PostgreSQL + Redis, runs core migrations (5 tables)
 make run-api      # API on http://localhost:8080
+make seed         # (optional) seed sample tenants, endpoints, and deliveries
 ```
 
 > **Tip:** `make dev-setup` runs core migrations only (5 tables). For all 83 migrations (enterprise features), use `make dev-setup-full`.
