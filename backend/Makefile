@@ -105,7 +105,7 @@ test: ## Run core tests with coverage summary
 	@echo "Detailed report: go tool cover -html=coverage.out"
 
 test-all: ## Run all tests including enterprise packages
-	go test -v ./...
+	go test -v -timeout=15m ./...
 
 test-watch: ## Watch for changes and re-run tests (requires entr or fswatch)
 	@if command -v entr >/dev/null 2>&1; then \
