@@ -10,11 +10,24 @@ API_V1="${BASE_URL}/api/v1"
 echo "Seeding demo data against ${BASE_URL}..."
 echo ""
 
-# --- Health check -----------------------------------------------------------
-if ! curl -sf "${BASE_URL}/health" >/dev/null 2>&1; then
-  echo "❌ API is not reachable at ${BASE_URL}. Start it with: make run-api"
-  exit 1
-fi
+# --- Connectivity check ------------------------------------------------------
+echo "Checking API connectivity at ${BASE_URL}..."
+MAX_RETRIES=3
+for i in $(seq 1 $MAX_RETRIES); do
+  if curl -sf --connect-timeout 5 "${BASE_URL}/health" >/dev/null 2>&1; then
+    echo "  ✅ API is reachable."
+    break
+  fi
+  if [ "$i" -eq "$MAX_RETRIES" ]; then
+    echo "❌ API is not reachable at ${BASE_URL} after ${MAX_RETRIES} attempts."
+    echo "   Start it first with: make run-api"
+    exit 1
+  fi
+  echo "  Attempt $i/$MAX_RETRIES — API not ready, retrying in 2s..."
+  sleep 2
+done
+
+echo ""
 
 # --- Helper ------------------------------------------------------------------
 create_tenant() {
