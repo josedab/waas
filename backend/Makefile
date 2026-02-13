@@ -2,7 +2,7 @@
        docker-up docker-down docker-build \
        migrate-up migrate-down migrate-core migrate-status migrate-reset migrate-rollback dev-setup dev-setup-full ensure-env deps \
        docs docs-generate docs-serve docs-test open-docs \
-       lint lint-fast fmt fmt-fix fix vet help validate-setup \
+       lint lint-fast fmt fmt-fix fix vet help validate-setup ci-local \
        smoke-test run-all run-dashboard \
        install-hooks uninstall-hooks \
        test-coverage test-status test-stubs new-pkg audit-deps validate-env \
@@ -244,6 +244,58 @@ vet: ## Run go vet
 	go vet ./...
 
 check: fmt vet lint test ## Run all quality gates: fmt, vet, lint, test
+
+ci-local: ## Run the full CI pipeline locally (fmt, vet, lint, test+coverage, build, env check)
+	@echo "=== CI Local Pipeline ==="
+	@echo ""
+	@echo "--- Step 1/6: Formatting ---"
+	$(MAKE) --no-print-directory fmt
+	@echo ""
+	@echo "--- Step 2/6: Vet ---"
+	$(MAKE) --no-print-directory vet
+	@echo ""
+	@echo "--- Step 3/6: Lint ---"
+	$(MAKE) --no-print-directory lint
+	@echo ""
+	@echo "--- Step 4/6: Unit tests with coverage threshold ---"
+	@go test -race -coverprofile=coverage.out -covermode=atomic ./pkg/... ./internal/...
+	@COVERAGE=$$(go tool cover -func=coverage.out | grep total: | awk '{print $$3}' | sed 's/%//'); \
+	echo "Total coverage: $${COVERAGE}%"; \
+	THRESHOLD=50; \
+	if [ "$$(echo "$$COVERAGE < $$THRESHOLD" | bc -l 2>/dev/null || echo 0)" = "1" ]; then \
+		echo "❌ Coverage $${COVERAGE}% is below the required $${THRESHOLD}% threshold"; \
+		exit 1; \
+	fi; \
+	echo "✅ Coverage $${COVERAGE}% meets the $${THRESHOLD}% threshold"
+	@echo ""
+	@echo "--- Step 5/6: Build ---"
+	$(MAKE) --no-print-directory build
+	@go build ./...
+	@echo ""
+	@echo "--- Step 6/6: .env.example completeness ---"
+	@if [ -f .env.example ]; then \
+		ENV_VARS_IN_CODE=$$(grep -roh 'os\.Getenv("[^"]*")' --include='*.go' . 2>/dev/null \
+			| grep -v '_test\.go' \
+			| sed 's/os\.Getenv("//;s/")//' \
+			| grep -v -E '^(RUN_|TEST_)' \
+			| sort -u); \
+		MISSING=""; \
+		for var in $$ENV_VARS_IN_CODE; do \
+			if ! grep -q "^$${var}=" .env.example 2>/dev/null && ! grep -q "^# *$${var}=" .env.example 2>/dev/null; then \
+				MISSING="$$MISSING $$var"; \
+			fi; \
+		done; \
+		if [ -n "$$MISSING" ]; then \
+			echo "❌ Missing from .env.example:$$MISSING"; \
+			exit 1; \
+		fi; \
+		echo "✅ .env.example is up to date."; \
+	else \
+		echo "⚠️  .env.example not found, skipping."; \
+	fi
+	@echo ""
+	@echo "=== ✅ CI Local Pipeline Passed ==="
+
 
 # Clean
 clean: ## Remove build artifacts

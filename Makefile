@@ -54,7 +54,7 @@ dev-logs: ## Run all services with colored log output
 	$(MAKE) -C $(BACKEND) dev-logs
 
 # ─── Testing & quality ──────────────────────────────────────────────
-.PHONY: test test-all test-watch test-coverage test-integration test-pkg test-stubs new-pkg lint lint-fast fmt fmt-fix fix vet check
+.PHONY: test test-all test-watch test-coverage test-integration test-pkg test-stubs new-pkg lint lint-fast fmt fmt-fix fix vet check ci-local
 
 test: ## Run core tests with coverage summary
 	$(MAKE) -C $(BACKEND) test
@@ -100,6 +100,9 @@ vet: ## Run go vet
 
 check: ## Run all quality gates (fmt, vet, lint, test)
 	$(MAKE) -C $(BACKEND) check
+
+ci-local: ## Mirror the full CI pipeline locally
+	$(MAKE) -C $(BACKEND) ci-local
 
 # ─── Build ──────────────────────────────────────────────────────────
 .PHONY: build build-check clean
