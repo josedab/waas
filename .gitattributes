@@ -1,0 +1,22 @@
+# Auto-detect text files and normalize line endings to LF
+* text=auto eol=lf
+
+# Go source files
+*.go text eol=lf
+
+# Linguist overrides for GitHub statistics
+go.sum linguist-generated
+go.mod linguist-detectable
+*.lock linguist-generated
+
+# Shell scripts
+*.sh text eol=lf
+
+# Markdown & docs
+*.md text eol=lf
+
+# Config files
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
