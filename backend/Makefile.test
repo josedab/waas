@@ -88,7 +88,8 @@ test-setup: ## Set up test environment (databases, etc.)
 	@echo "Waiting for services to be ready..."
 	@sleep 10
 	@echo "Running database migrations..."
-	@DATABASE_URL=$(TEST_DATABASE_URL) go run cmd/migrate/main.go -up || true
+	@echo "TODO: Create cmd/migrate/main.go or use 'migrate' CLI directly"
+	@echo "Skipping migration — cmd/migrate/main.go does not exist yet."
 	@echo "Test environment ready."
 
 test-cleanup: ## Clean up test environment
@@ -129,7 +130,8 @@ ci-test-full: test-deps ## Run full test suite for CI (including performance)
 # Test data and fixtures
 test-fixtures: ## Generate test fixtures and mock data
 	@echo "Generating test fixtures..."
-	@go run test/fixtures/generator.go
+	@echo "TODO: Create test/fixtures/generator.go to generate test fixture data"
+	@echo "Skipping — test/fixtures/generator.go does not exist yet."
 
 # Linting and code quality (test-related)
 test-lint: ## Run linters on test code
@@ -189,7 +191,8 @@ test-db-redis: ## Run tests specifically for Redis
 # Load testing with external tools
 test-load-external: ## Run load tests with external tools (k6, artillery, etc.)
 	@echo "Running external load tests..."
-	@command -v k6 >/dev/null 2>&1 && k6 run test/load/k6-script.js || echo "k6 not found, skipping"
+	@echo "TODO: Create test/load/k6-script.js for k6 load testing"
+	@command -v k6 >/dev/null 2>&1 && echo "k6 found but test/load/k6-script.js does not exist yet — skipping" || echo "k6 not found, skipping"
 
 # Test environment validation
 test-env-check: ## Validate test environment setup
