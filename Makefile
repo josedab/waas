@@ -54,7 +54,7 @@ dev-logs: ## Run all services with colored log output
 	$(MAKE) -C $(BACKEND) dev-logs
 
 # ─── Testing & quality ──────────────────────────────────────────────
-.PHONY: test test-all test-watch test-coverage test-integration test-pkg lint lint-fast fmt fmt-fix fix vet check
+.PHONY: test test-all test-watch test-coverage test-integration test-pkg test-stubs new-pkg lint lint-fast fmt fmt-fix fix vet check
 
 test: ## Run core tests with coverage summary
 	$(MAKE) -C $(BACKEND) test
@@ -67,6 +67,12 @@ test-watch: ## Watch for changes and re-run tests (requires entr or fswatch)
 
 test-coverage: ## Per-package coverage breakdown
 	$(MAKE) -C $(BACKEND) test-coverage
+
+test-stubs: ## Generate test stubs for packages without test files
+	$(MAKE) -C $(BACKEND) test-stubs
+
+new-pkg: ## Scaffold a new package (usage: make new-pkg NAME=foo)
+	$(MAKE) -C $(BACKEND) new-pkg NAME=$(NAME)
 
 test-integration: ## Integration tests in Docker
 	$(MAKE) -C $(BACKEND) test-integration

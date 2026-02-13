@@ -5,7 +5,7 @@
        lint lint-fast fmt fmt-fix fix vet help validate-setup \
        smoke-test run-all run-dashboard \
        install-hooks uninstall-hooks \
-       test-coverage test-status audit-deps validate-env \
+       test-coverage test-status test-stubs new-pkg audit-deps validate-env \
        dev dev-all dev-logs check seed _ensure-air _ensure-golangci-lint doctor
 
 # Configuration — DATABASE_URL must be set in the environment or .env file.
@@ -157,6 +157,50 @@ test-status: ## Show test file inventory per package (find coverage gaps)
 	pkgs_with=$$(find pkg -name '*_test.go' | xargs -n1 dirname 2>/dev/null | sort -u | wc -l | tr -d ' '); \
 	pkgs_total=$$(find pkg -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' '); \
 	echo "Summary: $$total test files across $$pkgs_with/$$pkgs_total packages"
+
+test-stubs: ## Generate _test.go skeleton for every package directory lacking test files
+@echo "=== Generating test stubs ==="
+@generated=0; \
+for dir in pkg/*/; do \
+pkg=$$(basename "$$dir"); \
+if ls "$$dir"*_test.go >/dev/null 2>&1; then continue; fi; \
+stub="$${dir}$${pkg}_test.go"; \
+printf "  Creating %s\n" "$$stub"; \
+printf 'package %s\n\nimport "testing"\n\nfunc TestPlaceholder(t *testing.T) {\n\tt.Skip("TODO: add tests for package %s")\n}\n' "$$pkg" "$$pkg" > "$$stub"; \
+generated=$$((generated + 1)); \
+done; \
+echo ""; \
+echo "Generated $$generated test stub(s)."
+
+# Package scaffolding
+new-pkg: ## Scaffold a new package under pkg/ (usage: make new-pkg NAME=foo)
+@if [ -z "$(NAME)" ]; then \
+echo "Usage: make new-pkg NAME=<package-name>"; \
+echo "Example: make new-pkg NAME=notifications"; \
+exit 1; \
+fi
+@if [ -d "pkg/$(NAME)" ]; then \
+echo "❌ pkg/$(NAME) already exists."; \
+exit 1; \
+fi
+@echo "Scaffolding pkg/$(NAME)..."
+@mkdir -p "pkg/$(NAME)"
+@printf 'package $(NAME)\n\nimport "time"\n\n// TODO: Define domain models for the $(NAME) package.\n\n// Entity represents a $(NAME) entity.\ntype Entity struct {\n\tID        string    `json:"id"`\n\tTenantID  string    `json:"tenant_id"`\n\tCreatedAt time.Time `json:"created_at"`\n\tUpdatedAt time.Time `json:"updated_at"`\n}\n' > "pkg/$(NAME)/models.go"
+@printf 'package $(NAME)\n\nimport "context"\n\n// Repository defines the storage interface for $(NAME).\ntype Repository interface {\n\tGet(ctx context.Context, id string) (*Entity, error)\n\tList(ctx context.Context, tenantID string) ([]Entity, error)\n\tSave(ctx context.Context, entity *Entity) error\n\tDelete(ctx context.Context, id string) error\n}\n' > "pkg/$(NAME)/repository.go"
+@printf 'package $(NAME)\n\nimport (\n\t"context"\n\t"fmt"\n\t"time"\n\n\t"github.com/google/uuid"\n)\n\n// Service implements $(NAME) business logic.\ntype Service struct {\n\trepo Repository\n}\n\n// NewService creates a new $(NAME) service.\nfunc NewService(repo Repository) *Service {\n\treturn &Service{repo: repo}\n}\n\n// Create creates a new entity.\nfunc (s *Service) Create(ctx context.Context, tenantID string) (*Entity, error) {\n\tentity := &Entity{\n\t\tID:        uuid.New().String(),\n\t\tTenantID:  tenantID,\n\t\tCreatedAt: time.Now(),\n\t\tUpdatedAt: time.Now(),\n\t}\n\n\tif err := s.repo.Save(ctx, entity); err != nil {\n\t\treturn nil, fmt.Errorf("create $(NAME) entity: %%w", err)\n\t}\n\n\treturn entity, nil\n}\n' > "pkg/$(NAME)/service.go"
+@printf 'package $(NAME)\n\nimport (\n\t"encoding/json"\n\t"net/http"\n)\n\n// Handler provides HTTP handlers for $(NAME).\ntype Handler struct {\n\tsvc *Service\n}\n\n// NewHandler creates a new $(NAME) handler.\nfunc NewHandler(svc *Service) *Handler {\n\treturn &Handler{svc: svc}\n}\n\n// List handles GET requests.\nfunc (h *Handler) List(w http.ResponseWriter, r *http.Request) {\n\ttenantID := r.URL.Query().Get("tenant_id")\n\tentities, err := h.svc.repo.List(r.Context(), tenantID)\n\tif err != nil {\n\t\thttp.Error(w, err.Error(), http.StatusInternalServerError)\n\t\treturn\n\t}\n\n\tw.Header().Set("Content-Type", "application/json")\n\tjson.NewEncoder(w).Encode(entities)\n}\n' > "pkg/$(NAME)/handler.go"
+@printf 'package $(NAME)\n\nimport "testing"\n\nfunc TestNewService(t *testing.T) {\n\tsvc := NewService(nil)\n\tif svc == nil {\n\t\tt.Fatal("NewService returned nil")\n\t}\n}\n\nfunc TestPlaceholder(t *testing.T) {\n\tt.Skip("TODO: add tests for package $(NAME)")\n}\n' > "pkg/$(NAME)/$(NAME)_test.go"
+@echo "  pkg/$(NAME)/models.go"
+@echo "  pkg/$(NAME)/repository.go"
+@echo "  pkg/$(NAME)/service.go"
+@echo "  pkg/$(NAME)/handler.go"
+@echo "  pkg/$(NAME)/$(NAME)_test.go"
+@echo ""
+@echo "✅ Package pkg/$(NAME) scaffolded. Next steps:"
+@echo "   1. Define your domain models in models.go"
+@echo "   2. Implement the repository interface"
+@echo "   3. Add business logic to service.go"
+@echo "   4. Wire the handler into cmd/api-service/main.go"
 
 test-integration: ## Run integration tests in Docker (isolated from dev environment)
 	@echo "Starting isolated test environment..."
