@@ -57,13 +57,13 @@ func initConfig() {
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "Warning: could not determine home directory: %v\n", err)
+			// Continue without home-based config; flags and env vars still work.
+		} else {
+			viper.AddConfigPath(home)
+			viper.SetConfigType("yaml")
+			viper.SetConfigName(".waas")
 		}
-
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".waas")
 	}
 
 	viper.SetEnvPrefix("WAAS")
@@ -81,11 +81,10 @@ func getAPIURL() string {
 	return viper.GetString("api_url")
 }
 
-func getAPIKey() string {
+func getAPIKey() (string, error) {
 	key := viper.GetString("api_key")
 	if key == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key not configured. Run 'waas login' first or provide --api-key flag.")
-		os.Exit(1)
+		return "", fmt.Errorf("API key not configured. Run 'waas login' first or provide --api-key flag")
 	}
-	return key
+	return key, nil
 }
