@@ -60,7 +60,7 @@ services:
 
   # Load testing with k6
   k6:
-    image: grafana/k6:latest
+    image: grafana/k6:0.49.0
     volumes:
       - ./test/load:/scripts
     environment:
@@ -72,7 +72,7 @@ services:
 
   # Chaos engineering with Pumba
   pumba:
-    image: gaiaadm/pumba:latest
+    image: gaiaadm/pumba:latest  # No stable semver tags available; pin when one is published
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: ["pumba", "--log-level=info", "help"]
@@ -83,7 +83,7 @@ services:
 
   # Monitoring during tests
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.48.1
     ports:
       - "9091:9090"
     volumes:
@@ -94,7 +94,7 @@ services:
       - monitoring
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.2.3
     ports:
       - "3001:3000"
     environment:
@@ -109,7 +109,7 @@ services:
 
   # Jaeger for distributed tracing during tests
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/all-in-one:1.53
     ports:
       - "16687:16686"  # UI
       - "14269:14268"  # HTTP collector
