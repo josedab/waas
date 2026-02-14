@@ -42,6 +42,34 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("❌ required environment variable(s) not set: %s. Run 'make ensure-env' first", joinStrings(missing, ", "))
 	}
 
+	// Reject known-weak default values that indicate unmodified .env.example
+	if cfg.Environment == "production" {
+		weakDefaults := map[string][]string{
+			"JWT_SECRET": {
+				"change-me-in-production",
+				"REPLACE_ME_OR_STARTUP_FAILS",
+				"secret",
+				"jwt-secret",
+			},
+		}
+		var insecure []string
+		for key, weakValues := range weakDefaults {
+			val := os.Getenv(key)
+			for _, weak := range weakValues {
+				if val == weak {
+					insecure = append(insecure, fmt.Sprintf("%s=%s", key, weak))
+					break
+				}
+			}
+		}
+		if pw := os.Getenv("POSTGRES_PASSWORD"); pw == "password" || pw == "REPLACE_ME_OR_STARTUP_FAILS" {
+			insecure = append(insecure, "POSTGRES_PASSWORD="+pw)
+		}
+		if len(insecure) > 0 {
+			return nil, fmt.Errorf("❌ insecure default value(s) detected in production: %s. Update these values before deploying", joinStrings(insecure, ", "))
+		}
+	}
+
 	return cfg, nil
 }
 
