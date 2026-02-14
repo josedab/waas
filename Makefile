@@ -150,7 +150,7 @@ up: docker-up ## Alias for docker-up
 down: docker-down ## Alias for docker-down
 
 # ─── Documentation ──────────────────────────────────────────────────
-.PHONY: docs docs-serve open-docs smoke-test seed
+.PHONY: docs docs-serve open-docs smoke-test seed quickstart
 
 docs: ## Generate Swagger/OpenAPI docs
 	$(MAKE) -C $(BACKEND) docs
@@ -166,6 +166,9 @@ smoke-test: ## Quick smoke test against running API
 
 seed: ## Seed sample tenants, endpoints, and deliveries via the API
 	$(MAKE) -C $(BACKEND) seed
+
+quickstart: ## One-command demo: setup → API → seed → summary
+	$(MAKE) -C $(BACKEND) quickstart
 
 # ─── Dependencies & hooks ──────────────────────────────────────────
 .PHONY: deps install-hooks uninstall-hooks
