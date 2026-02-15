@@ -84,7 +84,7 @@ func (h *PlaygroundHandler) CreateSession(c *gin.Context) {
 	session, err := h.service.CreateSession(c.Request.Context(), tenantID, req.Name)
 	if err != nil {
 		h.logger.Error("Failed to create session", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
+		InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *PlaygroundHandler) SaveSession(c *gin.Context) {
 
 	session, err := h.service.SaveSession(c.Request.Context(), id, req.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "SAVE_FAILED", Message: err.Error()})
+		InternalError(c, "SAVE_FAILED", err)
 		return
 	}
 
@@ -170,7 +170,7 @@ func (h *PlaygroundHandler) ExecuteTransformation(c *gin.Context) {
 
 	execution, err := h.service.ExecuteTransformation(c.Request.Context(), sessionID, req.Code, req.Input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "EXECUTION_FAILED", Message: err.Error()})
+		InternalError(c, "EXECUTION_FAILED", err)
 		return
 	}
 
@@ -196,7 +196,7 @@ func (h *PlaygroundHandler) GetExecutionHistory(c *gin.Context) {
 
 	history, err := h.service.GetExecutionHistory(c.Request.Context(), id, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "GET_HISTORY_FAILED", Message: err.Error()})
+		InternalError(c, "GET_HISTORY_FAILED", err)
 		return
 	}
 
@@ -239,7 +239,7 @@ func (h *PlaygroundHandler) CaptureRequest(c *gin.Context) {
 	}
 
 	if err := h.service.CaptureRequest(c.Request.Context(), capture); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "CAPTURE_FAILED", Message: err.Error()})
+		InternalError(c, "CAPTURE_FAILED", err)
 		return
 	}
 
@@ -272,7 +272,7 @@ func (h *PlaygroundHandler) ListCaptures(c *gin.Context) {
 
 	captures, err := h.service.ListCaptures(c.Request.Context(), tenantID, sessionID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "LIST_FAILED", Message: err.Error()})
+		InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -295,7 +295,7 @@ func (h *PlaygroundHandler) ReplayRequest(c *gin.Context) {
 
 	replay, err := h.service.ReplayRequest(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "REPLAY_FAILED", Message: err.Error()})
+		InternalError(c, "REPLAY_FAILED", err)
 		return
 	}
 
@@ -340,7 +340,7 @@ func (h *PlaygroundHandler) CreateSnippet(c *gin.Context) {
 	}
 
 	if err := h.service.CreateSnippet(c.Request.Context(), snippet); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
+		InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -365,7 +365,7 @@ func (h *PlaygroundHandler) ListSnippets(c *gin.Context) {
 
 	snippets, err := h.service.ListSnippets(c.Request.Context(), tenantID, snippetType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "LIST_FAILED", Message: err.Error()})
+		InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -400,7 +400,7 @@ func (h *PlaygroundHandler) CreateSharedScenario(c *gin.Context) {
 	scenario, err := h.service.CreateSharedScenario(c.Request.Context(), req.SessionID, req.Name, req.Description, req.Payload, req.TargetURL, req.Headers)
 	if err != nil {
 		h.logger.Error("Failed to create shared scenario", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
+		InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -461,7 +461,7 @@ func (h *PlaygroundHandler) CreateTestSuite(c *gin.Context) {
 	suite, err := h.service.CreateTestSuite(c.Request.Context(), tenantID, req.Name, req.Description, req.IsPublic)
 	if err != nil {
 		h.logger.Error("Failed to create test suite", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
+		InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -483,7 +483,7 @@ func (h *PlaygroundHandler) ListTestSuites(c *gin.Context) {
 
 	suites, err := h.service.ListTestSuites(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "LIST_FAILED", Message: err.Error()})
+		InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -513,7 +513,7 @@ func (h *PlaygroundHandler) ReplayProductionEvent(c *gin.Context) {
 
 	replay, err := h.service.ReplayProductionEvent(c.Request.Context(), req.EventID, req.SensitiveFields)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "REPLAY_FAILED", Message: err.Error()})
+		InternalError(c, "REPLAY_FAILED", err)
 		return
 	}
 

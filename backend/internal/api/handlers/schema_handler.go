@@ -92,7 +92,7 @@ func (h *SchemaHandler) CreateSchema(c *gin.Context) {
 	s, err := h.service.CreateSchema(c.Request.Context(), tenantID, createReq)
 	if err != nil {
 		h.logger.Error("Failed to create schema", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -140,7 +140,7 @@ func (h *SchemaHandler) ListSchemas(c *gin.Context) {
 
 	schemas, _, err := h.service.ListSchemas(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -178,7 +178,7 @@ func (h *SchemaHandler) UpdateSchema(c *gin.Context) {
 
 	s, err := h.service.UpdateSchema(c.Request.Context(), tenantID, id, updateReq)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -196,7 +196,7 @@ func (h *SchemaHandler) DeleteSchema(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.service.DeleteSchema(c.Request.Context(), tenantID, id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -231,7 +231,7 @@ func (h *SchemaHandler) CreateSchemaVersion(c *gin.Context) {
 
 	version, _, err := h.service.CreateVersion(c.Request.Context(), tenantID, id, createReq)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -251,7 +251,7 @@ func (h *SchemaHandler) GetSchemaVersions(c *gin.Context) {
 
 	versions, err := h.service.ListVersions(c.Request.Context(), tenantID, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -284,7 +284,7 @@ func (h *SchemaHandler) AssignSchemaToEndpoint(c *gin.Context) {
 	}
 
 	if err := h.service.AssignSchemaToEndpoint(c.Request.Context(), tenantID, endpointID, assignReq); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -301,7 +301,7 @@ func (h *SchemaHandler) RemoveSchemaFromEndpoint(c *gin.Context) {
 	endpointID := c.Param("endpoint_id")
 
 	if err := h.service.RemoveSchemaFromEndpoint(c.Request.Context(), endpointID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -330,7 +330,7 @@ func (h *SchemaHandler) ValidatePayload(c *gin.Context) {
 	payloadBytes, _ := json.Marshal(req.Payload)
 	result, err := h.service.ValidatePayloadDirect(c.Request.Context(), tenantID, id, payloadBytes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -359,7 +359,7 @@ func (h *SchemaHandler) ValidateForEndpoint(c *gin.Context) {
 	payloadBytes, _ := json.Marshal(req.Payload)
 	result, err := h.service.ValidatePayload(c.Request.Context(), tenantID, endpointID, payloadBytes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

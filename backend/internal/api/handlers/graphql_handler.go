@@ -44,7 +44,7 @@ func (h *GraphQLHandler) CreateSchema(c *gin.Context) {
 	schema, err := h.service.CreateSchema(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to create schema", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *GraphQLHandler) GetSchemas(c *gin.Context) {
 	schemas, err := h.service.GetSchemas(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
 		h.logger.Error("Failed to get schemas", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -142,7 +142,7 @@ func (h *GraphQLHandler) CreateSubscription(c *gin.Context) {
 	sub, err := h.service.CreateSubscription(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to create subscription", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -161,7 +161,7 @@ func (h *GraphQLHandler) GetSubscriptions(c *gin.Context) {
 	subs, err := h.service.GetSubscriptions(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
 		h.logger.Error("Failed to get subscriptions", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -222,7 +222,7 @@ func (h *GraphQLHandler) IngestEvent(c *gin.Context) {
 	event, err := h.service.ProcessSubscriptionEvent(c.Request.Context(), subID, req.EventType, req.Payload)
 	if err != nil {
 		h.logger.Error("Failed to process event", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -254,7 +254,7 @@ func (h *GraphQLHandler) AddFederationSource(c *gin.Context) {
 	source, err := h.service.AddFederationSource(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to add federation source", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -306,7 +306,7 @@ func (h *GraphQLHandler) CreateTypeMapping(c *gin.Context) {
 	mapping, err := h.service.CreateTypeMapping(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to create type mapping", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

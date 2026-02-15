@@ -95,7 +95,7 @@ func (h *AIComposerHandler) ApplyConfig(c *gin.Context) {
 
 	if err := h.service.ApplyConfig(c.Request.Context(), tenantID.(uuid.UUID), configID); err != nil {
 		h.logger.Error("Failed to apply config", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

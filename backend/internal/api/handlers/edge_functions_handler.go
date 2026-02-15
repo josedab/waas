@@ -96,7 +96,7 @@ func (h *EdgeFunctionsHandler) GetFunctions(c *gin.Context) {
 
 	functions, err := h.service.GetFunctions(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -442,7 +442,7 @@ func (h *EdgeFunctionsHandler) RunTest(c *gin.Context) {
 func (h *EdgeFunctionsHandler) GetLocations(c *gin.Context) {
 	locations, err := h.service.GetActiveLocations(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -459,7 +459,7 @@ func (h *EdgeFunctionsHandler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

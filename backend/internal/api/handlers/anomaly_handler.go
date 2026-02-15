@@ -69,7 +69,7 @@ func (h *AnomalyHandler) ListAnomalies(c *gin.Context) {
 
 	anomalies, err := h.service.ListAnomalies(c.Request.Context(), tenantID, status, severity, endpointID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -107,7 +107,7 @@ func (h *AnomalyHandler) AcknowledgeAnomaly(c *gin.Context) {
 
 	a, err := h.service.AcknowledgeAnomaly(c.Request.Context(), tenantID, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -126,7 +126,7 @@ func (h *AnomalyHandler) ResolveAnomaly(c *gin.Context) {
 
 	a, err := h.service.ResolveAnomaly(c.Request.Context(), tenantID, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -151,7 +151,7 @@ func (h *AnomalyHandler) GetBaselines(c *gin.Context) {
 
 	baselines, err := h.service.GetBaselines(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -175,7 +175,7 @@ func (h *AnomalyHandler) RecalculateBaselines(c *gin.Context) {
 	endpointID := c.Query("endpoint_id")
 
 	if err := h.service.RecalculateBaselines(c.Request.Context(), tenantID, endpointID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -204,7 +204,7 @@ func (h *AnomalyHandler) GetDetectionConfig(c *gin.Context) {
 
 	config, err := h.service.GetDetectionConfig(c.Request.Context(), tenantID, endpointID, metricType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -239,7 +239,7 @@ func (h *AnomalyHandler) UpdateDetectionConfig(c *gin.Context) {
 
 	config, err := h.service.GetDetectionConfig(c.Request.Context(), tenantID, endpointID, metricType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -263,7 +263,7 @@ func (h *AnomalyHandler) UpdateDetectionConfig(c *gin.Context) {
 	}
 
 	if err := h.service.UpdateDetectionConfig(c.Request.Context(), config); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -285,7 +285,7 @@ func (h *AnomalyHandler) ListAlertConfigs(c *gin.Context) {
 
 	configs, err := h.service.ListAlertConfigs(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -325,7 +325,7 @@ func (h *AnomalyHandler) CreateAlertConfig(c *gin.Context) {
 
 	config, err := h.service.CreateAlertConfig(c.Request.Context(), tenantID, alertReq)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -342,7 +342,7 @@ func (h *AnomalyHandler) DeleteAlertConfig(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.service.DeleteAlertConfig(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -369,7 +369,7 @@ func (h *AnomalyHandler) ListAlerts(c *gin.Context) {
 
 	alerts, err := h.service.ListAlerts(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

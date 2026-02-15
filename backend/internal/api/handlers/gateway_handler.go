@@ -82,7 +82,7 @@ func (h *GatewayHandler) CreateProvider(c *gin.Context) {
 
 	provider, err := h.service.CreateProvider(c.Request.Context(), tenantID, createReq)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -124,7 +124,7 @@ func (h *GatewayHandler) ListProviders(c *gin.Context) {
 
 	providers, _, err := h.service.ListProviders(c.Request.Context(), tenantID, 100, 0)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -185,7 +185,7 @@ func (h *GatewayHandler) DeleteProvider(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.service.DeleteProvider(c.Request.Context(), tenantID, id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -225,7 +225,7 @@ func (h *GatewayHandler) CreateRoutingRule(c *gin.Context) {
 
 	rule, err := h.service.CreateRoutingRule(c.Request.Context(), tenantID, createReq)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -249,7 +249,7 @@ func (h *GatewayHandler) ListRoutingRules(c *gin.Context) {
 
 	rules, err := h.service.ListRoutingRules(c.Request.Context(), tenantID, providerID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -267,7 +267,7 @@ func (h *GatewayHandler) DeleteRoutingRule(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.service.DeleteRoutingRule(c.Request.Context(), tenantID, id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -339,7 +339,7 @@ func (h *GatewayHandler) ListInboundWebhooks(c *gin.Context) {
 
 	webhooks, _, err := h.service.ListInboundWebhooks(c.Request.Context(), tenantID, providerID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

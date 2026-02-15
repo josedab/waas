@@ -36,7 +36,7 @@ func (h *SelfHealingHandler) GetDashboard(c *gin.Context) {
 	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
 		h.logger.Error("Failed to get dashboard", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *SelfHealingHandler) PredictHealth(c *gin.Context) {
 	prediction, err := h.service.PredictEndpointHealth(c.Request.Context(), tenantID.(uuid.UUID), endpointID, &features)
 	if err != nil {
 		h.logger.Error("Failed to predict health", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -116,7 +116,7 @@ func (h *SelfHealingHandler) GetPredictions(c *gin.Context) {
 	predictions, err := h.service.GetPredictions(c.Request.Context(), tenantID.(uuid.UUID), 20)
 	if err != nil {
 		h.logger.Error("Failed to get predictions", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *SelfHealingHandler) CreateRemediationRule(c *gin.Context) {
 	rule, err := h.service.CreateRemediationRule(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to create rule", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -162,7 +162,7 @@ func (h *SelfHealingHandler) GetRemediationRules(c *gin.Context) {
 	rules, err := h.service.GetRemediationRules(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
 		h.logger.Error("Failed to get rules", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -189,7 +189,7 @@ func (h *SelfHealingHandler) TriggerRemediation(c *gin.Context) {
 	action, err := h.service.TriggerManualRemediation(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to trigger remediation", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -208,7 +208,7 @@ func (h *SelfHealingHandler) GetRemediationActions(c *gin.Context) {
 	actions, err := h.service.GetRemediationActions(c.Request.Context(), tenantID.(uuid.UUID), 20)
 	if err != nil {
 		h.logger.Error("Failed to get actions", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -235,7 +235,7 @@ func (h *SelfHealingHandler) UpdateCircuitBreaker(c *gin.Context) {
 	cb, err := h.service.UpdateCircuitBreaker(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to update circuit breaker", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -254,7 +254,7 @@ func (h *SelfHealingHandler) GetSuggestions(c *gin.Context) {
 	suggestions, err := h.service.GetSuggestions(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
 		h.logger.Error("Failed to get suggestions", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -279,7 +279,7 @@ func (h *SelfHealingHandler) ApplySuggestion(c *gin.Context) {
 
 	if err := h.service.ApplySuggestion(c.Request.Context(), tenantID.(uuid.UUID), suggestionID); err != nil {
 		h.logger.Error("Failed to apply suggestion", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

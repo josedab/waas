@@ -89,7 +89,7 @@ func (h *BidirectionalSyncHandler) GetConfigs(c *gin.Context) {
 
 	configs, err := h.service.GetConfigs(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -322,7 +322,7 @@ func (h *BidirectionalSyncHandler) GetConflicts(c *gin.Context) {
 
 	conflicts, err := h.service.GetConflicts(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -362,7 +362,7 @@ func (h *BidirectionalSyncHandler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

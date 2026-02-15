@@ -65,7 +65,7 @@ func (h *ConnectorsHandler) ListAvailableConnectors(c *gin.Context) {
 	}
 	available, err := h.service.ListMarketplace(c.Request.Context(), filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -121,7 +121,7 @@ func (h *ConnectorsHandler) InstallConnector(c *gin.Context) {
 	installed, err := h.service.InstallConnector(c.Request.Context(), tenantID, installReq)
 	if err != nil {
 		h.logger.Error("Failed to install connector", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *ConnectorsHandler) ListInstalledConnectors(c *gin.Context) {
 
 	installed, _, err := h.service.ListInstalledConnectors(c.Request.Context(), tenantID, 100, 0)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -197,7 +197,7 @@ func (h *ConnectorsHandler) UpdateInstalledConnector(c *gin.Context) {
 
 	installed, err := h.service.UpdateInstalledConnector(c.Request.Context(), tenantID, id, updateReq)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -215,7 +215,7 @@ func (h *ConnectorsHandler) UninstallConnector(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.service.UninstallConnector(c.Request.Context(), tenantID, id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -279,7 +279,7 @@ func (h *ConnectorsHandler) TestConnector(c *gin.Context) {
 	payloadBytes, _ := json.Marshal(payload)
 	result, err := h.service.ExecuteConnector(c.Request.Context(), tenantID, id, "test", payloadBytes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -44,7 +44,7 @@ func (h *ComplianceHandler) CreateProfile(c *gin.Context) {
 	profile, err := h.service.CreateProfile(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to create compliance profile", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *ComplianceHandler) GetProfiles(c *gin.Context) {
 	profiles, err := h.service.GetProfiles(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
 		h.logger.Error("Failed to get compliance profiles", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -115,7 +115,7 @@ func (h *ComplianceHandler) ScanForPII(c *gin.Context) {
 	result, err := h.service.ScanForPII(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to scan for PII", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -142,7 +142,7 @@ func (h *ComplianceHandler) GenerateReport(c *gin.Context) {
 	report, err := h.service.GenerateReport(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to generate report", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -161,7 +161,7 @@ func (h *ComplianceHandler) GetReports(c *gin.Context) {
 	reports, err := h.service.GetReports(c.Request.Context(), tenantID.(uuid.UUID), 20)
 	if err != nil {
 		h.logger.Error("Failed to get reports", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -238,7 +238,7 @@ func (h *ComplianceHandler) CreateDSR(c *gin.Context) {
 	dsr, err := h.service.CreateDSR(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to create DSR", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -259,7 +259,7 @@ func (h *ComplianceHandler) GetDSRs(c *gin.Context) {
 	dsrs, err := h.service.GetDSRs(c.Request.Context(), tenantID.(uuid.UUID), status)
 	if err != nil {
 		h.logger.Error("Failed to get DSRs", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -309,7 +309,7 @@ func (h *ComplianceHandler) ProcessDSR(c *gin.Context) {
 
 	if err := h.service.ProcessDSR(c.Request.Context(), tenantID.(uuid.UUID), dsrID); err != nil {
 		h.logger.Error("Failed to process DSR", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -338,7 +338,7 @@ func (h *ComplianceHandler) GetAuditLogs(c *gin.Context) {
 	logs, err := h.service.QueryAuditLogs(c.Request.Context(), query)
 	if err != nil {
 		h.logger.Error("Failed to get audit logs", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -357,7 +357,7 @@ func (h *ComplianceHandler) GetDashboard(c *gin.Context) {
 	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
 		h.logger.Error("Failed to get dashboard", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -384,7 +384,7 @@ func (h *ComplianceHandler) CreateRetentionPolicy(c *gin.Context) {
 	policy, err := h.service.CreateRetentionPolicy(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to create retention policy", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -403,7 +403,7 @@ func (h *ComplianceHandler) GetRetentionPolicies(c *gin.Context) {
 	policies, err := h.service.GetRetentionPolicies(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
 		h.logger.Error("Failed to get retention policies", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

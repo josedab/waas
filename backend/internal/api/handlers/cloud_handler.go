@@ -149,7 +149,7 @@ func (h *CloudHandler) CreateSubscription(c *gin.Context) {
 	sub, err := h.billingService.CreateSubscription(c.Request.Context(), tenantID, req.PlanID, cloud.BillingCycle(req.BillingCycle))
 	if err != nil {
 		h.logger.Error("Failed to create subscription", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -180,7 +180,7 @@ func (h *CloudHandler) ChangePlan(c *gin.Context) {
 	sub, err := h.billingService.ChangePlan(c.Request.Context(), tenantID, req.PlanID)
 	if err != nil {
 		h.logger.Error("Failed to change plan", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -205,7 +205,7 @@ func (h *CloudHandler) CancelSubscription(c *gin.Context) {
 
 	sub, err := h.billingService.CancelSubscription(c.Request.Context(), tenantID, immediate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -265,7 +265,7 @@ func (h *CloudHandler) ListUsageHistory(c *gin.Context) {
 
 	history, err := h.repo.ListUsage(c.Request.Context(), tenantID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -290,7 +290,7 @@ func (h *CloudHandler) ListInvoices(c *gin.Context) {
 
 	invoices, err := h.repo.ListInvoices(c.Request.Context(), tenantID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -397,7 +397,7 @@ func (h *CloudHandler) UpdateCustomer(c *gin.Context) {
 	}
 
 	if err := h.repo.UpdateCustomer(c.Request.Context(), customer); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -419,7 +419,7 @@ func (h *CloudHandler) ListPaymentMethods(c *gin.Context) {
 
 	methods, err := h.repo.ListPaymentMethods(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -436,7 +436,7 @@ func (h *CloudHandler) DeletePaymentMethod(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.repo.DeletePaymentMethod(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -459,7 +459,7 @@ func (h *CloudHandler) SetDefaultPaymentMethod(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.repo.SetDefaultPaymentMethod(c.Request.Context(), tenantID, id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -483,7 +483,7 @@ func (h *CloudHandler) ListTeamMembers(c *gin.Context) {
 
 	members, err := h.teamService.ListMembers(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -514,7 +514,7 @@ func (h *CloudHandler) InviteMember(c *gin.Context) {
 
 	member, err := h.teamService.InviteMember(c.Request.Context(), tenantID, userID, req.Email, req.Name, cloud.TeamRole(req.Role))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -540,7 +540,7 @@ func (h *CloudHandler) UpdateMember(c *gin.Context) {
 	}
 
 	if err := h.teamService.UpdateMemberRole(c.Request.Context(), id, cloud.TeamRole(req.Role)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -558,7 +558,7 @@ func (h *CloudHandler) RemoveMember(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.teamService.RemoveMember(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -587,7 +587,7 @@ func (h *CloudHandler) ListAuditLogs(c *gin.Context) {
 
 	logs, err := h.auditService.ListLogs(c.Request.Context(), tenantID, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

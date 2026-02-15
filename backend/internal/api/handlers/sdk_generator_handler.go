@@ -44,7 +44,7 @@ func (h *SDKGeneratorHandler) CreateConfig(c *gin.Context) {
 	config, err := h.service.CreateConfig(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to create SDK config", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *SDKGeneratorHandler) GetConfigs(c *gin.Context) {
 	configs, err := h.service.GetConfigs(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
 		h.logger.Error("Failed to get SDK configs", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -115,7 +115,7 @@ func (h *SDKGeneratorHandler) GenerateSDK(c *gin.Context) {
 	results, err := h.service.GenerateSDK(c.Request.Context(), tenantID.(uuid.UUID), &req)
 	if err != nil {
 		h.logger.Error("Failed to generate SDK", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

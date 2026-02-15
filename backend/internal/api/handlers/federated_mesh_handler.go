@@ -62,7 +62,7 @@ func (h *FederatedMeshHandler) RegisterRoutes(rg *gin.RouterGroup) {
 func (h *FederatedMeshHandler) GetAllRegions(c *gin.Context) {
 	regions, err := h.service.GetAllRegions(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -73,7 +73,7 @@ func (h *FederatedMeshHandler) GetAllRegions(c *gin.Context) {
 func (h *FederatedMeshHandler) GetActiveRegions(c *gin.Context) {
 	regions, err := h.service.GetActiveRegions(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -107,7 +107,7 @@ func (h *FederatedMeshHandler) GetRegion(c *gin.Context) {
 func (h *FederatedMeshHandler) GetRegionsWithMetrics(c *gin.Context) {
 	regions, err := h.service.GetRegionsWithMetrics(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -187,7 +187,7 @@ func (h *FederatedMeshHandler) GetRoutingRules(c *gin.Context) {
 
 	rules, err := h.service.GetRoutingRules(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -250,7 +250,7 @@ func (h *FederatedMeshHandler) GetReplicationStreams(c *gin.Context) {
 
 	streams, err := h.service.GetReplicationStreams(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -329,7 +329,7 @@ func (h *FederatedMeshHandler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.service.GetMeshDashboard(c.Request.Context(), tenantID.(uuid.UUID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

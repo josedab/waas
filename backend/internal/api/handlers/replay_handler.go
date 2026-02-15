@@ -93,7 +93,7 @@ func (h *ReplayHandler) ReplayDelivery(c *gin.Context) {
 	r, err := h.service.ReplaySingle(c.Request.Context(), tenantID, replayReq)
 	if err != nil {
 		h.logger.Error("Failed to replay delivery", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -132,7 +132,7 @@ func (h *ReplayHandler) BulkReplay(c *gin.Context) {
 	result, err := h.service.ReplayBulk(c.Request.Context(), tenantID, bulkReq)
 	if err != nil {
 		h.logger.Error("Failed to bulk replay", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -182,7 +182,7 @@ func (h *ReplayHandler) ReplayTimeRange(c *gin.Context) {
 	result, err := h.service.ReplayBulk(c.Request.Context(), tenantID, bulkReq)
 	if err != nil {
 		h.logger.Error("Failed to replay time range", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -260,7 +260,7 @@ func (h *ReplayHandler) CreateSnapshot(c *gin.Context) {
 	snapshot, err := h.service.CreateSnapshot(c.Request.Context(), tenantID, createReq)
 	if err != nil {
 		h.logger.Error("Failed to create snapshot", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -287,7 +287,7 @@ func (h *ReplayHandler) ListSnapshots(c *gin.Context) {
 
 	snapshots, _, err := h.service.ListSnapshots(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -342,7 +342,7 @@ func (h *ReplayHandler) ReplayFromSnapshot(c *gin.Context) {
 	result, err := h.service.ReplayFromSnapshot(c.Request.Context(), tenantID, replayReq)
 	if err != nil {
 		h.logger.Error("Failed to replay from snapshot", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -360,7 +360,7 @@ func (h *ReplayHandler) DeleteSnapshot(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.service.DeleteSnapshot(c.Request.Context(), tenantID, id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -49,7 +49,7 @@ func (h *CatalogHandler) CreateEventType(c *gin.Context) {
 	et, err := h.service.CreateEventType(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to create event type", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
+		InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *CatalogHandler) UpdateEventType(c *gin.Context) {
 
 	et, err := h.service.UpdateEventType(c.Request.Context(), id, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "UPDATE_FAILED", Message: err.Error()})
+		InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -148,7 +148,7 @@ func (h *CatalogHandler) DeleteEventType(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteEventType(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DELETE_FAILED", Message: err.Error()})
+		InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -179,7 +179,7 @@ func (h *CatalogHandler) DeprecateEventType(c *gin.Context) {
 
 	et, err := h.service.DeprecateEventType(c.Request.Context(), id, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DEPRECATE_FAILED", Message: err.Error()})
+		InternalError(c, "DEPRECATE_FAILED", err)
 		return
 	}
 
@@ -232,7 +232,7 @@ func (h *CatalogHandler) SearchEventTypes(c *gin.Context) {
 
 	result, err := h.service.SearchEventTypes(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "SEARCH_FAILED", Message: err.Error()})
+		InternalError(c, "SEARCH_FAILED", err)
 		return
 	}
 
@@ -263,7 +263,7 @@ func (h *CatalogHandler) PublishVersion(c *gin.Context) {
 
 	ev, err := h.service.PublishVersion(c.Request.Context(), id, &req, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "PUBLISH_FAILED", Message: err.Error()})
+		InternalError(c, "PUBLISH_FAILED", err)
 		return
 	}
 
@@ -286,7 +286,7 @@ func (h *CatalogHandler) GetVersions(c *gin.Context) {
 
 	versions, err := h.service.GetVersions(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "GET_VERSIONS_FAILED", Message: err.Error()})
+		InternalError(c, "GET_VERSIONS_FAILED", err)
 		return
 	}
 
@@ -308,7 +308,7 @@ func (h *CatalogHandler) ListCategories(c *gin.Context) {
 
 	categories, err := h.service.ListCategories(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "LIST_FAILED", Message: err.Error()})
+		InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -338,7 +338,7 @@ func (h *CatalogHandler) CreateCategory(c *gin.Context) {
 
 	cat, err := h.service.CreateCategory(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
+		InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -369,7 +369,7 @@ func (h *CatalogHandler) SubscribeToEvent(c *gin.Context) {
 
 	sub, err := h.service.Subscribe(c.Request.Context(), id, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "SUBSCRIBE_FAILED", Message: err.Error()})
+		InternalError(c, "SUBSCRIBE_FAILED", err)
 		return
 	}
 
@@ -397,7 +397,7 @@ func (h *CatalogHandler) UnsubscribeFromEvent(c *gin.Context) {
 	}
 
 	if err := h.service.Unsubscribe(c.Request.Context(), eventID, endpointID); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "UNSUBSCRIBE_FAILED", Message: err.Error()})
+		InternalError(c, "UNSUBSCRIBE_FAILED", err)
 		return
 	}
 
@@ -419,7 +419,7 @@ func (h *CatalogHandler) GetOpenAPISpec(c *gin.Context) {
 
 	spec, err := h.service.GenerateOpenAPISpec(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "SPEC_FAILED", Message: err.Error()})
+		InternalError(c, "SPEC_FAILED", err)
 		return
 	}
 
@@ -442,7 +442,7 @@ func (h *CatalogHandler) GetDocumentation(c *gin.Context) {
 
 	docs, err := h.service.GetDocumentation(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "GET_DOCS_FAILED", Message: err.Error()})
+		InternalError(c, "GET_DOCS_FAILED", err)
 		return
 	}
 

@@ -102,7 +102,7 @@ func (h *MultiRegionHandler) ListRegions(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -154,7 +154,7 @@ func (h *MultiRegionHandler) CreateRegion(c *gin.Context) {
 	}
 
 	if err := h.repo.CreateRegion(c.Request.Context(), region); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -205,7 +205,7 @@ func (h *MultiRegionHandler) UpdateRegion(c *gin.Context) {
 	}
 
 	if err := h.repo.UpdateRegion(c.Request.Context(), region); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -222,7 +222,7 @@ func (h *MultiRegionHandler) DeleteRegion(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.repo.DeleteRegion(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -277,7 +277,7 @@ func (h *MultiRegionHandler) TriggerFailover(c *gin.Context) {
 	event, err := h.failoverManager.TriggerFailover(c.Request.Context(), req.FromRegion, req.ToRegion, req.Reason)
 	if err != nil {
 		h.logger.Error("Failed to trigger failover", map[string]interface{}{"error": err.Error()})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -296,7 +296,7 @@ func (h *MultiRegionHandler) ListFailoverEvents(c *gin.Context) {
 
 	events, err := h.repo.ListFailoverEvents(c.Request.Context(), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -377,7 +377,7 @@ func (h *MultiRegionHandler) CreateRoutingPolicy(c *gin.Context) {
 	}
 
 	if err := h.repo.CreateRoutingPolicy(c.Request.Context(), policy); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -418,7 +418,7 @@ func (h *MultiRegionHandler) UpdateRoutingPolicy(c *gin.Context) {
 	policy.Weights = req.Weights
 
 	if err := h.repo.UpdateRoutingPolicy(c.Request.Context(), policy); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -438,7 +438,7 @@ func (h *MultiRegionHandler) DeleteRoutingPolicy(c *gin.Context) {
 	}
 
 	if err := h.repo.DeleteRoutingPolicy(c.Request.Context(), tenantID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -454,7 +454,7 @@ func (h *MultiRegionHandler) DeleteRoutingPolicy(c *gin.Context) {
 func (h *MultiRegionHandler) ListReplicationConfigs(c *gin.Context) {
 	configs, err := h.repo.ListReplicationConfigs(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -495,7 +495,7 @@ func (h *MultiRegionHandler) CreateReplicationConfig(c *gin.Context) {
 	}
 
 	if err := h.repo.CreateReplicationConfig(c.Request.Context(), config); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalErrorGeneric(c, err)
 		return
 	}
 
