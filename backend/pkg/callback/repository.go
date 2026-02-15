@@ -2,6 +2,7 @@ package callback
 
 import (
 	"context"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -226,17 +227,25 @@ func (r *PostgresRepository) GetCallbackMetrics(ctx context.Context, tenantID uu
 		return &metrics, nil
 	}
 
-	_ = r.db.GetContext(ctx, &metrics.SuccessRate,
-		`SELECT COALESCE(COUNT(*) FILTER (WHERE status = 'received')::float / NULLIF(COUNT(*), 0), 0) FROM callback_requests WHERE tenant_id = $1`, tenantID)
+	if err := r.db.GetContext(ctx, &metrics.SuccessRate,
+		`SELECT COALESCE(COUNT(*) FILTER (WHERE status = 'received')::float / NULLIF(COUNT(*), 0), 0) FROM callback_requests WHERE tenant_id = $1`, tenantID); err != nil {
+		log.Printf("[callback] failed to query success rate for tenant %s: %v", tenantID, err)
+	}
 
-	_ = r.db.GetContext(ctx, &metrics.AvgLatencyMs,
-		`SELECT COALESCE(AVG(latency_ms), 0) FROM callback_responses cr JOIN callback_requests cq ON cr.request_id = cq.id WHERE cq.tenant_id = $1`, tenantID)
+	if err := r.db.GetContext(ctx, &metrics.AvgLatencyMs,
+		`SELECT COALESCE(AVG(latency_ms), 0) FROM callback_responses cr JOIN callback_requests cq ON cr.request_id = cq.id WHERE cq.tenant_id = $1`, tenantID); err != nil {
+		log.Printf("[callback] failed to query avg latency for tenant %s: %v", tenantID, err)
+	}
 
-	_ = r.db.GetContext(ctx, &metrics.TimeoutRate,
-		`SELECT COALESCE(COUNT(*) FILTER (WHERE status = 'timeout')::float / NULLIF(COUNT(*), 0), 0) FROM callback_requests WHERE tenant_id = $1`, tenantID)
+	if err := r.db.GetContext(ctx, &metrics.TimeoutRate,
+		`SELECT COALESCE(COUNT(*) FILTER (WHERE status = 'timeout')::float / NULLIF(COUNT(*), 0), 0) FROM callback_requests WHERE tenant_id = $1`, tenantID); err != nil {
+		log.Printf("[callback] failed to query timeout rate for tenant %s: %v", tenantID, err)
+	}
 
-	_ = r.db.GetContext(ctx, &metrics.PendingCallbacks,
-		`SELECT COUNT(*) FROM callback_requests WHERE tenant_id = $1 AND status IN ('pending', 'waiting')`, tenantID)
+	if err := r.db.GetContext(ctx, &metrics.PendingCallbacks,
+		`SELECT COUNT(*) FROM callback_requests WHERE tenant_id = $1 AND status IN ('pending', 'waiting')`, tenantID); err != nil {
+		log.Printf("[callback] failed to query pending callbacks for tenant %s: %v", tenantID, err)
+	}
 
 	return &metrics, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -230,16 +231,26 @@ func (r *PostgresRepository) GetHealthScore(ctx context.Context, tenantID, endpo
 func (r *PostgresRepository) GetSummary(ctx context.Context, tenantID string) (*IntelligenceSummary, error) {
 	summary := &IntelligenceSummary{}
 
-	_ = r.db.GetContext(ctx, &summary.TotalPredictions,
-		`SELECT COUNT(*) FROM intel_predictions WHERE tenant_id = $1 AND resolved = false`, tenantID)
-	_ = r.db.GetContext(ctx, &summary.ActiveAnomalies,
-		`SELECT COUNT(*) FROM intel_anomalies WHERE tenant_id = $1 AND acknowledged = false`, tenantID)
-	_ = r.db.GetContext(ctx, &summary.PendingOptimizations,
-		`SELECT COUNT(*) FROM intel_optimizations WHERE tenant_id = $1 AND applied = false`, tenantID)
-	_ = r.db.GetContext(ctx, &summary.AvgHealthScore,
-		`SELECT COALESCE(AVG(overall_score), 0) FROM intel_health_scores WHERE tenant_id = $1`, tenantID)
-	_ = r.db.GetContext(ctx, &summary.AnomaliesDetected7d,
-		`SELECT COUNT(*) FROM intel_anomalies WHERE tenant_id = $1 AND detected_at >= NOW() - INTERVAL '7 days'`, tenantID)
+	if err := r.db.GetContext(ctx, &summary.TotalPredictions,
+		`SELECT COUNT(*) FROM intel_predictions WHERE tenant_id = $1 AND resolved = false`, tenantID); err != nil {
+		log.Printf("[intelligence] failed to query total predictions for tenant %s: %v", tenantID, err)
+	}
+	if err := r.db.GetContext(ctx, &summary.ActiveAnomalies,
+		`SELECT COUNT(*) FROM intel_anomalies WHERE tenant_id = $1 AND acknowledged = false`, tenantID); err != nil {
+		log.Printf("[intelligence] failed to query active anomalies for tenant %s: %v", tenantID, err)
+	}
+	if err := r.db.GetContext(ctx, &summary.PendingOptimizations,
+		`SELECT COUNT(*) FROM intel_optimizations WHERE tenant_id = $1 AND applied = false`, tenantID); err != nil {
+		log.Printf("[intelligence] failed to query pending optimizations for tenant %s: %v", tenantID, err)
+	}
+	if err := r.db.GetContext(ctx, &summary.AvgHealthScore,
+		`SELECT COALESCE(AVG(overall_score), 0) FROM intel_health_scores WHERE tenant_id = $1`, tenantID); err != nil {
+		log.Printf("[intelligence] failed to query avg health score for tenant %s: %v", tenantID, err)
+	}
+	if err := r.db.GetContext(ctx, &summary.AnomaliesDetected7d,
+		`SELECT COUNT(*) FROM intel_anomalies WHERE tenant_id = $1 AND detected_at >= NOW() - INTERVAL '7 days'`, tenantID); err != nil {
+		log.Printf("[intelligence] failed to query 7d anomalies for tenant %s: %v", tenantID, err)
+	}
 
 	summary.PredictionAccuracy = 0.85 // baseline until enough data
 	summary.EstimatedSavings = float64(summary.PendingOptimizations) * 2.5

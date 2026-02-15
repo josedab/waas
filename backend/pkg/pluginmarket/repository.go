@@ -190,8 +190,10 @@ func (r *PostgresRepository) CreateVersion(ctx context.Context, version *PluginV
 	}
 	version.ReleasedAt = time.Now()
 
-	// Mark previous latest as not latest
-	_, _ = r.db.ExecContext(ctx, `UPDATE marketplace_plugin_versions SET is_latest = false WHERE plugin_id = $1`, version.PluginID)
+	// Mark previous latest as not latest — propagate error to avoid stale is_latest
+	if _, err := r.db.ExecContext(ctx, `UPDATE marketplace_plugin_versions SET is_latest = false WHERE plugin_id = $1`, version.PluginID); err != nil {
+		return fmt.Errorf("failed to unset previous latest version for plugin %s: %w", version.PluginID, err)
+	}
 
 	query := `INSERT INTO marketplace_plugin_versions (id, plugin_id, version, changelog, min_platform_version,
 		checksum, size_bytes, downloads, is_latest, released_at)
