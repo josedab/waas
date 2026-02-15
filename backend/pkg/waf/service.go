@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -597,9 +598,6 @@ func (s *Service) checkSecurityHeaders(url string) []HeaderCheck {
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
 	}
 
 	var checks []HeaderCheck
@@ -650,11 +648,24 @@ func (s *Service) checkTLS(url string) *TLSInfo {
 		host = host + ":443"
 	}
 
+	// Use a custom VerifyPeerCertificate callback to capture certificates
+	// for inspection while still performing standard TLS verification.
+	var peerCerts []*x509.Certificate
 	conn, err := tls.DialWithDialer(
 		&net.Dialer{Timeout: 10 * time.Second},
 		"tcp",
 		host,
-		&tls.Config{InsecureSkipVerify: true},
+		&tls.Config{
+			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+				for _, rawCert := range rawCerts {
+					cert, err := x509.ParseCertificate(rawCert)
+					if err == nil {
+						peerCerts = append(peerCerts, cert)
+					}
+				}
+				return nil
+			},
+		},
 	)
 	if err != nil {
 		return info
@@ -685,16 +696,19 @@ func (s *Service) checkTLS(url string) *TLSInfo {
 		info.CertExpiry = cert.NotAfter
 		info.CertDaysLeft = int(time.Until(cert.NotAfter).Hours() / 24)
 		info.CertValid = time.Now().Before(cert.NotAfter) && time.Now().After(cert.NotBefore)
+	} else if len(peerCerts) > 0 {
+		cert := peerCerts[0]
+		info.CertIssuer = cert.Issuer.CommonName
+		info.CertExpiry = cert.NotAfter
+		info.CertDaysLeft = int(time.Until(cert.NotAfter).Hours() / 24)
+		info.CertValid = time.Now().Before(cert.NotAfter) && time.Now().After(cert.NotBefore)
 	}
 
 	// Check HSTS via a separate HTTP request
-	client := &http.Client{
+	hstsClient := &http.Client{
 		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
 	}
-	resp, err := client.Head(url)
+	resp, err := hstsClient.Head(url)
 	if err == nil {
 		defer resp.Body.Close()
 		info.SupportsHSTS = resp.Header.Get("Strict-Transport-Security") != ""
