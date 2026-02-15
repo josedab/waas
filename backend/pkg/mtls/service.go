@@ -138,6 +138,12 @@ func (s *Service) CreateTLSPolicy(ctx context.Context, tenantID string, req *TLS
 		req.MinTLSVersion = "1.2"
 	}
 
+	// Default VerifyServerCert to true; require explicit opt-out
+	verifyServerCert := true
+	if req.VerifyServerCert != nil {
+		verifyServerCert = *req.VerifyServerCert
+	}
+
 	policy := &TLSPolicy{
 		ID:               uuid.New().String(),
 		TenantID:         tenantID,
@@ -145,7 +151,7 @@ func (s *Service) CreateTLSPolicy(ctx context.Context, tenantID string, req *TLS
 		RequireMTLS:      req.RequireMTLS,
 		MinTLSVersion:    req.MinTLSVersion,
 		AllowedCiphers:   req.AllowedCiphers,
-		VerifyServerCert: req.VerifyServerCert,
+		VerifyServerCert: verifyServerCert,
 		CertificateID:    req.CertificateID,
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
@@ -178,7 +184,9 @@ func (s *Service) UpdateTLSPolicy(ctx context.Context, tenantID, policyID string
 	policy.RequireMTLS = req.RequireMTLS
 	policy.MinTLSVersion = req.MinTLSVersion
 	policy.AllowedCiphers = req.AllowedCiphers
-	policy.VerifyServerCert = req.VerifyServerCert
+	if req.VerifyServerCert != nil {
+		policy.VerifyServerCert = *req.VerifyServerCert
+	}
 	policy.CertificateID = req.CertificateID
 	policy.UpdatedAt = time.Now()
 

@@ -59,7 +59,7 @@ type TLSPolicyRequest struct {
 	RequireMTLS      bool     `json:"require_mtls"`
 	MinTLSVersion    string   `json:"min_tls_version" binding:"omitempty,oneof=1.2 1.3"`
 	AllowedCiphers   []string `json:"allowed_ciphers,omitempty"`
-	VerifyServerCert bool     `json:"verify_server_cert"`
+	VerifyServerCert *bool    `json:"verify_server_cert"`
 	CertificateID    string   `json:"certificate_id,omitempty"`
 }
 
