@@ -610,7 +610,11 @@ func (h *Handler) Subscribe(c *gin.Context) {
 		return
 	}
 
-	tid, _ := uuid.Parse(tenantID)
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
 	sub, err := h.service.CreateSubscriptionForTenant(c.Request.Context(), tid, planID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -627,7 +631,11 @@ func (h *Handler) Subscribe(c *gin.Context) {
 // @Router /billing/subscription [get]
 func (h *Handler) GetSubscription(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
-	tid, _ := uuid.Parse(tenantID)
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
 
 	sub, err := h.service.GetSubscriptionForTenant(c.Request.Context(), tid)
 	if err != nil {
@@ -660,7 +668,11 @@ func (h *Handler) ChangeSubscription(c *gin.Context) {
 		return
 	}
 
-	tid, _ := uuid.Parse(tenantID)
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
 	sub, err := h.service.ChangeSubscription(c.Request.Context(), tid, planID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -677,7 +689,11 @@ func (h *Handler) ChangeSubscription(c *gin.Context) {
 // @Router /billing/subscription [delete]
 func (h *Handler) CancelSubscription(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
-	tid, _ := uuid.Parse(tenantID)
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
 
 	if err := h.service.CancelSubscriptionForTenant(c.Request.Context(), tid); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -694,7 +710,11 @@ func (h *Handler) CancelSubscription(c *gin.Context) {
 // @Router /billing/dashboard [get]
 func (h *Handler) GetDashboard(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
-	tid, _ := uuid.Parse(tenantID)
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
 
 	dashboard, err := h.service.GetBillingDashboard(c.Request.Context(), tid)
 	if err != nil {
@@ -713,7 +733,11 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 // @Router /billing/projection [get]
 func (h *Handler) GetProjection(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
-	tid, _ := uuid.Parse(tenantID)
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant_id"})
+		return
+	}
 	days := 30
 	if d, err := strconv.Atoi(c.Query("days")); err == nil && d > 0 {
 		days = d
