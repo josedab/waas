@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/josedab/waas/pkg/database"
+	"github.com/josedab/waas/pkg/httputil"
 	"github.com/josedab/waas/pkg/transform"
 )
 
@@ -244,7 +245,7 @@ func (s *Service) ReplayRequest(ctx context.Context, captureID uuid.UUID) (*Requ
 
 	// Make actual HTTP request if target URL is provided
 	if replay.URL != "" {
-		client := &http.Client{Timeout: 10 * time.Second}
+		client := httputil.NewSSRFSafeClient(10 * time.Second)
 		req, reqErr := http.NewRequestWithContext(ctx, replay.Method, replay.URL, bytes.NewReader(replay.Body))
 		if reqErr == nil {
 			var hdrs map[string]string

@@ -11,6 +11,7 @@ import (
 
 	"github.com/dop251/goja"
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Executor executes flow workflows
@@ -22,9 +23,7 @@ type Executor struct {
 // NewExecutor creates a new flow executor
 func NewExecutor() *Executor {
 	return &Executor{
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		httpClient: httputil.NewSSRFSafeClient(30 * time.Second),
 		vmPool: sync.Pool{
 			New: func() interface{} {
 				return goja.New()
@@ -231,7 +230,7 @@ func (e *Executor) executeHTTPNode(ctx *ExecutionContext, node *Node) (json.RawM
 	// Execute request
 	client := e.httpClient
 	if config.Timeout > 0 {
-		client = &http.Client{Timeout: time.Duration(config.Timeout) * time.Millisecond}
+		client = httputil.NewSSRFSafeClient(time.Duration(config.Timeout) * time.Millisecond)
 	}
 
 	resp, err := client.Do(req)

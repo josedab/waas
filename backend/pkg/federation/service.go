@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Service provides federation operations
@@ -29,7 +30,7 @@ type Service struct {
 func NewService(repo Repository, selfMember *FederationMember) *Service {
 	return &Service{
 		repo:       repo,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: httputil.NewSSRFSafeClient(30 * time.Second),
 		selfMember: selfMember,
 	}
 }
