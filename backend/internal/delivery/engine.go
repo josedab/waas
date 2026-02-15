@@ -14,6 +14,7 @@ import (
 
 	"github.com/josedab/waas/pkg/catalog"
 	"github.com/josedab/waas/pkg/database"
+	"github.com/josedab/waas/pkg/httputil"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
 	"github.com/josedab/waas/pkg/repository"
@@ -494,50 +495,14 @@ func (e *DeliveryEngine) performDelivery(ctx context.Context, endpoint *models.W
 	return result
 }
 
-// isPrivateIP returns true if the IP is in a private/internal range that
-// should not be reachable via user-provided webhook URLs (SSRF protection).
+// isPrivateIP delegates to the shared httputil package.
 func isPrivateIP(ip net.IP) bool {
-	privateRanges := []net.IPNet{
-		{IP: net.IPv4(127, 0, 0, 0), Mask: net.CIDRMask(8, 32)},    // 127.0.0.0/8
-		{IP: net.IPv4(10, 0, 0, 0), Mask: net.CIDRMask(8, 32)},     // 10.0.0.0/8
-		{IP: net.IPv4(172, 16, 0, 0), Mask: net.CIDRMask(12, 32)},  // 172.16.0.0/12
-		{IP: net.IPv4(192, 168, 0, 0), Mask: net.CIDRMask(16, 32)}, // 192.168.0.0/16
-		{IP: net.IPv4(169, 254, 0, 0), Mask: net.CIDRMask(16, 32)}, // 169.254.0.0/16
-		{IP: net.IPv4(0, 0, 0, 0), Mask: net.CIDRMask(8, 32)},      // 0.0.0.0/8
-	}
-	for _, cidr := range privateRanges {
-		if cidr.Contains(ip) {
-			return true
-		}
-	}
-	// IPv6 loopback
-	if ip.Equal(net.IPv6loopback) {
-		return true
-	}
-	return false
+	return httputil.IsPrivateIP(ip)
 }
 
-// ssrfSafeDialContext wraps a net.Dialer to reject connections to private IPs.
+// ssrfSafeDialContext delegates to the shared httputil package.
 func ssrfSafeDialContext(dialer *net.Dialer) func(ctx context.Context, network, addr string) (net.Conn, error) {
-	return func(ctx context.Context, network, addr string) (net.Conn, error) {
-		host, port, err := net.SplitHostPort(addr)
-		if err != nil {
-			return nil, fmt.Errorf("invalid address %q: %w", addr, err)
-		}
-
-		ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-		if err != nil {
-			return nil, fmt.Errorf("DNS resolution failed for %q: %w", host, err)
-		}
-
-		for _, ip := range ips {
-			if isPrivateIP(ip.IP) {
-				return nil, fmt.Errorf("connections to private/internal IP %s are not allowed (SSRF protection)", ip.IP)
-			}
-		}
-
-		return dialer.DialContext(ctx, network, net.JoinHostPort(host, port))
-	}
+	return httputil.SSRFSafeDialContext(dialer)
 }
 
 // createHTTPClient creates an optimized HTTP client for webhook delivery
