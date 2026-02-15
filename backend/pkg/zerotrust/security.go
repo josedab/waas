@@ -97,6 +97,19 @@ type SecurityProfile struct {
 	UpdatedAt            time.Time `json:"updated_at"`
 }
 
+// NewDefaultSecurityProfile returns a SecurityProfile with secure defaults.
+// VerifyServerCert defaults to true; callers must explicitly disable it.
+func NewDefaultSecurityProfile() SecurityProfile {
+	return SecurityProfile{
+		VerifyServerCert: true,
+		RequireHTTPS:     true,
+		MinTLSVersion:    "1.2",
+		SignatureHeader:  "X-Webhook-Signature",
+		TimestampHeader:  "X-Webhook-Timestamp",
+		SignatureFormat:  "hex",
+	}
+}
+
 // CertificateManager handles certificate operations
 type CertificateManager struct{}
 
