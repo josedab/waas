@@ -65,6 +65,7 @@ import (
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/sandbox"
 	"github.com/josedab/waas/pkg/schemaregistry"
+	"github.com/josedab/waas/pkg/security"
 	"github.com/josedab/waas/pkg/signatures"
 	"github.com/josedab/waas/pkg/sla"
 	"github.com/josedab/waas/pkg/smartlimit"
@@ -416,6 +417,13 @@ func NewServer() (*Server, error) {
 	router.Use(tracer.TracingMiddleware())
 	router.Use(metrics.EnhancedMetricsMiddleware(metricsRecorder, alertManager))
 
+	// Security headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)
+	secureAuthMiddleware := security.NewSecureAuthMiddleware(nil, nil)
+	router.Use(secureAuthMiddleware.SecurityHeaders())
+
+	// Request body size limit (1 MB) to prevent memory exhaustion DoS
+	router.Use(auth.MaxBodySize(auth.DefaultMaxBodySize))
+
 	server := &Server{
 		router:                 router,
 		db:                     db,
@@ -593,9 +601,12 @@ func (s *Server) setupRoutes() {
 		s.registerObservabilityRoutes(protected)
 	}
 
-	// Admin endpoints (require authentication but no rate limiting for now)
+	// Admin endpoints (require authentication, admin role, and rate limiting)
+	adminMiddleware := auth.NewAdminMiddleware()
 	admin := s.router.Group("/api/v1/admin")
 	admin.Use(authMiddleware.RequireAuth())
+	admin.Use(adminMiddleware.RequireAdmin())
+	admin.Use(rateLimiter.RateLimit())
 	{
 		admin.GET("/tenants", tenantHandler.ListTenants)
 		admin.GET("/alerts/active", monitoringHandler.GetActiveAlerts)
