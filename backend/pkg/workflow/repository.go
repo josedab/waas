@@ -76,12 +76,30 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 
 // SaveWorkflow saves a workflow
 func (r *PostgresRepository) SaveWorkflow(ctx context.Context, wf *Workflow) error {
-	nodesJSON, _ := json.Marshal(wf.Nodes)
-	edgesJSON, _ := json.Marshal(wf.Edges)
-	variablesJSON, _ := json.Marshal(wf.Variables)
-	settingsJSON, _ := json.Marshal(wf.Settings)
-	triggerJSON, _ := json.Marshal(wf.Trigger)
-	canvasJSON, _ := json.Marshal(wf.Canvas)
+	nodesJSON, err := json.Marshal(wf.Nodes)
+	if err != nil {
+		return fmt.Errorf("marshal nodes: %w", err)
+	}
+	edgesJSON, err := json.Marshal(wf.Edges)
+	if err != nil {
+		return fmt.Errorf("marshal edges: %w", err)
+	}
+	variablesJSON, err := json.Marshal(wf.Variables)
+	if err != nil {
+		return fmt.Errorf("marshal variables: %w", err)
+	}
+	settingsJSON, err := json.Marshal(wf.Settings)
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+	triggerJSON, err := json.Marshal(wf.Trigger)
+	if err != nil {
+		return fmt.Errorf("marshal trigger: %w", err)
+	}
+	canvasJSON, err := json.Marshal(wf.Canvas)
+	if err != nil {
+		return fmt.Errorf("marshal canvas: %w", err)
+	}
 
 	query := `
 		INSERT INTO workflows (
@@ -103,7 +121,7 @@ func (r *PostgresRepository) SaveWorkflow(ctx context.Context, wf *Workflow) err
 			updated_at = EXCLUDED.updated_at,
 			published_at = EXCLUDED.published_at`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		wf.ID, wf.TenantID, wf.Name, wf.Description, wf.Version, wf.Status,
 		triggerJSON, nodesJSON, edgesJSON, variablesJSON, settingsJSON, canvasJSON,
 		wf.CreatedBy, wf.CreatedAt, wf.UpdatedAt, wf.PublishedAt)
@@ -342,9 +360,18 @@ func (r *PostgresRepository) ListWorkflowVersions(ctx context.Context, tenantID,
 
 // SaveExecution saves a workflow execution
 func (r *PostgresRepository) SaveExecution(ctx context.Context, exec *WorkflowExecution) error {
-	variablesJSON, _ := json.Marshal(exec.Variables)
-	nodeStatesJSON, _ := json.Marshal(exec.NodeStates)
-	errorJSON, _ := json.Marshal(exec.Error)
+	variablesJSON, err := json.Marshal(exec.Variables)
+	if err != nil {
+		return fmt.Errorf("marshal variables: %w", err)
+	}
+	nodeStatesJSON, err := json.Marshal(exec.NodeStates)
+	if err != nil {
+		return fmt.Errorf("marshal node states: %w", err)
+	}
+	errorJSON, err := json.Marshal(exec.Error)
+	if err != nil {
+		return fmt.Errorf("marshal error: %w", err)
+	}
 
 	query := `
 		INSERT INTO workflow_executions (
@@ -360,7 +387,7 @@ func (r *PostgresRepository) SaveExecution(ctx context.Context, exec *WorkflowEx
 			error = EXCLUDED.error,
 			completed_at = EXCLUDED.completed_at`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		exec.ID, exec.WorkflowID, exec.WorkflowName, exec.TenantID, exec.Version, exec.Status,
 		exec.TriggerType, exec.TriggerData, exec.Input, exec.Output,
 		variablesJSON, nodeStatesJSON, errorJSON,
@@ -488,7 +515,10 @@ func (r *PostgresRepository) ListExecutions(ctx context.Context, tenantID, workf
 
 // UpdateExecutionStatus updates execution status
 func (r *PostgresRepository) UpdateExecutionStatus(ctx context.Context, execID string, status ExecutionStatus, output json.RawMessage, execErr *ExecutionError) error {
-	errorJSON, _ := json.Marshal(execErr)
+	errorJSON, err := json.Marshal(execErr)
+	if err != nil {
+		return fmt.Errorf("marshal execution error: %w", err)
+	}
 
 	var completedAt *time.Time
 	if status == ExecutionCompleted || status == ExecutionFailed || status == ExecutionCancelled {
@@ -501,7 +531,7 @@ func (r *PostgresRepository) UpdateExecutionStatus(ctx context.Context, execID s
 		SET status = $1, output = $2, error = $3, completed_at = $4
 		WHERE id = $5`
 
-	_, err := r.db.ExecContext(ctx, query, status, output, errorJSON, completedAt, execID)
+	_, err = r.db.ExecContext(ctx, query, status, output, errorJSON, completedAt, execID)
 	return err
 }
 
