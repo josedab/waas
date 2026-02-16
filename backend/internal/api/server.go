@@ -195,6 +195,7 @@ type Server struct {
 //     time-travel, cloud-managed, callback, collab-debug, WAF, docgen,
 //     OpenAPI gen, white-label (v7)
 //  9. HTTP layer — Gin router with recovery, tracing, and metrics middleware
+//
 // 10. Route registration — handler setup and route binding
 func NewServer() (*Server, error) {
 	// ── Phase 1: Infrastructure (config, databases, migrations) ─────────
@@ -534,7 +535,11 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/health", monitoringHandler.GetHealthStatus)
 	s.router.GET("/ready", monitoringHandler.GetReadinessStatus)
 	s.router.GET("/live", monitoringHandler.GetLivenessStatus)
-	s.router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	// Metrics endpoint (requires authentication)
+	metricsGroup := s.router.Group("")
+	metricsGroup.Use(authMiddleware.RequireAuth())
+	metricsGroup.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// API Documentation endpoints (no auth required)
 	s.router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -547,8 +552,9 @@ func (s *Server) setupRoutes() {
 		public.POST("/tenants", tenantHandler.CreateTenant)
 	}
 
-	// Test endpoint receivers (no auth required for webhook testing)
+	// Test endpoint receivers (no auth required for webhook testing, rate limited)
 	testEndpoints := s.router.Group("/test")
+	testEndpoints.Use(rateLimiter.RateLimit())
 	{
 		testEndpoints.Any("/:endpoint_id", testEndpointHandler.ReceiveTestWebhook)
 		testEndpoints.GET("/:endpoint_id/receives", testEndpointHandler.GetTestEndpointReceives)
