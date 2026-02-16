@@ -48,9 +48,9 @@ func ParseYAMLDSL(yamlData []byte) (*CreatePipelineRequest, error) {
 // supporting multi-stage composition with transform, filter, route, fan-out,
 // deliver, enrich, validate, delay, and log steps.
 type PipelineYAMLDefinition struct {
-	Name        string               `yaml:"name"`
-	Description string               `yaml:"description,omitempty"`
-	Version     string               `yaml:"version,omitempty"`
+	Name        string                `yaml:"name"`
+	Description string                `yaml:"description,omitempty"`
+	Version     string                `yaml:"version,omitempty"`
 	Triggers    []PipelineTrigger     `yaml:"triggers,omitempty"`
 	Variables   map[string]string     `yaml:"variables,omitempty"`
 	Stages      []StageYAMLDefinition `yaml:"stages"`
@@ -62,25 +62,25 @@ type PipelineYAMLDefinition struct {
 type PipelineTrigger struct {
 	EventType string            `yaml:"event_type" json:"event_type"`
 	Source    string            `yaml:"source,omitempty" json:"source,omitempty"`
-	Filter   string            `yaml:"filter,omitempty" json:"filter,omitempty"`
-	Headers  map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+	Filter    string            `yaml:"filter,omitempty" json:"filter,omitempty"`
+	Headers   map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
 }
 
 // StageYAMLDefinition is a single stage in the YAML DSL
 type StageYAMLDefinition struct {
-	ID              string      `yaml:"id"`
-	Name            string      `yaml:"name,omitempty"`
-	Type            string      `yaml:"type"`
-	ContinueOnError bool        `yaml:"continue_on_error,omitempty"`
-	Timeout         int         `yaml:"timeout,omitempty"`
-	Condition       string      `yaml:"condition,omitempty"`
+	ID              string       `yaml:"id"`
+	Name            string       `yaml:"name,omitempty"`
+	Type            string       `yaml:"type"`
+	ContinueOnError bool         `yaml:"continue_on_error,omitempty"`
+	Timeout         int          `yaml:"timeout,omitempty"`
+	Condition       string       `yaml:"condition,omitempty"`
 	RetryPolicy     *RetryPolicy `yaml:"retry,omitempty"`
-	Config          interface{} `yaml:"config,omitempty"`
+	Config          interface{}  `yaml:"config,omitempty"`
 }
 
 // ErrorPolicyConfig defines global error handling for the pipeline
 type ErrorPolicyConfig struct {
-	OnFailure      string `yaml:"on_failure" json:"on_failure"`           // abort, continue, dlq
+	OnFailure      string `yaml:"on_failure" json:"on_failure"` // abort, continue, dlq
 	MaxRetries     int    `yaml:"max_retries" json:"max_retries"`
 	RetryDelay     string `yaml:"retry_delay" json:"retry_delay"`
 	DLQEndpointID  string `yaml:"dlq_endpoint_id,omitempty" json:"dlq_endpoint_id,omitempty"`
@@ -173,7 +173,9 @@ func ExportToYAML(p *Pipeline) ([]byte, error) {
 	for _, stage := range p.Stages {
 		var config interface{}
 		if stage.Config != nil {
-			_ = json.Unmarshal(stage.Config, &config)
+			if err := json.Unmarshal(stage.Config, &config); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal config for stage %q: %w", stage.ID, err)
+			}
 		}
 
 		def.Stages = append(def.Stages, StageYAMLDefinition{

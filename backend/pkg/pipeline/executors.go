@@ -9,6 +9,8 @@ import (
 	"github.com/dop251/goja"
 )
 
+const defaultPipelineJSTimeout = 5 * time.Second
+
 // --- Transform Stage Executor ---
 
 type transformExecutor struct{}
@@ -403,26 +405,55 @@ func evalJS(script string, input json.RawMessage) (json.RawMessage, error) {
 		return nil, fmt.Errorf("failed to set payload: %w", err)
 	}
 
-	// Wrap script to return a value
-	wrappedScript := fmt.Sprintf(`(function() { %s })()`, script)
-	val, err := vm.RunString(wrappedScript)
-	if err != nil {
-		return nil, fmt.Errorf("script execution failed: %w", err)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), defaultPipelineJSTimeout)
+	defer cancel()
 
-	// If the script returned undefined/null, return original input
-	if val == nil || goja.IsUndefined(val) || goja.IsNull(val) {
-		return input, nil
-	}
+	done := make(chan struct {
+		val goja.Value
+		err error
+	}, 1)
 
-	// Export result to Go and marshal back to JSON
-	result := val.Export()
-	output, err := json.Marshal(result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize script output: %w", err)
-	}
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- struct {
+					val goja.Value
+					err error
+				}{nil, fmt.Errorf("panic: %v", r)}
+			}
+		}()
+		wrappedScript := fmt.Sprintf(`(function() { %s })()`, script)
+		val, err := vm.RunString(wrappedScript)
+		done <- struct {
+			val goja.Value
+			err error
+		}{val, err}
+	}()
 
-	return output, nil
+	select {
+	case res := <-done:
+		if res.err != nil {
+			return nil, fmt.Errorf("script execution failed: %w", res.err)
+		}
+
+		// If the script returned undefined/null, return original input
+		if res.val == nil || goja.IsUndefined(res.val) || goja.IsNull(res.val) {
+			return input, nil
+		}
+
+		// Export result to Go and marshal back to JSON
+		result := res.val.Export()
+		output, err := json.Marshal(result)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize script output: %w", err)
+		}
+
+		return output, nil
+
+	case <-ctx.Done():
+		vm.Interrupt("timeout")
+		return nil, fmt.Errorf("script execution timeout")
+	}
 }
 
 func evalJSBool(script string, input json.RawMessage) (bool, error) {
@@ -436,15 +467,45 @@ func evalJSBool(script string, input json.RawMessage) (bool, error) {
 		return false, fmt.Errorf("failed to set payload: %w", err)
 	}
 
-	wrappedScript := fmt.Sprintf(`(function() { %s })()`, script)
-	val, err := vm.RunString(wrappedScript)
-	if err != nil {
-		return false, fmt.Errorf("condition evaluation failed: %w", err)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), defaultPipelineJSTimeout)
+	defer cancel()
 
-	if val == nil || goja.IsUndefined(val) || goja.IsNull(val) {
-		return false, nil
-	}
+	done := make(chan struct {
+		val goja.Value
+		err error
+	}, 1)
 
-	return val.ToBoolean(), nil
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- struct {
+					val goja.Value
+					err error
+				}{nil, fmt.Errorf("panic: %v", r)}
+			}
+		}()
+		wrappedScript := fmt.Sprintf(`(function() { %s })()`, script)
+		val, err := vm.RunString(wrappedScript)
+		done <- struct {
+			val goja.Value
+			err error
+		}{val, err}
+	}()
+
+	select {
+	case res := <-done:
+		if res.err != nil {
+			return false, fmt.Errorf("condition evaluation failed: %w", res.err)
+		}
+
+		if res.val == nil || goja.IsUndefined(res.val) || goja.IsNull(res.val) {
+			return false, nil
+		}
+
+		return res.val.ToBoolean(), nil
+
+	case <-ctx.Done():
+		vm.Interrupt("timeout")
+		return false, fmt.Errorf("condition evaluation timeout")
+	}
 }
