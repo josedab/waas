@@ -35,7 +35,11 @@ func NewService(repo Repository, publisher DeliveryPublisher) *Service {
 func (s *Service) CreateProvider(ctx context.Context, tenantID string, req *CreateProviderRequest) (*Provider, error) {
 	var sigConfig json.RawMessage
 	if req.SignatureConfig != nil {
-		sigConfig, _ = json.Marshal(req.SignatureConfig)
+		var err error
+		sigConfig, err = json.Marshal(req.SignatureConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal signature config: %w", err)
+		}
 	}
 
 	provider := &Provider{
@@ -86,8 +90,14 @@ func (s *Service) CreateRoutingRule(ctx context.Context, tenantID string, req *C
 		return nil, fmt.Errorf("provider not found")
 	}
 
-	conditionsJSON, _ := json.Marshal(req.Conditions)
-	destinationsJSON, _ := json.Marshal(req.Destinations)
+	conditionsJSON, err := json.Marshal(req.Conditions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal conditions: %w", err)
+	}
+	destinationsJSON, err := json.Marshal(req.Destinations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal destinations: %w", err)
+	}
 
 	rule := &RoutingRule{
 		TenantID:     tenantID,
@@ -140,10 +150,18 @@ func (s *Service) UpdateRoutingRule(ctx context.Context, tenantID, ruleID string
 	rule.IsActive = req.IsActive
 
 	if req.Conditions != nil {
-		rule.Conditions, _ = json.Marshal(req.Conditions)
+		conditionsJSON, err := json.Marshal(req.Conditions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal conditions: %w", err)
+		}
+		rule.Conditions = conditionsJSON
 	}
 	if req.Destinations != nil {
-		rule.Destinations, _ = json.Marshal(req.Destinations)
+		destinationsJSON, err := json.Marshal(req.Destinations)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal destinations: %w", err)
+		}
+		rule.Destinations = destinationsJSON
 	}
 	if req.Transform != nil {
 		rule.Transform = req.Transform
@@ -178,7 +196,9 @@ func (s *Service) ProcessInboundWebhook(ctx context.Context, tenantID, providerI
 	// Verify signature
 	var sigConfig SignatureConfig
 	if provider.SignatureConfig != nil {
-		json.Unmarshal(provider.SignatureConfig, &sigConfig)
+		if err := json.Unmarshal(provider.SignatureConfig, &sigConfig); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal signature config: %w", err)
+		}
 	}
 
 	verifier := s.verifiers.Get(provider.Type)
