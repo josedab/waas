@@ -1,8 +1,10 @@
 package livemigration
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"sync"
 	"time"
 
@@ -92,7 +94,7 @@ func (sm *ShadowMode) ShouldShadow() bool {
 	if !sm.enabled {
 		return false
 	}
-	return rand.Float64() < sm.config.SampleRate
+	return cryptoRandFloat64() < sm.config.SampleRate
 }
 
 // RecordComparison records the result of a shadow delivery comparison
@@ -227,7 +229,7 @@ func (ts *TrafficSplitter) Route() SplitDecision {
 	pct := ts.config.DestinationPct
 	ts.mu.RUnlock()
 
-	useNew := rand.Intn(100) < pct
+	useNew := cryptoRandIntn(100) < pct
 
 	return SplitDecision{
 		UseDestination: useNew,
@@ -335,4 +337,19 @@ func GenerateVerificationReport(job *MigrationJob, shadowMetrics *ShadowMetrics,
 	}
 
 	return report
+}
+
+// cryptoRandFloat64 returns a cryptographically random float64 in [0.0, 1.0).
+func cryptoRandFloat64() float64 {
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	// Use top 53 bits for float64 mantissa precision
+	v := binary.BigEndian.Uint64(b[:]) >> 11
+	return float64(v) / float64(1<<53)
+}
+
+// cryptoRandIntn returns a cryptographically random int in [0, n).
+func cryptoRandIntn(n int) int {
+	val, _ := rand.Int(rand.Reader, big.NewInt(int64(n)))
+	return int(val.Int64())
 }
