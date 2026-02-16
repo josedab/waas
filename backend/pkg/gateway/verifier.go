@@ -175,7 +175,7 @@ func (v *ShopifyVerifier) Verify(payload []byte, headers map[string]string, conf
 
 	expected := computeHMACSHA256Base64(payload, []byte(config.SecretKey))
 
-	return signature == expected, nil
+	return hmac.Equal([]byte(signature), []byte(expected)), nil
 }
 
 // TwilioVerifier verifies Twilio webhook signatures
@@ -191,7 +191,7 @@ func (v *TwilioVerifier) Verify(payload []byte, headers map[string]string, confi
 	// For simplicity, using basic HMAC-SHA1 verification
 	expected := computeHMACSHA1Base64(payload, []byte(config.SecretKey))
 
-	return signature == expected, nil
+	return hmac.Equal([]byte(signature), []byte(expected)), nil
 }
 
 // SlackVerifier verifies Slack webhook signatures
@@ -242,7 +242,7 @@ func (v *SendGridVerifier) Verify(payload []byte, headers map[string]string, con
 	signedPayload := timestamp + string(payload)
 	expected := computeHMACSHA256([]byte(signedPayload), []byte(config.SecretKey))
 
-	return signature == expected, nil
+	return hmac.Equal([]byte(signature), []byte(expected)), nil
 }
 
 // CustomVerifier verifies custom webhook signatures

@@ -45,7 +45,7 @@ func (sg *SignatureGenerator) GenerateSignature(payload []byte) (string, error) 
 
 	// Use the first secret as the primary secret for generation
 	primarySecret := sg.config.Secrets[0]
-	
+
 	hasher, err := sg.getHasher(sg.config.Algorithm)
 	if err != nil {
 		return "", fmt.Errorf("failed to get hasher: %w", err)
@@ -54,7 +54,7 @@ func (sg *SignatureGenerator) GenerateSignature(payload []byte) (string, error) 
 	mac := hmac.New(hasher, []byte(primarySecret))
 	mac.Write(payload)
 	signature := hex.EncodeToString(mac.Sum(nil))
-	
+
 	return fmt.Sprintf("%s=%s", sg.config.Algorithm, signature), nil
 }
 
@@ -88,7 +88,7 @@ func (sg *SignatureGenerator) VerifySignature(payload []byte, signature string) 
 		mac := hmac.New(hasher, []byte(secret))
 		mac.Write(payload)
 		computedHash := hex.EncodeToString(mac.Sum(nil))
-		
+
 		if hmac.Equal([]byte(expectedHash), []byte(computedHash)) {
 			return true, nil
 		}
@@ -108,7 +108,7 @@ func (sg *SignatureGenerator) GenerateSignatureWithTimestamp(payload []byte, tim
 	signedPayload := append([]byte(timestampStr+"."), payload...)
 
 	primarySecret := sg.config.Secrets[0]
-	
+
 	hasher, err := sg.getHasher(sg.config.Algorithm)
 	if err != nil {
 		return "", fmt.Errorf("failed to get hasher: %w", err)
@@ -117,7 +117,7 @@ func (sg *SignatureGenerator) GenerateSignatureWithTimestamp(payload []byte, tim
 	mac := hmac.New(hasher, []byte(primarySecret))
 	mac.Write(signedPayload)
 	signature := hex.EncodeToString(mac.Sum(nil))
-	
+
 	return fmt.Sprintf("%s=%s", sg.config.Algorithm, signature), nil
 }
 
@@ -160,7 +160,7 @@ func (sg *SignatureGenerator) VerifySignatureWithTimestamp(payload []byte, signa
 		mac := hmac.New(hasher, []byte(secret))
 		mac.Write(signedPayload)
 		computedHash := hex.EncodeToString(mac.Sum(nil))
-		
+
 		if hmac.Equal([]byte(expectedHash), []byte(computedHash)) {
 			return true, nil
 		}
@@ -177,7 +177,7 @@ func (sg *SignatureGenerator) AddSecret(secret string) {
 // RemoveSecret removes a secret from the configuration
 func (sg *SignatureGenerator) RemoveSecret(secret string) {
 	for i, s := range sg.config.Secrets {
-		if s == secret {
+		if hmac.Equal([]byte(s), []byte(secret)) {
 			sg.config.Secrets = append(sg.config.Secrets[:i], sg.config.Secrets[i+1:]...)
 			break
 		}
