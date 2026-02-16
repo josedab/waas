@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Notifier sends SLA alerts to external channels
@@ -18,16 +20,16 @@ type Notifier struct {
 
 // NotifierConfig holds notification integration settings
 type NotifierConfig struct {
-	SlackWebhookURL    string `json:"slack_webhook_url"`
+	SlackWebhookURL     string `json:"slack_webhook_url"`
 	PagerDutyRoutingKey string `json:"pagerduty_routing_key"`
-	EmailEndpoint      string `json:"email_endpoint"`
-	WebhookURL         string `json:"webhook_url"`
+	EmailEndpoint       string `json:"email_endpoint"`
+	WebhookURL          string `json:"webhook_url"`
 }
 
 // NewNotifier creates a notifier with the given config
 func NewNotifier(config *NotifierConfig) *Notifier {
 	return &Notifier{
-		client: &http.Client{Timeout: 10 * time.Second},
+		client: httputil.NewSSRFSafeClient(10 * time.Second),
 		config: config,
 	}
 }
@@ -85,7 +87,7 @@ func (n *Notifier) notifySlack(ctx context.Context, breach *Breach, target *Targ
 	payload := map[string]interface{}{
 		"attachments": []map[string]interface{}{
 			{
-				"color":  color,
+				"color":   color,
 				"pretext": fmt.Sprintf("🚨 SLA Breach: %s", target.Name),
 				"fields": []map[string]interface{}{
 					{"title": "Breach Type", "value": breach.BreachType, "short": true},
@@ -112,7 +114,7 @@ func (n *Notifier) notifySlackRecovery(ctx context.Context, breach *Breach, targ
 	payload := map[string]interface{}{
 		"attachments": []map[string]interface{}{
 			{
-				"color":  "#36a64f",
+				"color":   "#36a64f",
 				"pretext": fmt.Sprintf("✅ SLA Recovered: %s", target.Name),
 				"fields": []map[string]interface{}{
 					{"title": "Breach Type", "value": breach.BreachType, "short": true},
@@ -148,11 +150,11 @@ func (n *Notifier) notifyPagerDuty(ctx context.Context, breach *Breach, target *
 			"group":     breach.TenantID,
 			"class":     breach.BreachType,
 			"custom_details": map[string]interface{}{
-				"target_id":     breach.TargetID,
-				"endpoint_id":   breach.EndpointID,
+				"target_id":      breach.TargetID,
+				"endpoint_id":    breach.EndpointID,
 				"expected_value": breach.ExpectedVal,
-				"actual_value":  breach.ActualVal,
-				"breach_time":   breach.CreatedAt.Format(time.RFC3339),
+				"actual_value":   breach.ActualVal,
+				"breach_time":    breach.CreatedAt.Format(time.RFC3339),
 			},
 		},
 	}
@@ -198,9 +200,9 @@ func (n *Notifier) notifyWebhook(ctx context.Context, breach *Breach, target *Ta
 	}
 
 	payload := map[string]interface{}{
-		"event":    "sla.breach",
-		"breach":   breach,
-		"target":   target,
+		"event":     "sla.breach",
+		"breach":    breach,
+		"target":    target,
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 
@@ -245,16 +247,16 @@ func formatDuration(d time.Duration) string {
 
 // ForecastCompliance projects future SLA compliance based on current trends
 type ComplianceForecast struct {
-	TargetID             string    `json:"target_id"`
-	ForecastPeriod       string    `json:"forecast_period"`
-	ProjectedRate        float64   `json:"projected_delivery_rate_pct"`
-	ProjectedP50Ms       int       `json:"projected_latency_p50_ms"`
-	ProjectedP99Ms       int       `json:"projected_latency_p99_ms"`
-	WillBreach           bool      `json:"will_breach"`
-	ProjectedBreachTime  *time.Time `json:"projected_breach_time,omitempty"`
-	Confidence           float64   `json:"confidence"`
-	Recommendations      []string  `json:"recommendations,omitempty"`
-	GeneratedAt          time.Time `json:"generated_at"`
+	TargetID            string     `json:"target_id"`
+	ForecastPeriod      string     `json:"forecast_period"`
+	ProjectedRate       float64    `json:"projected_delivery_rate_pct"`
+	ProjectedP50Ms      int        `json:"projected_latency_p50_ms"`
+	ProjectedP99Ms      int        `json:"projected_latency_p99_ms"`
+	WillBreach          bool       `json:"will_breach"`
+	ProjectedBreachTime *time.Time `json:"projected_breach_time,omitempty"`
+	Confidence          float64    `json:"confidence"`
+	Recommendations     []string   `json:"recommendations,omitempty"`
+	GeneratedAt         time.Time  `json:"generated_at"`
 }
 
 // ForecastCompliance projects SLA compliance for the next period
@@ -275,13 +277,13 @@ func (s *Service) ForecastCompliance(ctx context.Context, tenantID, targetID str
 	}
 
 	forecast := &ComplianceForecast{
-		TargetID:        targetID,
-		ForecastPeriod:  "24h",
-		ProjectedRate:   status.CurrentRate,
-		ProjectedP50Ms:  status.CurrentP50Ms,
-		ProjectedP99Ms:  status.CurrentP99Ms,
-		GeneratedAt:     time.Now(),
-		Confidence:      0.7,
+		TargetID:       targetID,
+		ForecastPeriod: "24h",
+		ProjectedRate:  status.CurrentRate,
+		ProjectedP50Ms: status.CurrentP50Ms,
+		ProjectedP99Ms: status.CurrentP99Ms,
+		GeneratedAt:    time.Now(),
+		Confidence:     0.7,
 	}
 
 	// Calculate trend from recent breaches

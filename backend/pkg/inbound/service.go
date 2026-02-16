@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Service provides inbound webhook business logic
@@ -22,10 +23,8 @@ type Service struct {
 // NewService creates a new inbound service
 func NewService(repo Repository) *Service {
 	return &Service{
-		repo: repo,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		repo:       repo,
+		httpClient: httputil.NewSSRFSafeClient(30 * time.Second),
 	}
 }
 
@@ -277,7 +276,7 @@ func (s *Service) routeToHTTP(ctx context.Context, event *InboundEvent, configJS
 
 	client := s.httpClient
 	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
+		client = httputil.NewSSRFSafeClient(30 * time.Second)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
