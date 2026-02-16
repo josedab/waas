@@ -15,6 +15,8 @@ import (
 	"github.com/josedab/waas/pkg/utils"
 )
 
+const defaultJSTimeout = 5 * time.Second
+
 // EdgeFunctionsService handles edge function operations
 type EdgeFunctionsService struct {
 	repo   repository.EdgeFunctionsRepository
@@ -314,12 +316,18 @@ func (s *EdgeFunctionsService) InvokeFunction(ctx context.Context, tenantID, fun
 	}
 
 	if req.EventID != "" {
-		eventID, _ := uuid.Parse(req.EventID)
+		eventID, err := uuid.Parse(req.EventID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid event_id: %w", err)
+		}
 		invocation.EventID = &eventID
 	}
 
 	if req.EndpointID != "" {
-		endpointID, _ := uuid.Parse(req.EndpointID)
+		endpointID, err := uuid.Parse(req.EndpointID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid endpoint_id: %w", err)
+		}
 		invocation.EndpointID = &endpointID
 	}
 
@@ -366,7 +374,7 @@ func (s *EdgeFunctionsService) executeFunction(fn *models.EdgeFunction, input ma
 	}
 }
 
-// executeJavaScript executes JavaScript code
+// executeJavaScript executes JavaScript code with a timeout
 func (s *EdgeFunctionsService) executeJavaScript(fn *models.EdgeFunction, input map[string]interface{}) *models.FunctionExecutionResult {
 	result := &models.FunctionExecutionResult{
 		Success:    false,
@@ -397,52 +405,83 @@ func (s *EdgeFunctionsService) executeJavaScript(fn *models.EdgeFunction, input 
 	}
 	vm.Set("env", envObj)
 
-	// Run the code
-	_, err := vm.RunString(fn.Code)
-	if err != nil {
-		result.Error = fmt.Sprintf("execution error: %v", err)
-		result.Logs = logs
-		return result
+	// Determine timeout from function config
+	timeout := time.Duration(fn.TimeoutMs) * time.Millisecond
+	if timeout <= 0 {
+		timeout = defaultJSTimeout
 	}
 
-	// Get the handler function
-	handler := vm.Get(fn.EntryPoint)
-	if handler == nil {
-		result.Error = fmt.Sprintf("entry point '%s' not found", fn.EntryPoint)
-		result.Logs = logs
-		return result
-	}
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	callable, ok := goja.AssertFunction(handler)
-	if !ok {
-		result.Error = fmt.Sprintf("entry point '%s' is not a function", fn.EntryPoint)
-		result.Logs = logs
-		return result
-	}
+	done := make(chan error, 1)
+	var output map[string]interface{}
 
-	// Call the handler with input
-	inputValue := vm.ToValue(input)
-	returnValue, err := callable(goja.Undefined(), inputValue)
-	if err != nil {
-		result.Error = fmt.Sprintf("handler error: %v", err)
-		result.Logs = logs
-		return result
-	}
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- fmt.Errorf("panic: %v", r)
+			}
+		}()
 
-	// Export the result
-	if returnValue != nil && returnValue != goja.Undefined() {
-		exported := returnValue.Export()
-		if outputMap, ok := exported.(map[string]interface{}); ok {
-			result.Output = outputMap
-		} else {
-			result.Output = map[string]interface{}{"result": exported}
+		// Run the code
+		_, err := vm.RunString(fn.Code)
+		if err != nil {
+			done <- fmt.Errorf("execution error: %v", err)
+			return
 		}
+
+		// Get the handler function
+		handler := vm.Get(fn.EntryPoint)
+		if handler == nil {
+			done <- fmt.Errorf("entry point '%s' not found", fn.EntryPoint)
+			return
+		}
+
+		callable, ok := goja.AssertFunction(handler)
+		if !ok {
+			done <- fmt.Errorf("entry point '%s' is not a function", fn.EntryPoint)
+			return
+		}
+
+		// Call the handler with input
+		inputValue := vm.ToValue(input)
+		returnValue, err := callable(goja.Undefined(), inputValue)
+		if err != nil {
+			done <- fmt.Errorf("handler error: %v", err)
+			return
+		}
+
+		// Export the result
+		if returnValue != nil && returnValue != goja.Undefined() {
+			exported := returnValue.Export()
+			if outputMap, ok := exported.(map[string]interface{}); ok {
+				output = outputMap
+			} else {
+				output = map[string]interface{}{"result": exported}
+			}
+		}
+
+		done <- nil
+	}()
+
+	select {
+	case err := <-done:
+		result.Logs = logs
+		if err != nil {
+			result.Error = err.Error()
+			return result
+		}
+		result.Success = true
+		result.Output = output
+		return result
+
+	case <-timeoutCtx.Done():
+		vm.Interrupt("timeout")
+		result.Logs = logs
+		result.Error = "execution timeout"
+		return result
 	}
-
-	result.Success = true
-	result.Logs = logs
-
-	return result
 }
 
 // CreateTrigger creates a function trigger
