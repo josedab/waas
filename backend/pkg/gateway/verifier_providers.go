@@ -73,7 +73,7 @@ func (v *SquareVerifier) Verify(payload []byte, headers map[string]string, confi
 	notificationURL := headers["X-Square-Notification-Url"]
 	signedPayload := notificationURL + string(payload)
 	expected := computeHMACSHA256Base64([]byte(signedPayload), []byte(config.SecretKey))
-	return signature == expected, nil
+	return hmac.Equal([]byte(signature), []byte(expected)), nil
 }
 
 // HubSpotVerifier verifies HubSpot webhook signatures (v3)
@@ -108,7 +108,7 @@ func (v *HubSpotVerifier) Verify(payload []byte, headers map[string]string, conf
 	// v3: HMAC-SHA256 of method + URL + body + timestamp
 	msg := string(payload) + timestamp
 	expected := computeHMACSHA256Base64([]byte(msg), []byte(config.SecretKey))
-	return signature == expected, nil
+	return hmac.Equal([]byte(signature), []byte(expected)), nil
 }
 
 // MailgunVerifier verifies Mailgun webhook signatures
@@ -137,7 +137,7 @@ func (v *DocuSignVerifier) Verify(payload []byte, headers map[string]string, con
 		return false, fmt.Errorf("missing X-Docusign-Signature-1 header")
 	}
 	expected := computeHMACSHA256Base64(payload, []byte(config.SecretKey))
-	return signature == expected, nil
+	return hmac.Equal([]byte(signature), []byte(expected)), nil
 }
 
 // TypeformVerifier verifies Typeform webhook signatures
@@ -153,7 +153,7 @@ func (v *TypeformVerifier) Verify(payload []byte, headers map[string]string, con
 	}
 	sig := strings.TrimPrefix(signature, "sha256=")
 	expected := computeHMACSHA256Base64(payload, []byte(config.SecretKey))
-	return sig == expected, nil
+	return hmac.Equal([]byte(sig), []byte(expected)), nil
 }
 
 // JiraVerifier verifies Jira/Atlassian webhook signatures
@@ -204,7 +204,7 @@ func (v *ZendeskVerifier) Verify(payload []byte, headers map[string]string, conf
 
 	msg := timestamp + string(payload)
 	expected := computeHMACSHA256Base64([]byte(msg), []byte(config.SecretKey))
-	return signature == expected, nil
+	return hmac.Equal([]byte(signature), []byte(expected)), nil
 }
 
 // AsanaVerifier verifies Asana webhook signatures

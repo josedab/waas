@@ -3,10 +3,11 @@ package security
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
-	"time"
 	"github.com/josedab/waas/pkg/repository"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -141,7 +142,7 @@ func (sm *SecretManager) ValidateSecret(ctx context.Context, tenantID uuid.UUID,
 	}
 
 	for _, secret := range activeSecrets {
-		if secret == providedSecret {
+		if subtle.ConstantTimeCompare([]byte(secret), []byte(providedSecret)) == 1 {
 			return true, nil
 		}
 	}

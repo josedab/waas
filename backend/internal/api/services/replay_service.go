@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"sync"
 	"time"
@@ -16,10 +17,12 @@ import (
 type ReplayService struct {
 	repo        repository.ReplayRepository
 	webhookRepo repository.WebhookEndpointRepository
-	publisher   interface{ Publish(ctx context.Context, msg interface{}) error }
-	logger      *utils.Logger
-	mu          sync.RWMutex
-	activeJobs  map[uuid.UUID]context.CancelFunc
+	publisher   interface {
+		Publish(ctx context.Context, msg interface{}) error
+	}
+	logger     *utils.Logger
+	mu         sync.RWMutex
+	activeJobs map[uuid.UUID]context.CancelFunc
 }
 
 // NewReplayService creates a new replay service
@@ -281,9 +284,9 @@ func (s *ReplayService) matchesFilter(event *models.EventArchive, filter *models
 		}
 	}
 
-	// Check excluded hashes
+	// Check excluded hashes (constant-time comparison to prevent timing attacks)
 	for _, hash := range filter.ExcludeHashes {
-		if hash == event.PayloadHash {
+		if subtle.ConstantTimeCompare([]byte(hash), []byte(event.PayloadHash)) == 1 {
 			return false
 		}
 	}
