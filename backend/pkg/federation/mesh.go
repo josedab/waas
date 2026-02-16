@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -186,7 +187,9 @@ func (m *FederationMesh) RouteEvent(ctx context.Context, req *RouteEventRequest)
 	// Validate against governance policy
 	if err := m.validateGovernance(ctx, event); err != nil {
 		event.Status = "rejected"
-		_ = m.repo.SaveFederatedEvent(ctx, event)
+		if saveErr := m.repo.SaveFederatedEvent(ctx, event); saveErr != nil {
+			log.Printf("[federation] SaveFederatedEvent (rejected) error: %v", saveErr)
+		}
 		return event, err
 	}
 
@@ -275,7 +278,9 @@ func (m *FederationMesh) VerifyAttestation(ctx context.Context, event *Federated
 		now := time.Now()
 		event.Attestation.Verified = true
 		event.Attestation.VerifiedAt = &now
-		_ = m.repo.VerifyAttestation(ctx, event.Attestation.ID)
+		if err := m.repo.VerifyAttestation(ctx, event.Attestation.ID); err != nil {
+			log.Printf("[federation] VerifyAttestation error for attestation=%s: %v", event.Attestation.ID, err)
+		}
 	}
 
 	return verified, nil

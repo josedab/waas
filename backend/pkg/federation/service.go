@@ -150,7 +150,11 @@ func (s *Service) RequestTrust(ctx context.Context, tenantID string, req *Create
 	}
 
 	// Check if auto-accept is enabled
-	policy, _ := s.repo.GetPolicy(ctx, tenantID)
+	policy, policyErr := s.repo.GetPolicy(ctx, tenantID)
+	if policyErr != nil {
+		// Log but don't fail — policy lookup is non-critical for trust request creation
+		fmt.Printf("[federation] GetPolicy error for tenant=%s: %v\n", tenantID, policyErr)
+	}
 	if policy != nil && policy.AutoAcceptTrust {
 		return s.ApproveTrust(ctx, trustReq.ID, "Auto-approved by policy")
 	}
