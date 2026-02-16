@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	out "github.com/josedab/waas/cmd/waas-cli/output"
@@ -354,6 +355,9 @@ func resolveFiles(path string, recursive bool) ([]string, error) {
 	return files, nil
 }
 
+// validEnvName matches only alphanumeric characters and hyphens.
+var validEnvName = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`)
+
 // readManifestWithOverlay reads a YAML manifest and merges environment overlay
 func readManifestWithOverlay(file, env string) (string, error) {
 	content, err := os.ReadFile(file)
@@ -365,10 +369,21 @@ func readManifestWithOverlay(file, env string) (string, error) {
 		return string(content), nil
 	}
 
+	// Validate env to prevent path traversal
+	if !validEnvName.MatchString(env) {
+		return "", fmt.Errorf("invalid environment name %q: must contain only alphanumeric characters and hyphens", env)
+	}
+
 	// Look for environment overlay file: config.yaml -> config.staging.yaml
 	ext := filepath.Ext(file)
 	base := strings.TrimSuffix(file, ext)
-	overlayFile := base + "." + env + ext
+	overlayFile := filepath.Clean(base + "." + env + ext)
+
+	// Ensure the overlay stays within the same directory as the base file
+	baseDir := filepath.Dir(file)
+	if !strings.HasPrefix(overlayFile, baseDir+string(filepath.Separator)) && overlayFile != baseDir {
+		return "", fmt.Errorf("overlay path %q escapes base directory %q", overlayFile, baseDir)
+	}
 
 	overlayContent, err := os.ReadFile(overlayFile)
 	if os.IsNotExist(err) {
