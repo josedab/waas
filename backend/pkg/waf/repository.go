@@ -95,7 +95,9 @@ func (r *PostgresRepository) GetScanResult(ctx context.Context, tenantID, result
 
 func (r *PostgresRepository) ListScanResults(ctx context.Context, tenantID string, limit, offset int) ([]ScanResult, int, error) {
 	var total int
-	_ = r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM waf_scan_results WHERE tenant_id = $1`, tenantID)
+	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM waf_scan_results WHERE tenant_id = $1`, tenantID); err != nil {
+		return nil, 0, fmt.Errorf("count scan results: %w", err)
+	}
 	var results []ScanResult
 	err := r.db.SelectContext(ctx, &results,
 		`SELECT * FROM waf_scan_results WHERE tenant_id = $1 ORDER BY scanned_at DESC LIMIT $2 OFFSET $3`, tenantID, limit, offset)
@@ -174,7 +176,9 @@ func (r *PostgresRepository) GetQuarantine(ctx context.Context, tenantID, quaran
 
 func (r *PostgresRepository) ListQuarantined(ctx context.Context, tenantID string, limit, offset int) ([]QuarantinedWebhook, int, error) {
 	var total int
-	_ = r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM waf_quarantine WHERE tenant_id = $1`, tenantID)
+	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM waf_quarantine WHERE tenant_id = $1`, tenantID); err != nil {
+		return nil, 0, fmt.Errorf("count quarantined: %w", err)
+	}
 	var quarantined []QuarantinedWebhook
 	err := r.db.SelectContext(ctx, &quarantined,
 		`SELECT * FROM waf_quarantine WHERE tenant_id = $1 ORDER BY quarantined_at DESC LIMIT $2 OFFSET $3`, tenantID, limit, offset)
@@ -206,7 +210,9 @@ func (r *PostgresRepository) UpsertIPReputation(ctx context.Context, rep *IPRepu
 
 func (r *PostgresRepository) ListBlockedIPs(ctx context.Context, limit, offset int) ([]IPReputation, int, error) {
 	var total int
-	_ = r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM waf_ip_reputation WHERE blocked = true`)
+	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM waf_ip_reputation WHERE blocked = true`); err != nil {
+		return nil, 0, fmt.Errorf("count blocked IPs: %w", err)
+	}
 	var ips []IPReputation
 	err := r.db.SelectContext(ctx, &ips,
 		`SELECT * FROM waf_ip_reputation WHERE blocked = true ORDER BY threat_score DESC LIMIT $1 OFFSET $2`, limit, offset)
@@ -232,7 +238,9 @@ func (r *PostgresRepository) GetAlert(ctx context.Context, tenantID, alertID str
 
 func (r *PostgresRepository) ListAlerts(ctx context.Context, tenantID string, limit, offset int) ([]SecurityAlert, int, error) {
 	var total int
-	_ = r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM waf_alerts WHERE tenant_id = $1`, tenantID)
+	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM waf_alerts WHERE tenant_id = $1`, tenantID); err != nil {
+		return nil, 0, fmt.Errorf("count alerts: %w", err)
+	}
 	var alerts []SecurityAlert
 	err := r.db.SelectContext(ctx, &alerts,
 		`SELECT * FROM waf_alerts WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`, tenantID, limit, offset)
