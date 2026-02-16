@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -298,7 +299,12 @@ func applyHTTPAuth(req *http.Request, auth *AuthConfig) {
 
 func buildTLSConfig(config *TLSConfig) *tls.Config {
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: config.InsecureSkipVerify,
+		InsecureSkipVerify: false,
+	}
+
+	if config.InsecureSkipVerify {
+		log.Printf("WARNING: TLS certificate verification disabled (InsecureSkipVerify=true) — this allows MITM attacks")
+		tlsConfig.InsecureSkipVerify = true
 	}
 
 	if config.ServerName != "" {
