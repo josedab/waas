@@ -3,6 +3,7 @@ package waf
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"sync"
@@ -191,7 +192,11 @@ func (s *SecuritySuite) VerifyDelivery(ctx context.Context, tenantID, endpointID
 	}
 
 	// Step 1: IP verification
-	ipAllowed, _ := s.repo.CheckIPAllowed(ctx, tenantID, sourceIP)
+	ipAllowed, ipErr := s.repo.CheckIPAllowed(ctx, tenantID, sourceIP)
+	if ipErr != nil {
+		log.Printf("[waf] CheckIPAllowed error for tenant=%s ip=%s: %v", tenantID, sourceIP, ipErr)
+		return nil, fmt.Errorf("IP allowlist check failed: %w", ipErr)
+	}
 	verification.IPVerified = ipAllowed
 
 	// Step 2: Payload scanning via WAF
@@ -222,14 +227,16 @@ func (s *SecuritySuite) VerifyDelivery(ctx context.Context, tenantID, endpointID
 
 	verification.DurationMs = float64(time.Since(start).Microseconds()) / 1000.0
 
-	_ = s.repo.SaveVerification(ctx, verification)
+	if err := s.repo.SaveVerification(ctx, verification); err != nil {
+		log.Printf("[waf] SaveVerification error for tenant=%s delivery=%s: %v", tenantID, deliveryID, err)
+	}
 
 	// Audit log
 	result := "allowed"
 	if !verification.OverallPassed {
 		result = "blocked"
 	}
-	_ = s.repo.SaveAuditLog(ctx, &SecurityAuditLog{
+	if err := s.repo.SaveAuditLog(ctx, &SecurityAuditLog{
 		ID:        uuid.New().String(),
 		TenantID:  tenantID,
 		Action:    "zero_trust_verify",
@@ -238,7 +245,9 @@ func (s *SecuritySuite) VerifyDelivery(ctx context.Context, tenantID, endpointID
 		IPAddress: sourceIP,
 		Result:    result,
 		Timestamp: time.Now(),
-	})
+	}); err != nil {
+		log.Printf("[waf] SaveAuditLog error for tenant=%s delivery=%s: %v", tenantID, deliveryID, err)
+	}
 
 	return verification, nil
 }

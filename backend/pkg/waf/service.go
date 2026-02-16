@@ -8,6 +8,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"regexp"
@@ -192,7 +193,9 @@ func (s *Service) ScanPayload(ctx context.Context, tenantID string, req *ScanPay
 			Description: fmt.Sprintf("Detected %d threats with risk score %.1f", len(threats), riskScore),
 			CreatedAt:   time.Now(),
 		}
-		_ = s.repo.CreateAlert(ctx, alert)
+		if err := s.repo.CreateAlert(ctx, alert); err != nil {
+			log.Printf("[waf] CreateAlert error for tenant=%s: %v", tenantID, err)
+		}
 	}
 
 	return result, nil
@@ -236,7 +239,9 @@ func (s *Service) EvaluateWAFRules(ctx context.Context, tenantID, payload string
 				Description: fmt.Sprintf("WAF rule matched: %s", rule.Name),
 				Evidence:    rule.Pattern,
 			})
-			_ = s.repo.IncrementRuleHitCount(ctx, tenantID, rule.ID)
+			if err := s.repo.IncrementRuleHitCount(ctx, tenantID, rule.ID); err != nil {
+				log.Printf("[waf] IncrementRuleHitCount error for tenant=%s rule=%s: %v", tenantID, rule.ID, err)
+			}
 		}
 	}
 
