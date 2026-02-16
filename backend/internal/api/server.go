@@ -540,8 +540,9 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Public endpoints (no auth required)
+	// Public endpoints (no auth required, rate limited)
 	public := s.router.Group("/api/v1")
+	public.Use(rateLimiter.RateLimit())
 	{
 		public.POST("/tenants", tenantHandler.CreateTenant)
 	}
