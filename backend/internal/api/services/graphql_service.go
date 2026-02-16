@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/google/uuid"
@@ -13,6 +14,8 @@ import (
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/utils"
 )
+
+const defaultGraphQLJSTimeout = 5 * time.Second
 
 // GraphQLService handles GraphQL subscription to webhook transformations
 type GraphQLService struct {
@@ -327,17 +330,34 @@ func (s *GraphQLService) validateSubscriptionQuery(query string) error {
 func (s *GraphQLService) validateTransformJS(code string) error {
 	vm := goja.New()
 
-	// Try to compile the code
-	_, err := vm.RunString(fmt.Sprintf(`
-		(function() {
-			%s
-			if (typeof transform !== 'function') {
-				throw new Error('transform function not defined');
-			}
-		})();
-	`, code))
+	ctx, cancel := context.WithTimeout(context.Background(), defaultGraphQLJSTimeout)
+	defer cancel()
 
-	return err
+	done := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- fmt.Errorf("panic: %v", r)
+			}
+		}()
+		_, err := vm.RunString(fmt.Sprintf(`
+			(function() {
+				%s
+				if (typeof transform !== 'function') {
+					throw new Error('transform function not defined');
+				}
+			})();
+		`, code))
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		vm.Interrupt("timeout")
+		return fmt.Errorf("validation timeout")
+	}
 }
 
 // GetSubscription retrieves a GraphQL subscription
@@ -419,16 +439,38 @@ func (s *GraphQLService) evaluateFilter(expression string, payload map[string]in
 	payloadJSON, _ := json.Marshal(payload)
 	vm.Set("payload", string(payloadJSON))
 
-	result, err := vm.RunString(fmt.Sprintf(`
-		var data = JSON.parse(payload);
-		(function(data) { return %s; })(data);
-	`, expression))
+	ctx, cancel := context.WithTimeout(context.Background(), defaultGraphQLJSTimeout)
+	defer cancel()
 
-	if err != nil {
-		return false, err
+	type jsResult struct {
+		val goja.Value
+		err error
 	}
+	done := make(chan jsResult, 1)
 
-	return result.ToBoolean(), nil
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- jsResult{nil, fmt.Errorf("panic: %v", r)}
+			}
+		}()
+		result, err := vm.RunString(fmt.Sprintf(`
+			var data = JSON.parse(payload);
+			(function(data) { return %s; })(data);
+		`, expression))
+		done <- jsResult{result, err}
+	}()
+
+	select {
+	case res := <-done:
+		if res.err != nil {
+			return false, res.err
+		}
+		return res.val.ToBoolean(), nil
+	case <-ctx.Done():
+		vm.Interrupt("timeout")
+		return false, fmt.Errorf("filter evaluation timeout")
+	}
 }
 
 // selectFields selects specific fields from payload
@@ -482,22 +524,43 @@ func (s *GraphQLService) applyTransform(code string, payload map[string]interfac
 	payloadJSON, _ := json.Marshal(payload)
 	vm.Set("_input", string(payloadJSON))
 
-	result, err := vm.RunString(fmt.Sprintf(`
-		%s
-		var input = JSON.parse(_input);
-		JSON.stringify(transform(input));
-	`, code))
+	ctx, cancel := context.WithTimeout(context.Background(), defaultGraphQLJSTimeout)
+	defer cancel()
 
-	if err != nil {
-		return nil, err
+	type jsResult struct {
+		val goja.Value
+		err error
 	}
+	done := make(chan jsResult, 1)
 
-	var transformed map[string]interface{}
-	if err := json.Unmarshal([]byte(result.String()), &transformed); err != nil {
-		return nil, err
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				done <- jsResult{nil, fmt.Errorf("panic: %v", r)}
+			}
+		}()
+		result, err := vm.RunString(fmt.Sprintf(`
+			%s
+			var input = JSON.parse(_input);
+			JSON.stringify(transform(input));
+		`, code))
+		done <- jsResult{result, err}
+	}()
+
+	select {
+	case res := <-done:
+		if res.err != nil {
+			return nil, res.err
+		}
+		var transformed map[string]interface{}
+		if err := json.Unmarshal([]byte(res.val.String()), &transformed); err != nil {
+			return nil, err
+		}
+		return transformed, nil
+	case <-ctx.Done():
+		vm.Interrupt("timeout")
+		return nil, fmt.Errorf("transform execution timeout")
 	}
-
-	return transformed, nil
 }
 
 // AddFederationSource adds a federation source to a schema
