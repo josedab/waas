@@ -610,6 +610,7 @@ func (s *Server) setupRoutes() {
 	admin.Use(rateLimiter.RateLimit())
 	{
 		admin.GET("/tenants", tenantHandler.ListTenants)
+		admin.PUT("/tenants/:tenant_id", tenantHandler.AdminUpdateTenant)
 		admin.GET("/alerts/active", monitoringHandler.GetActiveAlerts)
 		admin.GET("/alerts/history", monitoringHandler.GetAlertHistory)
 	}

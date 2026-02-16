@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"net/http"
-	"strconv"
 	"github.com/josedab/waas/pkg/auth"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/utils"
+	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -30,6 +30,16 @@ type CreateTenantResponse struct {
 }
 
 type UpdateTenantRequest struct {
+	Name         string `json:"name,omitempty"`
+	MonthlyQuota int    `json:"monthly_quota,omitempty"`
+}
+
+// validSubscriptionTiers are the tiers allowed for tenant accounts.
+var validSubscriptionTiers = map[string]bool{
+	"free": true, "basic": true, "premium": true, "enterprise": true,
+}
+
+type AdminUpdateTenantRequest struct {
 	Name               string `json:"name,omitempty"`
 	SubscriptionTier   string `json:"subscription_tier,omitempty"`
 	RateLimitPerMinute int    `json:"rate_limit_per_minute,omitempty"`
@@ -105,7 +115,7 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 
 	if err := h.tenantRepo.Create(c.Request.Context(), tenant); err != nil {
 		h.logger.Error("Failed to create tenant", map[string]interface{}{
-			"error":      err.Error(),
+			"error":       err.Error(),
 			"tenant_name": req.Name,
 		})
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -194,22 +204,10 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 		return
 	}
 
-	// Update fields if provided
+	// Update fields if provided — only Name and MonthlyQuota are self-service.
+	// SubscriptionTier and RateLimitPerMinute are admin-only fields.
 	if req.Name != "" {
 		tenant.Name = req.Name
-	}
-	if req.SubscriptionTier != "" {
-		tenant.SubscriptionTier = req.SubscriptionTier
-		// Update defaults if not explicitly provided
-		if req.RateLimitPerMinute == 0 {
-			tenant.RateLimitPerMinute = getDefaultRateLimit(req.SubscriptionTier)
-		}
-		if req.MonthlyQuota == 0 {
-			tenant.MonthlyQuota = getDefaultMonthlyQuota(req.SubscriptionTier)
-		}
-	}
-	if req.RateLimitPerMinute > 0 {
-		tenant.RateLimitPerMinute = req.RateLimitPerMinute
 	}
 	if req.MonthlyQuota > 0 {
 		tenant.MonthlyQuota = req.MonthlyQuota
@@ -336,6 +334,100 @@ func (h *TenantHandler) ListTenants(c *gin.Context) {
 		"tenants": tenants,
 		"limit":   limit,
 		"offset":  offset,
+	})
+}
+
+// AdminUpdateTenant updates any tenant field including subscription tier (admin only)
+func (h *TenantHandler) AdminUpdateTenant(c *gin.Context) {
+	tenantID := c.Param("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": gin.H{
+				"code":    "MISSING_TENANT_ID",
+				"message": "Tenant ID is required",
+			},
+		})
+		return
+	}
+
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": gin.H{
+				"code":    "INVALID_TENANT_ID",
+				"message": "Invalid tenant ID format",
+			},
+		})
+		return
+	}
+
+	tenant, err := h.tenantRepo.GetByID(c.Request.Context(), tid)
+	if err != nil || tenant == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": gin.H{
+				"code":    "TENANT_NOT_FOUND",
+				"message": "Tenant not found",
+			},
+		})
+		return
+	}
+
+	var req AdminUpdateTenantRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": gin.H{
+				"code":    "INVALID_REQUEST",
+				"message": "Invalid request format",
+				"details": err.Error(),
+			},
+		})
+		return
+	}
+
+	if req.SubscriptionTier != "" {
+		if !validSubscriptionTiers[req.SubscriptionTier] {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": gin.H{
+					"code":    "INVALID_SUBSCRIPTION_TIER",
+					"message": "Subscription tier must be one of: free, basic, premium, enterprise",
+				},
+			})
+			return
+		}
+		tenant.SubscriptionTier = req.SubscriptionTier
+		if req.RateLimitPerMinute == 0 {
+			tenant.RateLimitPerMinute = getDefaultRateLimit(req.SubscriptionTier)
+		}
+		if req.MonthlyQuota == 0 {
+			tenant.MonthlyQuota = getDefaultMonthlyQuota(req.SubscriptionTier)
+		}
+	}
+	if req.Name != "" {
+		tenant.Name = req.Name
+	}
+	if req.RateLimitPerMinute > 0 {
+		tenant.RateLimitPerMinute = req.RateLimitPerMinute
+	}
+	if req.MonthlyQuota > 0 {
+		tenant.MonthlyQuota = req.MonthlyQuota
+	}
+
+	if err := h.tenantRepo.Update(c.Request.Context(), tenant); err != nil {
+		h.logger.Error("Failed to admin-update tenant", map[string]interface{}{
+			"error":     err.Error(),
+			"tenant_id": tenant.ID.String(),
+		})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": gin.H{
+				"code":    "TENANT_UPDATE_FAILED",
+				"message": "Failed to update tenant",
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"tenant": tenant,
 	})
 }
 
