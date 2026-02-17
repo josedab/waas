@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -122,10 +123,17 @@ type WebSocketMessage struct {
 
 func (s *Server) handleWebSocketConnection(conn *websocket.Conn, c *gin.Context) {
 	var tenantID string
+	var subMu sync.RWMutex
 	subscriptions := make(map[string]*Subscriber)
 
 	defer func() {
+		subMu.RLock()
+		subs := make([]*Subscriber, 0, len(subscriptions))
 		for _, sub := range subscriptions {
+			subs = append(subs, sub)
+		}
+		subMu.RUnlock()
+		for _, sub := range subs {
 			s.resolver.subscriptions.Unsubscribe(sub)
 		}
 	}()
@@ -179,7 +187,9 @@ func (s *Server) handleWebSocketConnection(conn *websocket.Conn, c *gin.Context)
 
 			// Create subscription
 			sub := s.resolver.subscriptions.Subscribe(c.Request.Context(), tenantID, channel, filter)
+			subMu.Lock()
 			subscriptions[msg.ID] = sub
+			subMu.Unlock()
 
 			// Forward messages
 			go func(id string, sub *Subscriber) {
@@ -200,10 +210,12 @@ func (s *Server) handleWebSocketConnection(conn *websocket.Conn, c *gin.Context)
 			}(msg.ID, sub)
 
 		case GQLStop:
+			subMu.Lock()
 			if sub, ok := subscriptions[msg.ID]; ok {
 				s.resolver.subscriptions.Unsubscribe(sub)
 				delete(subscriptions, msg.ID)
 			}
+			subMu.Unlock()
 			conn.WriteJSON(WebSocketMessage{ID: msg.ID, Type: GQLComplete})
 
 		case GQLConnectionTerminate:
