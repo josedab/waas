@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -70,7 +71,9 @@ func (p *KafkaProducer) backgroundFlusher() {
 	for {
 		select {
 		case <-p.flushTicker.C:
-			_ = p.Flush(context.Background())
+			if err := p.Flush(context.Background()); err != nil {
+				log.Printf("kafka: background flush failed: %v", err)
+			}
 		case <-p.stopChan:
 			return
 		}
