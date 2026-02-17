@@ -440,7 +440,7 @@ func (r *ConnectorRunner) Start(ctx context.Context) error {
 	r.mu.Unlock()
 
 	// Start streaming in background
-	go r.stream(db)
+	go r.stream(ctx, db)
 
 	return nil
 }
@@ -501,7 +501,7 @@ func (r *ConnectorRunner) GetErrorCount() int {
 	return r.errorCount
 }
 
-func (r *ConnectorRunner) stream(db *sql.DB) {
+func (r *ConnectorRunner) stream(ctx context.Context, db *sql.DB) {
 	defer db.Close()
 
 	ticker := time.NewTicker(r.config.HealthCheckInterval)
@@ -509,6 +509,8 @@ func (r *ConnectorRunner) stream(db *sql.DB) {
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-r.stopCh:
 			return
 		case <-ticker.C:
@@ -521,7 +523,7 @@ func (r *ConnectorRunner) stream(db *sql.DB) {
 
 			// In production, this would implement actual WAL/binlog streaming
 			// For now, simulate periodic polling
-			r.pollChanges(context.Background(), db)
+			r.pollChanges(ctx, db)
 		}
 	}
 }
