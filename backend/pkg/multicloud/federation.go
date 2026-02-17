@@ -10,11 +10,11 @@ import (
 )
 
 var (
-	ErrClusterNotFound   = errors.New("cluster not found")
+	ErrClusterNotFound         = errors.New("cluster not found")
 	ErrFederationRouteNotFound = errors.New("federation route not found")
-	ErrClusterUnhealthy  = errors.New("cluster unhealthy")
-	ErrNoHealthyClusters = errors.New("no healthy clusters available")
-	ErrFailoverFailed    = errors.New("failover failed")
+	ErrClusterUnhealthy        = errors.New("cluster unhealthy")
+	ErrNoHealthyClusters       = errors.New("no healthy clusters available")
+	ErrFailoverFailed          = errors.New("failover failed")
 )
 
 // ClusterStatus represents cluster health status
@@ -32,12 +32,12 @@ const (
 type RoutingStrategy string
 
 const (
-	RoutingLatency     RoutingStrategy = "latency"
-	RoutingGeo         RoutingStrategy = "geo"
-	RoutingRoundRobin  RoutingStrategy = "round_robin"
-	RoutingWeighted    RoutingStrategy = "weighted"
-	RoutingFailover    RoutingStrategy = "failover"
-	RoutingCost        RoutingStrategy = "cost"
+	RoutingLatency    RoutingStrategy = "latency"
+	RoutingGeo        RoutingStrategy = "geo"
+	RoutingRoundRobin RoutingStrategy = "round_robin"
+	RoutingWeighted   RoutingStrategy = "weighted"
+	RoutingFailover   RoutingStrategy = "failover"
+	RoutingCost       RoutingStrategy = "cost"
 )
 
 // FailoverMode represents failover modes
@@ -51,35 +51,35 @@ const (
 
 // FederationCluster represents a federated cloud cluster
 type FederationCluster struct {
-	ID            string            `json:"id"`
-	TenantID      string            `json:"tenant_id"`
-	Name          string            `json:"name"`
-	Provider      Provider          `json:"provider"`
-	Region        string            `json:"region"`
-	Zone          string            `json:"zone,omitempty"`
-	Endpoint      string            `json:"endpoint"`
-	APIEndpoint   string            `json:"api_endpoint"`
-	Status        ClusterStatus     `json:"status"`
-	Priority      int               `json:"priority"`
-	Weight        int               `json:"weight"`
-	Capacity      ClusterCapacity   `json:"capacity"`
-	Metrics       ClusterMetrics    `json:"metrics"`
-	Config        ClusterConfig     `json:"config"`
-	Tags          map[string]string `json:"tags,omitempty"`
-	LastHealthCheck time.Time       `json:"last_health_check"`
-	CreatedAt     time.Time         `json:"created_at"`
-	UpdatedAt     time.Time         `json:"updated_at"`
+	ID              string            `json:"id"`
+	TenantID        string            `json:"tenant_id"`
+	Name            string            `json:"name"`
+	Provider        Provider          `json:"provider"`
+	Region          string            `json:"region"`
+	Zone            string            `json:"zone,omitempty"`
+	Endpoint        string            `json:"endpoint"`
+	APIEndpoint     string            `json:"api_endpoint"`
+	Status          ClusterStatus     `json:"status"`
+	Priority        int               `json:"priority"`
+	Weight          int               `json:"weight"`
+	Capacity        ClusterCapacity   `json:"capacity"`
+	Metrics         ClusterMetrics    `json:"metrics"`
+	Config          ClusterConfig     `json:"config"`
+	Tags            map[string]string `json:"tags,omitempty"`
+	LastHealthCheck time.Time         `json:"last_health_check"`
+	CreatedAt       time.Time         `json:"created_at"`
+	UpdatedAt       time.Time         `json:"updated_at"`
 }
 
 // ClusterCapacity represents cluster capacity
 type ClusterCapacity struct {
-	MaxRPS            int     `json:"max_rps"`
-	CurrentRPS        int     `json:"current_rps"`
-	MaxConcurrency    int     `json:"max_concurrency"`
-	CurrentConcurrency int    `json:"current_concurrency"`
-	CPUUtilization    float64 `json:"cpu_utilization"`
-	MemoryUtilization float64 `json:"memory_utilization"`
-	Available         bool    `json:"available"`
+	MaxRPS             int     `json:"max_rps"`
+	CurrentRPS         int     `json:"current_rps"`
+	MaxConcurrency     int     `json:"max_concurrency"`
+	CurrentConcurrency int     `json:"current_concurrency"`
+	CPUUtilization     float64 `json:"cpu_utilization"`
+	MemoryUtilization  float64 `json:"memory_utilization"`
+	Available          bool    `json:"available"`
 }
 
 // ClusterMetrics represents cluster metrics
@@ -108,19 +108,19 @@ type ClusterConfig struct {
 
 // FederationRoute represents a routing rule for federation
 type FederationRoute struct {
-	ID           string             `json:"id"`
-	TenantID     string             `json:"tenant_id"`
-	Name         string             `json:"name"`
-	Description  string             `json:"description,omitempty"`
-	Strategy     RoutingStrategy    `json:"strategy"`
-	FailoverMode FailoverMode       `json:"failover_mode"`
-	Clusters     []FedRouteCluster  `json:"clusters"`
-	Rules        []FedRoutingRule   `json:"rules"`
-	HealthCheck  HealthCheckConfig  `json:"health_check"`
-	Active       bool               `json:"active"`
-	Default      bool               `json:"default"`
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
+	ID           string            `json:"id"`
+	TenantID     string            `json:"tenant_id"`
+	Name         string            `json:"name"`
+	Description  string            `json:"description,omitempty"`
+	Strategy     RoutingStrategy   `json:"strategy"`
+	FailoverMode FailoverMode      `json:"failover_mode"`
+	Clusters     []FedRouteCluster `json:"clusters"`
+	Rules        []FedRoutingRule  `json:"rules"`
+	HealthCheck  HealthCheckConfig `json:"health_check"`
+	Active       bool              `json:"active"`
+	Default      bool              `json:"default"`
+	CreatedAt    time.Time         `json:"created_at"`
+	UpdatedAt    time.Time         `json:"updated_at"`
 }
 
 // FedRouteCluster represents a cluster in a federation route
@@ -151,9 +151,9 @@ type FedRoutingCondition struct {
 
 // FedRoutingAction represents a routing action
 type FedRoutingAction struct {
-	Type      string         `json:"type"`
-	ClusterID string         `json:"cluster_id,omitempty"`
-	Split     []FedSplit     `json:"split,omitempty"`
+	Type      string     `json:"type"`
+	ClusterID string     `json:"cluster_id,omitempty"`
+	Split     []FedSplit `json:"split,omitempty"`
 }
 
 // FedSplit represents traffic split
@@ -190,15 +190,15 @@ type FailoverEvent struct {
 
 // CloudMetrics represents cross-cloud metrics
 type CloudMetrics struct {
-	TenantID        string                  `json:"tenant_id"`
-	TotalClusters   int                     `json:"total_clusters"`
-	HealthyClusters int                     `json:"healthy_clusters"`
-	TotalRPS        int                     `json:"total_rps"`
-	AvgLatency      time.Duration           `json:"avg_latency"`
+	TenantID        string                       `json:"tenant_id"`
+	TotalClusters   int                          `json:"total_clusters"`
+	HealthyClusters int                          `json:"healthy_clusters"`
+	TotalRPS        int                          `json:"total_rps"`
+	AvgLatency      time.Duration                `json:"avg_latency"`
 	ByProvider      map[Provider]ProviderMetrics `json:"by_provider"`
-	ByRegion        map[string]RegionMetrics `json:"by_region"`
-	RecentFailovers []FailoverEvent         `json:"recent_failovers"`
-	LastUpdated     time.Time               `json:"last_updated"`
+	ByRegion        map[string]RegionMetrics     `json:"by_region"`
+	RecentFailovers []FailoverEvent              `json:"recent_failovers"`
+	LastUpdated     time.Time                    `json:"last_updated"`
 }
 
 // ProviderMetrics represents metrics per provider
@@ -614,9 +614,11 @@ func (s *FederationService) InitiateFailover(ctx context.Context, tenantID, rout
 		return nil, err
 	}
 
+	// error intentionally ignored: nil fromCluster is handled by the nil check below
 	fromCluster, _ := s.repo.GetCluster(ctx, fromClusterID)
 	if fromCluster != nil {
 		fromCluster.Status = ClusterDraining
+		// best-effort: update source cluster status after failover succeeds
 		_ = s.repo.UpdateCluster(ctx, fromCluster)
 	}
 
@@ -624,6 +626,7 @@ func (s *FederationService) InitiateFailover(ctx context.Context, tenantID, rout
 	event.Status = "completed"
 	event.CompletedAt = &now
 	event.Duration = now.Sub(event.InitiatedAt)
+	// best-effort: record failover completion; failover already succeeded
 	_ = s.repo.UpdateFailoverEvent(ctx, event)
 
 	return event, nil
@@ -646,6 +649,7 @@ func (s *FederationService) CheckClusterHealth(ctx context.Context, tenantID str
 			}
 		}
 		clusters[i].LastHealthCheck = time.Now()
+		// best-effort: persist health check result; stale data is acceptable
 		_ = s.repo.UpdateCluster(ctx, &clusters[i])
 	}
 
@@ -714,6 +718,7 @@ func (s *FederationService) GetCloudMetrics(ctx context.Context, tenantID string
 		}
 	}
 
+	// error intentionally ignored: nil failovers results in empty list on dashboard
 	failovers, _ := s.repo.ListFailoverEvents(ctx, tenantID, time.Now().AddDate(0, 0, -7))
 	metrics.RecentFailovers = failovers
 

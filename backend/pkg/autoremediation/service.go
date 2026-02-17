@@ -135,6 +135,7 @@ func (s *Service) ApplyRemediation(ctx context.Context, tenantID string, req *Ap
 
 	rule.SuccessCount++
 	rule.UpdatedAt = time.Now()
+	// best-effort: update rule stats; action was already applied successfully
 	_ = s.repo.UpdateRule(ctx, rule)
 
 	return action, nil
@@ -163,6 +164,7 @@ func (s *Service) RevertAction(ctx context.Context, tenantID, actionID string) (
 	if err == nil {
 		rule.FailureCount++
 		rule.UpdatedAt = time.Now()
+		// best-effort: update rule stats; action revert was already persisted
 		_ = s.repo.UpdateRule(ctx, rule)
 	}
 

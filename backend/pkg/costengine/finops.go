@@ -215,6 +215,7 @@ func (s *FinOpsService) checkBudget(ctx context.Context, tenantID string) {
 	switch {
 	case ratio >= 1.0:
 		budget.Status = BudgetStatusExceeded
+		// best-effort: alert creation failure should not prevent budget status update
 		_ = s.repo.CreateBudgetAlert(ctx, &BudgetAlert{
 			ID:         uuid.New().String(),
 			BudgetID:   budget.ID,
@@ -233,6 +234,7 @@ func (s *FinOpsService) checkBudget(ctx context.Context, tenantID string) {
 		budget.Status = BudgetStatusOK
 	}
 
+	// best-effort: persist budget status; status was already computed
 	_ = s.repo.UpdateBudget(ctx, budget)
 }
 
@@ -242,6 +244,7 @@ func (s *FinOpsService) GetDashboard(ctx context.Context, tenantID string) (*Fin
 	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	prevStart := startOfMonth.AddDate(0, -1, 0)
 
+	// errors ignored: zero-value costs are acceptable defaults for dashboard
 	currentCost, _ := s.repo.GetTotalCost(ctx, tenantID, startOfMonth, now)
 	prevCost, _ := s.repo.GetTotalCost(ctx, tenantID, prevStart, startOfMonth)
 
@@ -250,6 +253,7 @@ func (s *FinOpsService) GetDashboard(ctx context.Context, tenantID string) (*Fin
 		costChange = ((currentCost - prevCost) / prevCost) * 100
 	}
 
+	// errors ignored below: nil results are replaced with empty slices for dashboard
 	byEndpoint, _ := s.repo.GetAttributions(ctx, tenantID, AttributionLevelEndpoint, startOfMonth, now)
 	if byEndpoint == nil {
 		byEndpoint = []CostAttribution{}
@@ -270,6 +274,7 @@ func (s *FinOpsService) GetDashboard(ctx context.Context, tenantID string) (*Fin
 		dailyCosts = []CostAttribution{}
 	}
 
+	// errors ignored: nil budget/alerts are acceptable for dashboard rendering
 	budget, _ := s.repo.GetBudget(ctx, tenantID)
 	alerts, _ := s.repo.ListBudgetAlerts(ctx, tenantID, 10)
 	if alerts == nil {

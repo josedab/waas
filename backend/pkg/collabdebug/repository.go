@@ -215,6 +215,7 @@ func (r *PostgresRepository) GetRecording(ctx context.Context, sessionID string)
 
 func (r *PostgresRepository) GetSessionSummary(ctx context.Context, tenantID string) (*SessionSummary, error) {
 	summary := &SessionSummary{}
+	// best-effort queries: individual count failures leave zero-value, which is acceptable for summary
 	_ = r.db.GetContext(ctx, &summary.TotalSessions,
 		`SELECT COUNT(*) FROM collab_sessions WHERE tenant_id = $1`, tenantID)
 	_ = r.db.GetContext(ctx, &summary.ActiveSessions,

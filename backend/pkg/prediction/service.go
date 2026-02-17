@@ -13,26 +13,26 @@ import (
 
 // Service provides predictive failure prevention operations
 type Service struct {
-	repo             Repository
-	predictor        Predictor
-	extractor        FeatureExtractor
-	notifier         Notifier
-	collector        MetricsCollector
-	healthCalc       HealthCalculator
-	mu               sync.RWMutex
-	config           *ServiceConfig
-	running          bool
-	stopCh           chan struct{}
+	repo       Repository
+	predictor  Predictor
+	extractor  FeatureExtractor
+	notifier   Notifier
+	collector  MetricsCollector
+	healthCalc HealthCalculator
+	mu         sync.RWMutex
+	config     *ServiceConfig
+	running    bool
+	stopCh     chan struct{}
 }
 
 // ServiceConfig holds service configuration
 type ServiceConfig struct {
-	PredictionIntervalSec  int
-	MetricRetentionDays    int
+	PredictionIntervalSec   int
+	MetricRetentionDays     int
 	MinDataPointsForPredict int
-	DefaultTimeHorizon     time.Duration
-	EnableAutoRemediation  bool
-	AlertCooldownMinutes   int
+	DefaultTimeHorizon      time.Duration
+	EnableAutoRemediation   bool
+	AlertCooldownMinutes    int
 }
 
 // DefaultServiceConfig returns default configuration
@@ -135,6 +135,7 @@ func (s *Service) runPredictionCycle(ctx context.Context) {
 	}
 
 	for _, endpoint := range endpoints {
+		// best-effort: individual endpoint prediction failure should not stop batch
 		_ = s.predictForEndpoint(ctx, endpoint.TenantID, endpoint.EndpointID)
 	}
 }
@@ -235,6 +236,7 @@ func (s *Service) Predict(ctx context.Context, tenantID string, req *PredictRequ
 		predictions[i].ExpectedTime = now.Add(horizon)
 		predictions[i].TimeWindow = horizon / 4 // 25% uncertainty window
 
+		// best-effort: persist individual prediction; caller still receives the full list
 		_ = s.repo.SavePrediction(ctx, &predictions[i])
 	}
 
@@ -297,6 +299,7 @@ func (s *Service) shouldTriggerAlert(ctx context.Context, tenantID string, predi
 	}
 
 	// Check cooldown
+	// error intentionally ignored: nil lastAlert means no cooldown applies
 	lastAlert, _ := s.repo.GetLastAlertTime(ctx, tenantID, prediction.EndpointID, prediction.Type)
 	if lastAlert != nil {
 		cooldown := time.Duration(rule.CooldownMinutes) * time.Minute
@@ -307,6 +310,7 @@ func (s *Service) shouldTriggerAlert(ctx context.Context, tenantID string, predi
 
 	// Check additional conditions
 	if len(rule.Conditions) > 0 {
+		// error intentionally ignored: nil health skips condition evaluation
 		health, _ := s.repo.GetEndpointHealth(ctx, tenantID, prediction.EndpointID)
 		if health != nil && !s.evaluateConditions(rule.Conditions, health) {
 			return false
@@ -361,12 +365,12 @@ func evaluateOperator(operator string, actual, expected float64) bool {
 // generateAlertTitle generates an alert title
 func (s *Service) generateAlertTitle(prediction *Prediction) string {
 	titles := map[PredictionType]string{
-		PredictionEndpointFailure:   "Endpoint failure predicted",
-		PredictionLatencySpike:      "Latency spike predicted",
-		PredictionErrorRateIncrease: "Error rate increase predicted",
+		PredictionEndpointFailure:    "Endpoint failure predicted",
+		PredictionLatencySpike:       "Latency spike predicted",
+		PredictionErrorRateIncrease:  "Error rate increase predicted",
 		PredictionCapacityExhaustion: "Capacity exhaustion predicted",
-		PredictionCertificateExpiry: "Certificate expiry warning",
-		PredictionQuotaExhaustion:   "Quota exhaustion predicted",
+		PredictionCertificateExpiry:  "Certificate expiry warning",
+		PredictionQuotaExhaustion:    "Quota exhaustion predicted",
 	}
 	if title, ok := titles[prediction.Type]; ok {
 		return fmt.Sprintf("%s (%.0f%% probability)", title, prediction.Probability*100)
@@ -413,6 +417,7 @@ func (s *Service) sendAlertNotifications(ctx context.Context, tenantID string, a
 		})
 	}
 
+	// best-effort: persist alert notification state; notifications were already sent
 	_ = s.repo.UpdateAlert(ctx, alert)
 }
 
@@ -507,7 +512,7 @@ func (s *Service) calculateHealthScore(health *EndpointHealth) float64 {
 	if health.SuccessRate < thresholds.DegradedSuccessRate {
 		successScore = (health.SuccessRate / thresholds.DegradedSuccessRate) * 50
 	} else if health.SuccessRate < thresholds.HealthySuccessRate {
-		successScore = 50 + ((health.SuccessRate - thresholds.DegradedSuccessRate) / (thresholds.HealthySuccessRate - thresholds.DegradedSuccessRate)) * 50
+		successScore = 50 + ((health.SuccessRate-thresholds.DegradedSuccessRate)/(thresholds.HealthySuccessRate-thresholds.DegradedSuccessRate))*50
 	}
 
 	// Latency component (30%)
@@ -901,8 +906,8 @@ func (s *Service) CalculateReliabilityScore(ctx context.Context, tenantID string
 		OverallScore: overallScore,
 		Grade:        grade,
 		Components: ReliabilityComponents{
-			SuccessRateScore: successScore,
-			LatencyScore:     latencyScore,
+			SuccessRateScore:  successScore,
+			LatencyScore:      latencyScore,
 			AvailabilityScore: availScore,
 		},
 		CalculatedAt: time.Now(),

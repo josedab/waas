@@ -12,37 +12,37 @@ import (
 
 // Service provides compliance center operations
 type Service struct {
-	repo            Repository
-	generator       ReportGenerator
-	evaluator       PolicyEvaluator
-	collector       EvidenceCollector
-	checker         ControlChecker
-	notifier        Notifier
-	dataManager     DataManager
-	templates       map[ComplianceFramework]*ComplianceTemplate
-	mu              sync.RWMutex
-	config          *ServiceConfig
+	repo        Repository
+	generator   ReportGenerator
+	evaluator   PolicyEvaluator
+	collector   EvidenceCollector
+	checker     ControlChecker
+	notifier    Notifier
+	dataManager DataManager
+	templates   map[ComplianceFramework]*ComplianceTemplate
+	mu          sync.RWMutex
+	config      *ServiceConfig
 }
 
 // ServiceConfig holds service configuration
 type ServiceConfig struct {
-	DefaultRetentionDays     int
-	EnableAutoAssessment     bool
-	AssessmentIntervalDays   int
-	EnablePolicyEnforcement  bool
-	MaxReportsPerTenant      int
-	ReportRetentionDays      int
+	DefaultRetentionDays    int
+	EnableAutoAssessment    bool
+	AssessmentIntervalDays  int
+	EnablePolicyEnforcement bool
+	MaxReportsPerTenant     int
+	ReportRetentionDays     int
 }
 
 // DefaultServiceConfig returns default configuration
 func DefaultServiceConfig() *ServiceConfig {
 	return &ServiceConfig{
-		DefaultRetentionDays:   365,
-		EnableAutoAssessment:   true,
-		AssessmentIntervalDays: 90,
+		DefaultRetentionDays:    365,
+		EnableAutoAssessment:    true,
+		AssessmentIntervalDays:  90,
 		EnablePolicyEnforcement: true,
-		MaxReportsPerTenant:    100,
-		ReportRetentionDays:    730, // 2 years
+		MaxReportsPerTenant:     100,
+		ReportRetentionDays:     730, // 2 years
 	}
 }
 
@@ -134,17 +134,17 @@ func (s *Service) EnableFramework(ctx context.Context, tenantID string, req *Ena
 		// Create new compliance record
 		now := time.Now()
 		compliance = &TenantCompliance{
-			ID:                uuid.New().String(),
-			TenantID:          tenantID,
-			Frameworks:        []ComplianceFramework{},
-			EnabledPolicies:   []string{},
-			EnforcementMode:   EnforcementAudit,
-			DataResidency:     []string{},
-			RetentionDays:     s.config.DefaultRetentionDays,
+			ID:                 uuid.New().String(),
+			TenantID:           tenantID,
+			Frameworks:         []ComplianceFramework{},
+			EnabledPolicies:    []string{},
+			EnforcementMode:    EnforcementAudit,
+			DataResidency:      []string{},
+			RetentionDays:      s.config.DefaultRetentionDays,
 			EncryptionRequired: true,
-			AuditLogEnabled:   true,
-			CreatedAt:         now,
-			UpdatedAt:         now,
+			AuditLogEnabled:    true,
+			CreatedAt:          now,
+			UpdatedAt:          now,
 		}
 	}
 
@@ -177,10 +177,12 @@ func (s *Service) EnableFramework(ctx context.Context, tenantID string, req *Ena
 	}
 
 	// Enable default policies for framework
+	// error intentionally ignored: framework was already validated above; empty template is safe
 	template, _ := s.GetTemplate(req.Framework)
 	for _, policy := range template.Policies {
 		compliance.EnabledPolicies = append(compliance.EnabledPolicies, policy.ID)
 	}
+	// best-effort: persist enabled policies; compliance object was already created
 	_ = s.repo.UpdateTenantCompliance(ctx, compliance)
 
 	// Create initial assessments for all controls
@@ -208,6 +210,7 @@ func (s *Service) createInitialAssessments(ctx context.Context, tenantID string,
 			AssessedBy: "system",
 			AssessedAt: now,
 		}
+		// best-effort: persist initial assessment; partial setup is acceptable
 		_ = s.repo.CreateAssessment(ctx, assessment)
 	}
 }
@@ -653,6 +656,7 @@ func (s *Service) EvaluatePolicy(ctx context.Context, tenantID, policyID string,
 		violations[i].TenantID = tenantID
 		violations[i].PolicyID = policyID
 		violations[i].PolicyName = policy.Name
+		// best-effort: persist violation record; policy evaluation result is still returned
 		_ = s.repo.CreateViolation(ctx, &violations[i])
 	}
 
@@ -698,12 +702,13 @@ func (s *Service) GetDashboard(ctx context.Context, tenantID string) (*Complianc
 		dashboard.OverallScore = totalScore / frameworkCount
 	}
 
-	// Get recent violations
+	// Get recent violations (error ignored: nil results in empty dashboard section)
 	violations, _ := s.repo.ListViolations(ctx, tenantID, 5)
 	dashboard.RecentViolations = violations
 
 	// Count open findings
 	for _, framework := range compliance.Frameworks {
+		// error ignored: nil assessments safely skips the inner loops
 		assessments, _ := s.repo.ListAssessments(ctx, tenantID, framework)
 		for _, a := range assessments {
 			for _, f := range a.Findings {
@@ -717,7 +722,7 @@ func (s *Service) GetDashboard(ctx context.Context, tenantID string) (*Complianc
 		}
 	}
 
-	// Get upcoming reviews
+	// Get upcoming reviews (error ignored: nil results in empty dashboard section)
 	reviewDate := time.Now().AddDate(0, 0, 30) // Next 30 days
 	upcoming, _ := s.repo.GetAssessmentsForReview(ctx, tenantID, reviewDate)
 	dashboard.UpcomingReviews = upcoming

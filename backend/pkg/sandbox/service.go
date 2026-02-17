@@ -409,6 +409,7 @@ func (s *Service) RunTestScenario(ctx context.Context, scenarioID string) (*Scen
 
 	scenario.Status = ScenarioStatusRunning
 	scenario.UpdatedAt = time.Now()
+	// best-effort: persist running status; execution proceeds regardless
 	_ = s.repo.UpdateTestScenario(ctx, scenario)
 
 	result := &ScenarioResult{
@@ -440,6 +441,7 @@ func (s *Service) RunTestScenario(ctx context.Context, scenarioID string) (*Scen
 	}
 
 	scenario.UpdatedAt = time.Now()
+	// best-effort: persist final scenario state and result; execution already completed
 	_ = s.repo.UpdateTestScenario(ctx, scenario)
 	_ = s.repo.CreateScenarioResult(ctx, result)
 

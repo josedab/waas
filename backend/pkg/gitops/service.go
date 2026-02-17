@@ -86,6 +86,7 @@ func (s *Service) PlanApply(ctx context.Context, tenantID, manifestID string) (*
 		return nil, fmt.Errorf("failed to get manifest: %w", err)
 	}
 
+	// best-effort parse: nil parsed map produces an empty plan with no actions
 	parsed, _ := s.parseYAMLManifest(manifest.Content)
 
 	plan := &ApplyPlan{
@@ -106,6 +107,7 @@ func (s *Service) PlanApply(ctx context.Context, tenantID, manifestID string) (*
 
 		desiredMap := make(map[string]bool)
 		for _, res := range resources {
+			// type assertion: missing/wrong-typed "id" yields empty string, handled below
 			resID, _ := res["id"].(string)
 			if resID == "" {
 				continue
@@ -118,6 +120,7 @@ func (s *Service) PlanApply(ctx context.Context, tenantID, manifestID string) (*
 			}
 
 			if existing, ok := currentMap[resID]; ok {
+				// best-effort marshal for diff comparison; nil YAML triggers no update
 				desiredYAML, _ := yaml.Marshal(res)
 				if s.diffStates(existing.DesiredState, string(desiredYAML)) {
 					action.Action = ActionUpdate
@@ -214,6 +217,7 @@ func (s *Service) ApplyManifest(ctx context.Context, tenantID, manifestID string
 		manifest.Status = result.Status
 		manifest.AppliedAt = &now
 		manifest.UpdatedAt = now
+		// best-effort: persist manifest status after apply; result is still returned
 		_ = s.repo.UpdateManifest(ctx, manifest)
 	}
 
@@ -265,6 +269,7 @@ func (s *Service) RollbackManifest(ctx context.Context, tenantID, manifestID str
 
 	manifest.Status = result.Status
 	manifest.UpdatedAt = time.Now()
+	// best-effort: persist manifest status after drift detection
 	_ = s.repo.UpdateManifest(ctx, manifest)
 
 	return result, nil
@@ -386,6 +391,7 @@ func (s *Service) parseYAMLManifest(content string) (map[string][]map[string]int
 			continue
 		}
 
+		// type assertion: missing/wrong-typed "type" yields empty string, validated below
 		resType, _ := resMap["type"].(string)
 		if resType == "" {
 			errors = append(errors, fmt.Sprintf("resource at index %d is missing 'type' field", i))
@@ -397,6 +403,7 @@ func (s *Service) parseYAMLManifest(content string) (map[string][]map[string]int
 			continue
 		}
 
+		// type assertion: missing/wrong-typed "id" yields empty string, validated below
 		resID, _ := resMap["id"].(string)
 		if resID == "" {
 			errors = append(errors, fmt.Sprintf("resource at index %d is missing 'id' field", i))

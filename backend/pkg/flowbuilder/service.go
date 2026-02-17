@@ -204,6 +204,7 @@ func (s *Service) ExecuteWorkflow(ctx context.Context, tenantID, workflowID stri
 		if err != nil {
 			result.Status = ExecFailed
 			result.Error = err.Error()
+			// best-effort: persist failed node result for observability
 			_ = s.repo.SaveNodeResult(ctx, result)
 
 			now := time.Now()
@@ -211,12 +212,14 @@ func (s *Service) ExecuteWorkflow(ctx context.Context, tenantID, workflowID stri
 			exec.Error = fmt.Sprintf("node %s failed: %s", node.Name, err.Error())
 			exec.CompletedAt = &now
 			exec.DurationMs = time.Since(exec.StartedAt).Milliseconds()
+			// best-effort: persist execution failure state
 			_ = s.repo.UpdateExecution(ctx, exec)
 			return exec, nil
 		}
 
 		result.Status = ExecCompleted
 		result.Output = output
+		// best-effort: persist completed node result for observability
 		_ = s.repo.SaveNodeResult(ctx, result)
 
 		if output != nil {
@@ -229,6 +232,7 @@ func (s *Service) ExecuteWorkflow(ctx context.Context, tenantID, workflowID stri
 	exec.Result = currentData
 	exec.CompletedAt = &now
 	exec.DurationMs = time.Since(exec.StartedAt).Milliseconds()
+	// best-effort: persist final execution state; workflow completed successfully
 	_ = s.repo.UpdateExecution(ctx, exec)
 
 	return exec, nil

@@ -23,66 +23,66 @@ var (
 type SubscriptionType string
 
 const (
-	SubscriptionWebhookEvents   SubscriptionType = "webhook_events"
-	SubscriptionDeliveryStatus  SubscriptionType = "delivery_status"
-	SubscriptionEndpointHealth  SubscriptionType = "endpoint_health"
-	SubscriptionWorkflowStatus  SubscriptionType = "workflow_status"
+	SubscriptionWebhookEvents  SubscriptionType = "webhook_events"
+	SubscriptionDeliveryStatus SubscriptionType = "delivery_status"
+	SubscriptionEndpointHealth SubscriptionType = "endpoint_health"
+	SubscriptionWorkflowStatus SubscriptionType = "workflow_status"
 )
 
 // ClientState represents WebSocket client states
 type ClientState string
 
 const (
-	ClientStateConnecting  ClientState = "connecting"
-	ClientStateConnected   ClientState = "connected"
-	ClientStateSubscribed  ClientState = "subscribed"
+	ClientStateConnecting   ClientState = "connecting"
+	ClientStateConnected    ClientState = "connected"
+	ClientStateSubscribed   ClientState = "subscribed"
 	ClientStateDisconnected ClientState = "disconnected"
 )
 
 // Subscription represents a GraphQL subscription
 type Subscription struct {
-	ID          string           `json:"id"`
-	TenantID    string           `json:"tenant_id"`
-	ClientID    string           `json:"client_id"`
-	Type        SubscriptionType `json:"type"`
-	Query       string           `json:"query"`
+	ID          string                 `json:"id"`
+	TenantID    string                 `json:"tenant_id"`
+	ClientID    string                 `json:"client_id"`
+	Type        SubscriptionType       `json:"type"`
+	Query       string                 `json:"query"`
 	Variables   map[string]interface{} `json:"variables,omitempty"`
-	Filters     *SubscriptionFilters `json:"filters,omitempty"`
-	Active      bool             `json:"active"`
-	CreatedAt   time.Time        `json:"created_at"`
-	LastEventAt *time.Time       `json:"last_event_at,omitempty"`
+	Filters     *SubscriptionFilters   `json:"filters,omitempty"`
+	Active      bool                   `json:"active"`
+	CreatedAt   time.Time              `json:"created_at"`
+	LastEventAt *time.Time             `json:"last_event_at,omitempty"`
 }
 
 // SubscriptionFilters for filtering subscription events
 type SubscriptionFilters struct {
-	EventTypes   []string `json:"event_types,omitempty"`
-	EndpointIDs  []string `json:"endpoint_ids,omitempty"`
-	WorkflowIDs  []string `json:"workflow_ids,omitempty"`
-	Severity     []string `json:"severity,omitempty"`
+	EventTypes  []string `json:"event_types,omitempty"`
+	EndpointIDs []string `json:"endpoint_ids,omitempty"`
+	WorkflowIDs []string `json:"workflow_ids,omitempty"`
+	Severity    []string `json:"severity,omitempty"`
 }
 
 // Client represents a WebSocket client connection
 type Client struct {
-	ID             string            `json:"id"`
-	TenantID       string            `json:"tenant_id"`
-	State          ClientState       `json:"state"`
-	Protocol       string            `json:"protocol"` // graphql-ws, subscriptions-transport-ws
-	ConnectedAt    time.Time         `json:"connected_at"`
-	LastPingAt     *time.Time        `json:"last_ping_at,omitempty"`
-	Subscriptions  map[string]*Subscription `json:"-"`
-	SendCh         chan []byte       `json:"-"`
-	CloseCh        chan struct{}     `json:"-"`
-	mu             sync.RWMutex
+	ID            string                   `json:"id"`
+	TenantID      string                   `json:"tenant_id"`
+	State         ClientState              `json:"state"`
+	Protocol      string                   `json:"protocol"` // graphql-ws, subscriptions-transport-ws
+	ConnectedAt   time.Time                `json:"connected_at"`
+	LastPingAt    *time.Time               `json:"last_ping_at,omitempty"`
+	Subscriptions map[string]*Subscription `json:"-"`
+	SendCh        chan []byte              `json:"-"`
+	CloseCh       chan struct{}            `json:"-"`
+	mu            sync.RWMutex
 }
 
 // Event represents an event to be published to subscriptions
 type Event struct {
-	ID           string          `json:"id"`
-	Type         SubscriptionType `json:"type"`
-	TenantID     string          `json:"tenant_id"`
-	Payload      json.RawMessage `json:"payload"`
-	Metadata     map[string]string `json:"metadata,omitempty"`
-	Timestamp    time.Time       `json:"timestamp"`
+	ID        string            `json:"id"`
+	Type      SubscriptionType  `json:"type"`
+	TenantID  string            `json:"tenant_id"`
+	Payload   json.RawMessage   `json:"payload"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	Timestamp time.Time         `json:"timestamp"`
 }
 
 // GraphQLMessage represents a GraphQL WebSocket message
@@ -128,12 +128,12 @@ type GQLError struct {
 
 // SchemaField represents a field in the GraphQL schema
 type SchemaField struct {
-	Name        string       `json:"name"`
-	Type        string       `json:"type"`
-	Description string       `json:"description,omitempty"`
-	Args        []SchemaArg  `json:"args,omitempty"`
-	Nullable    bool         `json:"nullable"`
-	IsList      bool         `json:"is_list"`
+	Name        string      `json:"name"`
+	Type        string      `json:"type"`
+	Description string      `json:"description,omitempty"`
+	Args        []SchemaArg `json:"args,omitempty"`
+	Nullable    bool        `json:"nullable"`
+	IsList      bool        `json:"is_list"`
 }
 
 // SchemaArg represents an argument in a GraphQL field
@@ -156,20 +156,20 @@ type SchemaType struct {
 
 // Schema represents the GraphQL subscription schema
 type Schema struct {
-	Types         []SchemaType `json:"types"`
+	Types         []SchemaType  `json:"types"`
 	Subscriptions []SchemaField `json:"subscriptions"`
 }
 
 // ConnectionConfig represents WebSocket connection configuration
 type ConnectionConfig struct {
-	MaxConnections      int           `json:"max_connections"`
-	PingInterval        time.Duration `json:"ping_interval"`
-	PongTimeout         time.Duration `json:"pong_timeout"`
-	MaxMessageSize      int64         `json:"max_message_size"`
-	WriteTimeout        time.Duration `json:"write_timeout"`
-	ReadTimeout         time.Duration `json:"read_timeout"`
-	MaxSubscriptions    int           `json:"max_subscriptions"`
-	EnableCompression   bool          `json:"enable_compression"`
+	MaxConnections    int           `json:"max_connections"`
+	PingInterval      time.Duration `json:"ping_interval"`
+	PongTimeout       time.Duration `json:"pong_timeout"`
+	MaxMessageSize    int64         `json:"max_message_size"`
+	WriteTimeout      time.Duration `json:"write_timeout"`
+	ReadTimeout       time.Duration `json:"read_timeout"`
+	MaxSubscriptions  int           `json:"max_subscriptions"`
+	EnableCompression bool          `json:"enable_compression"`
 }
 
 // DefaultConnectionConfig returns default configuration
@@ -188,62 +188,62 @@ func DefaultConnectionConfig() *ConnectionConfig {
 
 // WebhookEventData represents webhook event subscription data
 type WebhookEventData struct {
-	ID              string          `json:"id"`
-	Type            string          `json:"type"`
-	EndpointID      string          `json:"endpoint_id"`
-	EndpointURL     string          `json:"endpoint_url"`
-	Payload         json.RawMessage `json:"payload"`
-	Timestamp       time.Time       `json:"timestamp"`
-	Attempt         int             `json:"attempt"`
-	Status          string          `json:"status"`
-	ResponseCode    int             `json:"response_code,omitempty"`
-	ResponseTime    int64           `json:"response_time_ms,omitempty"`
-	NextRetryAt     *time.Time      `json:"next_retry_at,omitempty"`
+	ID           string          `json:"id"`
+	Type         string          `json:"type"`
+	EndpointID   string          `json:"endpoint_id"`
+	EndpointURL  string          `json:"endpoint_url"`
+	Payload      json.RawMessage `json:"payload"`
+	Timestamp    time.Time       `json:"timestamp"`
+	Attempt      int             `json:"attempt"`
+	Status       string          `json:"status"`
+	ResponseCode int             `json:"response_code,omitempty"`
+	ResponseTime int64           `json:"response_time_ms,omitempty"`
+	NextRetryAt  *time.Time      `json:"next_retry_at,omitempty"`
 }
 
 // DeliveryStatusData represents delivery status subscription data
 type DeliveryStatusData struct {
-	DeliveryID    string     `json:"delivery_id"`
-	WebhookID     string     `json:"webhook_id"`
-	EndpointID    string     `json:"endpoint_id"`
-	Status        string     `json:"status"` // pending, delivered, failed, retrying
-	Attempt       int        `json:"attempt"`
-	ResponseCode  int        `json:"response_code,omitempty"`
-	ResponseTime  int64      `json:"response_time_ms,omitempty"`
-	ErrorMessage  string     `json:"error_message,omitempty"`
-	Timestamp     time.Time  `json:"timestamp"`
+	DeliveryID   string    `json:"delivery_id"`
+	WebhookID    string    `json:"webhook_id"`
+	EndpointID   string    `json:"endpoint_id"`
+	Status       string    `json:"status"` // pending, delivered, failed, retrying
+	Attempt      int       `json:"attempt"`
+	ResponseCode int       `json:"response_code,omitempty"`
+	ResponseTime int64     `json:"response_time_ms,omitempty"`
+	ErrorMessage string    `json:"error_message,omitempty"`
+	Timestamp    time.Time `json:"timestamp"`
 }
 
 // EndpointHealthData represents endpoint health subscription data
 type EndpointHealthData struct {
-	EndpointID    string  `json:"endpoint_id"`
-	EndpointURL   string  `json:"endpoint_url"`
-	Status        string  `json:"status"` // healthy, degraded, unhealthy
-	HealthScore   float64 `json:"health_score"`
-	SuccessRate   float64 `json:"success_rate"`
-	AverageLatency float64 `json:"average_latency_ms"`
-	LastChecked   time.Time `json:"last_checked"`
+	EndpointID     string    `json:"endpoint_id"`
+	EndpointURL    string    `json:"endpoint_url"`
+	Status         string    `json:"status"` // healthy, degraded, unhealthy
+	HealthScore    float64   `json:"health_score"`
+	SuccessRate    float64   `json:"success_rate"`
+	AverageLatency float64   `json:"average_latency_ms"`
+	LastChecked    time.Time `json:"last_checked"`
 }
 
 // WorkflowStatusData represents workflow status subscription data
 type WorkflowStatusData struct {
-	WorkflowID    string    `json:"workflow_id"`
-	ExecutionID   string    `json:"execution_id"`
-	Status        string    `json:"status"` // running, completed, failed, cancelled
-	CurrentNode   string    `json:"current_node,omitempty"`
-	Progress      int       `json:"progress"` // 0-100
-	StartedAt     time.Time `json:"started_at"`
-	CompletedAt   *time.Time `json:"completed_at,omitempty"`
-	ErrorMessage  string    `json:"error_message,omitempty"`
+	WorkflowID   string     `json:"workflow_id"`
+	ExecutionID  string     `json:"execution_id"`
+	Status       string     `json:"status"` // running, completed, failed, cancelled
+	CurrentNode  string     `json:"current_node,omitempty"`
+	Progress     int        `json:"progress"` // 0-100
+	StartedAt    time.Time  `json:"started_at"`
+	CompletedAt  *time.Time `json:"completed_at,omitempty"`
+	ErrorMessage string     `json:"error_message,omitempty"`
 }
 
 // ClientStats represents client statistics
 type ClientStats struct {
-	TotalClients      int `json:"total_clients"`
-	ActiveClients     int `json:"active_clients"`
-	TotalSubscriptions int `json:"total_subscriptions"`
-	EventsPublished   int64 `json:"events_published"`
-	EventsDelivered   int64 `json:"events_delivered"`
+	TotalClients       int   `json:"total_clients"`
+	ActiveClients      int   `json:"active_clients"`
+	TotalSubscriptions int   `json:"total_subscriptions"`
+	EventsPublished    int64 `json:"events_published"`
+	EventsDelivered    int64 `json:"events_delivered"`
 }
 
 // Repository defines the interface for subscription data storage
@@ -292,14 +292,14 @@ type SchemaGenerator interface {
 
 // Service provides GraphQL subscription operations
 type Service struct {
-	repo          Repository
-	auth          Authenticator
-	publisher     EventPublisher
-	schemaGen     SchemaGenerator
-	clients       map[string]*Client
-	mu            sync.RWMutex
-	config        *ConnectionConfig
-	schema        *Schema
+	repo      Repository
+	auth      Authenticator
+	publisher EventPublisher
+	schemaGen SchemaGenerator
+	clients   map[string]*Client
+	mu        sync.RWMutex
+	config    *ConnectionConfig
+	schema    *Schema
 }
 
 // NewService creates a new GraphQL subscription service
@@ -407,7 +407,7 @@ func (s *Service) Subscribe(ctx context.Context, clientID, subscriptionID string
 	client.Subscriptions[subscriptionID] = sub
 	client.State = ClientStateSubscribed
 
-	// Save to repository
+	// best-effort: persist subscription state after client operation succeeds
 	_ = s.repo.SaveSubscription(ctx, sub)
 
 	return nil
@@ -427,6 +427,7 @@ func (s *Service) Unsubscribe(ctx context.Context, clientID, subscriptionID stri
 	defer client.mu.Unlock()
 
 	delete(client.Subscriptions, subscriptionID)
+	// best-effort: clean up subscription record after in-memory removal succeeds
 	_ = s.repo.DeleteSubscription(ctx, subscriptionID)
 
 	return nil
@@ -504,7 +505,7 @@ func (s *Service) PublishEvent(ctx context.Context, event *Event) error {
 		client.mu.RUnlock()
 	}
 
-	// Save event for replay
+	// best-effort: persist event for replay; delivery to subscribers already succeeded
 	_ = s.repo.SaveEvent(ctx, event)
 	_ = s.repo.IncrementEventCounter(ctx, event.TenantID, 1)
 
@@ -685,7 +686,8 @@ func GenerateDefaultSchema() *Schema {
 	}
 }
 
-// mustMarshal marshals to JSON, panicking on error (internal use only)
+// mustMarshal marshals to JSON, returning nil on error (internal use only).
+// Error is intentionally discarded: callers expect valid input for known types.
 func mustMarshal(v interface{}) json.RawMessage {
 	data, _ := json.Marshal(v)
 	return data
