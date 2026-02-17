@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -73,7 +74,10 @@ func (s *Service) CheckMetric(ctx context.Context, tenantID, endpointID string, 
 	}
 
 	// Get detection config
-	config, _ := s.repo.GetDetectionConfig(ctx, tenantID, endpointID, metricType)
+	config, err := s.repo.GetDetectionConfig(ctx, tenantID, endpointID, metricType)
+	if err != nil {
+		log.Printf("anomaly: failed to get detection config for tenant=%s endpoint=%s: %v", tenantID, endpointID, err)
+	}
 
 	// Run detection
 	result := s.detector.Detect(value, baseline, config)
@@ -127,7 +131,10 @@ func (s *Service) UpdateBaseline(ctx context.Context, tenantID, endpointID strin
 	}
 
 	// Get existing baseline
-	existing, _ := s.repo.GetBaseline(ctx, tenantID, endpointID, metricType)
+	existing, err := s.repo.GetBaseline(ctx, tenantID, endpointID, metricType)
+	if err != nil {
+		log.Printf("anomaly: failed to get existing baseline for tenant=%s endpoint=%s: %v", tenantID, endpointID, err)
+	}
 
 	// Calculate new baseline
 	baseline := CalculateBaseline(points, existing)
@@ -313,7 +320,10 @@ func (s *Service) GetTrendAnalysis(ctx context.Context, tenantID, endpointID str
 	}
 
 	// Get baseline
-	baseline, _ := s.repo.GetBaseline(ctx, tenantID, endpointID, metricType)
+	baseline, err := s.repo.GetBaseline(ctx, tenantID, endpointID, metricType)
+	if err != nil {
+		log.Printf("anomaly: failed to get baseline for trend analysis tenant=%s endpoint=%s: %v", tenantID, endpointID, err)
+	}
 	if baseline == nil {
 		baseline = &Baseline{Mean: 1.0, StdDev: 0.1} // Defaults
 	}
