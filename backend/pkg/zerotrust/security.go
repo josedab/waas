@@ -18,7 +18,9 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"log"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -154,8 +156,17 @@ func (m *CertificateManager) ValidateCertificate(cert *x509.Certificate) error {
 
 // BuildTLSConfig creates a TLS configuration for an endpoint
 func (m *CertificateManager) BuildTLSConfig(profile *SecurityProfile, clientCert *Certificate, pinnedCerts []*Certificate) (*tls.Config, error) {
+	skipVerify := false
+	if !profile.VerifyServerCert {
+		if os.Getenv("ALLOW_INSECURE_TLS") == "true" {
+			log.Printf("AUDIT: TLS server cert verification disabled for endpoint %s (ALLOW_INSECURE_TLS=true)", profile.EndpointID)
+			skipVerify = true
+		} else {
+			log.Printf("WARNING: VerifyServerCert=false requested for endpoint %s but ALLOW_INSECURE_TLS is not set — ignoring, verification remains enabled", profile.EndpointID)
+		}
+	}
 	config := &tls.Config{
-		InsecureSkipVerify: !profile.VerifyServerCert,
+		InsecureSkipVerify: skipVerify,
 	}
 
 	// Set minimum TLS version
