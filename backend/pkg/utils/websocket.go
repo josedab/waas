@@ -8,13 +8,17 @@ import (
 
 // defaultOrigins used when WEBSOCKET_ALLOWED_ORIGINS is not set.
 var defaultOrigins = map[string]bool{
+	"https://app.waas.dev": true,
+}
+
+// devOrigins are additional origins allowed only in non-production environments.
+var devOrigins = map[string]bool{
 	"http://localhost:3000":  true,
 	"http://localhost:5173":  true,
 	"http://localhost:8080":  true,
 	"https://localhost:3000": true,
 	"https://localhost:5173": true,
 	"https://localhost:8080": true,
-	"https://app.waas.dev":   true,
 }
 
 // GetAllowedOrigins returns allowed WebSocket origins from the
@@ -23,7 +27,16 @@ var defaultOrigins = map[string]bool{
 func GetAllowedOrigins() map[string]bool {
 	origins := os.Getenv("WEBSOCKET_ALLOWED_ORIGINS")
 	if origins == "" {
-		return defaultOrigins
+		allowed := make(map[string]bool, len(defaultOrigins)+len(devOrigins))
+		for k, v := range defaultOrigins {
+			allowed[k] = v
+		}
+		if strings.ToLower(os.Getenv("APP_ENV")) != "production" {
+			for k, v := range devOrigins {
+				allowed[k] = v
+			}
+		}
+		return allowed
 	}
 	allowed := make(map[string]bool)
 	for _, o := range strings.Split(origins, ",") {
