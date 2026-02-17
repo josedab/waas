@@ -3,7 +3,6 @@ package connectors
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -242,6 +241,3 @@ func (r *InMemoryRepository) ListExecutions(ctx context.Context, installedConnec
 }
 
 var _ Repository = (*InMemoryRepository)(nil) // Compile-time check
-
-// Define JSON as needed
-var _ = json.Marshal
