@@ -1,9 +1,9 @@
 package auth
 
 import (
-	"context"
 	"net/http"
 	"strings"
+
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/repository"
 
@@ -71,7 +71,7 @@ func (am *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		}
 
 		// Find tenant by API key
-		ctx := context.Background()
+		ctx := c.Request.Context()
 		tenant, err := am.tenantRepo.FindByAPIKey(ctx, apiKey)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
