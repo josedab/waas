@@ -53,6 +53,8 @@ type monitorWorker struct {
 	monitor    *ContractMonitor
 	client     ChainClient
 	stopCh     chan struct{}
+	ctx        context.Context
+	cancel     context.CancelFunc
 	running    bool
 	lastBlock  uint64
 	mu         sync.Mutex
@@ -350,10 +352,13 @@ func (s *Service) startMonitorWorker(monitor *ContractMonitor) {
 		return
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	worker := &monitorWorker{
 		monitor:   monitor,
 		client:    client,
 		stopCh:    make(chan struct{}),
+		ctx:       ctx,
+		cancel:    cancel,
 		running:   true,
 		lastBlock: monitor.LastBlock,
 	}
@@ -370,6 +375,7 @@ func (s *Service) stopMonitorWorker(monitorID string) {
 	s.mu.Lock()
 	worker, exists := s.monitors[monitorID]
 	if exists {
+		worker.cancel()
 		close(worker.stopCh)
 		worker.running = false
 		delete(s.monitors, monitorID)
@@ -379,6 +385,8 @@ func (s *Service) stopMonitorWorker(monitorID string) {
 
 // run executes the monitoring loop
 func (w *monitorWorker) run(s *Service) {
+	defer w.cancel()
+
 	pollInterval := time.Duration(w.monitor.Config.PollIntervalSec) * time.Second
 	if pollInterval == 0 {
 		pollInterval = s.config.DefaultPollInterval
@@ -389,6 +397,8 @@ func (w *monitorWorker) run(s *Service) {
 
 	for {
 		select {
+		case <-w.ctx.Done():
+			return
 		case <-w.stopCh:
 			return
 		case <-s.shutdownCh:
@@ -401,7 +411,7 @@ func (w *monitorWorker) run(s *Service) {
 
 // processBlocks processes new blocks for events
 func (w *monitorWorker) processBlocks(s *Service) {
-	ctx := context.Background()
+	ctx := w.ctx
 
 	// Get latest block
 	latestBlock, err := w.client.GetLatestBlock(ctx)
