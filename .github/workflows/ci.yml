@@ -83,7 +83,7 @@ jobs:
       run: |
         COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}' | sed 's/%//')
         echo "Total coverage: ${COVERAGE}%"
-        THRESHOLD=50
+        THRESHOLD=70
         if [ "$(echo "$COVERAGE < $THRESHOLD" | bc -l)" -eq 1 ]; then
           echo "::error::Coverage ${COVERAGE}% is below the required ${THRESHOLD}% threshold"
           exit 1
@@ -121,6 +121,34 @@ jobs:
 
     - name: Build all packages
       run: go build ./...
+
+  license-check:
+    name: License Check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Install go-licenses
+      run: go install github.com/google/go-licenses@latest
+
+    - name: Check dependency licenses
+      run: |
+        go-licenses check ./... --allowed_licenses=MIT,Apache-2.0,BSD-2-Clause,BSD-3-Clause,ISC,MPL-2.0 2>&1 | tee license-report.txt
+        if [ ${PIPESTATUS[0]} -ne 0 ]; then
+          echo "::error::Found dependencies with disallowed or unknown licenses. See output above."
+          exit 1
+        fi
+
+    - name: Upload license report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: license-report
+        path: backend/license-report.txt
 
   integration-tests:
     name: Integration Tests
