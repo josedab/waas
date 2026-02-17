@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -89,6 +90,7 @@ type ThemeConfig struct {
 
 // OAuthProvider manages OAuth 2.0 for embedded portals
 type OAuthProvider struct {
+	mu             sync.RWMutex
 	clients        map[string]*OAuthClient        // clientID -> client
 	authCodes      map[string]*AuthorizationCode   // code -> auth
 	tokens         map[string]*OAuthToken          // accessToken -> token
@@ -140,13 +142,17 @@ func (p *OAuthProvider) RegisterClient(_ context.Context, tenantID, name string,
 		CreatedAt:    time.Now(),
 	}
 
+	p.mu.Lock()
 	p.clients[client.ClientID] = client
+	p.mu.Unlock()
 	return client, nil
 }
 
 // Authorize creates an authorization code
 func (p *OAuthProvider) Authorize(_ context.Context, clientID, redirectURI string, scopes []string) (*AuthorizationCode, error) {
+	p.mu.RLock()
 	client, ok := p.clients[clientID]
+	p.mu.RUnlock()
 	if !ok {
 		return nil, ErrOAuthClientNotFound
 	}
@@ -171,12 +177,17 @@ func (p *OAuthProvider) Authorize(_ context.Context, clientID, redirectURI strin
 		ExpiresAt:   time.Now().Add(10 * time.Minute),
 	}
 
+	p.mu.Lock()
 	p.authCodes[code.Code] = code
+	p.mu.Unlock()
 	return code, nil
 }
 
 // ExchangeCode exchanges an authorization code for tokens
 func (p *OAuthProvider) ExchangeCode(_ context.Context, code, clientID, clientSecret string) (*OAuthToken, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	auth, ok := p.authCodes[code]
 	if !ok {
 		return nil, ErrAuthorizationExpired
@@ -214,6 +225,9 @@ func (p *OAuthProvider) ExchangeCode(_ context.Context, code, clientID, clientSe
 
 // ValidateToken validates an access token
 func (p *OAuthProvider) ValidateToken(_ context.Context, accessToken string) (*OAuthToken, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	token, ok := p.tokens[accessToken]
 	if !ok {
 		return nil, ErrTokenExpired
@@ -227,6 +241,9 @@ func (p *OAuthProvider) ValidateToken(_ context.Context, accessToken string) (*O
 
 // RefreshAccessToken refreshes an access token
 func (p *OAuthProvider) RefreshAccessToken(_ context.Context, refreshToken string) (*OAuthToken, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	oldToken, ok := p.refreshTokens[refreshToken]
 	if !ok {
 		return nil, ErrInvalidRefreshToken
@@ -258,6 +275,9 @@ func (p *OAuthProvider) RefreshAccessToken(_ context.Context, refreshToken strin
 
 // SetCustomDomain configures a custom domain for a portal
 func (p *OAuthProvider) SetCustomDomain(_ context.Context, tenantID, portalID, domain string) (*CustomDomain, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if existing, ok := p.customDomains[domain]; ok && existing.TenantID != tenantID {
 		return nil, ErrCustomDomainInUse
 	}
@@ -279,6 +299,9 @@ func (p *OAuthProvider) SetCustomDomain(_ context.Context, tenantID, portalID, d
 
 // VerifyDomain verifies domain ownership
 func (p *OAuthProvider) VerifyDomain(_ context.Context, domain string) (*CustomDomain, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	cd, ok := p.customDomains[domain]
 	if !ok {
 		return nil, errors.New("domain not found")
@@ -310,13 +333,18 @@ func (p *OAuthProvider) SetTheme(_ context.Context, tenantID, portalID string, t
 	theme.ID = generateToken(8)
 	theme.TenantID = tenantID
 	theme.PortalID = portalID
+
+	p.mu.Lock()
 	p.themes[portalID] = theme
+	p.mu.Unlock()
 	return theme, nil
 }
 
 // GetTheme retrieves the theme for a portal
 func (p *OAuthProvider) GetTheme(_ context.Context, portalID string) (*ThemeConfig, error) {
+	p.mu.RLock()
 	theme, ok := p.themes[portalID]
+	p.mu.RUnlock()
 	if !ok {
 		// Return default theme
 		return &ThemeConfig{
