@@ -38,12 +38,12 @@ type IdempotencyStore struct {
 }
 
 // NewIdempotencyStore creates a new in-memory idempotency store
-func NewIdempotencyStore(ttl time.Duration) *IdempotencyStore {
+func NewIdempotencyStore(ctx context.Context, ttl time.Duration) *IdempotencyStore {
 	store := &IdempotencyStore{
 		processed: make(map[string]time.Time),
 		ttl:       ttl,
 	}
-	go store.cleanup()
+	go store.cleanup(ctx)
 	return store
 }
 
@@ -63,18 +63,23 @@ func (s *IdempotencyStore) MarkProcessed(eventID string) {
 }
 
 // cleanup periodically removes expired entries
-func (s *IdempotencyStore) cleanup() {
+func (s *IdempotencyStore) cleanup(ctx context.Context) {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
-	for range ticker.C {
-		s.mu.Lock()
-		cutoff := time.Now().Add(-s.ttl)
-		for id, ts := range s.processed {
-			if ts.Before(cutoff) {
-				delete(s.processed, id)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.mu.Lock()
+			cutoff := time.Now().Add(-s.ttl)
+			for id, ts := range s.processed {
+				if ts.Before(cutoff) {
+					delete(s.processed, id)
+				}
 			}
+			s.mu.Unlock()
 		}
-		s.mu.Unlock()
 	}
 }
 
@@ -87,20 +92,20 @@ func (s *IdempotencyStore) Size() int {
 
 // OutboxEntry represents a transactional outbox record
 type OutboxEntry struct {
-	ID            string          `json:"id"`
-	BridgeID      string          `json:"bridge_id"`
-	TenantID      string          `json:"tenant_id"`
-	EventID       string          `json:"event_id"`
-	Payload       json.RawMessage `json:"payload"`
+	ID            string            `json:"id"`
+	BridgeID      string            `json:"bridge_id"`
+	TenantID      string            `json:"tenant_id"`
+	EventID       string            `json:"event_id"`
+	Payload       json.RawMessage   `json:"payload"`
 	Headers       map[string]string `json:"headers,omitempty"`
-	Destination   string          `json:"destination"`
-	Status        OutboxStatus    `json:"status"`
-	Attempts      int             `json:"attempts"`
-	MaxAttempts   int             `json:"max_attempts"`
-	LastAttemptAt *time.Time      `json:"last_attempt_at,omitempty"`
-	Error         string          `json:"error,omitempty"`
-	CreatedAt     time.Time       `json:"created_at"`
-	ProcessedAt   *time.Time      `json:"processed_at,omitempty"`
+	Destination   string            `json:"destination"`
+	Status        OutboxStatus      `json:"status"`
+	Attempts      int               `json:"attempts"`
+	MaxAttempts   int               `json:"max_attempts"`
+	LastAttemptAt *time.Time        `json:"last_attempt_at,omitempty"`
+	Error         string            `json:"error,omitempty"`
+	CreatedAt     time.Time         `json:"created_at"`
+	ProcessedAt   *time.Time        `json:"processed_at,omitempty"`
 }
 
 // OutboxStatus represents the status of an outbox entry
@@ -262,7 +267,7 @@ func NewExactlyOnceBridge(
 	}
 
 	bridge := NewDeliveryBridge(bridgeID, tenantID, source, publisher, bridgeConfig)
-	store := NewIdempotencyStore(eoConfig.DeduplicationTTL)
+	store := NewIdempotencyStore(context.Background(), eoConfig.DeduplicationTTL)
 
 	eob := &ExactlyOnceBridge{
 		DeliveryBridge:   bridge,
@@ -363,13 +368,13 @@ func (p *bridgeOutboxProcessor) Process(ctx context.Context, entry *OutboxEntry)
 func (eob *ExactlyOnceBridge) ExactlyOnceMetrics() map[string]interface{} {
 	base := eob.GetMetrics()
 	return map[string]interface{}{
-		"events_received":        base.EventsReceived,
-		"events_delivered":       base.EventsDelivered,
-		"events_filtered":        base.EventsFiltered,
-		"events_failed":          base.EventsFailed,
-		"avg_latency_ms":         base.AvgLatencyMs,
-		"dedup_store_size":       eob.idempotencyStore.Size(),
-		"outbox_pending":         eob.outbox.PendingCount(),
-		"exactly_once_enabled":   eob.config.Enabled,
+		"events_received":      base.EventsReceived,
+		"events_delivered":     base.EventsDelivered,
+		"events_filtered":      base.EventsFiltered,
+		"events_failed":        base.EventsFailed,
+		"avg_latency_ms":       base.AvgLatencyMs,
+		"dedup_store_size":     eob.idempotencyStore.Size(),
+		"outbox_pending":       eob.outbox.PendingCount(),
+		"exactly_once_enabled": eob.config.Enabled,
 	}
 }
