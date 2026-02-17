@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -257,7 +258,7 @@ func (s *Service) ExecutePipeline(ctx context.Context, tenantID, pipelineID, del
 
 	if err := s.repo.SaveExecution(ctx, execution); err != nil {
 		// Log but don't fail the pipeline
-		_ = err
+		log.Printf("failed to save pipeline execution: %v", err)
 	}
 
 	return execution, nil

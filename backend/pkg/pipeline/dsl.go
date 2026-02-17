@@ -152,7 +152,7 @@ func ConvertVisualToPipeline(name, description string, visual *VisualPipeline) (
 		Description: description,
 	}
 
-	for i, nodeID := range nodeOrder {
+	for _, nodeID := range nodeOrder {
 		node := findNode(visual.Nodes, nodeID)
 		if node == nil {
 			continue
@@ -181,7 +181,6 @@ func ConvertVisualToPipeline(name, description string, visual *VisualPipeline) (
 			}
 		}
 
-		_ = i
 		req.Stages = append(req.Stages, stage)
 	}
 
