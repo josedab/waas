@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -42,10 +43,22 @@ func (r *PostgresRepository) CreateMockEndpoint(ctx context.Context, endpoint *M
 		endpoint.ID = uuid.New().String()
 	}
 
-	templateJSON, _ := json.Marshal(endpoint.Template)
-	scheduleJSON, _ := json.Marshal(endpoint.Schedule)
-	settingsJSON, _ := json.Marshal(endpoint.Settings)
-	metadataJSON, _ := json.Marshal(endpoint.Metadata)
+	templateJSON, err := json.Marshal(endpoint.Template)
+	if err != nil {
+		return fmt.Errorf("failed to marshal template: %w", err)
+	}
+	scheduleJSON, err := json.Marshal(endpoint.Schedule)
+	if err != nil {
+		return fmt.Errorf("failed to marshal schedule: %w", err)
+	}
+	settingsJSON, err := json.Marshal(endpoint.Settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal settings: %w", err)
+	}
+	metadataJSON, err := json.Marshal(endpoint.Metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal metadata: %w", err)
+	}
 
 	query := `
 		INSERT INTO mock_endpoints 
@@ -53,7 +66,7 @@ func (r *PostgresRepository) CreateMockEndpoint(ctx context.Context, endpoint *M
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		endpoint.ID, endpoint.TenantID, endpoint.Name, endpoint.Description,
 		endpoint.URL, endpoint.EventType, templateJSON, scheduleJSON, settingsJSON,
 		metadataJSON, endpoint.IsActive, endpoint.CreatedAt, endpoint.UpdatedAt,
@@ -142,10 +155,22 @@ func (r *PostgresRepository) ListMockEndpoints(ctx context.Context, tenantID str
 
 // UpdateMockEndpoint updates a mock endpoint
 func (r *PostgresRepository) UpdateMockEndpoint(ctx context.Context, endpoint *MockEndpoint) error {
-	templateJSON, _ := json.Marshal(endpoint.Template)
-	scheduleJSON, _ := json.Marshal(endpoint.Schedule)
-	settingsJSON, _ := json.Marshal(endpoint.Settings)
-	metadataJSON, _ := json.Marshal(endpoint.Metadata)
+	templateJSON, err := json.Marshal(endpoint.Template)
+	if err != nil {
+		return fmt.Errorf("failed to marshal template: %w", err)
+	}
+	scheduleJSON, err := json.Marshal(endpoint.Schedule)
+	if err != nil {
+		return fmt.Errorf("failed to marshal schedule: %w", err)
+	}
+	settingsJSON, err := json.Marshal(endpoint.Settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal settings: %w", err)
+	}
+	metadataJSON, err := json.Marshal(endpoint.Metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal metadata: %w", err)
+	}
 
 	query := `
 		UPDATE mock_endpoints
@@ -154,7 +179,7 @@ func (r *PostgresRepository) UpdateMockEndpoint(ctx context.Context, endpoint *M
 		WHERE id = $11 AND tenant_id = $12
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		endpoint.Name, endpoint.Description, endpoint.URL, endpoint.EventType,
 		templateJSON, scheduleJSON, settingsJSON, metadataJSON,
 		endpoint.IsActive, endpoint.UpdatedAt,
@@ -177,8 +202,14 @@ func (r *PostgresRepository) CreateMockDelivery(ctx context.Context, delivery *M
 		delivery.ID = uuid.New().String()
 	}
 
-	payloadJSON, _ := json.Marshal(delivery.Payload)
-	headersJSON, _ := json.Marshal(delivery.Headers)
+	payloadJSON, err := json.Marshal(delivery.Payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+	headersJSON, err := json.Marshal(delivery.Headers)
+	if err != nil {
+		return fmt.Errorf("failed to marshal headers: %w", err)
+	}
 
 	query := `
 		INSERT INTO mock_deliveries 
@@ -186,7 +217,7 @@ func (r *PostgresRepository) CreateMockDelivery(ctx context.Context, delivery *M
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		delivery.ID, delivery.EndpointID, delivery.TenantID, payloadJSON, headersJSON,
 		delivery.Status, delivery.StatusCode, delivery.ResponseBody, delivery.Error,
 		delivery.LatencyMs, delivery.ScheduledAt, delivery.SentAt, delivery.CreatedAt,
@@ -252,8 +283,14 @@ func (r *PostgresRepository) CreateTemplate(ctx context.Context, template *MockT
 		template.ID = uuid.New().String()
 	}
 
-	templateJSON, _ := json.Marshal(template.Template)
-	examplesJSON, _ := json.Marshal(template.Examples)
+	templateJSON, err := json.Marshal(template.Template)
+	if err != nil {
+		return fmt.Errorf("failed to marshal template: %w", err)
+	}
+	examplesJSON, err := json.Marshal(template.Examples)
+	if err != nil {
+		return fmt.Errorf("failed to marshal examples: %w", err)
+	}
 
 	query := `
 		INSERT INTO mock_templates 
@@ -261,7 +298,7 @@ func (r *PostgresRepository) CreateTemplate(ctx context.Context, template *MockT
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		template.ID, template.TenantID, template.Name, template.Description,
 		template.EventType, template.Category, templateJSON, examplesJSON,
 		template.IsPublic, template.CreatedAt, template.UpdatedAt,
