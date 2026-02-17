@@ -77,7 +77,10 @@ func runStandardInit(dir, template string) error {
 
 	// Write project config
 	projectConfig := buildProjectConfig(template, "http://localhost:8080")
-	configBytes, _ := json.MarshalIndent(projectConfig, "", "  ")
+	configBytes, err := json.MarshalIndent(projectConfig, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
 	configPath := filepath.Join(waasDir, "config.json")
 	if err := os.WriteFile(configPath, configBytes, 0644); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
@@ -86,7 +89,10 @@ func runStandardInit(dir, template string) error {
 	// Write example payloads based on template
 	payloads := getTemplatePayloads(template)
 	for name, payload := range payloads {
-		payloadBytes, _ := json.MarshalIndent(payload, "", "  ")
+		payloadBytes, err := json.MarshalIndent(payload, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal payload %s: %w", name, err)
+		}
 		payloadPath := filepath.Join(waasDir, "payloads", name+".json")
 		if err := os.WriteFile(payloadPath, payloadBytes, 0644); err != nil {
 			return fmt.Errorf("failed to write payload %s: %w", name, err)
@@ -206,7 +212,10 @@ func runOnboardingWizard(dir string) error {
 		}
 	}
 
-	configBytes, _ := json.MarshalIndent(projectConfig, "", "  ")
+	configBytes, err := json.MarshalIndent(projectConfig, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
 	configPath := filepath.Join(waasDir, "config.json")
 	if err := os.WriteFile(configPath, configBytes, 0644); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
@@ -215,7 +224,10 @@ func runOnboardingWizard(dir string) error {
 	// Write template payloads
 	payloads := getTemplatePayloads(template)
 	for name, payload := range payloads {
-		payloadBytes, _ := json.MarshalIndent(payload, "", "  ")
+		payloadBytes, err := json.MarshalIndent(payload, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal payload %s: %w", name, err)
+		}
 		payloadPath := filepath.Join(waasDir, "payloads", name+".json")
 		if err := os.WriteFile(payloadPath, payloadBytes, 0644); err != nil {
 			return fmt.Errorf("failed to write payload: %w", err)
@@ -260,7 +272,10 @@ func runOnboardingWizard(dir string) error {
 }
 
 func readLine(reader *bufio.Reader, defaultVal string) string {
-	line, _ := reader.ReadString('\n')
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return defaultVal
+	}
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return defaultVal
