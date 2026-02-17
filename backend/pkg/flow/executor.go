@@ -86,7 +86,9 @@ func (e *Executor) Execute(ctx context.Context, flow *Flow, input json.RawMessag
 	if timeout == 0 {
 		timeout = 30 * time.Second
 	}
-	execCtx.ctx, _ = context.WithTimeout(ctx, timeout)
+	var timeoutCancel context.CancelFunc
+	execCtx.ctx, timeoutCancel = context.WithTimeout(ctx, timeout)
+	defer timeoutCancel()
 
 	// Find start node
 	var startNode *Node
@@ -265,6 +267,10 @@ func (e *Executor) executeTransformNode(ctx *ExecutionContext, node *Node) (json
 	// Get VM from pool
 	vm := e.vmPool.Get().(*goja.Runtime)
 	defer func() {
+		// Reset global variables to prevent cross-tenant data leakage
+		vm.Set("input", goja.Undefined())
+		vm.Set("payload", goja.Undefined())
+		vm.Set("env", goja.Undefined())
 		vm.ClearInterrupt()
 		e.vmPool.Put(vm)
 	}()
@@ -300,6 +306,8 @@ func (e *Executor) executeConditionNode(ctx *ExecutionContext, node *Node) error
 	// Evaluate condition
 	vm := e.vmPool.Get().(*goja.Runtime)
 	defer func() {
+		vm.Set("input", goja.Undefined())
+		vm.Set("payload", goja.Undefined())
 		vm.ClearInterrupt()
 		e.vmPool.Put(vm)
 	}()
@@ -360,6 +368,8 @@ func (e *Executor) executeFilterNode(ctx *ExecutionContext, node *Node) (json.Ra
 	// Evaluate filter expression
 	vm := e.vmPool.Get().(*goja.Runtime)
 	defer func() {
+		vm.Set("input", goja.Undefined())
+		vm.Set("payload", goja.Undefined())
 		vm.ClearInterrupt()
 		e.vmPool.Put(vm)
 	}()

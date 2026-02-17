@@ -74,7 +74,10 @@ func (e *Engine) Transform(ctx context.Context, script string, payload interface
 	// Get VM from pool
 	vm := e.vmPool.Get().(*goja.Runtime)
 	defer func() {
-		// Reset VM state before returning to pool
+		// Reset VM state before returning to pool to prevent cross-tenant data leakage
+		vm.Set("payload", goja.Undefined())
+		vm.Set("input", goja.Undefined())
+		vm.Set("env", goja.Undefined())
 		vm.ClearInterrupt()
 		e.vmPool.Put(vm)
 	}()
