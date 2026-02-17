@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	stdlog "log"
 	"net/http"
 	"strconv"
 	"time"
@@ -154,14 +155,14 @@ func (qm *QuotaMiddleware) TrackUsage() gin.HandlerFunc {
 		success := c.Writer.Status() >= 200 && c.Writer.Status() < 400
 
 		// Track usage asynchronously to avoid blocking the response
+		reqCtx := c.Request.Context()
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(reqCtx, 5*time.Second)
 			defer cancel()
 
 			err := qm.quotaRepo.IncrementUsage(ctx, tenant.ID, success)
 			if err != nil {
-				// Log error but don't fail the request
-				// In a real implementation, you'd use a proper logger
+				stdlog.Printf("quota: failed to increment usage for tenant %s: %v", tenant.ID, err)
 				return
 			}
 
@@ -183,6 +184,7 @@ func (qm *QuotaMiddleware) checkAndSendNotifications(ctx context.Context, tenant
 
 	usage, err := qm.quotaRepo.GetQuotaUsageByTenant(ctx, tenant.ID, currentMonth)
 	if err != nil {
+		stdlog.Printf("quota: failed to get usage for tenant %s: %v", tenant.ID, err)
 		return
 	}
 
@@ -194,6 +196,7 @@ func (qm *QuotaMiddleware) checkAndSendNotifications(ctx context.Context, tenant
 			// Check if notification already sent for this threshold this month
 			notifications, err := qm.quotaRepo.GetPendingNotifications(ctx, tenant.ID)
 			if err != nil {
+				stdlog.Printf("quota: failed to get pending notifications for tenant %s: %v", tenant.ID, err)
 				continue
 			}
 
@@ -221,7 +224,9 @@ func (qm *QuotaMiddleware) checkAndSendNotifications(ctx context.Context, tenant
 					Sent:        false,
 				}
 
-				qm.quotaRepo.CreateQuotaNotification(ctx, notification)
+				if err := qm.quotaRepo.CreateQuotaNotification(ctx, notification); err != nil {
+					stdlog.Printf("quota: failed to create notification for tenant %s at %d%%: %v", tenant.ID, threshold, err)
+				}
 			}
 		}
 	}
@@ -234,11 +239,14 @@ func (qm *QuotaMiddleware) incrementOverageCount(ctx context.Context, tenantID u
 
 	usage, err := qm.quotaRepo.GetQuotaUsageByTenant(ctx, tenantID, currentMonth)
 	if err != nil {
+		stdlog.Printf("quota: failed to get usage for overage count, tenant %s: %v", tenantID, err)
 		return
 	}
 
 	usage.OverageCount++
-	qm.quotaRepo.UpdateQuotaUsage(ctx, usage)
+	if err := qm.quotaRepo.UpdateQuotaUsage(ctx, usage); err != nil {
+		stdlog.Printf("quota: failed to update overage count for tenant %s: %v", tenantID, err)
+	}
 }
 
 // GetQuotaStatus returns current quota status for a tenant (for API endpoints)
