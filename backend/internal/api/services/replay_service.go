@@ -239,7 +239,6 @@ func (s *ReplayService) processReplayEvent(ctx context.Context, job *models.Repl
 
 	// Send webhook (would integrate with delivery engine)
 	// For now, simulate successful delivery
-	_ = payload
 
 	return nil
 }
