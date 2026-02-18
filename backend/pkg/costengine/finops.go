@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // CostAttributionLevel defines the granularity of cost attribution
@@ -136,6 +137,7 @@ type FinOpsRepository interface {
 type FinOpsService struct {
 	repo      FinOpsRepository
 	costModel *CostModel
+	logger    *utils.Logger
 }
 
 // NewFinOpsService creates a new FinOps service
@@ -152,6 +154,7 @@ func NewFinOpsService(repo FinOpsRepository, costModel *CostModel) *FinOpsServic
 	return &FinOpsService{
 		repo:      repo,
 		costModel: costModel,
+		logger:    utils.NewLogger("costengine-finops"),
 	}
 }
 
@@ -216,7 +219,7 @@ func (s *FinOpsService) checkBudget(ctx context.Context, tenantID string) {
 	case ratio >= 1.0:
 		budget.Status = BudgetStatusExceeded
 		// best-effort: alert creation failure should not prevent budget status update
-		_ = s.repo.CreateBudgetAlert(ctx, &BudgetAlert{
+		if err := s.repo.CreateBudgetAlert(ctx, &BudgetAlert{
 			ID:         uuid.New().String(),
 			BudgetID:   budget.ID,
 			TenantID:   tenantID,
@@ -225,7 +228,9 @@ func (s *FinOpsService) checkBudget(ctx context.Context, tenantID string) {
 			Threshold:  budget.MonthlyLimit,
 			CurrentVal: currentSpend,
 			CreatedAt:  now,
-		})
+		}); err != nil {
+			s.logger.Warn("Failed to create budget alert", map[string]interface{}{"error": err.Error(), "tenant_id": tenantID, "budget_id": budget.ID})
+		}
 	case ratio >= 0.9:
 		budget.Status = BudgetStatusCritical
 	case ratio >= budget.WarningThreshold:
@@ -235,7 +240,9 @@ func (s *FinOpsService) checkBudget(ctx context.Context, tenantID string) {
 	}
 
 	// best-effort: persist budget status; status was already computed
-	_ = s.repo.UpdateBudget(ctx, budget)
+	if err := s.repo.UpdateBudget(ctx, budget); err != nil {
+		s.logger.Warn("Failed to update budget status", map[string]interface{}{"error": err.Error(), "tenant_id": tenantID, "budget_id": budget.ID})
+	}
 }
 
 // GetDashboard generates the FinOps dashboard
