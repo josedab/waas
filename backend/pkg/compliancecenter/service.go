@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides compliance center operations
@@ -22,6 +23,7 @@ type Service struct {
 	templates   map[ComplianceFramework]*ComplianceTemplate
 	mu          sync.RWMutex
 	config      *ServiceConfig
+	logger      *utils.Logger
 }
 
 // ServiceConfig holds service configuration
@@ -56,6 +58,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 		repo:      repo,
 		templates: make(map[ComplianceFramework]*ComplianceTemplate),
 		config:    config,
+		logger:    utils.NewLogger("compliance-service"),
 	}
 
 	// Load built-in templates
@@ -183,7 +186,9 @@ func (s *Service) EnableFramework(ctx context.Context, tenantID string, req *Ena
 		compliance.EnabledPolicies = append(compliance.EnabledPolicies, policy.ID)
 	}
 	// best-effort: persist enabled policies; compliance object was already created
-	_ = s.repo.UpdateTenantCompliance(ctx, compliance)
+	if err := s.repo.UpdateTenantCompliance(ctx, compliance); err != nil {
+		s.logger.Warn("Failed to update tenant compliance with enabled policies", map[string]interface{}{"error": err.Error(), "tenant_id": compliance.TenantID})
+	}
 
 	// Create initial assessments for all controls
 	go s.createInitialAssessments(ctx, tenantID, req.Framework)
@@ -211,7 +216,9 @@ func (s *Service) createInitialAssessments(ctx context.Context, tenantID string,
 			AssessedAt: now,
 		}
 		// best-effort: persist initial assessment; partial setup is acceptable
-		_ = s.repo.CreateAssessment(ctx, assessment)
+		if err := s.repo.CreateAssessment(ctx, assessment); err != nil {
+			s.logger.Warn("Failed to create initial assessment", map[string]interface{}{"error": err.Error(), "control_id": control.ID, "tenant_id": tenantID})
+		}
 	}
 }
 
@@ -657,7 +664,9 @@ func (s *Service) EvaluatePolicy(ctx context.Context, tenantID, policyID string,
 		violations[i].PolicyID = policyID
 		violations[i].PolicyName = policy.Name
 		// best-effort: persist violation record; policy evaluation result is still returned
-		_ = s.repo.CreateViolation(ctx, &violations[i])
+		if err := s.repo.CreateViolation(ctx, &violations[i]); err != nil {
+			s.logger.Warn("Failed to create compliance violation record", map[string]interface{}{"error": err.Error(), "policy_id": policyID, "tenant_id": tenantID})
+		}
 	}
 
 	return pass, violations, nil
