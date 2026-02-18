@@ -165,10 +165,13 @@ func (am *AlertManager) EvaluateMetric(metricName string, value float64, labels 
 				})
 
 				// Send notifications asynchronously
+				alertCopy := *alert
+				alertCopy.Labels = copyStringMap(alert.Labels)
+				alertCopy.Annotations = copyStringMap(alert.Annotations)
 				go func() {
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer cancel()
-					am.sendNotifications(ctx, alert)
+					am.sendNotifications(ctx, &alertCopy)
 				}()
 			}
 		} else {
@@ -187,10 +190,17 @@ func (am *AlertManager) EvaluateMetric(metricName string, value float64, labels 
 				})
 
 				// Send resolution notifications asynchronously
+				alertCopy := *alert
+				alertCopy.Labels = copyStringMap(alert.Labels)
+				alertCopy.Annotations = copyStringMap(alert.Annotations)
+				if alert.EndsAt != nil {
+					endsAtCopy := *alert.EndsAt
+					alertCopy.EndsAt = &endsAtCopy
+				}
 				go func() {
 					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 					defer cancel()
-					am.sendNotifications(ctx, alert)
+					am.sendNotifications(ctx, &alertCopy)
 				}()
 			}
 		}
@@ -384,4 +394,15 @@ func (am *AlertManager) sendNotifications(ctx context.Context, alert *Alert) {
 			})
 		}
 	}
+}
+
+func copyStringMap(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+	cp := make(map[string]string, len(m))
+	for k, v := range m {
+		cp[k] = v
+	}
+	return cp
 }
