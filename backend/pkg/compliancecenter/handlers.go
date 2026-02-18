@@ -1,6 +1,7 @@
 package compliancecenter
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -840,7 +841,8 @@ func (h *Handler) RecordAuditEvent(tenantID string, eventType AuditEventType, ac
 
 	// Fire and forget — don't block the request
 	go func() {
-		ctx := c.Request.Context()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 		_ = h.auditTrail.RecordEvent(ctx, tenantID, eventType, actor, resource, action, outcome, payload, nil, sourceIP, userAgent)
 	}()
 }
