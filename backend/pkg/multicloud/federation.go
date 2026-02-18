@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 var (
@@ -274,6 +275,7 @@ type FederationService struct {
 	repo   FederationRepository
 	client FederationClient
 	config *FederationConfig
+	logger *utils.Logger
 }
 
 // FederationConfig holds service configuration
@@ -305,6 +307,7 @@ func NewFederationService(repo FederationRepository, client FederationClient, co
 		repo:   repo,
 		client: client,
 		config: config,
+		logger: utils.NewLogger("multicloud-federation"),
 	}
 }
 
@@ -619,7 +622,9 @@ func (s *FederationService) InitiateFailover(ctx context.Context, tenantID, rout
 	if fromCluster != nil {
 		fromCluster.Status = ClusterDraining
 		// best-effort: update source cluster status after failover succeeds
-		_ = s.repo.UpdateCluster(ctx, fromCluster)
+		if err := s.repo.UpdateCluster(ctx, fromCluster); err != nil {
+			s.logger.Warn("Failed to update source cluster status during failover", map[string]interface{}{"error": err.Error(), "cluster_id": fromClusterID})
+		}
 	}
 
 	now := time.Now()
@@ -627,7 +632,9 @@ func (s *FederationService) InitiateFailover(ctx context.Context, tenantID, rout
 	event.CompletedAt = &now
 	event.Duration = now.Sub(event.InitiatedAt)
 	// best-effort: record failover completion; failover already succeeded
-	_ = s.repo.UpdateFailoverEvent(ctx, event)
+	if err := s.repo.UpdateFailoverEvent(ctx, event); err != nil {
+		s.logger.Warn("Failed to update failover event completion", map[string]interface{}{"error": err.Error(), "event_id": event.ID})
+	}
 
 	return event, nil
 }
@@ -650,7 +657,9 @@ func (s *FederationService) CheckClusterHealth(ctx context.Context, tenantID str
 		}
 		clusters[i].LastHealthCheck = time.Now()
 		// best-effort: persist health check result; stale data is acceptable
-		_ = s.repo.UpdateCluster(ctx, &clusters[i])
+		if err := s.repo.UpdateCluster(ctx, &clusters[i]); err != nil {
+			s.logger.Warn("Failed to persist cluster health check result", map[string]interface{}{"error": err.Error(), "cluster_id": clusters[i].ID})
+		}
 	}
 
 	return clusters, nil
