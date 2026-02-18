@@ -2,6 +2,9 @@ package api
 
 import (
 	"fmt"
+	"os"
+	"strings"
+	"time"
 
 	_ "github.com/josedab/waas/docs"
 	"github.com/josedab/waas/internal/api/handlers"
@@ -80,6 +83,7 @@ import (
 	"github.com/josedab/waas/pkg/whitelabel"
 	"github.com/josedab/waas/pkg/workflow"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -417,6 +421,20 @@ func NewServer() (*Server, error) {
 	router.Use(gin.Recovery())
 	router.Use(tracer.TracingMiddleware())
 	router.Use(metrics.EnhancedMetricsMiddleware(metricsRecorder, alertManager))
+
+	// CORS middleware
+	allowedOrigins := []string{}
+	if origins := os.Getenv("CORS_ALLOWED_ORIGINS"); origins != "" {
+		allowedOrigins = strings.Split(origins, ",")
+	}
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     allowedOrigins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Request-ID"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Security headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)
 	secureAuthMiddleware := security.NewSecureAuthMiddleware(nil, nil)
