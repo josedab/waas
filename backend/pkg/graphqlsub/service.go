@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	stdlog "log"
 	"sync"
 	"time"
 
@@ -408,7 +409,9 @@ func (s *Service) Subscribe(ctx context.Context, clientID, subscriptionID string
 	client.State = ClientStateSubscribed
 
 	// best-effort: persist subscription state after client operation succeeds
-	_ = s.repo.SaveSubscription(ctx, sub)
+	if err := s.repo.SaveSubscription(ctx, sub); err != nil {
+		stdlog.Printf("graphqlsub: failed to save subscription %s: %v", subscriptionID, err)
+	}
 
 	return nil
 }
@@ -428,7 +431,9 @@ func (s *Service) Unsubscribe(ctx context.Context, clientID, subscriptionID stri
 
 	delete(client.Subscriptions, subscriptionID)
 	// best-effort: clean up subscription record after in-memory removal succeeds
-	_ = s.repo.DeleteSubscription(ctx, subscriptionID)
+	if err := s.repo.DeleteSubscription(ctx, subscriptionID); err != nil {
+		stdlog.Printf("graphqlsub: failed to delete subscription %s: %v", subscriptionID, err)
+	}
 
 	return nil
 }
