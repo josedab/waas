@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,11 +16,17 @@ import (
 // Service provides versioning operations
 type Service struct {
 	repo Repository
+	wg   sync.WaitGroup
 }
 
 // NewService creates a new versioning service
 func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
+}
+
+// Close waits for all in-flight deprecation/sunset notice goroutines to complete.
+func (s *Service) Close() {
+	s.wg.Wait()
 }
 
 // CreateVersion creates a new version
@@ -124,7 +131,9 @@ func (s *Service) DeprecateVersion(ctx context.Context, tenantID, versionID stri
 	}
 
 	// Send deprecation notices to subscribers
+	s.wg.Add(1)
 	go func() {
+		defer s.wg.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		s.sendDeprecationNotices(ctx, version)
@@ -148,7 +157,9 @@ func (s *Service) SunsetVersion(ctx context.Context, tenantID, versionID string)
 	}
 
 	// Send sunset notices
+	s.wg.Add(1)
 	go func() {
+		defer s.wg.Done()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		s.sendSunsetNotices(ctx, version)
