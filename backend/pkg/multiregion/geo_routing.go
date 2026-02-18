@@ -58,8 +58,8 @@ func (r *GeoRouter) SetResidencyPolicy(tenantID string, policy *DataResidencyPol
 
 // RouteRequest determines the best region for a request
 func (r *GeoRouter) RouteRequest(tenantID string, sourceCoord *GeoCoord, countryCode string) *RouteDecision {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	decision := &RouteDecision{
 		TenantID:  tenantID,
