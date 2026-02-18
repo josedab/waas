@@ -17,20 +17,20 @@ type Repository interface {
 	GetWorkflow(ctx context.Context, tenantID, workflowID string) (*Workflow, error)
 	ListWorkflows(ctx context.Context, tenantID string, filter *WorkflowFilter) ([]Workflow, error)
 	DeleteWorkflow(ctx context.Context, tenantID, workflowID string) error
-	
+
 	// Workflow versions
 	GetWorkflowVersion(ctx context.Context, tenantID, workflowID string, version int) (*Workflow, error)
 	ListWorkflowVersions(ctx context.Context, tenantID, workflowID string) ([]WorkflowVersionInfo, error)
-	
+
 	// Executions
 	SaveExecution(ctx context.Context, exec *WorkflowExecution) error
 	GetExecution(ctx context.Context, tenantID, execID string) (*WorkflowExecution, error)
 	ListExecutions(ctx context.Context, tenantID, workflowID string, filter *ExecutionFilter) ([]WorkflowExecution, error)
 	UpdateExecutionStatus(ctx context.Context, execID string, status ExecutionStatus, output json.RawMessage, err *ExecutionError) error
-	
+
 	// Stats
 	GetWorkflowStats(ctx context.Context, tenantID, workflowID string) (*WorkflowStats, error)
-	
+
 	// Templates
 	ListTemplates(ctx context.Context, category string) ([]WorkflowTemplate, error)
 	GetTemplate(ctx context.Context, templateID string) (*WorkflowTemplate, error)
@@ -58,10 +58,10 @@ type ExecutionFilter struct {
 
 // WorkflowVersionInfo holds version metadata
 type WorkflowVersionInfo struct {
-	Version     int       `json:"version"`
+	Version     int            `json:"version"`
 	Status      WorkflowStatus `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
-	PublishedAt *time.Time `json:"published_at,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
+	PublishedAt *time.Time     `json:"published_at,omitempty"`
 }
 
 // PostgresRepository implements Repository with PostgreSQL
@@ -221,9 +221,18 @@ func (r *PostgresRepository) ListWorkflows(ctx context.Context, tenantID string,
 			argIdx++
 		}
 
+		// Whitelist allowed ORDER BY columns to prevent SQL injection
+		allowedOrderBy := map[string]bool{
+			"updated_at": true,
+			"created_at": true,
+			"name":       true,
+			"status":     true,
+		}
 		orderBy := "updated_at"
 		if filter.OrderBy != "" {
-			orderBy = filter.OrderBy
+			if allowedOrderBy[filter.OrderBy] {
+				orderBy = filter.OrderBy
+			}
 		}
 		order := "DESC"
 		if !filter.OrderDesc {
