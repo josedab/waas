@@ -180,8 +180,12 @@ func (s *Service) WaitForCallback(ctx context.Context, correlationID string, tim
 	}
 
 	correlation.Status = CallbackStatusWaiting
-	_ = s.repo.UpdateCorrelation(ctx, correlation)
-	_ = s.repo.UpdateCallbackStatus(ctx, correlation.RequestID, CallbackStatusWaiting)
+	if err := s.repo.UpdateCorrelation(ctx, correlation); err != nil {
+		s.logger.Warn("Failed to update correlation status", map[string]interface{}{"error": err.Error(), "correlation_id": correlationID})
+	}
+	if err := s.repo.UpdateCallbackStatus(ctx, correlation.RequestID, CallbackStatusWaiting); err != nil {
+		s.logger.Warn("Failed to update callback status", map[string]interface{}{"error": err.Error(), "request_id": correlation.RequestID})
+	}
 
 	pollInterval := time.Duration(s.config.PollIntervalMs) * time.Millisecond
 	ticker := time.NewTicker(pollInterval)
@@ -191,9 +195,13 @@ func (s *Service) WaitForCallback(ctx context.Context, correlationID string, tim
 		select {
 		case <-ctx.Done():
 			// Timeout: update status
-			_ = s.repo.UpdateCallbackStatus(ctx, correlation.RequestID, CallbackStatusTimeout)
+			if err := s.repo.UpdateCallbackStatus(ctx, correlation.RequestID, CallbackStatusTimeout); err != nil {
+				s.logger.Warn("Failed to update callback status on timeout", map[string]interface{}{"error": err.Error(), "request_id": correlation.RequestID})
+			}
 			correlation.Status = CallbackStatusTimeout
-			_ = s.repo.UpdateCorrelation(context.Background(), correlation)
+			if err := s.repo.UpdateCorrelation(context.Background(), correlation); err != nil {
+				s.logger.Warn("Failed to update correlation on timeout", map[string]interface{}{"error": err.Error(), "correlation_id": correlationID})
+			}
 			return nil, fmt.Errorf("timeout waiting for callback response (correlation: %s)", correlationID)
 		case <-ticker.C:
 			resp, err := s.repo.GetResponseByCorrelation(ctx, correlationID)
