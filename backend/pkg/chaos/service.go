@@ -16,6 +16,8 @@ type Service struct {
 	agents    sync.Map // map[experimentID]*Agent
 	scheduler *Scheduler
 	config    *ServiceConfig
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 // ServiceConfig holds service configuration
@@ -49,9 +51,15 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 		repo:   repo,
 		config: config,
 	}
+	svc.ctx, svc.cancel = context.WithCancel(context.Background())
 	svc.scheduler = NewScheduler(svc)
 
 	return svc
+}
+
+// Close cancels the service context, signalling background goroutines to stop.
+func (s *Service) Close() {
+	s.cancel()
 }
 
 // CreateExperiment creates a new chaos experiment
@@ -149,7 +157,7 @@ func (s *Service) StartExperiment(ctx context.Context, tenantID, expID string) (
 
 	// Run experiment in background
 	go func() {
-		agent.Run(context.Background())
+		agent.Run(s.ctx)
 		s.completeExperiment(context.Background(), exp.TenantID, exp.ID)
 	}()
 
@@ -627,7 +635,12 @@ func (s *Scheduler) Schedule(exp *ChaosExperiment) {
 	if delay <= 0 {
 		// Start immediately
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			select {
+			case <-s.svc.ctx.Done():
+				return
+			default:
+			}
+			ctx, cancel := context.WithTimeout(s.svc.ctx, 30*time.Second)
 			defer cancel()
 			s.svc.StartExperiment(ctx, exp.TenantID, exp.ID)
 		}()
@@ -635,7 +648,12 @@ func (s *Scheduler) Schedule(exp *ChaosExperiment) {
 	}
 
 	timer := time.AfterFunc(delay, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		select {
+		case <-s.svc.ctx.Done():
+			return
+		default:
+		}
+		ctx, cancel := context.WithTimeout(s.svc.ctx, 30*time.Second)
 		defer cancel()
 		s.svc.StartExperiment(ctx, exp.TenantID, exp.ID)
 		s.scheduled.Delete(exp.ID)
