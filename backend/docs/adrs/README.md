@@ -9,6 +9,13 @@ ADRs document significant architectural decisions, their context, and consequenc
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0001](0001-architecture-overview.md) | Architecture Overview | Accepted |
+| [0002](0002-goja-javascript-transform-engine.md) | goja JavaScript Transform Engine | Accepted |
+| [0003](0003-redis-message-queuing.md) | Redis over RabbitMQ for Message Queuing | Accepted |
+| [0004](0004-tiered-package-system.md) | Tiered Package System (Core/Standard/Enterprise) | Accepted |
+| [0005](0005-multi-tenant-isolation.md) | Multi-Tenant Isolation Strategy | Accepted |
+| [0006](0006-gin-http-framework.md) | Gin HTTP Framework over Chi | Accepted |
+| [0007](0007-redis-sorted-sets-retry.md) | Redis Sorted Sets for Delayed Retry | Accepted |
+| [0008](0008-monorepo-strategy.md) | Monorepo Strategy for SDKs and Platform | Accepted |
 
 ## Creating a New ADR
 
