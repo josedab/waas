@@ -9,21 +9,22 @@ import (
 
 // Organization represents a top-level account (can have multiple tenants)
 type Organization struct {
-	ID               uuid.UUID        `json:"id" db:"id"`
-	Name             string           `json:"name" db:"name"`
-	Slug             string           `json:"slug" db:"slug"`
-	BillingEmail     string           `json:"billing_email" db:"billing_email"`
-	BillingAddress   *BillingAddress  `json:"billing_address,omitempty" db:"billing_address"`
-	StripeCustomerID string           `json:"-" db:"stripe_customer_id"`
-	PlanID           *uuid.UUID       `json:"plan_id,omitempty" db:"plan_id"`
-	Status           string           `json:"status" db:"status"`
-	TrialEndsAt      *time.Time       `json:"trial_ends_at,omitempty" db:"trial_ends_at"`
-	Settings         json.RawMessage  `json:"settings,omitempty" db:"settings"`
-	Metadata         json.RawMessage  `json:"metadata,omitempty" db:"metadata"`
-	CreatedAt        time.Time        `json:"created_at" db:"created_at"`
-	UpdatedAt        time.Time        `json:"updated_at" db:"updated_at"`
+	ID               uuid.UUID       `json:"id" db:"id"`
+	Name             string          `json:"name" db:"name"`
+	Slug             string          `json:"slug" db:"slug"`
+	BillingEmail     string          `json:"billing_email" db:"billing_email"`
+	BillingAddress   *BillingAddress `json:"billing_address,omitempty" db:"billing_address"`
+	StripeCustomerID string          `json:"-" db:"stripe_customer_id"`
+	PlanID           *uuid.UUID      `json:"plan_id,omitempty" db:"plan_id"`
+	Status           string          `json:"status" db:"status"`
+	TrialEndsAt      *time.Time      `json:"trial_ends_at,omitempty" db:"trial_ends_at"`
+	Settings         json.RawMessage `json:"settings,omitempty" db:"settings"`
+	Metadata         json.RawMessage `json:"metadata,omitempty" db:"metadata"`
+	CreatedAt        time.Time       `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time       `json:"updated_at" db:"updated_at"`
 }
 
+// BillingAddress holds postal address information for organization billing.
 type BillingAddress struct {
 	Line1      string `json:"line1,omitempty"`
 	Line2      string `json:"line2,omitempty"`
@@ -35,21 +36,22 @@ type BillingAddress struct {
 
 // SubscriptionPlan defines pricing and limits for a plan tier
 type SubscriptionPlan struct {
-	ID                   uuid.UUID       `json:"id" db:"id"`
-	Name                 string          `json:"name" db:"name"`
-	Slug                 string          `json:"slug" db:"slug"`
-	Description          string          `json:"description,omitempty" db:"description"`
-	PriceMonthlyCents    int             `json:"price_monthly_cents" db:"price_monthly_cents"`
-	PriceYearlyCents     int             `json:"price_yearly_cents" db:"price_yearly_cents"`
-	StripePriceIDMonthly string          `json:"-" db:"stripe_price_id_monthly"`
-	StripePriceIDYearly  string          `json:"-" db:"stripe_price_id_yearly"`
-	Limits               *PlanLimits     `json:"limits" db:"limits"`
-	IsPublic             bool            `json:"is_public" db:"is_public"`
-	SortOrder            int             `json:"sort_order" db:"sort_order"`
-	CreatedAt            time.Time       `json:"created_at" db:"created_at"`
-	UpdatedAt            time.Time       `json:"updated_at" db:"updated_at"`
+	ID                   uuid.UUID   `json:"id" db:"id"`
+	Name                 string      `json:"name" db:"name"`
+	Slug                 string      `json:"slug" db:"slug"`
+	Description          string      `json:"description,omitempty" db:"description"`
+	PriceMonthlyCents    int         `json:"price_monthly_cents" db:"price_monthly_cents"`
+	PriceYearlyCents     int         `json:"price_yearly_cents" db:"price_yearly_cents"`
+	StripePriceIDMonthly string      `json:"-" db:"stripe_price_id_monthly"`
+	StripePriceIDYearly  string      `json:"-" db:"stripe_price_id_yearly"`
+	Limits               *PlanLimits `json:"limits" db:"limits"`
+	IsPublic             bool        `json:"is_public" db:"is_public"`
+	SortOrder            int         `json:"sort_order" db:"sort_order"`
+	CreatedAt            time.Time   `json:"created_at" db:"created_at"`
+	UpdatedAt            time.Time   `json:"updated_at" db:"updated_at"`
 }
 
+// PlanLimits defines the resource quotas and feature flags for a subscription plan.
 type PlanLimits struct {
 	MaxEndpoints          int      `json:"max_endpoints"`
 	MaxDeliveriesPerMonth int      `json:"max_deliveries_per_month"`
@@ -127,18 +129,18 @@ type TeamMember struct {
 
 // OrgAPIToken represents an API token for organization access
 type OrgAPIToken struct {
-	ID             uuid.UUID       `json:"id" db:"id"`
-	OrganizationID uuid.UUID       `json:"organization_id" db:"organization_id"`
-	TenantID       *uuid.UUID      `json:"tenant_id,omitempty" db:"tenant_id"`
-	Name           string          `json:"name" db:"name"`
-	TokenHash      string          `json:"-" db:"token_hash"`
-	TokenPrefix    string          `json:"token_prefix" db:"token_prefix"`
-	Scopes         []string        `json:"scopes" db:"scopes"`
-	LastUsedAt     *time.Time      `json:"last_used_at,omitempty" db:"last_used_at"`
-	ExpiresAt      *time.Time      `json:"expires_at,omitempty" db:"expires_at"`
-	CreatedBy      *uuid.UUID      `json:"created_by,omitempty" db:"created_by"`
-	CreatedAt      time.Time       `json:"created_at" db:"created_at"`
-	RevokedAt      *time.Time      `json:"revoked_at,omitempty" db:"revoked_at"`
+	ID             uuid.UUID  `json:"id" db:"id"`
+	OrganizationID uuid.UUID  `json:"organization_id" db:"organization_id"`
+	TenantID       *uuid.UUID `json:"tenant_id,omitempty" db:"tenant_id"`
+	Name           string     `json:"name" db:"name"`
+	TokenHash      string     `json:"-" db:"token_hash"`
+	TokenPrefix    string     `json:"token_prefix" db:"token_prefix"`
+	Scopes         []string   `json:"scopes" db:"scopes"`
+	LastUsedAt     *time.Time `json:"last_used_at,omitempty" db:"last_used_at"`
+	ExpiresAt      *time.Time `json:"expires_at,omitempty" db:"expires_at"`
+	CreatedBy      *uuid.UUID `json:"created_by,omitempty" db:"created_by"`
+	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
+	RevokedAt      *time.Time `json:"revoked_at,omitempty" db:"revoked_at"`
 }
 
 // CloudRegion represents a deployment region

@@ -181,17 +181,20 @@ type SentNotification struct {
 
 // Request/Response types
 
+// CreateTeamRequest is the request payload for creating a new collaboration team.
 type CreateTeamRequest struct {
 	Name        string                 `json:"name" binding:"required"`
 	Description string                 `json:"description"`
 	Settings    map[string]interface{} `json:"settings"`
 }
 
+// InviteMemberRequest is the request payload for inviting a user to a team.
 type InviteMemberRequest struct {
 	Email string `json:"email" binding:"required,email"`
 	Role  string `json:"role" binding:"required"`
 }
 
+// CreateChangeRequestRequest is the request payload for creating a PR-style change request.
 type CreateChangeRequestRequest struct {
 	ConfigID        string                 `json:"config_id" binding:"required"`
 	Title           string                 `json:"title" binding:"required"`
@@ -199,11 +202,13 @@ type CreateChangeRequestRequest struct {
 	ProposedChanges map[string]interface{} `json:"proposed_changes" binding:"required"`
 }
 
+// ReviewChangeRequestRequest is the request payload for approving or rejecting a change request.
 type ReviewChangeRequestRequest struct {
 	Status   string `json:"status" binding:"required"`
 	Comments string `json:"comments"`
 }
 
+// UpdateNotificationPreferenceRequest is the request payload for updating notification settings.
 type UpdateNotificationPreferenceRequest struct {
 	Channel    string                 `json:"channel" binding:"required"`
 	EventTypes []string               `json:"event_types"`

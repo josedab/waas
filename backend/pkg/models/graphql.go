@@ -30,36 +30,36 @@ const (
 
 // GraphQLSchema represents a registered GraphQL schema
 type GraphQLSchema struct {
-	ID                    uuid.UUID  `json:"id" db:"id"`
-	TenantID              uuid.UUID  `json:"tenant_id" db:"tenant_id"`
-	Name                  string     `json:"name" db:"name"`
-	Description           string     `json:"description,omitempty" db:"description"`
-	SchemaSDL             string     `json:"schema_sdl" db:"schema_sdl"`
-	Version               string     `json:"version" db:"version"`
-	Status                string     `json:"status" db:"status"`
-	IntrospectionEndpoint string     `json:"introspection_endpoint,omitempty" db:"introspection_endpoint"`
-	FederationEnabled     bool       `json:"federation_enabled" db:"federation_enabled"`
-	CreatedAt             time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt             time.Time  `json:"updated_at" db:"updated_at"`
+	ID                    uuid.UUID `json:"id" db:"id"`
+	TenantID              uuid.UUID `json:"tenant_id" db:"tenant_id"`
+	Name                  string    `json:"name" db:"name"`
+	Description           string    `json:"description,omitempty" db:"description"`
+	SchemaSDL             string    `json:"schema_sdl" db:"schema_sdl"`
+	Version               string    `json:"version" db:"version"`
+	Status                string    `json:"status" db:"status"`
+	IntrospectionEndpoint string    `json:"introspection_endpoint,omitempty" db:"introspection_endpoint"`
+	FederationEnabled     bool      `json:"federation_enabled" db:"federation_enabled"`
+	CreatedAt             time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // GraphQLSubscription represents a subscription that delivers to webhooks
 type GraphQLSubscription struct {
-	ID                uuid.UUID               `json:"id" db:"id"`
-	TenantID          uuid.UUID               `json:"tenant_id" db:"tenant_id"`
-	SchemaID          uuid.UUID               `json:"schema_id" db:"schema_id"`
-	EndpointID        uuid.UUID               `json:"endpoint_id" db:"endpoint_id"`
-	Name              string                  `json:"name" db:"name"`
-	Description       string                  `json:"description,omitempty" db:"description"`
-	SubscriptionQuery string                  `json:"subscription_query" db:"subscription_query"`
-	Variables         map[string]interface{}  `json:"variables" db:"variables"`
-	FilterExpression  string                  `json:"filter_expression,omitempty" db:"filter_expression"`
-	FieldSelection    []string                `json:"field_selection" db:"field_selection"`
-	TransformJS       string                  `json:"transform_js,omitempty" db:"transform_js"`
-	Status            string                  `json:"status" db:"status"`
-	DeliveryConfig    *SubscriptionDelivery   `json:"delivery_config" db:"delivery_config"`
-	CreatedAt         time.Time               `json:"created_at" db:"created_at"`
-	UpdatedAt         time.Time               `json:"updated_at" db:"updated_at"`
+	ID                uuid.UUID              `json:"id" db:"id"`
+	TenantID          uuid.UUID              `json:"tenant_id" db:"tenant_id"`
+	SchemaID          uuid.UUID              `json:"schema_id" db:"schema_id"`
+	EndpointID        uuid.UUID              `json:"endpoint_id" db:"endpoint_id"`
+	Name              string                 `json:"name" db:"name"`
+	Description       string                 `json:"description,omitempty" db:"description"`
+	SubscriptionQuery string                 `json:"subscription_query" db:"subscription_query"`
+	Variables         map[string]interface{} `json:"variables" db:"variables"`
+	FilterExpression  string                 `json:"filter_expression,omitempty" db:"filter_expression"`
+	FieldSelection    []string               `json:"field_selection" db:"field_selection"`
+	TransformJS       string                 `json:"transform_js,omitempty" db:"transform_js"`
+	Status            string                 `json:"status" db:"status"`
+	DeliveryConfig    *SubscriptionDelivery  `json:"delivery_config" db:"delivery_config"`
+	CreatedAt         time.Time              `json:"created_at" db:"created_at"`
+	UpdatedAt         time.Time              `json:"updated_at" db:"updated_at"`
 }
 
 // SubscriptionDelivery contains delivery configuration for subscriptions
@@ -102,15 +102,15 @@ type GraphQLFederationSource struct {
 
 // GraphQLTypeMapping maps GraphQL types to webhook event types
 type GraphQLTypeMapping struct {
-	ID               uuid.UUID              `json:"id" db:"id"`
-	SchemaID         uuid.UUID              `json:"schema_id" db:"schema_id"`
-	TenantID         uuid.UUID              `json:"tenant_id" db:"tenant_id"`
-	GraphQLType      string                 `json:"graphql_type" db:"graphql_type"`
-	WebhookEventType string                 `json:"webhook_event_type" db:"webhook_event_type"`
-	FieldMappings    map[string]string      `json:"field_mappings" db:"field_mappings"`
-	AutoGenerated    bool                   `json:"auto_generated" db:"auto_generated"`
-	CreatedAt        time.Time              `json:"created_at" db:"created_at"`
-	UpdatedAt        time.Time              `json:"updated_at" db:"updated_at"`
+	ID               uuid.UUID         `json:"id" db:"id"`
+	SchemaID         uuid.UUID         `json:"schema_id" db:"schema_id"`
+	TenantID         uuid.UUID         `json:"tenant_id" db:"tenant_id"`
+	GraphQLType      string            `json:"graphql_type" db:"graphql_type"`
+	WebhookEventType string            `json:"webhook_event_type" db:"webhook_event_type"`
+	FieldMappings    map[string]string `json:"field_mappings" db:"field_mappings"`
+	AutoGenerated    bool              `json:"auto_generated" db:"auto_generated"`
+	CreatedAt        time.Time         `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time         `json:"updated_at" db:"updated_at"`
 }
 
 // CreateGraphQLSchemaRequest represents a request to create a GraphQL schema
@@ -161,31 +161,36 @@ type GraphQLParsedSchema struct {
 	Subscriptions []GraphQLSubscriptionInfo `json:"subscriptions"`
 }
 
+// GraphQLTypeInfo describes a single type extracted from a parsed GraphQL schema.
 type GraphQLTypeInfo struct {
-	Name   string                `json:"name"`
-	Kind   string                `json:"kind"`
-	Fields []GraphQLFieldInfo    `json:"fields,omitempty"`
+	Name   string             `json:"name"`
+	Kind   string             `json:"kind"`
+	Fields []GraphQLFieldInfo `json:"fields,omitempty"`
 }
 
+// GraphQLFieldInfo describes a field within a GraphQL type.
 type GraphQLFieldInfo struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
 }
 
+// GraphQLOperationInfo describes a query or mutation operation in a GraphQL schema.
 type GraphQLOperationInfo struct {
-	Name      string               `json:"name"`
-	Arguments []GraphQLArgumentInfo `json:"arguments"`
-	ReturnType string              `json:"return_type"`
+	Name       string                `json:"name"`
+	Arguments  []GraphQLArgumentInfo `json:"arguments"`
+	ReturnType string                `json:"return_type"`
 }
 
+// GraphQLArgumentInfo describes an argument accepted by a GraphQL operation.
 type GraphQLArgumentInfo struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
 }
 
+// GraphQLSubscriptionInfo describes a subscription operation in a GraphQL schema.
 type GraphQLSubscriptionInfo struct {
-	Name      string               `json:"name"`
-	Arguments []GraphQLArgumentInfo `json:"arguments"`
-	ReturnType string              `json:"return_type"`
-	Description string             `json:"description,omitempty"`
+	Name        string                `json:"name"`
+	Arguments   []GraphQLArgumentInfo `json:"arguments"`
+	ReturnType  string                `json:"return_type"`
+	Description string                `json:"description,omitempty"`
 }
