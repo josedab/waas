@@ -13,6 +13,8 @@ import (
 	"github.com/josedab/waas/pkg/models"
 )
 
+// ReplayRepository defines data access operations for the event replay system,
+// including event archival, replay job management, snapshots, and comparisons.
 type ReplayRepository interface {
 	// Event archive operations
 	ArchiveEvent(ctx context.Context, event *models.EventArchive) error
@@ -52,6 +54,7 @@ type replayRepository struct {
 	db *database.DB
 }
 
+// NewReplayRepository creates a new ReplayRepository backed by PostgreSQL.
 func NewReplayRepository(db *database.DB) ReplayRepository {
 	return &replayRepository{db: db}
 }

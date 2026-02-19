@@ -10,6 +10,8 @@ import (
 	"github.com/josedab/waas/pkg/models"
 )
 
+// SDKGeneratorRepository defines data access operations for the SDK generator,
+// including SDK configurations, code generation records, templates, and download tracking.
 type SDKGeneratorRepository interface {
 	// Configuration operations
 	CreateConfig(ctx context.Context, config *models.SDKConfiguration) error
@@ -40,6 +42,7 @@ type sdkGeneratorRepository struct {
 	db *database.DB
 }
 
+// NewSDKGeneratorRepository creates a new SDKGeneratorRepository backed by PostgreSQL.
 func NewSDKGeneratorRepository(db *database.DB) SDKGeneratorRepository {
 	return &sdkGeneratorRepository{db: db}
 }

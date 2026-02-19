@@ -11,6 +11,9 @@ import (
 	"github.com/josedab/waas/pkg/models"
 )
 
+// CollaborationRepository defines data access operations for team collaboration
+// features, including teams, members, shared configurations, change requests,
+// reviews, comments, activity feeds, and notification preferences.
 type CollaborationRepository interface {
 	// Team operations
 	CreateTeam(ctx context.Context, team *models.Team) error
@@ -71,6 +74,7 @@ type collaborationRepository struct {
 	db *database.DB
 }
 
+// NewCollaborationRepository creates a new CollaborationRepository backed by PostgreSQL.
 func NewCollaborationRepository(db *database.DB) CollaborationRepository {
 	return &collaborationRepository{db: db}
 }

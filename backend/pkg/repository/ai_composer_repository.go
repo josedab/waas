@@ -11,6 +11,9 @@ import (
 	"github.com/josedab/waas/pkg/models"
 )
 
+// AIComposerRepository defines data access operations for the AI-powered
+// webhook configuration composer, including session management, message
+// history, generated configs, templates, and user feedback.
 type AIComposerRepository interface {
 	// Session operations
 	CreateSession(ctx context.Context, session *models.AIComposerSession) error
@@ -45,6 +48,7 @@ type aiComposerRepository struct {
 	db *database.DB
 }
 
+// NewAIComposerRepository creates a new AIComposerRepository backed by PostgreSQL.
 func NewAIComposerRepository(db *database.DB) AIComposerRepository {
 	return &aiComposerRepository{db: db}
 }
