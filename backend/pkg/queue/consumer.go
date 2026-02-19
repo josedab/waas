@@ -3,12 +3,12 @@ package queue
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/josedab/waas/pkg/database"
+	"github.com/josedab/waas/pkg/utils"
+	"github.com/redis/go-redis/v9"
 )
 
 // MessageHandler defines the interface for handling delivery messages
@@ -25,11 +25,13 @@ type Consumer struct {
 	stopCh         chan struct{}
 	wg             sync.WaitGroup
 	retryProcessor *RetryProcessor
+	logger         *utils.Logger
 }
 
 // NewConsumer creates a new queue consumer
 func NewConsumer(redisClient *database.RedisClient, handler MessageHandler, workers int) *Consumer {
 	publisher := NewPublisher(redisClient)
+	logger := utils.NewLogger("queue-consumer")
 	return &Consumer{
 		redis:          redisClient,
 		publisher:      publisher,
@@ -37,12 +39,13 @@ func NewConsumer(redisClient *database.RedisClient, handler MessageHandler, work
 		workers:        workers,
 		stopCh:         make(chan struct{}),
 		retryProcessor: NewRetryProcessor(redisClient, publisher),
+		logger:         logger,
 	}
 }
 
 // Start begins consuming messages with the specified number of workers
 func (c *Consumer) Start(ctx context.Context) error {
-	log.Printf("Starting consumer with %d workers", c.workers)
+	c.logger.Info("Starting consumer", map[string]interface{}{"workers": c.workers})
 
 	// Start retry processor
 	c.wg.Add(1)
@@ -65,17 +68,17 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 // Stop gracefully stops the consumer
 func (c *Consumer) Stop() {
-	log.Println("Stopping consumer...")
+	c.logger.Info("Stopping consumer", nil)
 	close(c.stopCh)
 	c.retryProcessor.Stop()
 	c.wg.Wait()
-	log.Println("Consumer stopped")
+	c.logger.Info("Consumer stopped", nil)
 }
 
 // worker processes messages from the delivery queue
 func (c *Consumer) worker(ctx context.Context, workerID int) {
-	log.Printf("Worker %d started", workerID)
-	defer log.Printf("Worker %d stopped", workerID)
+	c.logger.Info("Worker started", map[string]interface{}{"worker_id": workerID})
+	defer c.logger.Info("Worker stopped", map[string]interface{}{"worker_id": workerID})
 
 	for {
 		select {
@@ -86,7 +89,7 @@ func (c *Consumer) worker(ctx context.Context, workerID int) {
 		default:
 			// Try to get a message from the queue
 			if err := c.processNextMessage(ctx, workerID); err != nil {
-				log.Printf("Worker %d error: %v", workerID, err)
+				c.logger.Error("Worker error", map[string]interface{}{"worker_id": workerID, "error": err.Error()})
 				// Brief pause on error to avoid tight loop
 				time.Sleep(100 * time.Millisecond)
 			}
@@ -110,18 +113,18 @@ func (c *Consumer) processNextMessage(ctx context.Context, workerID int) error {
 	// Parse the message
 	var message DeliveryMessage
 	if err := message.FromJSON([]byte(result)); err != nil {
-		log.Printf("Worker %d: failed to parse message: %v", workerID, err)
+		c.logger.Warn("Failed to parse message", map[string]interface{}{"worker_id": workerID, "error": err.Error()})
 		// Remove invalid message from processing queue
 		c.redis.Client.LRem(ctx, ProcessingQueue, 1, result)
 		return nil
 	}
 
-	log.Printf("Worker %d processing delivery %s (attempt %d)", workerID, message.DeliveryID, message.AttemptNumber)
+	c.logger.Info("Processing delivery", map[string]interface{}{"worker_id": workerID, "delivery_id": message.DeliveryID.String(), "attempt": message.AttemptNumber})
 
 	// Process the message
 	deliveryResult, err := c.handler.HandleDelivery(ctx, &message)
 	if err != nil {
-		log.Printf("Worker %d: handler error for delivery %s: %v", workerID, message.DeliveryID, err)
+		c.logger.Error("Handler error for delivery", map[string]interface{}{"worker_id": workerID, "delivery_id": message.DeliveryID.String(), "error": err.Error()})
 		errMsg := err.Error()
 		deliveryResult = &DeliveryResult{
 			DeliveryID:    message.DeliveryID,
@@ -133,7 +136,7 @@ func (c *Consumer) processNextMessage(ctx context.Context, workerID int) error {
 
 	// Handle the result
 	if err := c.handleDeliveryResult(ctx, &message, deliveryResult); err != nil {
-		log.Printf("Worker %d: failed to handle delivery result: %v", workerID, err)
+		c.logger.Error("Failed to handle delivery result", map[string]interface{}{"worker_id": workerID, "error": err.Error()})
 	}
 
 	// Remove message from processing queue
@@ -146,7 +149,7 @@ func (c *Consumer) processNextMessage(ctx context.Context, workerID int) error {
 func (c *Consumer) handleDeliveryResult(ctx context.Context, message *DeliveryMessage, result *DeliveryResult) error {
 	switch result.Status {
 	case StatusSuccess:
-		log.Printf("Delivery %s succeeded on attempt %d", message.DeliveryID, message.AttemptNumber)
+		c.logger.Info("Delivery succeeded", map[string]interface{}{"delivery_id": message.DeliveryID.String(), "attempt": message.AttemptNumber})
 		return nil
 
 	case StatusFailed:
@@ -156,7 +159,7 @@ func (c *Consumer) handleDeliveryResult(ctx context.Context, message *DeliveryMe
 			if result.ErrorMessage != nil {
 				reason = fmt.Sprintf("Max retry attempts exceeded. Last error: %s", *result.ErrorMessage)
 			}
-			log.Printf("Delivery %s failed permanently after %d attempts", message.DeliveryID, message.AttemptNumber)
+			c.logger.Error("Delivery failed permanently", map[string]interface{}{"delivery_id": message.DeliveryID.String(), "attempts": message.AttemptNumber})
 			return c.publisher.PublishToDeadLetter(ctx, message, reason)
 		}
 
@@ -179,8 +182,7 @@ func (c *Consumer) scheduleRetry(ctx context.Context, message *DeliveryMessage, 
 	// Calculate retry delay using exponential backoff
 	delay := c.calculateRetryDelay(message.AttemptNumber)
 
-	log.Printf("Scheduling retry for delivery %s (attempt %d) in %v",
-		message.DeliveryID, message.AttemptNumber, delay)
+	c.logger.Info("Scheduling retry", map[string]interface{}{"delivery_id": message.DeliveryID.String(), "attempt": message.AttemptNumber, "delay": delay.String()})
 
 	return c.publisher.PublishDelayedDelivery(ctx, message, delay)
 }

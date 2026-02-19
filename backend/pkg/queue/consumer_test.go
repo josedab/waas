@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,7 @@ func (m *MockHandler) HandleDelivery(ctx context.Context, message *DeliveryMessa
 }
 
 func TestConsumer_CalculateRetryDelay(t *testing.T) {
-	consumer := &Consumer{}
+	consumer := &Consumer{logger: utils.NewLogger("queue-test")}
 
 	tests := []struct {
 		name          string
@@ -47,8 +48,8 @@ func TestConsumer_CalculateRetryDelay(t *testing.T) {
 		{
 			name:          "Third retry",
 			attemptNumber: 3,
-			expectedMin:   3 * time.Second,   // 4s - 25% jitter
-			expectedMax:   5 * time.Second,   // 4s + 25% jitter
+			expectedMin:   3 * time.Second, // 4s - 25% jitter
+			expectedMax:   5 * time.Second, // 4s + 25% jitter
 		},
 		{
 			name:          "High attempt number (should cap at 5 minutes)",
@@ -68,8 +69,8 @@ func TestConsumer_CalculateRetryDelay(t *testing.T) {
 }
 
 func TestConsumer_HandleDeliveryResult_Success(t *testing.T) {
-	consumer := &Consumer{}
-	
+	consumer := &Consumer{logger: utils.NewLogger("queue-test")}
+
 	message := &DeliveryMessage{
 		DeliveryID:    uuid.New(),
 		AttemptNumber: 1,
@@ -93,7 +94,7 @@ func TestConsumer_HandleDeliveryResult_FailedWithRetriesLeft(t *testing.T) {
 	// This test would require mocking the publisher, which is complex
 	// In a real implementation, you might want to inject the publisher as a dependency
 	// For now, we'll test the logic without the actual Redis operations
-	
+
 	message := &DeliveryMessage{
 		DeliveryID:    uuid.New(),
 		AttemptNumber: 1,
@@ -217,23 +218,23 @@ func validateDeliveryMessage(message *DeliveryMessage) bool {
 }
 
 func TestRetryDelayProgression(t *testing.T) {
-	consumer := &Consumer{}
-	
+	consumer := &Consumer{logger: utils.NewLogger("queue-test")}
+
 	// Test that delays increase with attempt number
 	var previousDelay time.Duration
 	for attempt := 1; attempt <= 5; attempt++ {
 		delay := consumer.calculateRetryDelay(attempt)
-		
+
 		if attempt > 1 {
 			// Each delay should generally be larger than the previous
 			// (accounting for jitter, we'll check it's at least 50% of expected increase)
 			expectedMinIncrease := time.Duration(1<<uint(attempt-2)) * time.Second / 2
-			assert.GreaterOrEqual(t, delay, previousDelay+expectedMinIncrease/2, 
+			assert.GreaterOrEqual(t, delay, previousDelay+expectedMinIncrease/2,
 				"Delay should increase with attempt number")
 		}
-		
+
 		previousDelay = delay
-		
+
 		// No delay should exceed 5 minutes
 		assert.LessOrEqual(t, delay, 5*time.Minute, "Delay should not exceed 5 minutes")
 	}
@@ -241,14 +242,14 @@ func TestRetryDelayProgression(t *testing.T) {
 
 func TestDeliveryResultStatuses(t *testing.T) {
 	validStatuses := []string{StatusSuccess, StatusFailed, StatusRetrying}
-	
+
 	for _, status := range validStatuses {
 		result := &DeliveryResult{
 			DeliveryID:    uuid.New(),
 			Status:        status,
 			AttemptNumber: 1,
 		}
-		
+
 		assert.Contains(t, validStatuses, result.Status, "Status should be valid")
 	}
 }
@@ -259,10 +260,10 @@ func TestMessageSerialization_LargePayload(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		largePayload[fmt.Sprintf("key_%d", i)] = fmt.Sprintf("value_%d_with_some_longer_content", i)
 	}
-	
+
 	payloadBytes, err := json.Marshal(largePayload)
 	require.NoError(t, err)
-	
+
 	message := &DeliveryMessage{
 		DeliveryID:    uuid.New(),
 		EndpointID:    uuid.New(),
@@ -272,15 +273,15 @@ func TestMessageSerialization_LargePayload(t *testing.T) {
 		MaxAttempts:   3,
 		ScheduledAt:   time.Now(),
 	}
-	
+
 	// Should be able to serialize and deserialize large payloads
 	data, err := message.ToJSON()
 	require.NoError(t, err)
-	
+
 	var decoded DeliveryMessage
 	err = decoded.FromJSON(data)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, message.DeliveryID, decoded.DeliveryID)
 	assert.JSONEq(t, string(message.Payload), string(decoded.Payload))
 }

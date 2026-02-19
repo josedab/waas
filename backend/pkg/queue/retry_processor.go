@@ -2,11 +2,11 @@ package queue
 
 import (
 	"context"
-	"log"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/josedab/waas/pkg/database"
+	"github.com/josedab/waas/pkg/utils"
+	"github.com/redis/go-redis/v9"
 )
 
 // RetryProcessor handles processing delayed messages from the retry queue
@@ -14,6 +14,7 @@ type RetryProcessor struct {
 	redis     *database.RedisClient
 	publisher *Publisher
 	stopCh    chan struct{}
+	logger    *utils.Logger
 }
 
 // NewRetryProcessor creates a new retry processor
@@ -22,13 +23,14 @@ func NewRetryProcessor(redisClient *database.RedisClient, publisher *Publisher) 
 		redis:     redisClient,
 		publisher: publisher,
 		stopCh:    make(chan struct{}),
+		logger:    utils.NewLogger("queue-retry"),
 	}
 }
 
 // Start begins processing delayed messages
 func (rp *RetryProcessor) Start(ctx context.Context) {
-	log.Println("Starting retry processor")
-	defer log.Println("Retry processor stopped")
+	rp.logger.Info("Starting retry processor", nil)
+	defer rp.logger.Info("Retry processor stopped", nil)
 
 	ticker := time.NewTicker(5 * time.Second) // Check every 5 seconds
 	defer ticker.Stop()
@@ -41,7 +43,7 @@ func (rp *RetryProcessor) Start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := rp.processReadyMessages(ctx); err != nil {
-				log.Printf("Retry processor error: %v", err)
+				rp.logger.Error("Retry processor error", map[string]interface{}{"error": err.Error()})
 			}
 		}
 	}
@@ -55,14 +57,14 @@ func (rp *RetryProcessor) Stop() {
 // processReadyMessages moves messages that are ready for retry back to the main queue
 func (rp *RetryProcessor) processReadyMessages(ctx context.Context) error {
 	now := float64(time.Now().Unix())
-	
+
 	// Get messages that are ready for processing (score <= now)
 	messages, err := rp.redis.Client.ZRangeByScoreWithScores(ctx, RetryQueue, &redis.ZRangeBy{
 		Min:   "-inf",
 		Max:   string(rune(int(now))),
 		Count: 100, // Process up to 100 messages at a time
 	}).Result()
-	
+
 	if err != nil {
 		return err
 	}
@@ -71,16 +73,16 @@ func (rp *RetryProcessor) processReadyMessages(ctx context.Context) error {
 		return nil
 	}
 
-	log.Printf("Processing %d ready retry messages", len(messages))
+	rp.logger.Info("Processing ready retry messages", map[string]interface{}{"count": len(messages)})
 
 	// Process each ready message
 	for _, msg := range messages {
 		messageData := msg.Member.(string)
-		
+
 		// Parse the message to validate it
 		var deliveryMessage DeliveryMessage
 		if err := deliveryMessage.FromJSON([]byte(messageData)); err != nil {
-			log.Printf("Invalid message in retry queue, removing: %v", err)
+			rp.logger.Warn("Invalid message in retry queue, removing", map[string]interface{}{"error": err.Error()})
 			// Remove invalid message
 			rp.redis.Client.ZRem(ctx, RetryQueue, messageData)
 			continue
@@ -90,14 +92,13 @@ func (rp *RetryProcessor) processReadyMessages(ctx context.Context) error {
 		pipe := rp.redis.Client.TxPipeline()
 		pipe.ZRem(ctx, RetryQueue, messageData)
 		pipe.LPush(ctx, DeliveryQueue, messageData)
-		
+
 		if _, err := pipe.Exec(ctx); err != nil {
-			log.Printf("Failed to move retry message to delivery queue: %v", err)
+			rp.logger.Error("Failed to move retry message to delivery queue", map[string]interface{}{"error": err.Error()})
 			continue
 		}
 
-		log.Printf("Moved delivery %s back to main queue for retry attempt %d", 
-			deliveryMessage.DeliveryID, deliveryMessage.AttemptNumber)
+		rp.logger.Info("Moved delivery back to main queue for retry", map[string]interface{}{"delivery_id": deliveryMessage.DeliveryID.String(), "attempt": deliveryMessage.AttemptNumber})
 	}
 
 	return nil
@@ -116,7 +117,7 @@ func (rp *RetryProcessor) GetPendingRetries(ctx context.Context, limit int64) ([
 		Max:   "+inf",
 		Count: limit,
 	}).Result()
-	
+
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +126,7 @@ func (rp *RetryProcessor) GetPendingRetries(ctx context.Context, limit int64) ([
 	for _, msg := range messages {
 		messageData := msg.Member.(string)
 		retryTime := time.Unix(int64(msg.Score), 0)
-		
+
 		var deliveryMessage DeliveryMessage
 		if err := deliveryMessage.FromJSON([]byte(messageData)); err != nil {
 			continue // Skip invalid messages
