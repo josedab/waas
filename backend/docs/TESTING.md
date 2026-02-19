@@ -201,6 +201,92 @@ Tests run automatically on every push via `.github/workflows/ci.yml`. The CI pip
 
 To replicate CI locally: `go build ./... && go vet ./... && make test`
 
+## Coverage Targets
+
+The project enforces a **50% minimum coverage** threshold in CI (`make ci-local`). Per-package coverage can be viewed with:
+
+```bash
+make test-coverage      # Per-package breakdown with total
+```
+
+**Recommended targets by package type:**
+
+| Package type | Minimum | Aspirational |
+|---|---|---|
+| Core (`pkg/models`, `pkg/auth`, `pkg/repository`) | 50% | 80%+ |
+| Internal services (`internal/api`, `internal/delivery`) | 40% | 70%+ |
+| Enterprise packages (`pkg/billing`, `pkg/signatures`) | 30% | 60%+ |
+
+Generate an HTML report for visual inspection:
+```bash
+go test -coverprofile=coverage.out ./pkg/... ./internal/...
+go tool cover -html=coverage.out -o coverage.html
+open coverage.html
+```
+
+## Benchmarking
+
+Use Go's built-in benchmark support to measure performance-critical paths:
+
+```bash
+# Run all benchmarks
+go test -bench=. -benchmem ./pkg/...
+
+# Run benchmarks in a specific package
+go test -bench=. -benchmem ./pkg/signatures/...
+
+# Run a specific benchmark
+go test -bench=BenchmarkSign -benchmem ./pkg/signatures/...
+
+# Compare before/after with benchstat
+go install golang.org/x/perf/cmd/benchstat@latest
+go test -bench=. -count=10 ./pkg/signatures/... > old.txt
+# ... make changes ...
+go test -bench=. -count=10 ./pkg/signatures/... > new.txt
+benchstat old.txt new.txt
+```
+
+Write benchmarks alongside tests:
+```go
+func BenchmarkSign(b *testing.B) {
+    svc := setupSignatureService(b)
+    req := &SignatureRequest{Payload: []byte("test")}
+
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ {
+        svc.Sign(context.Background(), "tenant-1", req)
+    }
+}
+```
+
+## Profiling with pprof
+
+For deeper performance analysis, use Go's built-in pprof:
+
+```bash
+# CPU profile
+go test -cpuprofile=cpu.out -bench=. ./pkg/signatures/...
+go tool pprof cpu.out
+
+# Memory profile
+go test -memprofile=mem.out -bench=. ./pkg/signatures/...
+go tool pprof mem.out
+
+# Common pprof commands (inside interactive prompt):
+#   top 20          — top 20 functions by CPU/memory
+#   list FuncName   — annotated source for a function
+#   web             — open a call graph in browser (requires graphviz)
+```
+
+Install graphviz for visual call graphs:
+```bash
+# macOS
+brew install graphviz
+
+# Linux
+apt install graphviz
+```
+
 ## Troubleshooting
 
 - **Tests skip with "TEST_DATABASE_URL not set"** — These are integration tests. Start Docker: `docker-compose up -d`
