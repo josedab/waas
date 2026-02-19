@@ -179,20 +179,33 @@ This project uses three Makefiles. Run `make help` in any of them to see the ful
 # Setup & diagnostics
 make dev-setup          # One-command environment setup
 make doctor             # Full environment health check
+make validate-setup     # Check prerequisites
 
 # Run services
 make dev                # API with hot-reload (auto-installs Air)
 make dev-all            # All services with hot-reload
 make run-all            # All services without hot-reload
+make dev-logs           # All services with colored, prefixed log output
 
 # Quality
 make check              # fmt + vet + lint + test in one shot
+make build-check        # Compile-check all packages without binaries
+make lint-fast          # Lint only changed packages (fast feedback)
 make test-watch         # Re-run tests on file changes
 
 # Database
 make migrate-up         # Apply all migrations
 make migrate-core       # Apply core-only migrations (5 tables)
 make migrate-status     # Show current version
+make migrate-rollback-last  # Rollback only the last migration
+
+# Dependencies & auditing
+make deps               # Download and tidy Go modules
+make audit-deps         # Check for outdated/vulnerable dependencies
+
+# Git hooks
+make install-hooks      # Install pre-commit hooks (gofmt + go vet)
+make uninstall-hooks    # Remove pre-commit hooks
 ```
 
 > **Tip:** All targets in `backend/Makefile` are also available from the repository root — just run `make <target>` from the top-level directory.
@@ -228,6 +241,10 @@ See [`.env.example`](.env.example) for the full list with defaults. Key variable
 | `JWT_SECRET` | - | JWT signing secret |
 | `ENVIRONMENT` | `development` | `development` or `production` |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `ADMIN_TENANT_IDS` | - | Comma-separated tenant IDs with admin privileges |
+| `ALLOW_INSECURE_TLS` | `false` | Skip TLS certificate verification for webhook delivery |
+| `CORS_ALLOWED_ORIGINS` | - | Comma-separated allowed CORS origins |
+| `APP_ENV` | `development` | Application environment (`development`, `production`) |
 
 ## Documentation
 
