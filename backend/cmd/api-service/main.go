@@ -25,9 +25,10 @@
 package main
 
 import (
-	"log"
 	"github.com/josedab/waas/internal/api"
 	_ "github.com/josedab/waas/docs"
+	"github.com/josedab/waas/pkg/utils"
+	"os"
 	
 	// Import feature packages for swagger doc generation
 	_ "github.com/josedab/waas/pkg/costing"
@@ -40,14 +41,18 @@ import (
 	_ "github.com/josedab/waas/pkg/protocols"
 )
 
+var logger = utils.NewLogger("api-service")
+
 func main() {
-	log.Println("Starting Webhook API Service...")
+	logger.Info("Starting Webhook API Service...", nil)
 	
 	server, err := api.NewServer()
 	if err != nil {
-		log.Fatal("Failed to initialize API service: ", err)
+		logger.Error("Failed to initialize API service", map[string]interface{}{"error": err.Error()})
+		os.Exit(1)
 	}
 	if err := server.Start(":8080"); err != nil {
-		log.Fatal("Failed to start API service:", err)
+		logger.Error("Failed to start API service", map[string]interface{}{"error": err.Error()})
+		os.Exit(1)
 	}
 }
