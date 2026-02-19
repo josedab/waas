@@ -11,7 +11,7 @@
 | Multi-tenant isolation | `internal/api`, `pkg/auth` | 🟢 Stable | Core | Per-tenant data isolation via middleware |
 | Endpoint management | `pkg/repository`, `pkg/models` | 🟢 Stable | Core | CRUD for webhook endpoints |
 | Event ingestion | `internal/api` | 🟢 Stable | Core | HTTP event intake with validation |
-| Reliable delivery | `pkg/delivery` | 🟢 Stable | Core | At-least-once delivery with retries |
+| Reliable delivery | `internal/delivery` | 🟢 Stable | Core | At-least-once delivery with retries |
 | Message queuing | `pkg/queue` | 🟢 Stable | Core | Redis-backed async processing |
 | Signature verification | `pkg/signatures` | 🟢 Stable | Core | HMAC-SHA256 webhook signing |
 | API key auth | `pkg/auth` | 🟢 Stable | Core | JWT + API key authentication |
