@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Repository defines data access for the intelligence system
@@ -42,11 +42,12 @@ type Repository interface {
 
 // PostgresRepository implements Repository with PostgreSQL
 type PostgresRepository struct {
-	db *sqlx.DB
+	db     *sqlx.DB
+	logger *utils.Logger
 }
 
 func NewPostgresRepository(db *sqlx.DB) *PostgresRepository {
-	return &PostgresRepository{db: db}
+	return &PostgresRepository{db: db, logger: utils.NewLogger("intelligence")}
 }
 
 func (r *PostgresRepository) SavePrediction(ctx context.Context, p *FailurePrediction) error {
@@ -233,23 +234,23 @@ func (r *PostgresRepository) GetSummary(ctx context.Context, tenantID string) (*
 
 	if err := r.db.GetContext(ctx, &summary.TotalPredictions,
 		`SELECT COUNT(*) FROM intel_predictions WHERE tenant_id = $1 AND resolved = false`, tenantID); err != nil {
-		log.Printf("[intelligence] failed to query total predictions for tenant %s: %v", tenantID, err)
+		r.logger.Error("failed to query total predictions", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
 	}
 	if err := r.db.GetContext(ctx, &summary.ActiveAnomalies,
 		`SELECT COUNT(*) FROM intel_anomalies WHERE tenant_id = $1 AND acknowledged = false`, tenantID); err != nil {
-		log.Printf("[intelligence] failed to query active anomalies for tenant %s: %v", tenantID, err)
+		r.logger.Error("failed to query active anomalies", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
 	}
 	if err := r.db.GetContext(ctx, &summary.PendingOptimizations,
 		`SELECT COUNT(*) FROM intel_optimizations WHERE tenant_id = $1 AND applied = false`, tenantID); err != nil {
-		log.Printf("[intelligence] failed to query pending optimizations for tenant %s: %v", tenantID, err)
+		r.logger.Error("failed to query pending optimizations", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
 	}
 	if err := r.db.GetContext(ctx, &summary.AvgHealthScore,
 		`SELECT COALESCE(AVG(overall_score), 0) FROM intel_health_scores WHERE tenant_id = $1`, tenantID); err != nil {
-		log.Printf("[intelligence] failed to query avg health score for tenant %s: %v", tenantID, err)
+		r.logger.Error("failed to query avg health score", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
 	}
 	if err := r.db.GetContext(ctx, &summary.AnomaliesDetected7d,
 		`SELECT COUNT(*) FROM intel_anomalies WHERE tenant_id = $1 AND detected_at >= NOW() - INTERVAL '7 days'`, tenantID); err != nil {
-		log.Printf("[intelligence] failed to query 7d anomalies for tenant %s: %v", tenantID, err)
+		r.logger.Error("failed to query 7d anomalies", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
 	}
 
 	summary.PredictionAccuracy = 0.85 // baseline until enough data

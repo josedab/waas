@@ -3,20 +3,21 @@ package whitelabel
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides whitelabel operations
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new whitelabel service
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("whitelabel")}
 }
 
 // CreateWhitelabelConfig creates a new whitelabel configuration
@@ -185,7 +186,7 @@ func (s *Service) ProvisionSSL(ctx context.Context, tenantID string) (*Whitelabe
 		config.SSLStatus = SSLActive
 		config.UpdatedAt = time.Now()
 		if err := s.repo.UpdateConfig(sslCtx, config); err != nil {
-			log.Printf("failed to update SSL status to active for tenant %s: %v", tenantID, err)
+			s.logger.Error("failed to update SSL status to active", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
 		}
 	}()
 

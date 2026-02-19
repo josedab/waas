@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides edge function operations
@@ -19,6 +19,7 @@ type Service struct {
 	router    EdgeRouter
 	mu        sync.RWMutex
 	config    *ServiceConfig
+	logger    *utils.Logger
 }
 
 // ServiceConfig holds service configuration
@@ -51,6 +52,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 		repo:      repo,
 		providers: make(map[RuntimeType]RuntimeProvider),
 		config:    config,
+		logger:    utils.NewLogger("edge"),
 	}
 }
 
@@ -168,7 +170,7 @@ func (s *Service) deployFunctionAsync(ctx context.Context, fn *EdgeFunction) {
 	if err != nil {
 		fn.Status = FunctionStatusFailed
 		if updateErr := s.repo.UpdateFunction(ctx, fn); updateErr != nil {
-			log.Printf("edge: failed to update function %s to failed status: %v", fn.ID, updateErr)
+			s.logger.Error("failed to update function to failed status", map[string]interface{}{"function_id": fn.ID, "error": updateErr.Error()})
 		}
 		return
 	}
@@ -178,7 +180,7 @@ func (s *Service) deployFunctionAsync(ctx context.Context, fn *EdgeFunction) {
 		fn.LastDeployedAt = deployment.CompletedAt
 		fn.DeploymentURLs = deployment.DeploymentURLs
 		if updateErr := s.repo.UpdateFunction(ctx, fn); updateErr != nil {
-			log.Printf("edge: failed to update function %s after deployment: %v", fn.ID, updateErr)
+			s.logger.Error("failed to update function after deployment", map[string]interface{}{"function_id": fn.ID, "error": updateErr.Error()})
 		}
 	}
 }
@@ -259,7 +261,7 @@ func (s *Service) DeleteFunction(ctx context.Context, tenantID, functionID strin
 	s.mu.RUnlock()
 	if ok && fn.Status == FunctionStatusActive {
 		if err := provider.Undeploy(ctx, fn); err != nil {
-			log.Printf("edge: failed to undeploy function %s: %v", functionID, err)
+			s.logger.Error("failed to undeploy function", map[string]interface{}{"function_id": functionID, "error": err.Error()})
 		}
 	}
 
@@ -310,7 +312,7 @@ func (s *Service) DeployFunction(ctx context.Context, tenantID, functionID strin
 	// Update status to deploying
 	fn.Status = FunctionStatusDeploying
 	if err := s.repo.UpdateFunction(ctx, fn); err != nil {
-		log.Printf("edge: failed to update function %s to deploying status: %v", fn.ID, err)
+		s.logger.Error("failed to update function to deploying status", map[string]interface{}{"function_id": fn.ID, "error": err.Error()})
 	}
 
 	// Create deployment record
@@ -325,7 +327,7 @@ func (s *Service) DeployFunction(ctx context.Context, tenantID, functionID strin
 		StartedAt:  time.Now(),
 	}
 	if err := s.repo.CreateDeployment(ctx, deployment); err != nil {
-		log.Printf("edge: failed to create deployment record for function %s: %v", fn.ID, err)
+		s.logger.Error("failed to create deployment record", map[string]interface{}{"function_id": fn.ID, "error": err.Error()})
 	}
 
 	// Deploy
@@ -337,12 +339,12 @@ func (s *Service) DeployFunction(ctx context.Context, tenantID, functionID strin
 		deployment.CompletedAt = &completedAt
 		deployment.Duration = completedAt.Sub(deployment.StartedAt).Milliseconds()
 		if updateErr := s.repo.UpdateDeployment(ctx, deployment); updateErr != nil {
-			log.Printf("edge: failed to update failed deployment %s: %v", deployment.ID, updateErr)
+			s.logger.Error("failed to update failed deployment", map[string]interface{}{"deployment_id": deployment.ID, "error": updateErr.Error()})
 		}
 
 		fn.Status = FunctionStatusFailed
 		if updateErr := s.repo.UpdateFunction(ctx, fn); updateErr != nil {
-			log.Printf("edge: failed to update function %s to failed status after deploy: %v", fn.ID, updateErr)
+			s.logger.Error("failed to update function to failed status after deploy", map[string]interface{}{"function_id": fn.ID, "error": updateErr.Error()})
 		}
 
 		return deployment, err
@@ -355,7 +357,7 @@ func (s *Service) DeployFunction(ctx context.Context, tenantID, functionID strin
 	deployment.CompletedAt = &completedAt
 	deployment.Duration = completedAt.Sub(deployment.StartedAt).Milliseconds()
 	if err := s.repo.UpdateDeployment(ctx, deployment); err != nil {
-		log.Printf("edge: failed to update successful deployment %s: %v", deployment.ID, err)
+		s.logger.Error("failed to update successful deployment", map[string]interface{}{"deployment_id": deployment.ID, "error": err.Error()})
 	}
 
 	// Update function
@@ -363,13 +365,13 @@ func (s *Service) DeployFunction(ctx context.Context, tenantID, functionID strin
 	fn.LastDeployedAt = &completedAt
 	fn.DeploymentURLs = result.DeploymentURLs
 	if err := s.repo.UpdateFunction(ctx, fn); err != nil {
-		log.Printf("edge: failed to update function %s after successful deploy: %v", fn.ID, err)
+		s.logger.Error("failed to update function after successful deploy", map[string]interface{}{"function_id": fn.ID, "error": err.Error()})
 	}
 
 	// Update router
 	if s.router != nil {
 		if err := s.router.UpdateRoutes(ctx, tenantID); err != nil {
-			log.Printf("edge: failed to update routes for tenant %s: %v", tenantID, err)
+			s.logger.Error("failed to update routes", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
 		}
 	}
 
@@ -434,10 +436,10 @@ func (s *Service) InvokeFunction(ctx context.Context, tenantID, functionID strin
 		invocation.Status = "error"
 		invocation.ErrorMessage = err.Error()
 		if createErr := s.repo.CreateInvocation(ctx, invocation); createErr != nil {
-			log.Printf("edge: failed to save error invocation for function %s: %v", fn.ID, createErr)
+			s.logger.Error("failed to save error invocation", map[string]interface{}{"function_id": fn.ID, "error": createErr.Error()})
 		}
 		if counterErr := s.repo.IncrementCounters(ctx, fn.ID, 1, 1); counterErr != nil {
-			log.Printf("edge: failed to increment error counters for function %s: %v", fn.ID, counterErr)
+			s.logger.Error("failed to increment error counters", map[string]interface{}{"function_id": fn.ID, "error": counterErr.Error()})
 		}
 		return nil, err
 	}
@@ -446,10 +448,10 @@ func (s *Service) InvokeFunction(ctx context.Context, tenantID, functionID strin
 	invocation.Output = response.Output
 	invocation.CacheHit = response.CacheHit
 	if createErr := s.repo.CreateInvocation(ctx, invocation); createErr != nil {
-		log.Printf("edge: failed to save success invocation for function %s: %v", fn.ID, createErr)
+		s.logger.Error("failed to save success invocation", map[string]interface{}{"function_id": fn.ID, "error": createErr.Error()})
 	}
 	if counterErr := s.repo.IncrementCounters(ctx, fn.ID, 1, 0); counterErr != nil {
-		log.Printf("edge: failed to increment counters for function %s: %v", fn.ID, counterErr)
+		s.logger.Error("failed to increment counters", map[string]interface{}{"function_id": fn.ID, "error": counterErr.Error()})
 	}
 
 	// Update last invoked
@@ -457,7 +459,7 @@ func (s *Service) InvokeFunction(ctx context.Context, tenantID, functionID strin
 	fn.LastInvokedAt = &now
 	fn.InvocationCount++
 	if updateErr := s.repo.UpdateFunction(ctx, fn); updateErr != nil {
-		log.Printf("edge: failed to update function %s last invoked: %v", fn.ID, updateErr)
+		s.logger.Error("failed to update function last invoked", map[string]interface{}{"function_id": fn.ID, "error": updateErr.Error()})
 	}
 
 	response.InvocationID = invocation.ID

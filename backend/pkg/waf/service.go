@@ -8,7 +8,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"regexp"
@@ -16,16 +15,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides WAF and security scanning operations
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new WAF service
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("waf")}
 }
 
 // Common XSS patterns
@@ -194,7 +195,7 @@ func (s *Service) ScanPayload(ctx context.Context, tenantID string, req *ScanPay
 			CreatedAt:   time.Now(),
 		}
 		if err := s.repo.CreateAlert(ctx, alert); err != nil {
-			log.Printf("[waf] CreateAlert error for tenant=%s: %v", tenantID, err)
+			s.logger.Error("CreateAlert error", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
 		}
 	}
 
@@ -240,7 +241,7 @@ func (s *Service) EvaluateWAFRules(ctx context.Context, tenantID, payload string
 				Evidence:    rule.Pattern,
 			})
 			if err := s.repo.IncrementRuleHitCount(ctx, tenantID, rule.ID); err != nil {
-				log.Printf("[waf] IncrementRuleHitCount error for tenant=%s rule=%s: %v", tenantID, rule.ID, err)
+				s.logger.Error("IncrementRuleHitCount error", map[string]interface{}{"tenant_id": tenantID, "rule_id": rule.ID, "error": err.Error()})
 			}
 		}
 	}

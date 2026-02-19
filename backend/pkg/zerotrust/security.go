@@ -18,13 +18,14 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"log"
 	"net/http"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/josedab/waas/pkg/utils"
 )
 
 var (
@@ -113,11 +114,13 @@ func NewDefaultSecurityProfile() SecurityProfile {
 }
 
 // CertificateManager handles certificate operations
-type CertificateManager struct{}
+type CertificateManager struct {
+	logger *utils.Logger
+}
 
 // NewCertificateManager creates a new certificate manager
 func NewCertificateManager() *CertificateManager {
-	return &CertificateManager{}
+	return &CertificateManager{logger: utils.NewLogger("zerotrust")}
 }
 
 // ParseCertificate parses a PEM-encoded certificate
@@ -159,10 +162,10 @@ func (m *CertificateManager) BuildTLSConfig(profile *SecurityProfile, clientCert
 	skipVerify := false
 	if !profile.VerifyServerCert {
 		if os.Getenv("ALLOW_INSECURE_TLS") == "true" {
-			log.Printf("AUDIT: TLS server cert verification disabled for endpoint %s (ALLOW_INSECURE_TLS=true)", profile.EndpointID)
+			m.logger.Info("TLS server cert verification disabled (ALLOW_INSECURE_TLS=true)", map[string]interface{}{"endpoint_id": profile.EndpointID})
 			skipVerify = true
 		} else {
-			log.Printf("WARNING: VerifyServerCert=false requested for endpoint %s but ALLOW_INSECURE_TLS is not set — ignoring, verification remains enabled", profile.EndpointID)
+			m.logger.Warn("VerifyServerCert=false requested but ALLOW_INSECURE_TLS is not set — ignoring, verification remains enabled", map[string]interface{}{"endpoint_id": profile.EndpointID})
 		}
 	}
 	config := &tls.Config{

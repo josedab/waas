@@ -8,12 +8,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Emitter is responsible for publishing and delivering meta-events
@@ -24,6 +24,7 @@ type Emitter struct {
 	workers    int
 	wg         sync.WaitGroup
 	stopCh     chan struct{}
+	logger     *utils.Logger
 }
 
 // NewEmitter creates a new meta-event emitter
@@ -40,6 +41,7 @@ func NewEmitter(repo Repository, workers int) *Emitter {
 		queue:   make(chan *MetaEvent, 1000),
 		workers: workers,
 		stopCh:  make(chan struct{}),
+		logger:  utils.NewLogger("metaevents"),
 	}
 }
 
@@ -49,14 +51,14 @@ func (e *Emitter) Start() {
 		e.wg.Add(1)
 		go e.worker()
 	}
-	log.Printf("[metaevents] Started %d workers", e.workers)
+	e.logger.Info("started workers", map[string]interface{}{"count": e.workers})
 }
 
 // Stop gracefully stops the emitter
 func (e *Emitter) Stop() {
 	close(e.stopCh)
 	e.wg.Wait()
-	log.Println("[metaevents] Emitter stopped")
+	e.logger.Info("emitter stopped", nil)
 }
 
 // Emit publishes a meta-event for delivery
@@ -81,7 +83,7 @@ func (e *Emitter) Emit(ctx context.Context, tenantID string, eventType EventType
 	select {
 	case e.queue <- event:
 	default:
-		log.Printf("[metaevents] Queue full, processing synchronously: %s", event.ID)
+		e.logger.Warn("queue full, processing synchronously", map[string]interface{}{"event_id": event.ID})
 		e.processEvent(ctx, event)
 	}
 
@@ -155,7 +157,7 @@ func (e *Emitter) processEvent(ctx context.Context, event *MetaEvent) {
 	// Get all active subscriptions for this tenant and event type
 	subs, err := e.repo.GetSubscriptionsByEventType(ctx, event.TenantID, event.Type)
 	if err != nil {
-		log.Printf("[metaevents] Failed to get subscriptions: %v", err)
+		e.logger.Error("failed to get subscriptions", map[string]interface{}{"error": err.Error()})
 		return
 	}
 

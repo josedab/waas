@@ -5,19 +5,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/josedab/waas/pkg/httputil"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides inbound webhook business logic
 type Service struct {
 	repo       Repository
 	httpClient *http.Client
+	logger     *utils.Logger
 }
 
 // NewService creates a new inbound service
@@ -25,6 +26,7 @@ func NewService(repo Repository) *Service {
 	return &Service{
 		repo:       repo,
 		httpClient: httputil.NewSSRFSafeClient(30 * time.Second),
+		logger:     utils.NewLogger("inbound"),
 	}
 }
 
@@ -175,20 +177,20 @@ func (s *Service) ProcessInboundWebhook(ctx context.Context, sourceID string, pa
 			}
 			event.ErrorMessage = errMsg
 			if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusFailed, errMsg); err != nil {
-				log.Printf("failed to update event status to failed: %v", err)
+				s.logger.Error("failed to update event status to failed", map[string]interface{}{"event_id": event.ID, "error": err.Error()})
 			}
 			return event, fmt.Errorf("signature verification failed: %s", errMsg)
 		}
 
 		event.Status = EventStatusValidated
 		if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusValidated, ""); err != nil {
-			log.Printf("failed to update event status to validated: %v", err)
+			s.logger.Error("failed to update event status to validated", map[string]interface{}{"event_id": event.ID, "error": err.Error()})
 		}
 	} else {
 		event.SignatureValid = true
 		event.Status = EventStatusValidated
 		if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusValidated, ""); err != nil {
-			log.Printf("failed to update event status to validated: %v", err)
+			s.logger.Error("failed to update event status to validated", map[string]interface{}{"event_id": event.ID, "error": err.Error()})
 		}
 	}
 
@@ -198,7 +200,7 @@ func (s *Service) ProcessInboundWebhook(ctx context.Context, sourceID string, pa
 		if routeErr := s.RouteEvent(ctx, event, rules); routeErr != nil {
 			event.Status = EventStatusFailed
 			if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusFailed, routeErr.Error()); err != nil {
-				log.Printf("failed to update event status to failed after routing error: %v", err)
+				s.logger.Error("failed to update event status to failed after routing error", map[string]interface{}{"event_id": event.ID, "error": err.Error()})
 			}
 			return event, nil // Return event even if routing fails
 		}
@@ -207,7 +209,7 @@ func (s *Service) ProcessInboundWebhook(ctx context.Context, sourceID string, pa
 	event.Status = EventStatusRouted
 	event.ProcessedAt = &now
 	if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusRouted, ""); err != nil {
-		log.Printf("failed to update event status to routed: %v", err)
+		s.logger.Error("failed to update event status to routed", map[string]interface{}{"event_id": event.ID, "error": err.Error()})
 	}
 
 	return event, nil
@@ -421,7 +423,7 @@ func (s *Service) ReplayInboundEvent(ctx context.Context, tenantID, eventID stri
 		if routeErr := s.RouteEvent(ctx, event, rules); routeErr != nil {
 			event.Status = EventStatusFailed
 			if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusFailed, routeErr.Error()); err != nil {
-				log.Printf("failed to update event status to failed during replay: %v", err)
+				s.logger.Error("failed to update event status to failed during replay", map[string]interface{}{"event_id": event.ID, "error": err.Error()})
 			}
 			return event, routeErr
 		}
@@ -431,7 +433,7 @@ func (s *Service) ReplayInboundEvent(ctx context.Context, tenantID, eventID stri
 	event.Status = EventStatusRouted
 	event.ProcessedAt = &now
 	if err := s.repo.UpdateEventStatus(ctx, event.ID, EventStatusRouted, ""); err != nil {
-		log.Printf("failed to update event status to routed during replay: %v", err)
+		s.logger.Error("failed to update event status to routed during replay", map[string]interface{}{"event_id": event.ID, "error": err.Error()})
 	}
 
 	return event, nil
@@ -474,7 +476,7 @@ func (s *Service) ReplayDLQEntry(ctx context.Context, tenantID, entryID string) 
 
 	// Mark the DLQ entry as replayed
 	if err := s.repo.MarkDLQEntryReplayed(ctx, entryID); err != nil {
-		log.Printf("failed to mark DLQ entry as replayed: %v", err)
+		s.logger.Error("failed to mark DLQ entry as replayed", map[string]interface{}{"entry_id": entryID, "error": err.Error()})
 	}
 
 	return event, nil

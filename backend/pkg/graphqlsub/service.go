@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	stdlog "log"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 var (
@@ -301,6 +301,7 @@ type Service struct {
 	mu        sync.RWMutex
 	config    *ConnectionConfig
 	schema    *Schema
+	logger    *utils.Logger
 }
 
 // NewService creates a new GraphQL subscription service
@@ -314,6 +315,7 @@ func NewService(repo Repository, config *ConnectionConfig) *Service {
 		clients: make(map[string]*Client),
 		config:  config,
 		schema:  GenerateDefaultSchema(),
+		logger:  utils.NewLogger("graphqlsub"),
 	}
 }
 
@@ -410,7 +412,7 @@ func (s *Service) Subscribe(ctx context.Context, clientID, subscriptionID string
 
 	// best-effort: persist subscription state after client operation succeeds
 	if err := s.repo.SaveSubscription(ctx, sub); err != nil {
-		stdlog.Printf("graphqlsub: failed to save subscription %s: %v", subscriptionID, err)
+		s.logger.Error("failed to save subscription", map[string]interface{}{"subscription_id": subscriptionID, "error": err.Error()})
 	}
 
 	return nil
@@ -432,7 +434,7 @@ func (s *Service) Unsubscribe(ctx context.Context, clientID, subscriptionID stri
 	delete(client.Subscriptions, subscriptionID)
 	// best-effort: clean up subscription record after in-memory removal succeeds
 	if err := s.repo.DeleteSubscription(ctx, subscriptionID); err != nil {
-		stdlog.Printf("graphqlsub: failed to delete subscription %s: %v", subscriptionID, err)
+		s.logger.Error("failed to delete subscription", map[string]interface{}{"subscription_id": subscriptionID, "error": err.Error()})
 	}
 
 	return nil

@@ -7,10 +7,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // FederationProtocol defines the protocol version for federation
@@ -139,6 +139,7 @@ type FederationMesh struct {
 	privateKey ed25519.PrivateKey
 	publicKey  ed25519.PublicKey
 	selfPeerID string
+	logger     *utils.Logger
 }
 
 // NewFederationMesh creates a new federation mesh
@@ -154,6 +155,7 @@ func NewFederationMesh(repo FederationMeshRepository, memberRepo Repository, sel
 		privateKey: priv,
 		publicKey:  pub,
 		selfPeerID: selfPeerID,
+		logger:     utils.NewLogger("federation"),
 	}, nil
 }
 
@@ -188,7 +190,7 @@ func (m *FederationMesh) RouteEvent(ctx context.Context, req *RouteEventRequest)
 	if err := m.validateGovernance(ctx, event); err != nil {
 		event.Status = "rejected"
 		if saveErr := m.repo.SaveFederatedEvent(ctx, event); saveErr != nil {
-			log.Printf("[federation] SaveFederatedEvent (rejected) error: %v", saveErr)
+			m.logger.Error("SaveFederatedEvent (rejected) error", map[string]interface{}{"error": saveErr.Error()})
 		}
 		return event, err
 	}
@@ -279,7 +281,7 @@ func (m *FederationMesh) VerifyAttestation(ctx context.Context, event *Federated
 		event.Attestation.Verified = true
 		event.Attestation.VerifiedAt = &now
 		if err := m.repo.VerifyAttestation(ctx, event.Attestation.ID); err != nil {
-			log.Printf("[federation] VerifyAttestation error for attestation=%s: %v", event.Attestation.ID, err)
+			m.logger.Warn("VerifyAttestation error", map[string]interface{}{"attestation_id": event.Attestation.ID, "error": err.Error()})
 		}
 	}
 

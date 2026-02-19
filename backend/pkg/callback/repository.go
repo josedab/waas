@@ -2,10 +2,10 @@ package callback
 
 import (
 	"context"
-	"log"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Repository defines the data access interface for callback resources
@@ -42,12 +42,13 @@ type Repository interface {
 
 // PostgresRepository implements Repository using PostgreSQL
 type PostgresRepository struct {
-	db *sqlx.DB
+	db     *sqlx.DB
+	logger *utils.Logger
 }
 
 // NewPostgresRepository creates a new PostgreSQL repository
 func NewPostgresRepository(db *sqlx.DB) *PostgresRepository {
-	return &PostgresRepository{db: db}
+	return &PostgresRepository{db: db, logger: utils.NewLogger("callback")}
 }
 
 func (r *PostgresRepository) CreateCallbackRequest(ctx context.Context, req *CallbackRequest) error {
@@ -229,22 +230,22 @@ func (r *PostgresRepository) GetCallbackMetrics(ctx context.Context, tenantID uu
 
 	if err := r.db.GetContext(ctx, &metrics.SuccessRate,
 		`SELECT COALESCE(COUNT(*) FILTER (WHERE status = 'received')::float / NULLIF(COUNT(*), 0), 0) FROM callback_requests WHERE tenant_id = $1`, tenantID); err != nil {
-		log.Printf("[callback] failed to query success rate for tenant %s: %v", tenantID, err)
+		r.logger.Error("failed to query success rate", map[string]interface{}{"tenant_id": tenantID.String(), "error": err.Error()})
 	}
 
 	if err := r.db.GetContext(ctx, &metrics.AvgLatencyMs,
 		`SELECT COALESCE(AVG(latency_ms), 0) FROM callback_responses cr JOIN callback_requests cq ON cr.request_id = cq.id WHERE cq.tenant_id = $1`, tenantID); err != nil {
-		log.Printf("[callback] failed to query avg latency for tenant %s: %v", tenantID, err)
+		r.logger.Error("failed to query avg latency", map[string]interface{}{"tenant_id": tenantID.String(), "error": err.Error()})
 	}
 
 	if err := r.db.GetContext(ctx, &metrics.TimeoutRate,
 		`SELECT COALESCE(COUNT(*) FILTER (WHERE status = 'timeout')::float / NULLIF(COUNT(*), 0), 0) FROM callback_requests WHERE tenant_id = $1`, tenantID); err != nil {
-		log.Printf("[callback] failed to query timeout rate for tenant %s: %v", tenantID, err)
+		r.logger.Error("failed to query timeout rate", map[string]interface{}{"tenant_id": tenantID.String(), "error": err.Error()})
 	}
 
 	if err := r.db.GetContext(ctx, &metrics.PendingCallbacks,
 		`SELECT COUNT(*) FROM callback_requests WHERE tenant_id = $1 AND status IN ('pending', 'waiting')`, tenantID); err != nil {
-		log.Printf("[callback] failed to query pending callbacks for tenant %s: %v", tenantID, err)
+		r.logger.Error("failed to query pending callbacks", map[string]interface{}{"tenant_id": tenantID.String(), "error": err.Error()})
 	}
 
 	return &metrics, nil

@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // KafkaProducer implements Producer for Apache Kafka
@@ -22,6 +22,7 @@ type KafkaProducer struct {
 	bufferSize  int
 	flushTicker *time.Ticker
 	stopChan    chan struct{}
+	logger      *utils.Logger
 }
 
 // NewKafkaProducer creates a new Kafka producer
@@ -30,6 +31,7 @@ func NewKafkaProducer() *KafkaProducer {
 		buffer:     make([]*StreamEvent, 0),
 		bufferSize: 100, // Default batch size
 		stopChan:   make(chan struct{}),
+		logger:     utils.NewLogger("kafka"),
 	}
 }
 
@@ -72,7 +74,7 @@ func (p *KafkaProducer) backgroundFlusher() {
 		select {
 		case <-p.flushTicker.C:
 			if err := p.Flush(context.Background()); err != nil {
-				log.Printf("kafka: background flush failed: %v", err)
+				p.logger.Error("background flush failed", map[string]interface{}{"error": err.Error()})
 			}
 		case <-p.stopChan:
 			return

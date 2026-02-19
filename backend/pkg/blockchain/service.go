@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	stdlog "log"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides blockchain monitoring operations
@@ -24,6 +24,7 @@ type Service struct {
 	monitors       map[string]*monitorWorker
 	shutdownCh     chan struct{}
 	config         *ServiceConfig
+	logger         *utils.Logger
 }
 
 // ServiceConfig holds service configuration
@@ -78,6 +79,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 		monitors:     make(map[string]*monitorWorker),
 		shutdownCh:   make(chan struct{}),
 		config:       config,
+		logger:       utils.NewLogger("blockchain"),
 	}
 }
 
@@ -192,7 +194,7 @@ func (s *Service) CreateMonitor(ctx context.Context, tenantID string, req *Creat
 			CreatedAt:       now,
 		}
 		if err := s.repo.SaveABI(ctx, contractABI); err != nil {
-			stdlog.Printf("failed to save contract ABI: %v", err)
+			s.logger.Error("failed to save contract ABI", map[string]interface{}{"error": err.Error()})
 		}
 	}
 
@@ -347,7 +349,7 @@ func (s *Service) startMonitorWorker(monitor *ContractMonitor) {
 		monitor.Status = MonitorStatusError
 		monitor.ErrorMessage = err.Error()
 		if err := s.repo.UpdateMonitor(context.Background(), monitor); err != nil {
-			stdlog.Printf("failed to update monitor status to error: %v", err)
+			s.logger.Error("failed to update monitor status to error", map[string]interface{}{"error": err.Error()})
 		}
 		return
 	}
@@ -479,7 +481,7 @@ func (w *monitorWorker) processBlocks(s *Service) {
 		// Process event (send webhooks)
 		if s.processor != nil {
 			if err := s.processor.ProcessEvent(ctx, event, w.monitor); err != nil {
-				stdlog.Printf("failed to process blockchain event %s: %v", event.ID, err)
+				s.logger.Error("failed to process blockchain event", map[string]interface{}{"event_id": event.ID, "error": err.Error()})
 			}
 		} else {
 			s.sendWebhooks(ctx, event, w.monitor)
@@ -501,10 +503,10 @@ func (w *monitorWorker) processBlocks(s *Service) {
 		w.monitor.LastEventAt = &now
 	}
 	if err := s.repo.UpdateMonitor(ctx, w.monitor); err != nil {
-		stdlog.Printf("failed to update monitor checkpoint: %v", err)
+		s.logger.Error("failed to update monitor checkpoint", map[string]interface{}{"error": err.Error()})
 	}
 	if err := s.repo.SaveCheckpoint(ctx, w.monitor.ID, toBlock); err != nil {
-		stdlog.Printf("failed to save block checkpoint: %v", err)
+		s.logger.Error("failed to save block checkpoint", map[string]interface{}{"monitor_id": w.monitor.ID, "error": err.Error()})
 	}
 }
 
@@ -609,7 +611,7 @@ func (s *Service) sendWebhooks(ctx context.Context, event *ContractEvent, monito
 
 		payloadBytes, err := json.Marshal(payload)
 		if err != nil {
-			stdlog.Printf("failed to marshal webhook payload for event %s: %v", event.ID, err)
+			s.logger.Error("failed to marshal webhook payload", map[string]interface{}{"event_id": event.ID, "error": err.Error()})
 			continue
 		}
 
@@ -627,7 +629,7 @@ func (s *Service) sendWebhooks(ctx context.Context, event *ContractEvent, monito
 		}
 
 		if err := s.repo.CreateDelivery(ctx, delivery); err != nil {
-			stdlog.Printf("failed to create webhook delivery record: %v", err)
+			s.logger.Error("failed to create webhook delivery record", map[string]interface{}{"error": err.Error()})
 		}
 
 		// Send webhook
@@ -643,7 +645,7 @@ func (s *Service) sendWebhooks(ctx context.Context, event *ContractEvent, monito
 				monitor.Stats.WebhooksDelivered++
 			}
 			if err := s.repo.UpdateDelivery(ctx, delivery); err != nil {
-				stdlog.Printf("failed to update webhook delivery status: %v", err)
+				s.logger.Error("failed to update webhook delivery status", map[string]interface{}{"error": err.Error()})
 			}
 		}
 	}

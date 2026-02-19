@@ -2,12 +2,14 @@ package database
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/josedab/waas/pkg/utils"
 )
+
+var logger = utils.NewLogger("database")
 
 // RunMigrations applies all pending database migrations from the migrations/
 // directory. Returns nil if migrations succeed or if no new migrations exist.
@@ -25,7 +27,7 @@ func RunMigrations(databaseURL string) error {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	log.Println("Database migrations completed successfully")
+	logger.Info("Database migrations completed successfully", nil)
 	return nil
 }
 
@@ -44,6 +46,6 @@ func RollbackMigrations(databaseURL string, steps int) error {
 		return fmt.Errorf("failed to rollback migrations: %w", err)
 	}
 
-	log.Printf("Rolled back %d migration steps successfully", steps)
+	logger.Info("Rolled back migration steps successfully", map[string]interface{}{"steps": steps})
 	return nil
 }

@@ -6,17 +6,19 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // HTTPDeliverer implements HTTP/HTTPS webhook delivery
 type HTTPDeliverer struct {
 	client *http.Client
+	logger *utils.Logger
 }
 
 // NewHTTPDeliverer creates a new HTTP deliverer
@@ -30,6 +32,7 @@ func NewHTTPDeliverer() *HTTPDeliverer {
 				IdleConnTimeout:     90 * time.Second,
 			},
 		},
+		logger: utils.NewLogger("protocols"),
 	}
 }
 
@@ -287,16 +290,17 @@ func applyHTTPAuth(req *http.Request, auth *AuthConfig) {
 }
 
 func buildTLSConfig(config *TLSConfig) *tls.Config {
+	logger := utils.NewLogger("protocols")
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: false,
 	}
 
 	if config.InsecureSkipVerify {
 		if os.Getenv("ALLOW_INSECURE_TLS") == "true" {
-			log.Printf("AUDIT: TLS certificate verification disabled (InsecureSkipVerify=true, ALLOW_INSECURE_TLS=true) — this allows MITM attacks")
+			logger.Info("TLS certificate verification disabled", map[string]interface{}{"insecure_skip_verify": true, "allow_insecure_tls": true})
 			tlsConfig.InsecureSkipVerify = true
 		} else {
-			log.Printf("WARNING: InsecureSkipVerify requested but ALLOW_INSECURE_TLS env var is not set to 'true' — ignoring, TLS verification remains enabled")
+			logger.Warn("InsecureSkipVerify requested but ALLOW_INSECURE_TLS env var is not set to 'true', TLS verification remains enabled", nil)
 		}
 	}
 

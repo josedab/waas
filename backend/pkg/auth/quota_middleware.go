@@ -2,17 +2,20 @@ package auth
 
 import (
 	"context"
-	stdlog "log"
 	"net/http"
 	"strconv"
 	"time"
+
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/repository"
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
+
+var logger = utils.NewLogger("quota")
 
 // QuotaMiddleware enforces monthly webhook delivery quotas per tenant,
 // backed by Redis for fast counter lookups.
@@ -162,7 +165,7 @@ func (qm *QuotaMiddleware) TrackUsage() gin.HandlerFunc {
 
 			err := qm.quotaRepo.IncrementUsage(ctx, tenant.ID, success)
 			if err != nil {
-				stdlog.Printf("quota: failed to increment usage for tenant %s: %v", tenant.ID, err)
+				logger.Error("failed to increment usage", map[string]interface{}{"tenant_id": tenant.ID, "error": err.Error()})
 				return
 			}
 
@@ -184,7 +187,7 @@ func (qm *QuotaMiddleware) checkAndSendNotifications(ctx context.Context, tenant
 
 	usage, err := qm.quotaRepo.GetQuotaUsageByTenant(ctx, tenant.ID, currentMonth)
 	if err != nil {
-		stdlog.Printf("quota: failed to get usage for tenant %s: %v", tenant.ID, err)
+		logger.Error("failed to get usage", map[string]interface{}{"tenant_id": tenant.ID, "error": err.Error()})
 		return
 	}
 
@@ -196,7 +199,7 @@ func (qm *QuotaMiddleware) checkAndSendNotifications(ctx context.Context, tenant
 			// Check if notification already sent for this threshold this month
 			notifications, err := qm.quotaRepo.GetPendingNotifications(ctx, tenant.ID)
 			if err != nil {
-				stdlog.Printf("quota: failed to get pending notifications for tenant %s: %v", tenant.ID, err)
+				logger.Error("failed to get pending notifications", map[string]interface{}{"tenant_id": tenant.ID, "error": err.Error()})
 				continue
 			}
 
@@ -225,7 +228,7 @@ func (qm *QuotaMiddleware) checkAndSendNotifications(ctx context.Context, tenant
 				}
 
 				if err := qm.quotaRepo.CreateQuotaNotification(ctx, notification); err != nil {
-					stdlog.Printf("quota: failed to create notification for tenant %s at %d%%: %v", tenant.ID, threshold, err)
+					logger.Error("failed to create notification", map[string]interface{}{"tenant_id": tenant.ID, "threshold": threshold, "error": err.Error()})
 				}
 			}
 		}
@@ -239,13 +242,13 @@ func (qm *QuotaMiddleware) incrementOverageCount(ctx context.Context, tenantID u
 
 	usage, err := qm.quotaRepo.GetQuotaUsageByTenant(ctx, tenantID, currentMonth)
 	if err != nil {
-		stdlog.Printf("quota: failed to get usage for overage count, tenant %s: %v", tenantID, err)
+		logger.Error("failed to get usage for overage count", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
 		return
 	}
 
 	usage.OverageCount++
 	if err := qm.quotaRepo.UpdateQuotaUsage(ctx, usage); err != nil {
-		stdlog.Printf("quota: failed to update overage count for tenant %s: %v", tenantID, err)
+		logger.Error("failed to update overage count", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
 	}
 }
 

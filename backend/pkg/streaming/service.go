@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/josedab/waas/pkg/queue"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides streaming bridge operations
@@ -21,6 +21,7 @@ type Service struct {
 	webhookQueue   queue.PublisherInterface
 	mu             sync.RWMutex
 	config         *ServiceConfig
+	logger         *utils.Logger
 }
 
 // ServiceConfig holds service configuration
@@ -58,6 +59,7 @@ func NewService(repo Repository, webhookQueue queue.PublisherInterface, config *
 		consumers:    make(map[string]Consumer),
 		webhookQueue: webhookQueue,
 		config:       config,
+		logger:       utils.NewLogger("streaming"),
 	}
 
 	// Initialize schema registry if configured
@@ -130,7 +132,7 @@ func (s *Service) CreateBridge(ctx context.Context, tenantID string, req *Create
 		if err := s.repo.SaveCredentials(ctx, bridge.ID, credentials); err != nil {
 			// Rollback bridge creation
 			if delErr := s.repo.DeleteBridge(ctx, tenantID, bridge.ID); delErr != nil {
-				log.Printf("streaming: failed to rollback bridge %s after credential save failure: %v", bridge.ID, delErr)
+				s.logger.Error("failed to rollback bridge after credential save failure", map[string]interface{}{"bridge_id": bridge.ID, "error": delErr.Error()})
 			}
 			return nil, fmt.Errorf("failed to save credentials: %w", err)
 		}
@@ -141,7 +143,7 @@ func (s *Service) CreateBridge(ctx context.Context, tenantID string, req *Create
 		bridge.Status = BridgeStatusError
 		bridge.ErrorMessage = err.Error()
 		if updateErr := s.repo.UpdateBridge(ctx, bridge); updateErr != nil {
-			log.Printf("streaming: failed to update bridge %s error status: %v", bridge.ID, updateErr)
+			s.logger.Error("failed to update bridge error status", map[string]interface{}{"bridge_id": bridge.ID, "error": updateErr.Error()})
 		}
 		return bridge, nil // Return bridge with error status
 	}
@@ -397,7 +399,7 @@ func (s *Service) runConsumer(bridge *StreamingBridge) {
 	}
 
 	if err := consumer.Start(ctx, handler); err != nil {
-		log.Printf("streaming: consumer failed for bridge %s: %v", bridge.ID, err)
+		s.logger.Error("consumer failed", map[string]interface{}{"bridge_id": bridge.ID, "error": err.Error()})
 	}
 }
 
@@ -418,7 +420,7 @@ func (s *Service) handleInboundEvent(ctx context.Context, bridge *StreamingBridg
 			event.Status = "transform_failed"
 			event.ErrorMessage = err.Error()
 			if saveErr := s.repo.SaveEvent(ctx, event); saveErr != nil {
-				log.Printf("streaming: failed to save transform_failed event for bridge %s: %v", bridge.ID, saveErr)
+				s.logger.Error("failed to save transform_failed event", map[string]interface{}{"bridge_id": bridge.ID, "error": saveErr.Error()})
 			}
 			return err
 		}
@@ -441,7 +443,7 @@ func (s *Service) handleInboundEvent(ctx context.Context, bridge *StreamingBridg
 		event.Status = "queue_failed"
 		event.ErrorMessage = err.Error()
 		if saveErr := s.repo.SaveEvent(ctx, event); saveErr != nil {
-			log.Printf("streaming: failed to save queue_failed event for bridge %s: %v", bridge.ID, saveErr)
+			s.logger.Error("failed to save queue_failed event", map[string]interface{}{"bridge_id": bridge.ID, "error": saveErr.Error()})
 		}
 		return err
 	}
@@ -451,12 +453,12 @@ func (s *Service) handleInboundEvent(ctx context.Context, bridge *StreamingBridg
 	now := time.Now()
 	event.ProcessedAt = &now
 	if err := s.repo.SaveEvent(ctx, event); err != nil {
-		log.Printf("streaming: failed to save forwarded event for bridge %s: %v", bridge.ID, err)
+		s.logger.Error("failed to save forwarded event", map[string]interface{}{"bridge_id": bridge.ID, "error": err.Error()})
 	}
 
 	// Update metrics
 	if err := s.repo.IncrementEventCounters(ctx, bridge.ID, 1, 1, 0); err != nil {
-		log.Printf("streaming: failed to increment event counters for bridge %s: %v", bridge.ID, err)
+		s.logger.Error("failed to increment event counters", map[string]interface{}{"bridge_id": bridge.ID, "error": err.Error()})
 	}
 
 	return nil
@@ -595,7 +597,7 @@ func (s *Service) pauseBridge(bridgeID string) {
 
 	if ok {
 		if err := consumer.Pause(); err != nil {
-			log.Printf("streaming: failed to pause consumer for bridge %s: %v", bridgeID, err)
+			s.logger.Error("failed to pause consumer", map[string]interface{}{"bridge_id": bridgeID, "error": err.Error()})
 		}
 	}
 }
@@ -608,7 +610,7 @@ func (s *Service) resumeBridge(bridgeID string) {
 
 	if ok {
 		if err := consumer.Resume(); err != nil {
-			log.Printf("streaming: failed to resume consumer for bridge %s: %v", bridgeID, err)
+			s.logger.Error("failed to resume consumer", map[string]interface{}{"bridge_id": bridgeID, "error": err.Error()})
 		}
 	}
 }
@@ -624,13 +626,13 @@ func (s *Service) DeleteBridge(ctx context.Context, tenantID, bridgeID string) e
 	s.mu.Lock()
 	if producer, ok := s.producers[bridgeID]; ok {
 		if err := producer.Close(); err != nil {
-			log.Printf("streaming: failed to close producer for bridge %s: %v", bridgeID, err)
+			s.logger.Error("failed to close producer", map[string]interface{}{"bridge_id": bridgeID, "error": err.Error()})
 		}
 		delete(s.producers, bridgeID)
 	}
 	if consumer, ok := s.consumers[bridgeID]; ok {
 		if err := consumer.Close(); err != nil {
-			log.Printf("streaming: failed to close consumer for bridge %s: %v", bridgeID, err)
+			s.logger.Error("failed to close consumer", map[string]interface{}{"bridge_id": bridgeID, "error": err.Error()})
 		}
 		delete(s.consumers, bridgeID)
 	}
@@ -638,13 +640,13 @@ func (s *Service) DeleteBridge(ctx context.Context, tenantID, bridgeID string) e
 
 	// Delete credentials
 	if err := s.repo.DeleteCredentials(ctx, bridgeID); err != nil {
-		log.Printf("streaming: failed to delete credentials for bridge %s: %v", bridgeID, err)
+		s.logger.Warn("failed to delete credentials", map[string]interface{}{"bridge_id": bridgeID, "error": err.Error()})
 	}
 
 	// Update status to deleting
 	bridge.Status = BridgeStatusDeleting
 	if err := s.repo.UpdateBridge(ctx, bridge); err != nil {
-		log.Printf("streaming: failed to update bridge %s to deleting status: %v", bridgeID, err)
+		s.logger.Error("failed to update bridge to deleting status", map[string]interface{}{"bridge_id": bridgeID, "error": err.Error()})
 	}
 
 	// Delete bridge
@@ -735,13 +737,13 @@ func (s *Service) SendToStream(ctx context.Context, tenantID, bridgeID string, p
 
 	if err := producer.Send(ctx, event); err != nil {
 		if counterErr := s.repo.IncrementEventCounters(ctx, bridgeID, 0, 0, 1); counterErr != nil {
-			log.Printf("streaming: failed to increment error counters for bridge %s: %v", bridgeID, counterErr)
+			s.logger.Error("failed to increment error counters", map[string]interface{}{"bridge_id": bridgeID, "error": counterErr.Error()})
 		}
 		return err
 	}
 
 	if err := s.repo.IncrementEventCounters(ctx, bridgeID, 0, 1, 0); err != nil {
-		log.Printf("streaming: failed to increment success counters for bridge %s: %v", bridgeID, err)
+		s.logger.Error("failed to increment success counters", map[string]interface{}{"bridge_id": bridgeID, "error": err.Error()})
 	}
 	return nil
 }
@@ -801,18 +803,18 @@ func (s *Service) Close() error {
 
 	for id, producer := range s.producers {
 		if err := producer.Close(); err != nil {
-			log.Printf("streaming: failed to close producer %s: %v", id, err)
+			s.logger.Error("failed to close producer", map[string]interface{}{"producer_id": id, "error": err.Error()})
 		}
 	}
 	for id, consumer := range s.consumers {
 		if err := consumer.Close(); err != nil {
-			log.Printf("streaming: failed to close consumer %s: %v", id, err)
+			s.logger.Error("failed to close consumer", map[string]interface{}{"consumer_id": id, "error": err.Error()})
 		}
 	}
 
 	if s.schemaRegistry != nil {
 		if err := s.schemaRegistry.Close(); err != nil {
-			log.Printf("streaming: failed to close schema registry: %v", err)
+			s.logger.Error("failed to close schema registry", map[string]interface{}{"error": err.Error()})
 		}
 	}
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Repository defines the interface for anomaly storage
@@ -49,6 +49,7 @@ type Service struct {
 	repo     Repository
 	detector *Detector
 	notifier AlertNotifier
+	logger   *utils.Logger
 }
 
 // NewService creates a new anomaly detection service
@@ -57,6 +58,7 @@ func NewService(repo Repository, notifier AlertNotifier) *Service {
 		repo:     repo,
 		detector: NewDetector(nil),
 		notifier: notifier,
+		logger:   utils.NewLogger("anomaly"),
 	}
 }
 
@@ -76,7 +78,7 @@ func (s *Service) CheckMetric(ctx context.Context, tenantID, endpointID string, 
 	// Get detection config
 	config, err := s.repo.GetDetectionConfig(ctx, tenantID, endpointID, metricType)
 	if err != nil {
-		log.Printf("anomaly: failed to get detection config for tenant=%s endpoint=%s: %v", tenantID, endpointID, err)
+		s.logger.Error("failed to get detection config", map[string]interface{}{"tenant_id": tenantID, "endpoint_id": endpointID, "error": err.Error()})
 	}
 
 	// Run detection
@@ -133,7 +135,7 @@ func (s *Service) UpdateBaseline(ctx context.Context, tenantID, endpointID strin
 	// Get existing baseline
 	existing, err := s.repo.GetBaseline(ctx, tenantID, endpointID, metricType)
 	if err != nil {
-		log.Printf("anomaly: failed to get existing baseline for tenant=%s endpoint=%s: %v", tenantID, endpointID, err)
+		s.logger.Error("failed to get existing baseline", map[string]interface{}{"tenant_id": tenantID, "endpoint_id": endpointID, "error": err.Error()})
 	}
 
 	// Calculate new baseline
@@ -322,7 +324,7 @@ func (s *Service) GetTrendAnalysis(ctx context.Context, tenantID, endpointID str
 	// Get baseline
 	baseline, err := s.repo.GetBaseline(ctx, tenantID, endpointID, metricType)
 	if err != nil {
-		log.Printf("anomaly: failed to get baseline for trend analysis tenant=%s endpoint=%s: %v", tenantID, endpointID, err)
+		s.logger.Error("failed to get baseline for trend analysis", map[string]interface{}{"tenant_id": tenantID, "endpoint_id": endpointID, "error": err.Error()})
 	}
 	if baseline == nil {
 		baseline = &Baseline{Mean: 1.0, StdDev: 0.1} // Defaults

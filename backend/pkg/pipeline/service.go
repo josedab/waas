@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Repository defines the storage interface for pipelines
@@ -36,6 +36,7 @@ type Service struct {
 	repo        Repository
 	executors   map[StageType]StageExecutor
 	deliverFunc DeliveryFunc
+	logger      *utils.Logger
 }
 
 // NewService creates a new pipeline service
@@ -43,6 +44,7 @@ func NewService(repo Repository) *Service {
 	s := &Service{
 		repo:      repo,
 		executors: make(map[StageType]StageExecutor),
+		logger:    utils.NewLogger("pipeline"),
 	}
 
 	// Register built-in stage executors
@@ -258,7 +260,7 @@ func (s *Service) ExecutePipeline(ctx context.Context, tenantID, pipelineID, del
 
 	if err := s.repo.SaveExecution(ctx, execution); err != nil {
 		// Log but don't fail the pipeline
-		log.Printf("failed to save pipeline execution: %v", err)
+		s.logger.Error("failed to save pipeline execution", map[string]interface{}{"error": err.Error()})
 	}
 
 	return execution, nil

@@ -3,13 +3,13 @@ package waf
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // SecurityPosture represents the unified security state
@@ -128,6 +128,7 @@ type SecuritySuite struct {
 	wafSvc  *Service
 	ipCache map[string]map[string]bool // tenantID -> CIDR set
 	mu      sync.RWMutex
+	logger  *utils.Logger
 }
 
 // NewSecuritySuite creates a new unified security suite
@@ -136,6 +137,7 @@ func NewSecuritySuite(repo SecuritySuiteRepository, wafSvc *Service) *SecuritySu
 		repo:    repo,
 		wafSvc:  wafSvc,
 		ipCache: make(map[string]map[string]bool),
+		logger:  utils.NewLogger("waf"),
 	}
 }
 
@@ -194,7 +196,7 @@ func (s *SecuritySuite) VerifyDelivery(ctx context.Context, tenantID, endpointID
 	// Step 1: IP verification
 	ipAllowed, ipErr := s.repo.CheckIPAllowed(ctx, tenantID, sourceIP)
 	if ipErr != nil {
-		log.Printf("[waf] CheckIPAllowed error for tenant=%s ip=%s: %v", tenantID, sourceIP, ipErr)
+		s.logger.Error("CheckIPAllowed error", map[string]interface{}{"tenant_id": tenantID, "ip": sourceIP, "error": ipErr.Error()})
 		return nil, fmt.Errorf("IP allowlist check failed: %w", ipErr)
 	}
 	verification.IPVerified = ipAllowed
@@ -228,7 +230,7 @@ func (s *SecuritySuite) VerifyDelivery(ctx context.Context, tenantID, endpointID
 	verification.DurationMs = float64(time.Since(start).Microseconds()) / 1000.0
 
 	if err := s.repo.SaveVerification(ctx, verification); err != nil {
-		log.Printf("[waf] SaveVerification error for tenant=%s delivery=%s: %v", tenantID, deliveryID, err)
+		s.logger.Error("SaveVerification error", map[string]interface{}{"tenant_id": tenantID, "delivery_id": deliveryID, "error": err.Error()})
 	}
 
 	// Audit log
@@ -246,7 +248,7 @@ func (s *SecuritySuite) VerifyDelivery(ctx context.Context, tenantID, endpointID
 		Result:    result,
 		Timestamp: time.Now(),
 	}); err != nil {
-		log.Printf("[waf] SaveAuditLog error for tenant=%s delivery=%s: %v", tenantID, deliveryID, err)
+		s.logger.Error("SaveAuditLog error", map[string]interface{}{"tenant_id": tenantID, "delivery_id": deliveryID, "error": err.Error()})
 	}
 
 	return verification, nil

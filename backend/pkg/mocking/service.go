@@ -8,12 +8,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service manages mock webhook operations
@@ -342,6 +342,7 @@ type Scheduler struct {
 	endpoints map[string]*MockEndpoint
 	mu        sync.RWMutex
 	stopCh    chan struct{}
+	logger    *utils.Logger
 }
 
 // NewScheduler creates a new scheduler
@@ -349,6 +350,7 @@ func NewScheduler() *Scheduler {
 	return &Scheduler{
 		endpoints: make(map[string]*MockEndpoint),
 		stopCh:    make(chan struct{}),
+		logger:    utils.NewLogger("mocking"),
 	}
 }
 
@@ -402,7 +404,7 @@ func (s *Scheduler) processSchedules(ctx context.Context, service *Service) {
 			go func(ep *MockEndpoint) {
 				_, err := service.TriggerMock(ctx, ep.TenantID, ep.ID, &TriggerMockRequest{Count: 1})
 				if err != nil {
-					log.Printf("[mocking] scheduled trigger failed for %s: %v", ep.ID, err)
+					s.logger.Error("scheduled trigger failed", map[string]interface{}{"endpoint_id": ep.ID, "error": err.Error()})
 				}
 			}(endpoint)
 		}

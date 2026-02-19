@@ -2,10 +2,11 @@ package georouting
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // HealthTracker monitors region health
@@ -15,6 +16,7 @@ type HealthTracker struct {
 	mu         sync.RWMutex
 	health     map[string]*RegionHealth
 	stopCh     chan struct{}
+	logger     *utils.Logger
 }
 
 // NewHealthTracker creates a new health tracker
@@ -26,6 +28,7 @@ func NewHealthTracker(repo Repository) *HealthTracker {
 		},
 		health: make(map[string]*RegionHealth),
 		stopCh: make(chan struct{}),
+		logger: utils.NewLogger("georouting"),
 	}
 }
 
@@ -71,7 +74,7 @@ func (h *HealthTracker) GetHealth(ctx context.Context, regionID string) (*Region
 func (h *HealthTracker) checkAllRegions(ctx context.Context) {
 	regions, err := h.repo.ListRegionConfigs(ctx)
 	if err != nil {
-		log.Printf("[georouting] Failed to list regions: %v", err)
+		h.logger.Error("failed to list regions", map[string]interface{}{"error": err.Error()})
 		return
 	}
 
