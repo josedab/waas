@@ -143,7 +143,32 @@ The platform includes HPA configurations for automatic scaling:
 For VPA support, install the VPA controller and apply VPA resources:
 
 ```bash
-kubectl apply -f k8s/vpa.yaml  # Create this file if needed
+# VPA requires the Vertical Pod Autoscaler controller to be installed in your cluster.
+# See: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
+# Create a VPA resource for each service, for example:
+cat <<EOF | kubectl apply -f -
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: waas-api-vpa
+  namespace: webhook-platform
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-service
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: "*"
+      minAllowed:
+        cpu: "100m"
+        memory: "128Mi"
+      maxAllowed:
+        cpu: "2"
+        memory: "2Gi"
+EOF
 ```
 
 ## Monitoring and Alerting
@@ -463,10 +488,11 @@ Before promoting to production:
 
 ### Step 5: Production Deployment
 
-Follow the Kubernetes deployment sections above, or use the Helm chart:
+Follow the Kubernetes deployment sections above, or use the Helm chart (located at the **repository root** under `deploy/helm/waas`):
 
 ```bash
 # Using Helm (recommended for production)
+# Run from the repository root directory
 helm upgrade --install waas ./deploy/helm/waas \
   --namespace waas \
   --set database.url="$PROD_DATABASE_URL" \
