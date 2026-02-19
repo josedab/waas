@@ -47,3 +47,7 @@ redis_data/
 
 # Air hot-reload
 tmp/
+# Compiled service binaries
+/analytics-service
+/delivery-engine
+/api-service
