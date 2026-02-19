@@ -250,6 +250,34 @@ All API errors follow a consistent format:
 
 ## 🔧 Development
 
+### API Versioning
+
+The API uses URL-based versioning with the prefix `/api/v1`. All current endpoints are served under this version.
+
+**Versioning strategy:**
+- **URL prefix**: All endpoints are prefixed with `/api/v1/` (e.g., `/api/v1/webhooks/endpoints`)
+- **New versions**: Breaking changes will be introduced under a new version prefix (e.g., `/api/v2/`)
+- **Parallel availability**: When a new version is released, the previous version will continue to be served alongside it
+
+**Backward compatibility guarantees:**
+- Additive changes (new fields, new endpoints) within the same version are non-breaking
+- Existing response fields will not be removed or have their types changed within a version
+- New optional request parameters may be added without a version bump
+- Required request parameters will not be added to existing endpoints within a version
+
+**Deprecation policy:**
+- Deprecated endpoints will be marked with a `Deprecated` header in responses
+- Deprecation notices will appear in the Swagger documentation and CHANGELOG
+- Deprecated versions will remain available for a minimum of 6 months after the successor version is released
+- Clients should monitor the `Sunset` response header for the planned removal date
+
+**Example deprecation headers:**
+```http
+Deprecation: true
+Sunset: Sat, 01 Mar 2026 00:00:00 GMT
+Link: </api/v2/webhooks/endpoints>; rel="successor-version"
+```
+
 ### Regenerating Documentation
 
 The API documentation is automatically generated from Go code annotations using Swagger/OpenAPI. To regenerate:
