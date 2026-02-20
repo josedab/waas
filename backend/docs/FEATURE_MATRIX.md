@@ -20,13 +20,13 @@
 
 | Feature | Package(s) | Status | Tier | Description |
 |---------|-----------|--------|------|-------------|
-| Rate limiting | `pkg/ratelimit` | 🟢 Stable | Standard | Per-tenant and per-endpoint rate limits |
-| Quota management | `pkg/quotas` | 🟢 Stable | Standard | Usage tracking and enforcement |
-| Analytics | `pkg/analytics` | 🟡 Beta | Standard | Delivery metrics and reporting |
-| SDK generation | `pkg/sdk` | 🟡 Beta | Standard | Client SDK scaffolding |
+| Rate limiting | `pkg/auth/rate_limiter.go` | 🟢 Stable | Standard | Per-tenant and per-endpoint rate limits |
+| Quota management | `pkg/auth/quota_middleware.go`, `pkg/repository/quota_repository.go` | 🟢 Stable | Standard | Usage tracking and enforcement |
+| Analytics | `analytics-service`, `pkg/repository/analytics_repository.go` | 🟡 Beta | Standard | Delivery metrics and reporting |
+| SDK generation | `sdk/` | 🟡 Beta | Standard | Client SDK scaffolding |
 | Monitoring | `pkg/monitoring` | 🟡 Beta | Standard | Health checks and system metrics |
 | Dashboard | `web/dashboard` | 🟡 Beta | Standard | React-based admin UI |
-| CLI | `cmd/waas-cli` | 🟡 Beta | Standard | Command-line management tool |
+| CLI | `waas-cli` | 🟡 Beta | Standard | Command-line management tool |
 
 ## Enterprise — Observability & Analytics
 
