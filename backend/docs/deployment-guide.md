@@ -70,6 +70,7 @@ kubectl get nodes
 
 1. **Build production images**:
 ```bash
+cd backend
 ./scripts/build-images.sh build
 ```
 
@@ -88,6 +89,7 @@ This will:
 
 1. **Deploy the platform**:
 ```bash
+cd backend
 ./scripts/deploy.sh deploy
 ```
 
@@ -445,9 +447,9 @@ For teams that don't need Kubernetes yet, deploy to a single VM:
 
 # 2. Build the binaries
 cd backend
-go build -o bin/api ./cmd/api/
-go build -o bin/delivery ./cmd/delivery/
-go build -o bin/analytics ./cmd/analytics/
+go build -o bin/api ./cmd/api-service/
+go build -o bin/delivery ./cmd/delivery-engine/
+go build -o bin/analytics ./cmd/analytics-service/
 
 # 3. Set environment variables
 export DATABASE_URL="postgres://user:pass@localhost:5432/waas_staging?sslmode=require"
