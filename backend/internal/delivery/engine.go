@@ -194,7 +194,24 @@ func (e *DeliveryEngine) Stop() {
 	e.logger.Info("Delivery engine stopped", nil)
 }
 
-// HandleDelivery implements the MessageHandler interface
+// HandleDelivery implements the MessageHandler interface.
+//
+// Pipeline stages (executed in order):
+//  1. Endpoint lookup   — fetch endpoint config from DB; fail fast if missing
+//  2. Record attempt    — persist a DeliveryAttempt row (status: processing)
+//  3. Active check      — skip delivery if the endpoint has been deactivated
+//  4. Health gate       — skip (with retry) if the health scorer has auto-paused
+//     the endpoint due to sustained failures
+//  5. Transformation    — apply any configured payload transformations; fall back
+//     to the original payload on error
+//  6. Schema validation — validate payload against the event catalog (if enabled);
+//     in strict mode, reject delivery on schema mismatch
+//  7. HTTP delivery     — perform the actual POST to the endpoint URL
+//  8. Record result     — update the attempt row with status, HTTP code, latency
+//  9. Health feedback   — feed success/failure + latency into the health scorer
+//     and the legacy health monitor
+//  10. DLQ routing       — if permanently failed (retries exhausted), move to
+//     the dead-letter queue for manual inspection
 func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.DeliveryMessage) (*queue.DeliveryResult, error) {
 	startTime := time.Now()
 
