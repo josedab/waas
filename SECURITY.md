@@ -14,7 +14,7 @@ We take the security of WaaS seriously. If you discover a security vulnerability
 
 1. **Do NOT open a public GitHub issue for security vulnerabilities.**
 2. Email your findings to **security@waas-project.dev**.
-3. If you prefer encrypted communication, use our GPG key below.
+3. If you prefer encrypted communication, you can use [GitHub's private vulnerability reporting](https://github.com/waas-project/waas/security/advisories/new) to securely share details with the maintainers.
 4. Include as much detail as possible:
    - Description of the vulnerability
    - Steps to reproduce
