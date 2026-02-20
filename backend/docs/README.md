@@ -87,6 +87,102 @@ http://localhost:8080/api/v1
 
 ## 🛠 SDK Usage
 
+### Enterprise & Extended Endpoints
+
+Beyond the core endpoints above, the platform registers the following feature-specific route groups under `/api/v1` (all require authentication):
+
+#### Core Feature Routes
+
+| Prefix | Package | Description |
+|--------|---------|-------------|
+| `/schemas` | `pkg/schema` | Event schema registry: create, validate, assign to endpoints |
+| `/flows` | `pkg/flow` | Visual flow builder: event routing workflows |
+| `/meta-events/subscriptions` | `pkg/metaevents` | Webhooks-about-webhooks: subscribe to platform events |
+| `/geo` | `pkg/georouting` | Geographic routing: region-based delivery rules |
+| `/embed/tokens` | `pkg/embed` | Embeddable analytics SDK: token management |
+| `/mocks` | `pkg/mocking` | Webhook mocking service: simulated endpoints |
+| `/costs` | `pkg/costing` | Cost attribution dashboard |
+| `/otel` | `pkg/otel` | OpenTelemetry integration: traces and metrics export |
+| `/protocols` | `pkg/protocols` | Custom webhook protocols: HTTP, gRPC, MQTT, WebSocket |
+
+#### Enterprise Platform Routes
+
+| Prefix | Package | Description |
+|--------|---------|-------------|
+| `/traces` | `pkg/observability` | Observability suite: distributed traces and dashboards |
+| `/rate-limits` | `pkg/smartlimit` | Intelligent adaptive rate limiting |
+| `/chaos` | `pkg/chaos` | Chaos engineering: fault injection testing |
+| `/cdc` | `pkg/cdc` | Change data capture: database change notifications |
+| `/workflows` | `pkg/workflow` | Visual workflow builder v2 |
+| `/signatures` | `pkg/signatures` | Webhook signature standardization |
+| `/push` | `pkg/pushbridge` | Mobile SDK & push notification bridge |
+| `/billing` | `pkg/billing` | Real-time billing alerts and Stripe integration |
+| `/versions` | `pkg/versioning` | API versioning & deprecation management |
+| `/federation` | `pkg/federation` | Federated webhook network |
+
+#### Enterprise Advanced Routes
+
+| Prefix | Package | Description |
+|--------|---------|-------------|
+| `/sla` | `pkg/sla` | SLA dashboard & alerting |
+| `/mtls` | `pkg/mtls` | Mutual TLS certificate management |
+| `/contracts` | `pkg/contracts` | Webhook contract testing |
+| `/marketplace` | `pkg/marketplacetpl` | Webhook marketplace & templates |
+| `/eventmesh` | `pkg/eventmesh` | Event mesh routing engine |
+| `/debugger` | `pkg/debugger` | Webhook debugger & time-travel replay |
+| `/cloud` | `pkg/cloud`, `pkg/cloudctl` | Cloud control plane, billing, teams, audit |
+| `/terraform` | `pkg/tfprovider` | Terraform provider API |
+| `/portal` | `pkg/portal` | Embeddable webhook portal |
+
+#### Delivery, Edge & Observability Routes
+
+| Prefix | Package | Description |
+|--------|---------|-------------|
+| `/streaming` | `pkg/streaming` | Event streaming bridge |
+| `/remediation` | `pkg/remediation` | AI auto-remediation |
+| `/edge` | `pkg/edge` | Edge function runtime |
+| `/blockchain` | `pkg/blockchain` | Smart contract triggers & immutable audit trail |
+| `/compliance` | `pkg/compliancecenter` | Compliance center: GDPR, HIPAA, SOC2 |
+| `/prediction` | `pkg/prediction` | Predictive failure prevention |
+| `/graphql` | `pkg/graphqlsub` | GraphQL subscriptions gateway |
+| `/monetization` | `pkg/monetization` | Webhook monetization platform |
+| `/canary` | `pkg/canary` | Canary deployments |
+| `/catalog` | `pkg/catalog` | Event catalog & schema registry |
+| `/sandbox` | `pkg/sandbox` | Webhook replay sandbox |
+| `/analytics/embed` | `pkg/analyticsembed` | Embeddable analytics widgets |
+| `/gitops` | `pkg/gitops` | GitOps configuration management |
+| `/migrations` | `pkg/livemigration` | Live migration toolkit |
+
+#### Inbound, Fan-out & Ecosystem Routes
+
+| Prefix | Package | Description |
+|--------|---------|-------------|
+| `/inbound` | `pkg/inbound` | Inbound webhook gateway |
+| `/fanout` | `pkg/fanout` | Fan-out & topic-based routing |
+| `/mobile` | `pkg/mobilesdk` | Mobile SDK management |
+| `/marketplace/plugins` | `pkg/pluginmarket` | Plugin marketplace |
+| `/intelligence` | `pkg/intelligence` | AI-powered webhook intelligence |
+| `/flow-builder` | `pkg/flowbuilder` | Visual webhook workflow builder |
+| `/timetravel` | `pkg/timetravel` | Webhook replay & time travel |
+| `/callbacks` | `pkg/callback` | Bi-directional webhooks & callbacks |
+| `/collab-debug` | `pkg/collabdebug` | Real-time collaborative debugging |
+| `/waf` | `pkg/waf` | Webhook security scanner & WAF |
+| `/docgen` | `pkg/docgen` | API-first documentation generator |
+| `/whitelabel` | `pkg/whitelabel` | Multi-tenant white-label support |
+| `/dlq` | `pkg/dlq` | Dead letter queue & observability |
+| `/openapi` | `pkg/openapigen` | OpenAPI-to-webhook generator |
+| `/playground` | `pkg/playground` | Interactive webhook playground |
+| `/pipelines` | `pkg/pipeline` | Delivery pipeline composition |
+
+#### Admin Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/admin/tenants` | List all tenants |
+| `PUT` | `/api/v1/admin/tenants/:tenant_id` | Update tenant (admin) |
+| `GET` | `/api/v1/admin/alerts/active` | Get active alerts |
+| `GET` | `/api/v1/admin/alerts/history` | Get alert history |
+
 ### Go SDK Installation
 
 The Go SDK is bundled in the repository under `sdk/go/`. See the
