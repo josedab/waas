@@ -54,15 +54,27 @@ func (rp *RetryProcessor) Stop() {
 	close(rp.stopCh)
 }
 
-// processReadyMessages moves messages that are ready for retry back to the main queue
+// processReadyMessages moves messages that are ready for retry back to the main queue.
+//
+// Scheduling model: the retry ZSET uses Unix-timestamp scores so that
+// ZRangeByScore("-inf", now) efficiently returns only messages whose
+// scheduled retry time has passed. This is a sliding-window poll: the
+// processor runs every 5 seconds (see Start) and sweeps all messages
+// with score ≤ current time.
+//
+// The batch limit of 100 messages per poll prevents a single sweep from
+// blocking the processor for too long when a large backlog accumulates
+// (e.g., after an outage). Remaining messages are picked up on
+// subsequent ticks.
 func (rp *RetryProcessor) processReadyMessages(ctx context.Context) error {
 	now := float64(time.Now().Unix())
 
-	// Get messages that are ready for processing (score <= now)
+	// ZSET scores are Unix timestamps — query for all messages whose
+	// scheduled retry time is at or before the current second.
 	messages, err := rp.redis.Client.ZRangeByScoreWithScores(ctx, RetryQueue, &redis.ZRangeBy{
 		Min:   "-inf",
 		Max:   string(rune(int(now))),
-		Count: 100, // Process up to 100 messages at a time
+		Count: 100, // Cap per-poll batch to avoid long-running sweeps
 	}).Result()
 
 	if err != nil {
@@ -88,7 +100,8 @@ func (rp *RetryProcessor) processReadyMessages(ctx context.Context) error {
 			continue
 		}
 
-		// Move message back to main delivery queue
+		// Atomically remove from retry ZSET and push to delivery list.
+		// Using a transaction ensures the message is never lost or duplicated.
 		pipe := rp.redis.Client.TxPipeline()
 		pipe.ZRem(ctx, RetryQueue, messageData)
 		pipe.LPush(ctx, DeliveryQueue, messageData)
@@ -143,7 +156,9 @@ func (rp *RetryProcessor) GetPendingRetries(ctx context.Context, limit int64) ([
 	return retries, nil
 }
 
-// PendingRetry represents a pending retry message
+// PendingRetry represents a delivery message waiting in the retry ZSET.
+// RetryAt is derived from the ZSET score (Unix timestamp) and indicates
+// when the message becomes eligible for re-delivery.
 type PendingRetry struct {
 	DeliveryID    string    `json:"delivery_id"`
 	EndpointID    string    `json:"endpoint_id"`
