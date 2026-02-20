@@ -251,6 +251,8 @@ See [`.env.example`](.env.example) for the full list with defaults. Key variable
 - [API Documentation](docs/README.md) - REST API reference and SDK usage
 - [Architecture](ARCHITECTURE.md) - System design and package structure
 - [Deployment Guide](docs/deployment-guide.md) - Production Kubernetes deployment
+- [Error Catalog](docs/ERROR_CATALOG.md) - Complete reference for all API error codes
+- [Quick Reference](docs/QUICK_REFERENCE.md) - Cheat sheet for common development tasks
 - [Contributing](CONTRIBUTING.md) - Development workflow and guidelines
 - [SDK Development](sdk/CONTRIBUTING.md) - Building and maintaining SDKs
 - [Dashboard](web/dashboard/README.md) - Frontend development

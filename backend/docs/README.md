@@ -446,6 +446,7 @@ When adding new features:
 ## 🔗 Related Resources
 
 - [API Specification](swagger.json) - Complete OpenAPI 3.0 specification
+- [Error Catalog](ERROR_CATALOG.md) - Complete reference for all API error codes
 - [Go SDK](../sdk/go/) - Official Go SDK with examples
 - [Testing Guide](../sdk/go/examples/testing_webhooks.go) - Webhook testing examples
 - [Error Handling](../sdk/go/examples/error_handling.go) - Error handling patterns
