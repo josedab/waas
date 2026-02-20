@@ -12,11 +12,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// TenantHandler handles tenant CRUD, subscription management, and API key regeneration.
 type TenantHandler struct {
 	tenantRepo repository.TenantRepository
 	logger     *utils.Logger
 }
 
+// CreateTenantRequest is the request payload for creating a new tenant account.
 type CreateTenantRequest struct {
 	Name               string `json:"name" binding:"required,min=1,max=255"`
 	SubscriptionTier   string `json:"subscription_tier" binding:"required,oneof=free basic premium enterprise"`
@@ -24,11 +26,13 @@ type CreateTenantRequest struct {
 	MonthlyQuota       int    `json:"monthly_quota,omitempty"`
 }
 
+// CreateTenantResponse is returned after successful tenant creation with the API key.
 type CreateTenantResponse struct {
 	Tenant *models.Tenant `json:"tenant"`
 	APIKey string         `json:"api_key"`
 }
 
+// UpdateTenantRequest is the request payload for self-service tenant updates.
 type UpdateTenantRequest struct {
 	Name         string `json:"name,omitempty"`
 	MonthlyQuota int    `json:"monthly_quota,omitempty"`
@@ -39,6 +43,7 @@ var validSubscriptionTiers = map[string]bool{
 	"free": true, "basic": true, "premium": true, "enterprise": true,
 }
 
+// AdminUpdateTenantRequest is the request payload for admin-level tenant updates.
 type AdminUpdateTenantRequest struct {
 	Name               string `json:"name,omitempty"`
 	SubscriptionTier   string `json:"subscription_tier,omitempty"`

@@ -8,19 +8,20 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/utils"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
+// WebhookHandler handles webhook endpoint CRUD and webhook delivery operations.
 type WebhookHandler struct {
 	webhookRepo         repository.WebhookEndpointRepository
 	deliveryAttemptRepo repository.DeliveryAttemptRepository
@@ -29,19 +30,22 @@ type WebhookHandler struct {
 	urlValidator        *utils.URLValidator
 }
 
+// CreateWebhookEndpointRequest is the request payload for registering a new webhook endpoint.
 type CreateWebhookEndpointRequest struct {
-	URL           string            `json:"url" binding:"required"`
-	CustomHeaders map[string]string `json:"custom_headers,omitempty"`
+	URL           string              `json:"url" binding:"required"`
+	CustomHeaders map[string]string   `json:"custom_headers,omitempty"`
 	RetryConfig   *RetryConfigRequest `json:"retry_config,omitempty"`
 }
 
+// UpdateWebhookEndpointRequest is the request payload for updating an existing webhook endpoint.
 type UpdateWebhookEndpointRequest struct {
-	URL           *string           `json:"url,omitempty"`
-	CustomHeaders map[string]string `json:"custom_headers,omitempty"`
+	URL           *string             `json:"url,omitempty"`
+	CustomHeaders map[string]string   `json:"custom_headers,omitempty"`
 	RetryConfig   *RetryConfigRequest `json:"retry_config,omitempty"`
-	IsActive      *bool             `json:"is_active,omitempty"`
+	IsActive      *bool               `json:"is_active,omitempty"`
 }
 
+// RetryConfigRequest holds retry parameters for webhook endpoint configuration.
 type RetryConfigRequest struct {
 	MaxAttempts       int `json:"max_attempts,omitempty"`
 	InitialDelayMs    int `json:"initial_delay_ms,omitempty"`
@@ -49,15 +53,16 @@ type RetryConfigRequest struct {
 	BackoffMultiplier int `json:"backoff_multiplier,omitempty"`
 }
 
+// WebhookEndpointResponse is the API representation of a webhook endpoint.
 type WebhookEndpointResponse struct {
-	ID            uuid.UUID              `json:"id"`
-	URL           string                 `json:"url"`
-	Secret        string                 `json:"secret,omitempty"` // Only returned on creation
-	IsActive      bool                   `json:"is_active"`
+	ID            uuid.UUID                 `json:"id"`
+	URL           string                    `json:"url"`
+	Secret        string                    `json:"secret,omitempty"` // Only returned on creation
+	IsActive      bool                      `json:"is_active"`
 	RetryConfig   models.RetryConfiguration `json:"retry_config"`
-	CustomHeaders map[string]string      `json:"custom_headers"`
-	CreatedAt     time.Time              `json:"created_at"`
-	UpdatedAt     time.Time              `json:"updated_at"`
+	CustomHeaders map[string]string         `json:"custom_headers"`
+	CreatedAt     time.Time                 `json:"created_at"`
+	UpdatedAt     time.Time                 `json:"updated_at"`
 }
 
 // SendWebhookRequest represents a single webhook send request
@@ -1062,8 +1067,6 @@ func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 }
 
 // Helper methods
-
-
 
 // queueWebhookDelivery queues a webhook delivery for processing
 func (h *WebhookHandler) queueWebhookDelivery(ctx context.Context, endpoint *models.WebhookEndpoint, payload json.RawMessage, headers map[string]string) (*SendWebhookResponse, error) {

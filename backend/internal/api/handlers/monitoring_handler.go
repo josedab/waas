@@ -1,19 +1,20 @@
 package handlers
 
 import (
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/monitoring"
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/utils"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
+// MonitoringHandler handles delivery history, health status, and alert endpoints.
 type MonitoringHandler struct {
 	deliveryAttemptRepo repository.DeliveryAttemptRepository
 	webhookRepo         repository.WebhookEndpointRepository
@@ -23,6 +24,7 @@ type MonitoringHandler struct {
 	metricsRecorder     *monitoring.MetricsRecorder
 }
 
+// DeliveryHistoryRequest holds query parameters for filtering delivery history.
 type DeliveryHistoryRequest struct {
 	EndpointIDs []string  `form:"endpoint_ids" json:"endpoint_ids,omitempty"`
 	Statuses    []string  `form:"statuses" json:"statuses,omitempty"`
@@ -32,11 +34,13 @@ type DeliveryHistoryRequest struct {
 	Offset      int       `form:"offset" json:"offset,omitempty"`
 }
 
+// DeliveryHistoryResponse is the paginated response for delivery history queries.
 type DeliveryHistoryResponse struct {
 	Deliveries []DeliveryAttemptResponse `json:"deliveries"`
 	Pagination PaginationResponse        `json:"pagination"`
 }
 
+// DeliveryAttemptResponse represents a single delivery attempt in API responses.
 type DeliveryAttemptResponse struct {
 	ID            uuid.UUID  `json:"id"`
 	EndpointID    uuid.UUID  `json:"endpoint_id"`
@@ -52,27 +56,30 @@ type DeliveryAttemptResponse struct {
 	CreatedAt     time.Time  `json:"created_at"`
 }
 
+// DeliveryDetailResponse provides full delivery details including all retry attempts.
 type DeliveryDetailResponse struct {
 	DeliveryID uuid.UUID                 `json:"delivery_id"`
 	Attempts   []DeliveryAttemptResponse `json:"attempts"`
 	Summary    DeliverySummary           `json:"summary"`
 }
 
+// DeliverySummary aggregates delivery status including attempt counts and final error.
 type DeliverySummary struct {
-	TotalAttempts    int        `json:"total_attempts"`
-	Status           string     `json:"status"`
-	FirstAttemptAt   time.Time  `json:"first_attempt_at"`
-	LastAttemptAt    *time.Time `json:"last_attempt_at"`
-	NextRetryAt      *time.Time `json:"next_retry_at,omitempty"`
-	FinalHTTPStatus  *int       `json:"final_http_status,omitempty"`
-	FinalErrorMsg    *string    `json:"final_error_message,omitempty"`
+	TotalAttempts   int        `json:"total_attempts"`
+	Status          string     `json:"status"`
+	FirstAttemptAt  time.Time  `json:"first_attempt_at"`
+	LastAttemptAt   *time.Time `json:"last_attempt_at"`
+	NextRetryAt     *time.Time `json:"next_retry_at,omitempty"`
+	FinalHTTPStatus *int       `json:"final_http_status,omitempty"`
+	FinalErrorMsg   *string    `json:"final_error_message,omitempty"`
 }
 
+// PaginationResponse holds standard pagination metadata for list endpoints.
 type PaginationResponse struct {
-	Limit      int `json:"limit"`
-	Offset     int `json:"offset"`
-	Total      int `json:"total"`
-	HasMore    bool `json:"has_more"`
+	Limit   int  `json:"limit"`
+	Offset  int  `json:"offset"`
+	Total   int  `json:"total"`
+	HasMore bool `json:"has_more"`
 }
 
 func NewMonitoringHandler(deliveryAttemptRepo repository.DeliveryAttemptRepository, webhookRepo repository.WebhookEndpointRepository, logger *utils.Logger, healthChecker *monitoring.HealthChecker, alertManager *monitoring.AlertManager, metricsRecorder *monitoring.MetricsRecorder) *MonitoringHandler {
@@ -174,11 +181,11 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 	}
 
 	h.logger.InfoWithCorrelation("Fetching delivery history", correlationID, map[string]interface{}{
-		"tenant_id":     tenantID.(uuid.UUID).String(),
-		"filters":       filters,
-		"limit":         req.Limit,
-		"offset":        req.Offset,
-		"request_id":    c.GetHeader("X-Request-ID"),
+		"tenant_id":  tenantID.(uuid.UUID).String(),
+		"filters":    filters,
+		"limit":      req.Limit,
+		"offset":     req.Offset,
+		"request_id": c.GetHeader("X-Request-ID"),
 	})
 
 	// Get delivery history from repository
@@ -234,10 +241,10 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 	}
 
 	h.logger.InfoWithCorrelation("Delivery history retrieved successfully", correlationID, map[string]interface{}{
-		"tenant_id":      tenantID.(uuid.UUID).String(),
-		"results_count":  len(deliveries),
-		"total_count":    totalCount,
-		"request_id":     c.GetHeader("X-Request-ID"),
+		"tenant_id":     tenantID.(uuid.UUID).String(),
+		"results_count": len(deliveries),
+		"total_count":   totalCount,
+		"request_id":    c.GetHeader("X-Request-ID"),
 	})
 
 	c.JSON(http.StatusOK, response)
@@ -553,10 +560,10 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 	}
 
 	h.logger.InfoWithCorrelation("Endpoint delivery history retrieved successfully", correlationID, map[string]interface{}{
-		"endpoint_id":    endpointID.String(),
-		"tenant_id":      tenantID.(uuid.UUID).String(),
-		"results_count":  len(deliveries),
-		"request_id":     c.GetHeader("X-Request-ID"),
+		"endpoint_id":   endpointID.String(),
+		"tenant_id":     tenantID.(uuid.UUID).String(),
+		"results_count": len(deliveries),
+		"request_id":    c.GetHeader("X-Request-ID"),
 	})
 
 	c.JSON(http.StatusOK, response)
@@ -668,7 +675,7 @@ func (h *MonitoringHandler) GetReadinessStatus(c *gin.Context) {
 func (h *MonitoringHandler) GetLivenessStatus(c *gin.Context) {
 	if h.healthChecker == nil {
 		c.JSON(http.StatusOK, gin.H{
-			"status": "alive",
+			"status":    "alive",
 			"timestamp": time.Now(),
 		})
 		return
@@ -736,7 +743,7 @@ func (h *MonitoringHandler) GetAlertHistory(c *gin.Context) {
 	}
 
 	severity := monitoring.AlertSeverity(c.Query("severity"))
-	if severity != "" && severity != monitoring.AlertSeverityCritical && 
+	if severity != "" && severity != monitoring.AlertSeverityCritical &&
 		severity != monitoring.AlertSeverityWarning && severity != monitoring.AlertSeverityInfo {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": map[string]interface{}{

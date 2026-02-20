@@ -2,14 +2,15 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/josedab/waas/pkg/utils"
 	"net/http"
 	"time"
-	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
+// TestEndpointHandler manages temporary test endpoints for webhook debugging.
 type TestEndpointHandler struct {
 	logger *utils.Logger
 }
@@ -175,16 +176,16 @@ func (h *TestEndpointHandler) GetTestEndpointReceive(c *gin.Context) {
 		EndpointID: endpointID,
 		Method:     "POST",
 		Headers: map[string]string{
-			"Content-Type":     "application/json",
-			"User-Agent":       "Webhook-Test/1.0",
-			"X-Webhook-ID":     "test-123",
-			"X-Signature":      "sha256=abc123",
-			"Accept":           "*/*",
-			"Content-Length":   "45",
+			"Content-Type":   "application/json",
+			"User-Agent":     "Webhook-Test/1.0",
+			"X-Webhook-ID":   "test-123",
+			"X-Signature":    "sha256=abc123",
+			"Accept":         "*/*",
+			"Content-Length": "45",
 		},
 		Body: json.RawMessage(`{"test": "data", "timestamp": "2024-01-01T12:00:00Z"}`),
 		QueryParams: map[string]string{
-			"source": "test",
+			"source":  "test",
 			"version": "1.0",
 		},
 		ReceivedAt: time.Now().Add(-5 * time.Minute),

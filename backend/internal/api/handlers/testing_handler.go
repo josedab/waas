@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// TestingHandler handles webhook testing, inspection, and real-time debugging.
 type TestingHandler struct {
 	webhookRepo         repository.WebhookEndpointRepository
 	deliveryAttemptRepo repository.DeliveryAttemptRepository
@@ -78,6 +79,7 @@ type DeliveryInspectionResponse struct {
 	ErrorDetails  *DeliveryErrorDetails    `json:"error_details,omitempty"`
 }
 
+// DeliveryRequestDetails contains the HTTP request details of a delivery attempt.
 type DeliveryRequestDetails struct {
 	URL         string            `json:"url"`
 	Method      string            `json:"method"`
@@ -88,6 +90,7 @@ type DeliveryRequestDetails struct {
 	ScheduledAt time.Time         `json:"scheduled_at"`
 }
 
+// DeliveryResponseDetails contains the HTTP response details of a delivery attempt.
 type DeliveryResponseDetails struct {
 	HTTPStatus  int               `json:"http_status"`
 	Headers     map[string]string `json:"headers,omitempty"`
@@ -97,6 +100,7 @@ type DeliveryResponseDetails struct {
 	Latency     int64             `json:"latency_ms"`
 }
 
+// DeliveryTimelineEvent represents a single event in the delivery timeline.
 type DeliveryTimelineEvent struct {
 	Timestamp   time.Time              `json:"timestamp"`
 	Event       string                 `json:"event"`
@@ -104,6 +108,7 @@ type DeliveryTimelineEvent struct {
 	Details     map[string]interface{} `json:"details,omitempty"`
 }
 
+// DeliveryErrorDetails provides error analysis with categorization and troubleshooting suggestions.
 type DeliveryErrorDetails struct {
 	ErrorType    string     `json:"error_type"`
 	ErrorMessage string     `json:"error_message"`
