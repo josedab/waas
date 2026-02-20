@@ -35,8 +35,6 @@ services:
       - "8080:8080"
     env_file: .env
     environment:
-      - DATABASE_URL=postgres://postgres:password@postgres:5432/webhook_platform?sslmode=disable
-      - REDIS_URL=redis://redis:6379
       - ENVIRONMENT=development
     depends_on:
       postgres:
@@ -53,8 +51,6 @@ services:
       dockerfile: docker/Dockerfile.delivery
     env_file: .env
     environment:
-      - DATABASE_URL=postgres://postgres:password@postgres:5432/webhook_platform?sslmode=disable
-      - REDIS_URL=redis://redis:6379
       - ENVIRONMENT=development
     depends_on:
       postgres:
@@ -73,8 +69,6 @@ services:
       - "8082:8082"
     env_file: .env
     environment:
-      - DATABASE_URL=postgres://postgres:password@postgres:5432/webhook_platform?sslmode=disable
-      - REDIS_URL=redis://redis:6379
       - ENVIRONMENT=development
     depends_on:
       postgres:
