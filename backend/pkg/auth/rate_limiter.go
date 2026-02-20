@@ -3,10 +3,10 @@ package auth
 import (
 	"context"
 	"fmt"
+	"github.com/josedab/waas/pkg/models"
 	"net/http"
 	"strconv"
 	"time"
-	"github.com/josedab/waas/pkg/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -21,9 +21,9 @@ type RateLimiter struct {
 // RateLimitInfo describes the current rate-limit state for a tenant,
 // including remaining requests and reset time.
 type RateLimitInfo struct {
-	Allowed   bool
-	Remaining int
-	ResetTime time.Time
+	Allowed    bool
+	Remaining  int
+	ResetTime  time.Time
 	RetryAfter int64
 }
 
@@ -73,9 +73,9 @@ func (rl *RateLimiter) RateLimit() gin.HandlerFunc {
 					"code":    "RATE_LIMIT_EXCEEDED",
 					"message": "Rate limit exceeded. Please try again later.",
 					"details": gin.H{
-						"limit":      tenant.RateLimitPerMinute,
-						"remaining":  rateLimitInfo.Remaining,
-						"reset_time": rateLimitInfo.ResetTime.Unix(),
+						"limit":       tenant.RateLimitPerMinute,
+						"remaining":   rateLimitInfo.Remaining,
+						"reset_time":  rateLimitInfo.ResetTime.Unix(),
 						"retry_after": rateLimitInfo.RetryAfter,
 					},
 				},
@@ -88,25 +88,40 @@ func (rl *RateLimiter) RateLimit() gin.HandlerFunc {
 	}
 }
 
-// CheckRateLimit checks if the tenant has exceeded their rate limit
+// CheckRateLimit checks if the tenant has exceeded their rate limit.
+//
+// Algorithm: fixed-window rate limiting using Redis INCR + EXPIREAT.
+// Each 1-minute window is aligned to the clock (time.Truncate(Minute)),
+// and the Redis key auto-expires at the end of the window.
+//
+// Fixed-window was chosen over sliding-window for simplicity and lower Redis
+// overhead (single key per tenant vs. sorted set). The trade-off is that a
+// burst of requests at a window boundary can briefly allow up to 2× the
+// configured limit, but this is acceptable for webhook delivery use-cases
+// where exact fairness is less critical than throughput.
+//
+// Clock skew note: because windows are derived from the application server's
+// local clock, servers with significant clock drift may produce inconsistent
+// windows. In practice, NTP-synced hosts keep drift well under 1 second.
 func (rl *RateLimiter) CheckRateLimit(ctx context.Context, tenant *models.Tenant) (*RateLimitInfo, error) {
 	key := fmt.Sprintf("rate_limit:%s", tenant.ID.String())
 	window := time.Minute
 	limit := tenant.RateLimitPerMinute
 
+	// Align to the start of the current minute to form the fixed window.
 	now := time.Now()
 	windowStart := now.Truncate(window)
 	windowEnd := windowStart.Add(window)
 
 	// Use Redis pipeline for atomic operations
 	pipe := rl.redisClient.Pipeline()
-	
+
 	// Increment counter for current window
 	incrCmd := pipe.Incr(ctx, key)
-	
+
 	// Set expiration if this is the first request in the window
 	pipe.ExpireAt(ctx, key, windowEnd)
-	
+
 	// Execute pipeline
 	_, err := pipe.Exec(ctx)
 	if err != nil {
@@ -116,16 +131,16 @@ func (rl *RateLimiter) CheckRateLimit(ctx context.Context, tenant *models.Tenant
 	currentCount := int(incrCmd.Val())
 	remaining := maxInt(0, limit-currentCount)
 	allowed := currentCount <= limit
-	
+
 	retryAfter := int64(0)
 	if !allowed {
 		retryAfter = int64(windowEnd.Sub(now).Seconds())
 	}
 
 	return &RateLimitInfo{
-		Allowed:   allowed,
-		Remaining: remaining,
-		ResetTime: windowEnd,
+		Allowed:    allowed,
+		Remaining:  remaining,
+		ResetTime:  windowEnd,
 		RetryAfter: retryAfter,
 	}, nil
 }
@@ -159,9 +174,9 @@ func (rl *RateLimiter) GetRateLimitStatus(ctx context.Context, tenant *models.Te
 	}
 
 	return &RateLimitInfo{
-		Allowed:   allowed,
-		Remaining: remaining,
-		ResetTime: windowEnd,
+		Allowed:    allowed,
+		Remaining:  remaining,
+		ResetTime:  windowEnd,
 		RetryAfter: retryAfter,
 	}, nil
 }
@@ -171,4 +186,3 @@ func (rl *RateLimiter) ResetRateLimit(ctx context.Context, tenantID string) erro
 	key := fmt.Sprintf("rate_limit:%s", tenantID)
 	return rl.redisClient.Del(ctx, key).Err()
 }
-
