@@ -10,37 +10,37 @@ import (
 
 // HealthScore represents a 0-100 health score for an endpoint
 type HealthScore struct {
-	EndpointID        uuid.UUID `json:"endpoint_id"`
-	Score             int       `json:"score"`               // 0-100
-	Grade             string    `json:"grade"`                // A, B, C, D, F
-	SuccessRate       float64   `json:"success_rate"`         // 0-1
-	AvgLatencyMs      float64   `json:"avg_latency_ms"`
-	P95LatencyMs      float64   `json:"p95_latency_ms"`
-	ErrorRate         float64   `json:"error_rate"`           // 0-1
-	ConsecutiveErrors int       `json:"consecutive_errors"`
-	CircuitState      string    `json:"circuit_state"`        // closed, open, half_open
-	TotalDeliveries   int64     `json:"total_deliveries"`
-	RecentDeliveries  int64     `json:"recent_deliveries"`    // Last hour
-	Trend             string    `json:"trend"`                // improving, stable, degrading
-	IsPaused          bool      `json:"is_paused"`
+	EndpointID        uuid.UUID  `json:"endpoint_id"`
+	Score             int        `json:"score"`        // 0-100
+	Grade             string     `json:"grade"`        // A, B, C, D, F
+	SuccessRate       float64    `json:"success_rate"` // 0-1
+	AvgLatencyMs      float64    `json:"avg_latency_ms"`
+	P95LatencyMs      float64    `json:"p95_latency_ms"`
+	ErrorRate         float64    `json:"error_rate"` // 0-1
+	ConsecutiveErrors int        `json:"consecutive_errors"`
+	CircuitState      string     `json:"circuit_state"` // closed, open, half_open
+	TotalDeliveries   int64      `json:"total_deliveries"`
+	RecentDeliveries  int64      `json:"recent_deliveries"` // Last hour
+	Trend             string     `json:"trend"`             // improving, stable, degrading
+	IsPaused          bool       `json:"is_paused"`
 	PausedAt          *time.Time `json:"paused_at,omitempty"`
-	PauseReason       string    `json:"pause_reason,omitempty"`
-	LastUpdated       time.Time `json:"last_updated"`
+	PauseReason       string     `json:"pause_reason,omitempty"`
+	LastUpdated       time.Time  `json:"last_updated"`
 }
 
 // HealthScoringConfig configures the health scoring behavior
 type HealthScoringConfig struct {
 	// Weight factors for score calculation (must sum to 1.0)
-	SuccessRateWeight    float64
-	LatencyWeight        float64
-	ErrorPatternWeight   float64
-	ConsistencyWeight    float64
+	SuccessRateWeight  float64
+	LatencyWeight      float64
+	ErrorPatternWeight float64
+	ConsistencyWeight  float64
 
 	// Thresholds for auto-pause
-	PauseThreshold       int           // Score below which endpoint is auto-paused
-	ResumeThreshold      int           // Score above which endpoint is auto-resumed
-	MinDeliveriesForScore int          // Min deliveries before scoring is active
-	ScoringWindow        time.Duration // Window for recent delivery calculation
+	PauseThreshold        int           // Score below which endpoint is auto-paused
+	ResumeThreshold       int           // Score above which endpoint is auto-resumed
+	MinDeliveriesForScore int           // Min deliveries before scoring is active
+	ScoringWindow         time.Duration // Window for recent delivery calculation
 
 	// Latency targets
 	TargetLatencyMs      float64
@@ -50,16 +50,16 @@ type HealthScoringConfig struct {
 // DefaultHealthScoringConfig returns sensible defaults
 func DefaultHealthScoringConfig() *HealthScoringConfig {
 	return &HealthScoringConfig{
-		SuccessRateWeight:    0.40,
-		LatencyWeight:        0.20,
-		ErrorPatternWeight:   0.25,
-		ConsistencyWeight:    0.15,
-		PauseThreshold:       20,
-		ResumeThreshold:      60,
+		SuccessRateWeight:     0.40,
+		LatencyWeight:         0.20,
+		ErrorPatternWeight:    0.25,
+		ConsistencyWeight:     0.15,
+		PauseThreshold:        20,
+		ResumeThreshold:       60,
 		MinDeliveriesForScore: 10,
-		ScoringWindow:        1 * time.Hour,
-		TargetLatencyMs:      500,
-		MaxAcceptableLatency: 5000,
+		ScoringWindow:         1 * time.Hour,
+		TargetLatencyMs:       500,
+		MaxAcceptableLatency:  5000,
 	}
 }
 
@@ -238,6 +238,23 @@ func (hs *HealthScorer) GetAllScores() map[uuid.UUID]*HealthScore {
 	return result
 }
 
+// calculateScore computes a 0-100 composite health score from four weighted components:
+//   - Success rate  (40%) — primary signal; directly reflects delivery reliability
+//   - Error pattern (25%) — penalises consecutive failures with a quadratic curve
+//     (penalty = min(100, n² × 5)) so bursts of errors degrade health faster
+//     than isolated failures
+//   - Latency       (20%) — linear interpolation between target and max acceptable;
+//     less weight because transient latency spikes are less critical than errors
+//   - Consistency   (15%) — standard deviation of recent scores; rewards stable
+//     behaviour even if not perfect
+//
+// Operational score ranges:
+//
+//	90-100 (A) — healthy, no action needed
+//	70-89  (B) — minor degradation, monitor closely
+//	50-69  (C) — significant issues, investigate
+//	25-49  (D) — critical, may auto-pause endpoint
+//	0-24   (F) — endpoint effectively down
 func (hs *HealthScorer) calculateScore(state *healthState) int {
 	recentTotal := state.recentSuccesses + state.recentFailures
 	if recentTotal < int64(hs.config.MinDeliveriesForScore) {
@@ -260,6 +277,10 @@ func (hs *HealthScorer) calculateScore(state *healthState) int {
 	}
 
 	// 3. Error pattern component (0-100) - penalizes consecutive errors heavily
+	//    Uses a quadratic penalty: penalty = n² × 5 where n = consecutive errors.
+	//    This means 1 error = 5pt penalty, 2 = 20pt, 3 = 45pt, 4+ = capped at 100.
+	//    Quadratic scaling ensures isolated errors are tolerated while sustained
+	//    failures trigger rapid score collapse and potential auto-pause.
 	errorPatternScore := 100.0
 	if state.consecutiveErrors > 0 {
 		// Each consecutive error reduces score more aggressively
