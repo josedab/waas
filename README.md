@@ -133,6 +133,17 @@ make validate-setup    # Check prerequisites
 | Ruby | [`sdk/ruby`](backend/sdk/ruby) | Available |
 | PHP | [`sdk/php`](backend/sdk/php) | Available |
 
+### Framework Integrations
+
+| Framework | Path | Status |
+|-----------|------|--------|
+| Django | [`sdk/django`](backend/sdk/django) | Available |
+| Express | [`sdk/express`](backend/sdk/express) | Available |
+| Laravel | [`sdk/laravel`](backend/sdk/laravel) | Available |
+| Next.js | [`sdk/nextjs`](backend/sdk/nextjs) | Available |
+| Rails | [`sdk/rails`](backend/sdk/rails) | Available |
+| Spring Boot | [`sdk/spring-boot`](backend/sdk/spring-boot) | Available |
+
 > **Note:** SDKs are bundled in the monorepo. See each SDK's README for local installation instructions.
 
 ## Documentation
