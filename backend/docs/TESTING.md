@@ -2,6 +2,8 @@
 
 How to write, run, and debug tests in the WaaS codebase.
 
+> See also: [Testing Tools](testing_tools.md) for webhook testing and debugging utilities.
+
 ## Quick Commands
 
 ```bash
@@ -195,15 +197,19 @@ func TestService(t *testing.T) {
 ## CI
 
 Tests run automatically on every push via `.github/workflows/ci.yml`. The CI pipeline:
-1. Builds all packages (`go build ./...`)
-2. Runs `go vet ./...`
-3. Runs `make test`
 
-To replicate CI locally: `go build ./... && go vet ./... && make test`
+1. **Code Quality**: checks `gofmt` formatting, runs `go vet ./...`, and runs `golangci-lint`
+2. **Environment Validation**: verifies `.env.example` covers all `os.Getenv()` calls in source
+3. **Unit Tests**: runs tests with race detection and enforces **70% minimum coverage** threshold
+4. **Build**: builds all binaries (`make build`) and all packages (`go build ./...`)
+5. **License Check**: validates dependency licenses via `go-licenses`
+6. **Integration Tests**: runs integration tests against live PostgreSQL and Redis services (requires unit tests and build to pass)
+
+To replicate CI locally: `gofmt -s -l . && go vet ./... && golangci-lint run && make test`
 
 ## Coverage Targets
 
-The project enforces a **50% minimum coverage** threshold in CI (`make ci-local`). Per-package coverage can be viewed with:
+The project enforces a **70% minimum coverage** threshold in CI (`make ci-local`). Per-package coverage can be viewed with:
 
 ```bash
 make test-coverage      # Per-package breakdown with total
