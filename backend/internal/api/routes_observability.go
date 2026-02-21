@@ -200,6 +200,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Interactive Playground v2
 	playgroundHandler := playground.NewHandler(s.playgroundService)
 	playgroundHandler.RegisterRoutes(protected)
+	playgroundHandler.RegisterWSRoutes(protected)
 
 	// Delivery Pipeline Composition
 	pipelineHandler := pipeline.NewHandler(s.pipelineService)
