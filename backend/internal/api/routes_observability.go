@@ -149,6 +149,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Webhook Plugin Marketplace
 	pluginmarketHandler := pluginmarket.NewHandler(s.pluginmarketService)
 	pluginmarketHandler.RegisterRoutes(protected)
+	pluginmarketHandler.RegisterMarketplaceRoutes(protected)
 
 	// AI-Powered Webhook Intelligence
 	intelligenceHandler := intelligence.NewHandler(s.intelligenceService)
