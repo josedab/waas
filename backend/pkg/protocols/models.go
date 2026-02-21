@@ -17,6 +17,9 @@ const (
 	ProtocolMQTT      Protocol = "mqtt"
 	ProtocolGraphQL   Protocol = "graphql"
 	ProtocolSMTP      Protocol = "smtp"
+	ProtocolKafka     Protocol = "kafka"
+	ProtocolSNS       Protocol = "sns"
+	ProtocolSQS       Protocol = "sqs"
 )
 
 // DeliveryConfig represents configuration for a protocol delivery
@@ -382,13 +385,72 @@ func SupportedProtocols() []ProtocolInfo {
 				"port":        "integer",
 			},
 		},
+		{
+			Name:        ProtocolKafka,
+			DisplayName: "Kafka",
+			Description: "Apache Kafka message delivery",
+			Version:     "2.0+",
+			Supported:   true,
+			DefaultPort: 9092,
+			RequiresTLS: false,
+			SupportsAuth: []AuthType{
+				AuthNone, AuthBasic,
+			},
+			OptionsSchema: map[string]any{
+				"topic":         "string",
+				"brokers":       "array",
+				"partition_key": "string",
+				"compression":   "string",
+				"ack_mode":      "string",
+				"idempotent":    "boolean",
+				"max_retries":   "integer",
+			},
+		},
+		{
+			Name:        ProtocolSNS,
+			DisplayName: "AWS SNS",
+			Description: "AWS Simple Notification Service delivery",
+			Version:     "2010-03-31",
+			Supported:   true,
+			DefaultPort: 443,
+			RequiresTLS: true,
+			SupportsAuth: []AuthType{
+				AuthNone, AuthAPIKey,
+			},
+			OptionsSchema: map[string]any{
+				"topic_arn":        "string",
+				"message_group_id": "string",
+				"attributes":       "object",
+				"region":           "string",
+				"subject":          "string",
+			},
+		},
+		{
+			Name:        ProtocolSQS,
+			DisplayName: "AWS SQS",
+			Description: "AWS Simple Queue Service delivery",
+			Version:     "2012-11-05",
+			Supported:   true,
+			DefaultPort: 443,
+			RequiresTLS: true,
+			SupportsAuth: []AuthType{
+				AuthNone, AuthAPIKey,
+			},
+			OptionsSchema: map[string]any{
+				"queue_url":        "string",
+				"message_group_id": "string",
+				"delay_seconds":    "integer",
+				"attributes":       "object",
+				"region":           "string",
+			},
+		},
 	}
 }
 
 // IsValidProtocol checks if a protocol is valid
 func IsValidProtocol(p Protocol) bool {
 	switch p {
-	case ProtocolHTTP, ProtocolHTTPS, ProtocolGRPC, ProtocolGRPCS, ProtocolWebSocket, ProtocolMQTT, ProtocolGraphQL, ProtocolSMTP:
+	case ProtocolHTTP, ProtocolHTTPS, ProtocolGRPC, ProtocolGRPCS, ProtocolWebSocket, ProtocolMQTT, ProtocolGraphQL, ProtocolSMTP, ProtocolKafka, ProtocolSNS, ProtocolSQS:
 		return true
 	default:
 		return false

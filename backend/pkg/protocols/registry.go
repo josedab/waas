@@ -110,5 +110,14 @@ func DefaultRegistry() *Registry {
 	// Register SMTP deliverer
 	registry.Register(ProtocolSMTP, NewSMTPDeliverer())
 
+	// Register Kafka deliverer
+	registry.Register(ProtocolKafka, NewKafkaDeliverer())
+
+	// Register SNS deliverer
+	registry.Register(ProtocolSNS, NewSNSDeliverer())
+
+	// Register SQS deliverer
+	registry.Register(ProtocolSQS, NewSQSDeliverer())
+
 	return registry
 }
