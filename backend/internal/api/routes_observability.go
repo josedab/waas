@@ -167,6 +167,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Managed Cloud Offering
 	cloudmanagedHandler := cloudmanaged.NewHandler(s.cloudmanagedService)
 	cloudmanagedHandler.RegisterRoutes(protected)
+	cloudmanagedHandler.RegisterDeployRoutes(protected)
 
 	// Bi-Directional Webhooks & Callbacks
 	callbackHandler := callback.NewHandler(s.callbackService)
