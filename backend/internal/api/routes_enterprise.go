@@ -93,6 +93,7 @@ func (s *Server) registerEnterpriseRoutes(protected *gin.RouterGroup) {
 	// Event Mesh Routing Engine
 	eventmeshHandler := eventmesh.NewHandler(s.eventmeshService)
 	eventmeshHandler.RegisterRoutes(protected)
+	eventmeshHandler.RegisterMeshRoutes(protected)
 
 	// Webhook Debugger & Time-Travel Replay
 	debuggerHandler := debugger.NewHandler(s.debuggerService)
