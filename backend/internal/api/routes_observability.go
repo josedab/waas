@@ -128,6 +128,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Live Migration Toolkit
 	livemigrationHandler := livemigration.NewHandler(s.livemigrationService)
 	livemigrationHandler.RegisterRoutes(protected)
+	livemigrationHandler.RegisterImporterRoutes(protected)
 
 	// ── Inbound & fan-out (v6) ──────────────────────────────────────
 
