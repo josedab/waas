@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS portal_sessions;
+DROP TABLE IF EXISTS portal_configs;
+DROP TABLE IF EXISTS compliance_erasure_requests;
+DROP TABLE IF EXISTS compliance_encryption_keys;
+DROP TABLE IF EXISTS compliance_audit_trail;
+DROP TABLE IF EXISTS compliance_retention_policies;
+DROP TABLE IF EXISTS compliance_vault_entries;
+DROP TABLE IF EXISTS obs_alert_events;
+DROP TABLE IF EXISTS obs_pipeline_executions;
+DROP TABLE IF EXISTS obs_pipelines;
