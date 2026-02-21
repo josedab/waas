@@ -154,6 +154,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// AI-Powered Webhook Intelligence
 	intelligenceHandler := intelligence.NewHandler(s.intelligenceService)
 	intelligenceHandler.RegisterRoutes(protected)
+	intelligenceHandler.RegisterMLRoutes(protected)
 
 	// Visual Webhook Workflow Builder
 	flowbuilderHandler := flowbuilder.NewHandler(s.flowbuilderService)
