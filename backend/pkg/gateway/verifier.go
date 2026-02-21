@@ -56,6 +56,9 @@ func NewVerifierRegistry() *VerifierRegistry {
 	registry.Register(ProviderTypeCloudflare, &CloudflareVerifier{})
 	registry.Register(ProviderTypeFigma, &FigmaVerifier{})
 
+	// Register extended providers (26 more)
+	registerExtendedProviders(registry)
+
 	return registry
 }
 
