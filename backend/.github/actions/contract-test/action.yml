@@ -1,0 +1,125 @@
+name: 'WaaS Contract Test'
+description: 'Validate webhook payload contracts and block PRs on breaking changes'
+inputs:
+  api-url:
+    description: 'WaaS API URL'
+    required: true
+  api-key:
+    description: 'WaaS API key'
+    required: true
+  contract-id:
+    description: 'Contract ID to validate against'
+    required: true
+  payload-file:
+    description: 'Path to payload JSON file for validation'
+    required: false
+    default: ''
+  check-breaking:
+    description: 'Check for breaking schema changes'
+    required: false
+    default: 'true'
+  old-version:
+    description: 'Previous schema version for diff'
+    required: false
+    default: ''
+  new-version:
+    description: 'New schema version for diff'
+    required: false
+    default: ''
+  fail-on-breaking:
+    description: 'Fail the check if breaking changes are found'
+    required: false
+    default: 'true'
+  sarif-output:
+    description: 'Path to write SARIF report'
+    required: false
+    default: ''
+outputs:
+  passed:
+    description: 'Whether all validations passed'
+    value: ${{ steps.validate.outputs.passed }}
+  breaking-changes:
+    description: 'Whether breaking changes were detected'
+    value: ${{ steps.diff.outputs.breaking }}
+  sarif-file:
+    description: 'Path to generated SARIF report'
+    value: ${{ steps.validate.outputs.sarif-file }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download WaaS CLI
+      shell: bash
+      run: |
+        echo "::group::Setup WaaS CLI"
+        if ! command -v waas &> /dev/null; then
+          echo "WaaS CLI not found, building from source..."
+          cd ${{ github.workspace }}/backend
+          go build -o /usr/local/bin/waas ./cmd/waas-cli/
+        fi
+        waas version || echo "WaaS CLI ready"
+        echo "::endgroup::"
+
+    - name: Configure WaaS CLI
+      shell: bash
+      run: |
+        waas config set --api-url "${{ inputs.api-url }}" --api-key "${{ inputs.api-key }}"
+
+    - name: Validate Contract
+      id: validate
+      shell: bash
+      run: |
+        echo "::group::Contract Validation"
+        PASSED=true
+        SARIF_FILE=""
+
+        if [ -n "${{ inputs.payload-file }}" ]; then
+          if [ -n "${{ inputs.sarif-output }}" ]; then
+            SARIF_FILE="${{ inputs.sarif-output }}"
+            waas contracts test \
+              --contract "${{ inputs.contract-id }}" \
+              --payload "${{ inputs.payload-file }}" \
+              --format sarif > "$SARIF_FILE" 2>&1 || PASSED=false
+          else
+            waas contracts test \
+              --contract "${{ inputs.contract-id }}" \
+              --payload "${{ inputs.payload-file }}" \
+              --ci || PASSED=false
+          fi
+        fi
+
+        echo "passed=$PASSED" >> $GITHUB_OUTPUT
+        echo "sarif-file=$SARIF_FILE" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+
+        if [ "$PASSED" = "false" ]; then
+          echo "::error::Contract validation failed"
+          exit 1
+        fi
+
+    - name: Check Breaking Changes
+      id: diff
+      if: inputs.check-breaking == 'true' && inputs.old-version != '' && inputs.new-version != ''
+      shell: bash
+      run: |
+        echo "::group::Breaking Change Detection"
+        BREAKING=false
+        waas contracts diff \
+          --contract "${{ inputs.contract-id }}" \
+          --old-version "${{ inputs.old-version }}" \
+          --new-version "${{ inputs.new-version }}" || BREAKING=true
+
+        echo "breaking=$BREAKING" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+
+        if [ "$BREAKING" = "true" ] && [ "${{ inputs.fail-on-breaking }}" = "true" ]; then
+          echo "::error::Breaking schema changes detected"
+          exit 1
+        fi
+
+    - name: Upload SARIF
+      if: inputs.sarif-output != '' && always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.sarif-output }}
+        category: webhook-contracts

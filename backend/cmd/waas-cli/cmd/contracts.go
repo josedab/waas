@@ -72,6 +72,7 @@ var (
 	contractOldVersion string
 	contractNewVersion string
 	contractCI         bool
+	contractFormat     string
 )
 
 func init() {
@@ -99,6 +100,7 @@ func init() {
 	contractsTestCmd.Flags().StringVar(&contractID, "contract", "", "Contract ID")
 	contractsTestCmd.Flags().StringVar(&contractPayload, "payload", "", "Path to payload JSON file")
 	contractsTestCmd.Flags().BoolVar(&contractCI, "ci", false, "CI mode (machine-readable output)")
+	contractsTestCmd.Flags().StringVar(&contractFormat, "format", "text", "Output format (text, json, sarif)")
 }
 
 func contractsAPICall(method, path string, body interface{}) ([]byte, error) {
@@ -322,11 +324,18 @@ func runContractsTest(cmd *cobra.Command, args []string) error {
 	}
 	json.Unmarshal(contractBody, &contract)
 
-	if contractCI {
+	if contractCI && contractFormat != "sarif" {
 		fmt.Printf("::group::Contract Test: %s (%s)\n", contract.Name, contract.Version)
-	} else {
+	} else if contractFormat != "sarif" {
 		fmt.Printf("Testing contract: %s (%s)\n", contract.Name, contract.Version)
 	}
+
+	var violations []struct {
+		Path     string `json:"path"`
+		Message  string `json:"message"`
+		Severity string `json:"severity"`
+	}
+	passed := true
 
 	if contractPayload != "" {
 		payloadData, err := os.ReadFile(contractPayload)
@@ -353,35 +362,143 @@ func runContractsTest(cmd *cobra.Command, args []string) error {
 			} `json:"violations"`
 		}
 		json.Unmarshal(body, &result)
+		passed = result.Passed
+		violations = result.Violations
+	}
 
-		if result.Passed {
-			if contractCI {
-				fmt.Println("::notice::✅ Contract validation passed")
-			} else {
-				fmt.Println("  ✅ Payload validation: PASSED")
+	// SARIF output format
+	if contractFormat == "sarif" {
+		return outputSARIF(contract.Name, contract.Version, contractPayload, violations)
+	}
+
+	if passed {
+		if contractCI {
+			fmt.Println("::notice::✅ Contract validation passed")
+		} else {
+			fmt.Println("  ✅ Payload validation: PASSED")
+		}
+	} else {
+		if contractCI {
+			for _, v := range violations {
+				fmt.Printf("::error file=%s::%s: %s\n", contractPayload, v.Path, v.Message)
 			}
 		} else {
-			if contractCI {
-				for _, v := range result.Violations {
-					fmt.Printf("::error file=%s::%s: %s\n", contractPayload, v.Path, v.Message)
-				}
-			} else {
-				fmt.Println("  ❌ Payload validation: FAILED")
-				for _, v := range result.Violations {
-					fmt.Printf("    - [%s] %s: %s\n", v.Severity, v.Path, v.Message)
-				}
+			fmt.Println("  ❌ Payload validation: FAILED")
+			for _, v := range violations {
+				fmt.Printf("    - [%s] %s: %s\n", v.Severity, v.Path, v.Message)
 			}
-			if contractCI {
-				fmt.Println("::endgroup::")
-			}
-			return fmt.Errorf("contract test failed")
 		}
+		if contractCI {
+			fmt.Println("::endgroup::")
+		}
+		return fmt.Errorf("contract test failed")
 	}
 
 	if contractCI {
 		fmt.Println("::endgroup::")
 	}
+	return nil
+}
 
+// outputSARIF writes validation results in SARIF 2.1.0 format
+func outputSARIF(contractName, contractVersion, payloadFile string, violations []struct {
+	Path     string `json:"path"`
+	Message  string `json:"message"`
+	Severity string `json:"severity"`
+}) error {
+	type sarifMessage struct {
+		Text string `json:"text"`
+	}
+	type sarifArtifactLocation struct {
+		URI string `json:"uri"`
+	}
+	type sarifPhysicalLocation struct {
+		ArtifactLocation sarifArtifactLocation `json:"artifactLocation"`
+	}
+	type sarifLocation struct {
+		PhysicalLocation sarifPhysicalLocation `json:"physicalLocation"`
+	}
+	type sarifResult struct {
+		RuleID  string          `json:"ruleId"`
+		Level   string          `json:"level"`
+		Message sarifMessage    `json:"message"`
+		Locs    []sarifLocation `json:"locations,omitempty"`
+	}
+	type sarifRule struct {
+		ID               string       `json:"id"`
+		ShortDescription sarifMessage `json:"shortDescription"`
+	}
+	type sarifDriver struct {
+		Name  string      `json:"name"`
+		Rules []sarifRule `json:"rules"`
+	}
+	type sarifTool struct {
+		Driver sarifDriver `json:"driver"`
+	}
+	type sarifRun struct {
+		Tool    sarifTool     `json:"tool"`
+		Results []sarifResult `json:"results"`
+	}
+	type sarifReport struct {
+		Schema  string     `json:"$schema"`
+		Version string     `json:"version"`
+		Runs    []sarifRun `json:"runs"`
+	}
+
+	results := make([]sarifResult, 0, len(violations))
+	rulesMap := make(map[string]bool)
+	rules := make([]sarifRule, 0)
+
+	for i, v := range violations {
+		ruleID := fmt.Sprintf("contract-violation-%d", i+1)
+		level := "warning"
+		if v.Severity == "error" {
+			level = "error"
+		}
+
+		results = append(results, sarifResult{
+			RuleID:  ruleID,
+			Level:   level,
+			Message: sarifMessage{Text: fmt.Sprintf("%s: %s", v.Path, v.Message)},
+			Locs: []sarifLocation{{
+				PhysicalLocation: sarifPhysicalLocation{
+					ArtifactLocation: sarifArtifactLocation{URI: payloadFile},
+				},
+			}},
+		})
+
+		if !rulesMap[ruleID] {
+			rules = append(rules, sarifRule{
+				ID:               ruleID,
+				ShortDescription: sarifMessage{Text: fmt.Sprintf("Contract violation at %s", v.Path)},
+			})
+			rulesMap[ruleID] = true
+		}
+	}
+
+	report := sarifReport{
+		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+		Version: "2.1.0",
+		Runs: []sarifRun{{
+			Tool: sarifTool{
+				Driver: sarifDriver{
+					Name:  fmt.Sprintf("waas-contracts (%s %s)", contractName, contractVersion),
+					Rules: rules,
+				},
+			},
+			Results: results,
+		}},
+	}
+
+	data, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal SARIF: %w", err)
+	}
+	fmt.Println(string(data))
+
+	if len(violations) > 0 {
+		return fmt.Errorf("contract test failed with %d violations", len(violations))
+	}
 	return nil
 }
 
