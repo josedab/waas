@@ -38,6 +38,13 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		tt.POST("/blast-radius", h.AnalyzeBlastRadius)
 		tt.POST("/what-if", h.RunWhatIfScenario)
 		tt.GET("/what-if", h.ListWhatIfScenarios)
+
+		// Debugger routes
+		tt.POST("/debug/sessions", h.CreateDebugSession)
+		tt.GET("/events/:id/inspect", h.InspectEvent)
+		tt.POST("/debug/replay-modified", h.ReplayWithModification)
+		tt.GET("/debug/compare", h.CompareEvents)
+		tt.POST("/debug/sessions/:id/breakpoints", h.AddBreakpointHandler)
 	}
 }
 
