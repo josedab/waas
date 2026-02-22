@@ -44,6 +44,12 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 
 		// Spend
 		costs.GET("/spend/current", h.GetCurrentSpend)
+
+		// Cost Attribution
+		costs.POST("/attribution/record", h.RecordCostEvent)
+		costs.GET("/attribution/summary", h.GetTenantCostSummary)
+		costs.POST("/attribution/chargeback", h.GenerateChargebackReport)
+		costs.GET("/attribution/forecast", h.GetCostForecast)
 	}
 }
 
