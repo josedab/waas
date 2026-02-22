@@ -485,6 +485,11 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		dlq.PUT("/retention", h.UpdateRetentionPolicy)
 		dlq.POST("/export", h.ExportEntries)
 		dlq.GET("/search", h.SearchEntries)
+
+		// Root-cause analysis
+		dlq.GET("/entries/:id/root-cause", h.AnalyzeRootCause)
+		dlq.GET("/entries/:id/retry-recommendation", h.GetSmartRetryRecommendation)
+		dlq.GET("/endpoints/:endpoint_id/health", h.AnalyzeEndpointHealth)
 	}
 }
 
