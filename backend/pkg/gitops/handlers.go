@@ -33,6 +33,11 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 		gitops.POST("/drift/detect", h.DetectDrift)
 		gitops.GET("/drift", h.ListDriftReports)
 		gitops.GET("/drift/:id", h.GetDriftReport)
+
+		// Declarative Config (GitOps-driven)
+		gitops.POST("/declarative/validate", h.ValidateDeclarativeConfig)
+		gitops.POST("/declarative/apply", h.ApplyDeclarativeConfig)
+		gitops.GET("/declarative/:manifest_id/sync-state", h.GetSyncState)
 	}
 }
 
@@ -253,4 +258,58 @@ func (h *Handler) GetDriftReport(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, report)
+}
+
+// ValidateDeclarativeConfig validates a declarative YAML config.
+func (h *Handler) ValidateDeclarativeConfig(c *gin.Context) {
+	var req struct {
+		Content string `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	errors, err := h.service.ValidateDeclarativeConfig(c.Request.Context(), req.Content)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"valid": false, "errors": errors})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"valid": true})
+}
+
+// ApplyDeclarativeConfig applies a declarative YAML configuration.
+func (h *Handler) ApplyDeclarativeConfig(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	var req struct {
+		Content string `json:"content" binding:"required"`
+		DryRun  bool   `json:"dry_run"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		return
+	}
+
+	result, err := h.service.ApplyDeclarativeConfig(c.Request.Context(), tenantID, req.Content, req.DryRun)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "APPLY_FAILED", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// GetSyncState returns the sync state for a manifest.
+func (h *Handler) GetSyncState(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	manifestID := c.Param("manifest_id")
+
+	state, err := h.service.GetSyncState(c.Request.Context(), tenantID, manifestID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SYNC_STATE_ERROR", "message": err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, state)
 }
