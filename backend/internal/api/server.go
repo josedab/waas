@@ -23,6 +23,7 @@ import (
 	"github.com/josedab/waas/pkg/cloudmanaged"
 	"github.com/josedab/waas/pkg/collabdebug"
 	"github.com/josedab/waas/pkg/compliancecenter"
+	"github.com/josedab/waas/pkg/compliancevault"
 	"github.com/josedab/waas/pkg/contracts"
 	"github.com/josedab/waas/pkg/costengine"
 	"github.com/josedab/waas/pkg/costing"
@@ -53,12 +54,14 @@ import (
 	"github.com/josedab/waas/pkg/mtls"
 	"github.com/josedab/waas/pkg/multicloud"
 	"github.com/josedab/waas/pkg/observability"
+	"github.com/josedab/waas/pkg/obscodepipeline"
 	"github.com/josedab/waas/pkg/openapigen"
 	"github.com/josedab/waas/pkg/otel"
 	"github.com/josedab/waas/pkg/pipeline"
 	"github.com/josedab/waas/pkg/playground"
 	"github.com/josedab/waas/pkg/pluginmarket"
 	"github.com/josedab/waas/pkg/portal"
+	"github.com/josedab/waas/pkg/portalsdk"
 	"github.com/josedab/waas/pkg/prediction"
 	"github.com/josedab/waas/pkg/protocolgw"
 	"github.com/josedab/waas/pkg/protocols"
@@ -175,8 +178,11 @@ type Server struct {
 	playgroundService   *playground.Service
 	pipelineService     *pipeline.Service
 	// DLQ & Observability
-	dlqService        *dlq.Service
-	openapigenService *openapigen.Service
+	dlqService              *dlq.Service
+	openapigenService       *openapigen.Service
+	obscodepipelineService  *obscodepipeline.Service
+	compliancevaultService  *compliancevault.Service
+	portalsdkService        *portalsdk.Service
 }
 
 // NewServer constructs and wires the entire API server. Initialization
@@ -415,6 +421,15 @@ func NewServer() (*Server, error) {
 	pipelineRepo := pipeline.NewMemoryRepository()
 	pipelineService := pipeline.NewService(pipelineRepo)
 
+	// Observability-as-Code Pipeline
+	obscodepipelineService := obscodepipeline.NewService(nil)
+
+	// Compliance Vault
+	compliancevaultService := compliancevault.NewService(nil, nil)
+
+	// Portal SDK
+	portalsdkService := portalsdk.NewService(nil)
+
 	// ── Phase 9: HTTP layer (Gin router + middleware) ───────────────────
 	// Setup Gin with monitoring middleware
 	router := gin.New()
@@ -520,8 +535,11 @@ func NewServer() (*Server, error) {
 		whitelabelService:      whitelabelService,
 		playgroundService:      playgroundService,
 		pipelineService:        pipelineService,
-		dlqService:             dlqService,
-		openapigenService:      openapigenService,
+		dlqService:              dlqService,
+		openapigenService:       openapigenService,
+		obscodepipelineService:  obscodepipelineService,
+		compliancevaultService:  compliancevaultService,
+		portalsdkService:        portalsdkService,
 	}
 
 	server.setupRoutes()

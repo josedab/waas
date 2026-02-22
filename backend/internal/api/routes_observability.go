@@ -10,6 +10,7 @@ import (
 	"github.com/josedab/waas/pkg/cloudmanaged"
 	"github.com/josedab/waas/pkg/collabdebug"
 	"github.com/josedab/waas/pkg/compliancecenter"
+	"github.com/josedab/waas/pkg/compliancevault"
 	"github.com/josedab/waas/pkg/costengine"
 	"github.com/josedab/waas/pkg/dlq"
 	"github.com/josedab/waas/pkg/docgen"
@@ -24,10 +25,12 @@ import (
 	"github.com/josedab/waas/pkg/mobilesdk"
 	"github.com/josedab/waas/pkg/monetization"
 	"github.com/josedab/waas/pkg/multicloud"
+	"github.com/josedab/waas/pkg/obscodepipeline"
 	"github.com/josedab/waas/pkg/openapigen"
 	"github.com/josedab/waas/pkg/pipeline"
 	"github.com/josedab/waas/pkg/playground"
 	"github.com/josedab/waas/pkg/pluginmarket"
+	"github.com/josedab/waas/pkg/portalsdk"
 	"github.com/josedab/waas/pkg/prediction"
 	"github.com/josedab/waas/pkg/protocolgw"
 	"github.com/josedab/waas/pkg/remediation"
@@ -205,4 +208,16 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Delivery Pipeline Composition
 	pipelineHandler := pipeline.NewHandler(s.pipelineService)
 	pipelineHandler.RegisterRoutes(protected)
+
+	// Observability-as-Code Pipeline
+	obscodepipelineHandler := obscodepipeline.NewHandler(s.obscodepipelineService)
+	obscodepipelineHandler.RegisterRoutes(protected)
+
+	// Compliance Vault
+	compliancevaultHandler := compliancevault.NewHandler(s.compliancevaultService)
+	compliancevaultHandler.RegisterRoutes(protected)
+
+	// Portal SDK
+	portalsdkHandler := portalsdk.NewHandler(s.portalsdkService)
+	portalsdkHandler.RegisterRoutes(protected)
 }
