@@ -30,6 +30,13 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		configs.POST("/:endpointId/train", h.TrainModel)
 		configs.GET("/:endpointId/pattern", h.GetPattern)
 		configs.GET("/:endpointId/recommendation", h.GetRecommendation)
+
+		// Adaptive receiver-aware rate limiting
+		configs.POST("/adaptive", h.CreateAdaptiveConfig)
+		configs.GET("/adaptive/:endpointId", h.GetAdaptiveConfig)
+		configs.POST("/adaptive/record", h.RecordRecvDeliveryResult)
+		configs.GET("/adaptive/:endpointId/health", h.GetReceiverHealth)
+		configs.GET("/adaptive/:endpointId/stats", h.GetAdaptiveStats)
 	}
 
 	r.GET("/rate-limits/stats", h.GetStats)
