@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS edge_delivery_metrics;
+DROP TABLE IF EXISTS edge_dispatch_configs;
+DROP TABLE IF EXISTS cost_attributions;
+DROP TABLE IF EXISTS adaptive_receiver_health;
+DROP TABLE IF EXISTS adaptive_receiver_configs;
+DROP TABLE IF EXISTS catalog_discovered_events;
+DROP TABLE IF EXISTS timetravel_debug_sessions;
+DROP TABLE IF EXISTS dlq_root_cause_analyses;
+DROP TABLE IF EXISTS gitops_sync_states;
