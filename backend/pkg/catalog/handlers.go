@@ -48,6 +48,14 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 		catalog.GET("/event-types/:id/documentation", h.GetDocumentation)
 		catalog.PUT("/event-types/:id/documentation/:section", h.SaveDocumentation)
 		catalog.POST("/openapi-spec", h.GenerateOpenAPISpec)
+
+		// Auto-discovery
+		catalog.POST("/discovery/traffic", h.RecordTraffic)
+		catalog.GET("/discovery", h.ListDiscoveries)
+		catalog.GET("/discovery/summary", h.GetDiscoverySummary)
+		catalog.GET("/discovery/:event_type/schema", h.InferSchema)
+		catalog.POST("/discovery/promote", h.PromoteDiscovery)
+		catalog.POST("/discovery/:id/ignore", h.IgnoreDiscovery)
 	}
 }
 
