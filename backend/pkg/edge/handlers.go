@@ -44,6 +44,13 @@ func (h *Handler) RegisterRoutes(r gin.IRouter) {
 		// Runtime providers
 		edge.GET("/runtimes", h.ListRuntimes)
 		edge.GET("/regions", h.ListRegions)
+
+		// Edge Delivery Network
+		edge.POST("/dispatch/config", h.CreateEdgeDispatchConfig)
+		edge.GET("/dispatch/config", h.GetEdgeDispatchConfig)
+		edge.POST("/dispatch", h.DispatchWebhookEdge)
+		edge.POST("/dispatch/record", h.RecordEdgeDelivery)
+		edge.GET("/dispatch/overview", h.GetEdgeNetworkOverview)
 	}
 }
 
