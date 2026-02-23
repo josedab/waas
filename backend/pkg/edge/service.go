@@ -20,6 +20,7 @@ type Service struct {
 	mu        sync.RWMutex
 	config    *ServiceConfig
 	logger    *utils.Logger
+	dispatch  *edgeDispatchState
 }
 
 // ServiceConfig holds service configuration
@@ -53,6 +54,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 		providers: make(map[RuntimeType]RuntimeProvider),
 		config:    config,
 		logger:    utils.NewLogger("edge"),
+		dispatch:  newEdgeDispatchState(),
 	}
 }
 

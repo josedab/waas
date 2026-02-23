@@ -120,13 +120,21 @@ var globalEdgeDispatchState = &edgeDispatchState{
 	metrics: make(map[string]*EdgeDeliveryMetrics),
 }
 
-// resetEdgeDispatchState resets global state; used by tests to prevent state leakage.
-func resetEdgeDispatchState() {
-	globalEdgeDispatchState.mu.Lock()
-	defer globalEdgeDispatchState.mu.Unlock()
-	globalEdgeDispatchState.configs = make(map[string]*EdgeDispatchConfig)
-	globalEdgeDispatchState.metrics = make(map[string]*EdgeDeliveryMetrics)
-	globalEdgeDispatchState.results = nil
+// newEdgeDispatchState creates a fresh edgeDispatchState instance.
+func newEdgeDispatchState() *edgeDispatchState {
+	return &edgeDispatchState{
+		configs: make(map[string]*EdgeDispatchConfig),
+		metrics: make(map[string]*EdgeDeliveryMetrics),
+	}
+}
+
+// resetEdgeDispatchState resets the dispatch state; used by tests to prevent state leakage.
+func (s *Service) resetEdgeDispatchState() {
+	s.dispatch.mu.Lock()
+	defer s.dispatch.mu.Unlock()
+	s.dispatch.configs = make(map[string]*EdgeDispatchConfig)
+	s.dispatch.metrics = make(map[string]*EdgeDeliveryMetrics)
+	s.dispatch.results = nil
 }
 
 // CreateEdgeDispatchConfig creates or updates edge dispatch configuration for a tenant.
@@ -161,19 +169,19 @@ func (s *Service) CreateEdgeDispatchConfig(ctx context.Context, tenantID string,
 		config.MaxLatencyMs = 500
 	}
 
-	globalEdgeDispatchState.mu.Lock()
-	globalEdgeDispatchState.configs[tenantID] = config
-	globalEdgeDispatchState.mu.Unlock()
+	s.dispatch.mu.Lock()
+	s.dispatch.configs[tenantID] = config
+	s.dispatch.mu.Unlock()
 
 	return config, nil
 }
 
 // GetEdgeDispatchConfig returns the edge dispatch config for a tenant.
 func (s *Service) GetEdgeDispatchConfig(ctx context.Context, tenantID string) (*EdgeDispatchConfig, error) {
-	globalEdgeDispatchState.mu.RLock()
-	defer globalEdgeDispatchState.mu.RUnlock()
+	s.dispatch.mu.RLock()
+	defer s.dispatch.mu.RUnlock()
 
-	config, exists := globalEdgeDispatchState.configs[tenantID]
+	config, exists := s.dispatch.configs[tenantID]
 	if !exists {
 		return nil, fmt.Errorf("no edge dispatch config for tenant %s", tenantID)
 	}
@@ -186,9 +194,9 @@ func (s *Service) DispatchWebhook(ctx context.Context, tenantID string, req *Dis
 		return nil, fmt.Errorf("webhook_id and endpoint_url are required")
 	}
 
-	globalEdgeDispatchState.mu.RLock()
-	config := globalEdgeDispatchState.configs[tenantID]
-	globalEdgeDispatchState.mu.RUnlock()
+	s.dispatch.mu.RLock()
+	config := s.dispatch.configs[tenantID]
+	s.dispatch.mu.RUnlock()
 
 	strategy := DispatchStrategyLatency
 	if config != nil {
@@ -212,22 +220,22 @@ func (s *Service) DispatchWebhook(ctx context.Context, tenantID string, req *Dis
 	result.StatusCode = 200
 	result.Success = true
 
-	globalEdgeDispatchState.mu.Lock()
-	globalEdgeDispatchState.results = append(globalEdgeDispatchState.results, *result)
-	globalEdgeDispatchState.mu.Unlock()
+	s.dispatch.mu.Lock()
+	s.dispatch.results = append(s.dispatch.results, *result)
+	s.dispatch.mu.Unlock()
 
 	return result, nil
 }
 
 // RecordEdgeDelivery records a delivery result from an edge node.
 func (s *Service) RecordEdgeDelivery(ctx context.Context, tenantID string, req *RecordEdgeDeliveryRequest) error {
-	globalEdgeDispatchState.mu.Lock()
-	defer globalEdgeDispatchState.mu.Unlock()
+	s.dispatch.mu.Lock()
+	defer s.dispatch.mu.Unlock()
 
-	metrics, exists := globalEdgeDispatchState.metrics[req.NodeID]
+	metrics, exists := s.dispatch.metrics[req.NodeID]
 	if !exists {
 		metrics = &EdgeDeliveryMetrics{NodeID: req.NodeID}
-		globalEdgeDispatchState.metrics[req.NodeID] = metrics
+		s.dispatch.metrics[req.NodeID] = metrics
 	}
 
 	metrics.TotalDeliveries++
@@ -247,8 +255,8 @@ func (s *Service) RecordEdgeDelivery(ctx context.Context, tenantID string, req *
 
 // GetEdgeNetworkOverview returns a dashboard view of the edge network.
 func (s *Service) GetEdgeNetworkOverview(ctx context.Context, tenantID string) (*EdgeNetworkOverview, error) {
-	globalEdgeDispatchState.mu.RLock()
-	defer globalEdgeDispatchState.mu.RUnlock()
+	s.dispatch.mu.RLock()
+	defer s.dispatch.mu.RUnlock()
 
 	nodes := defaultEdgeNodeList()
 	overview := &EdgeNetworkOverview{
@@ -270,7 +278,7 @@ func (s *Service) GetEdgeNetworkOverview(ctx context.Context, tenantID string) (
 		overview.Regions = append(overview.Regions, region)
 	}
 
-	for _, metrics := range globalEdgeDispatchState.metrics {
+	for _, metrics := range s.dispatch.metrics {
 		overview.NodeMetricsList = append(overview.NodeMetricsList, *metrics)
 		deliveryCount += metrics.TotalDeliveries
 		totalLatency += metrics.AvgLatencyMs * float64(metrics.TotalDeliveries)
@@ -315,10 +323,10 @@ func (s *Service) selectNode(strategy string, receiverLat, receiverLon float64, 
 	case DispatchStrategyLoadBalance:
 		// Round-robin by selecting the node with fewest deliveries
 		sort.Slice(nodes, func(i, j int) bool {
-			globalEdgeDispatchState.mu.RLock()
-			defer globalEdgeDispatchState.mu.RUnlock()
-			mi := globalEdgeDispatchState.metrics[nodes[i].nodeID]
-			mj := globalEdgeDispatchState.metrics[nodes[j].nodeID]
+			s.dispatch.mu.RLock()
+			defer s.dispatch.mu.RUnlock()
+			mi := s.dispatch.metrics[nodes[i].nodeID]
+			mj := s.dispatch.metrics[nodes[j].nodeID]
 			var ci, cj int64
 			if mi != nil {
 				ci = mi.TotalDeliveries
