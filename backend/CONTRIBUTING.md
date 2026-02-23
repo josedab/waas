@@ -10,7 +10,7 @@ Thank you for contributing to the Webhook-as-a-Service platform.
 4. Run `make dev-setup` to start local infrastructure
 5. Run `make test` to confirm everything works
 
-> **VS Code tip:** Open the repo root in VS Code — curated settings in `.vscode/` and `backend/.vscode/` will be picked up automatically. If gopls has trouble finding packages, open `backend/` as the workspace root instead.
+> **VS Code tip:** Open the repo root in VS Code — curated settings in `.vscode/` and `backend/.vscode/` will be picked up automatically. If gopls has trouble finding packages, copy the Go workspace file: `cp go.work.example go.work` (it's gitignored).
 
 ## Development Workflow
 

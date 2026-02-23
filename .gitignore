@@ -24,6 +24,10 @@ coverage.out
 *.swp
 *.swo
 
+# Go workspace (copy go.work.example to go.work for IDE support from repo root)
+go.work
+go.work.sum
+
 # OS files
 .DS_Store
 Thumbs.db
