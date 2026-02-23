@@ -1,3 +1,10 @@
+# Integration Test Environment
+#
+# Usage: docker-compose -f docker-compose.test.yml up -d
+#
+# Isolated PostgreSQL and Redis instances for integration tests.
+# Uses different ports (5433, 6380) to avoid conflicts with dev containers.
+
 services:
   # PostgreSQL for testing
   postgres:

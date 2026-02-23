@@ -90,6 +90,16 @@ Start all services with Docker:
 make docker-up
 ```
 
+### Docker Compose Files
+
+| File | Purpose | Usage |
+|------|---------|-------|
+| `docker-compose.yml` | Local development (PostgreSQL + Redis) | `make docker-up` or `docker-compose up -d` |
+| `docker-compose.test.yml` | Isolated integration tests (ports 5433/6380) | `make test-integration` |
+| `docker-compose.prod.yml` | Production reference config | `docker-compose -f docker-compose.prod.yml up` |
+| `docker-compose.quickstart.yml` | Zero-config evaluation | `docker compose -f docker-compose.quickstart.yml up` |
+| `docker-compose.observability.yml` | Jaeger + Prometheus + Grafana | `docker-compose -f docker-compose.yml -f docker-compose.observability.yml up` |
+
 Or run individual services locally:
 ```bash
 make run-api        # API service on :8080

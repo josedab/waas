@@ -1,3 +1,10 @@
+# Local Development Environment
+#
+# Usage: docker-compose up -d
+#
+# Starts PostgreSQL and Redis for local development.
+# This is the default compose file used by `make docker-up`.
+
 services:
   postgres:
     image: postgres:15-alpine
