@@ -70,12 +70,14 @@ _ensure-golangci-lint:
 		case "$$ans" in [yY]*) go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest ;; *) echo "Aborted."; exit 1 ;; esac; \
 	}
 
+AIR_VERSION ?= v1.64.5
+
 _ensure-air:
 	@command -v air >/dev/null 2>&1 || { \
 		echo "Air is not installed. It enables hot-reload for Go services."; \
-		printf "Install via 'go install github.com/air-verse/air@latest'? [y/N] "; \
+		printf "Install via 'go install github.com/air-verse/air@$(AIR_VERSION)'? [y/N] "; \
 		read ans; \
-		case "$$ans" in [yY]*) go install github.com/air-verse/air@latest ;; *) echo "Aborted."; exit 1 ;; esac; \
+		case "$$ans" in [yY]*) go install github.com/air-verse/air@$(AIR_VERSION) ;; *) echo "Aborted."; exit 1 ;; esac; \
 	}
 
 dev: _ensure-air ## Run API service with hot-reload (requires Air)
@@ -99,8 +101,8 @@ test: ## Run core tests with coverage summary
 	@echo ""
 	@go tool cover -func=coverage.out | grep total: | awk '{printf "Coverage: %s\n", $$3}'
 	@COVERAGE=$$(go tool cover -func=coverage.out | grep total: | awk '{gsub(/%/,""); print $$3}'); \
-	if [ "$$(echo "$$COVERAGE < 50" | bc -l 2>/dev/null || echo 0)" = "1" ]; then \
-		echo "⚠️  WARNING: Coverage $${COVERAGE}% is below the 50% CI threshold."; \
+	if [ "$$(echo "$$COVERAGE < 70" | bc -l 2>/dev/null || echo 0)" = "1" ]; then \
+		echo "⚠️  WARNING: Coverage $${COVERAGE}% is below the 70% CI threshold."; \
 	fi
 	@echo "Detailed report: go tool cover -html=coverage.out"
 
@@ -261,7 +263,7 @@ ci-local: ## Run the full CI pipeline locally (fmt, vet, lint, test+coverage, bu
 	@go test -race -coverprofile=coverage.out -covermode=atomic ./pkg/... ./internal/...
 	@COVERAGE=$$(go tool cover -func=coverage.out | grep total: | awk '{print $$3}' | sed 's/%//'); \
 	echo "Total coverage: $${COVERAGE}%"; \
-	THRESHOLD=50; \
+	THRESHOLD=70; \
 	if [ "$$(echo "$$COVERAGE < $$THRESHOLD" | bc -l 2>/dev/null || echo 0)" = "1" ]; then \
 		echo "❌ Coverage $${COVERAGE}% is below the required $${THRESHOLD}% threshold"; \
 		exit 1; \
