@@ -26,6 +26,7 @@ import (
 	"github.com/josedab/waas/pkg/monetization"
 	"github.com/josedab/waas/pkg/multicloud"
 	"github.com/josedab/waas/pkg/obscodepipeline"
+	"github.com/josedab/waas/pkg/onboarding"
 	"github.com/josedab/waas/pkg/openapigen"
 	"github.com/josedab/waas/pkg/pipeline"
 	"github.com/josedab/waas/pkg/playground"
@@ -35,13 +36,22 @@ import (
 	"github.com/josedab/waas/pkg/protocolgw"
 	"github.com/josedab/waas/pkg/receiverdash"
 	"github.com/josedab/waas/pkg/nlbuilder"
+	"github.com/josedab/waas/pkg/dataplane"
+	"github.com/josedab/waas/pkg/deliveryreceipt"
 	"github.com/josedab/waas/pkg/depgraph"
 	"github.com/josedab/waas/pkg/e2ee"
+	"github.com/josedab/waas/pkg/eventcorrelation"
+	"github.com/josedab/waas/pkg/eventlineage"
+	"github.com/josedab/waas/pkg/experiment"
 	"github.com/josedab/waas/pkg/selfhealing"
 	"github.com/josedab/waas/pkg/loadtest"
 	"github.com/josedab/waas/pkg/routingpolicy"
 	"github.com/josedab/waas/pkg/schemachangelog"
+	"github.com/josedab/waas/pkg/sdkgen"
 	"github.com/josedab/waas/pkg/mobileinspector"
+	"github.com/josedab/waas/pkg/piidetection"
+	"github.com/josedab/waas/pkg/policyengine"
+	"github.com/josedab/waas/pkg/standardwebhooks"
 	"github.com/josedab/waas/pkg/topologysim"
 	"github.com/josedab/waas/pkg/remediation"
 	"github.com/josedab/waas/pkg/sandbox"
@@ -270,4 +280,44 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Topology Simulator
 	topologysimHandler := topologysim.NewHandler(s.topologysimService)
 	topologysimHandler.RegisterRoutes(protected)
+
+	// PII Detection & Payload Masking
+	piidetectionHandler := piidetection.NewHandler(s.piidetectionService)
+	piidetectionHandler.RegisterRoutes(protected)
+
+	// Standard Webhooks & CloudEvents Compliance
+	standardwebhooksHandler := standardwebhooks.NewHandler(s.standardwebhooksService)
+	standardwebhooksHandler.RegisterRoutes(protected)
+
+	// Programmable Policy Engine (OPA/Rego)
+	policyengineHandler := policyengine.NewHandler(s.policyengineService)
+	policyengineHandler.RegisterRoutes(protected)
+
+	// Webhook A/B Testing & Experimentation
+	experimentHandler := experiment.NewHandler(s.experimentService)
+	experimentHandler.RegisterRoutes(protected)
+
+	// Event Correlation & Complex Event Processing
+	eventcorrelationHandler := eventcorrelation.NewHandler(s.eventcorrelationService)
+	eventcorrelationHandler.RegisterRoutes(protected)
+
+	// Delivery Receipt & Processing Confirmation
+	deliveryreceiptHandler := deliveryreceipt.NewHandler(s.deliveryreceiptService)
+	deliveryreceiptHandler.RegisterRoutes(protected)
+
+	// Event Lineage & Provenance Tracker
+	eventlineageHandler := eventlineage.NewHandler(s.eventlineageService)
+	eventlineageHandler.RegisterRoutes(protected)
+
+	// Automated Consumer SDK Generation
+	sdkgenHandler := sdkgen.NewHandler(s.sdkgenService)
+	sdkgenHandler.RegisterRoutes(protected)
+
+	// Multi-Tenant Dedicated Data Planes
+	dataplaneHandler := dataplane.NewHandler(s.dataplaneService)
+	dataplaneHandler.RegisterRoutes(protected)
+
+	// Interactive Onboarding Wizard
+	onboardingHandler := onboarding.NewHandler(s.onboardingWizardService)
+	onboardingHandler.RegisterRoutes(protected)
 }

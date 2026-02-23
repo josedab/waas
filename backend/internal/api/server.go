@@ -28,12 +28,17 @@ import (
 	"github.com/josedab/waas/pkg/costengine"
 	"github.com/josedab/waas/pkg/costing"
 	"github.com/josedab/waas/pkg/database"
+	"github.com/josedab/waas/pkg/dataplane"
 	"github.com/josedab/waas/pkg/debugger"
+	"github.com/josedab/waas/pkg/deliveryreceipt"
 	"github.com/josedab/waas/pkg/dlq"
 	"github.com/josedab/waas/pkg/docgen"
 	"github.com/josedab/waas/pkg/edge"
 	"github.com/josedab/waas/pkg/embed"
 	"github.com/josedab/waas/pkg/eventmesh"
+	"github.com/josedab/waas/pkg/eventcorrelation"
+	"github.com/josedab/waas/pkg/eventlineage"
+	"github.com/josedab/waas/pkg/experiment"
 	"github.com/josedab/waas/pkg/fanout"
 	"github.com/josedab/waas/pkg/federation"
 	"github.com/josedab/waas/pkg/flow"
@@ -55,6 +60,7 @@ import (
 	"github.com/josedab/waas/pkg/multicloud"
 	"github.com/josedab/waas/pkg/observability"
 	"github.com/josedab/waas/pkg/obscodepipeline"
+	"github.com/josedab/waas/pkg/onboarding"
 	"github.com/josedab/waas/pkg/openapigen"
 	"github.com/josedab/waas/pkg/otel"
 	"github.com/josedab/waas/pkg/pipeline"
@@ -71,6 +77,9 @@ import (
 	"github.com/josedab/waas/pkg/routingpolicy"
 	"github.com/josedab/waas/pkg/schemachangelog"
 	"github.com/josedab/waas/pkg/mobileinspector"
+	"github.com/josedab/waas/pkg/piidetection"
+	"github.com/josedab/waas/pkg/policyengine"
+	"github.com/josedab/waas/pkg/standardwebhooks"
 	"github.com/josedab/waas/pkg/topologysim"
 	"github.com/josedab/waas/pkg/prediction"
 	"github.com/josedab/waas/pkg/protocolgw"
@@ -81,6 +90,7 @@ import (
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/sandbox"
 	"github.com/josedab/waas/pkg/schemaregistry"
+	"github.com/josedab/waas/pkg/sdkgen"
 	"github.com/josedab/waas/pkg/security"
 	"github.com/josedab/waas/pkg/signatures"
 	"github.com/josedab/waas/pkg/sla"
@@ -204,6 +214,18 @@ type Server struct {
 	schemachangelogService  *schemachangelog.Service
 	mobileinspectorService  *mobileinspector.Service
 	topologysimService      *topologysim.Service
+	// Next-gen features v9
+	piidetectionService     *piidetection.Service
+	standardwebhooksService *standardwebhooks.Service
+	policyengineService     *policyengine.Service
+	experimentService       *experiment.Service
+	// Next-gen features v10
+	eventcorrelationService *eventcorrelation.Service
+	deliveryreceiptService  *deliveryreceipt.Service
+	eventlineageService     *eventlineage.Service
+	sdkgenService           *sdkgen.Service
+	dataplaneService        *dataplane.Service
+	onboardingWizardService *onboarding.Service
 }
 
 // NewServer constructs and wires the entire API server. Initialization
@@ -491,6 +513,36 @@ func NewServer() (*Server, error) {
 	topologysimRepo := topologysim.NewMemoryRepository()
 	topologysimService := topologysim.NewService(topologysimRepo, nil)
 
+	// PII Detection & Masking Engine
+	piidetectionService := piidetection.NewService(nil)
+
+	// Standard Webhooks & CloudEvents
+	standardwebhooksService := standardwebhooks.NewService()
+
+	// Programmable Policy Engine (OPA/Rego)
+	policyengineService := policyengine.NewService(nil)
+
+	// Webhook A/B Testing & Experimentation
+	experimentService := experiment.NewService(nil)
+
+	// Event Correlation & Complex Event Processing
+	eventcorrelationService := eventcorrelation.NewService(nil)
+
+	// Delivery Receipt & Processing Confirmation
+	deliveryreceiptService := deliveryreceipt.NewService(nil)
+
+	// Event Lineage & Provenance Tracker
+	eventlineageService := eventlineage.NewService(nil)
+
+	// Automated Consumer SDK Generation
+	sdkgenService := sdkgen.NewService()
+
+	// Multi-Tenant Dedicated Data Planes
+	dataplaneService := dataplane.NewService(nil)
+
+	// Interactive Onboarding Wizard
+	onboardingWizardService := onboarding.NewService(nil)
+
 	// ── Phase 9: HTTP layer (Gin router + middleware) ───────────────────
 	// Setup Gin with monitoring middleware
 	router := gin.New()
@@ -611,6 +663,16 @@ func NewServer() (*Server, error) {
 		schemachangelogService:  schemachangelogService,
 		mobileinspectorService:  mobileinspectorService,
 		topologysimService:      topologysimService,
+		piidetectionService:     piidetectionService,
+		standardwebhooksService: standardwebhooksService,
+		policyengineService:     policyengineService,
+		experimentService:       experimentService,
+		eventcorrelationService: eventcorrelationService,
+		deliveryreceiptService:  deliveryreceiptService,
+		eventlineageService:     eventlineageService,
+		sdkgenService:           sdkgenService,
+		dataplaneService:        dataplaneService,
+		onboardingWizardService: onboardingWizardService,
 	}
 
 	server.setupRoutes()
