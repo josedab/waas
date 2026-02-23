@@ -11,12 +11,13 @@ import (
 
 // Service provides cost attribution functionality
 type Service struct {
-	repo Repository
+	repo    Repository
+	tracker *costTracker
 }
 
 // NewService creates a new cost engine service
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, tracker: newCostTracker()}
 }
 
 // CreateCostModel creates a new cost model

@@ -139,11 +139,18 @@ var globalCostTracker = &costTracker{
 	attributions: make(map[string]map[string]*CostAttributionEntry),
 }
 
-// resetCostTracker resets global state; used by tests to prevent state leakage.
-func resetCostTracker() {
-	globalCostTracker.mu.Lock()
-	defer globalCostTracker.mu.Unlock()
-	globalCostTracker.attributions = make(map[string]map[string]*CostAttributionEntry)
+// newCostTracker creates a fresh costTracker instance.
+func newCostTracker() *costTracker {
+	return &costTracker{
+		attributions: make(map[string]map[string]*CostAttributionEntry),
+	}
+}
+
+// resetCostTracker resets the cost tracker state; used by tests to prevent state leakage.
+func (s *Service) resetCostTracker() {
+	s.tracker.mu.Lock()
+	defer s.tracker.mu.Unlock()
+	s.tracker.attributions = make(map[string]map[string]*CostAttributionEntry)
 }
 
 // Default cost rates
@@ -160,13 +167,13 @@ func (s *Service) RecordCostEvent(ctx context.Context, tenantID string, req *Rec
 		return nil, fmt.Errorf("endpoint_id and event_type are required")
 	}
 
-	globalCostTracker.mu.Lock()
-	defer globalCostTracker.mu.Unlock()
+	s.tracker.mu.Lock()
+	defer s.tracker.mu.Unlock()
 
-	tenantMap, exists := globalCostTracker.attributions[tenantID]
+	tenantMap, exists := s.tracker.attributions[tenantID]
 	if !exists {
 		tenantMap = make(map[string]*CostAttributionEntry)
-		globalCostTracker.attributions[tenantID] = tenantMap
+		s.tracker.attributions[tenantID] = tenantMap
 	}
 
 	now := time.Now()
@@ -209,15 +216,15 @@ func (s *Service) RecordCostEvent(ctx context.Context, tenantID string, req *Rec
 
 // GetTenantCostSummary generates a cost summary for a tenant.
 func (s *Service) GetTenantCostSummary(ctx context.Context, tenantID, period string) (*TenantCostSummary, error) {
-	globalCostTracker.mu.RLock()
-	defer globalCostTracker.mu.RUnlock()
+	s.tracker.mu.RLock()
+	defer s.tracker.mu.RUnlock()
 
 	summary := &TenantCostSummary{
 		TenantID: tenantID,
 		Period:   period,
 	}
 
-	tenantMap, exists := globalCostTracker.attributions[tenantID]
+	tenantMap, exists := s.tracker.attributions[tenantID]
 	if !exists {
 		return summary, nil
 	}
@@ -290,8 +297,8 @@ func (s *Service) GenerateChargebackReport(ctx context.Context, tenantID string,
 		return nil, fmt.Errorf("invalid period_end format: use YYYY-MM-DD")
 	}
 
-	globalCostTracker.mu.RLock()
-	defer globalCostTracker.mu.RUnlock()
+	s.tracker.mu.RLock()
+	defer s.tracker.mu.RUnlock()
 
 	report := &ChargebackReport{
 		ID:          uuid.New().String(),
@@ -301,7 +308,7 @@ func (s *Service) GenerateChargebackReport(ctx context.Context, tenantID string,
 		GeneratedAt: time.Now(),
 	}
 
-	tenantMap := globalCostTracker.attributions[tenantID]
+	tenantMap := s.tracker.attributions[tenantID]
 
 	var totalDeliveries, totalRetries int64
 	var totalBandwidth float64
