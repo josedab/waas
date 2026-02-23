@@ -170,8 +170,10 @@ func runDeliveryInspect(cmd *cobra.Command, args []string) error {
 			fmt.Println("  Payload:")
 			var pretty json.RawMessage
 			if err := json.Unmarshal(detail.Request.Payload, &pretty); err == nil {
-				formatted, _ := json.MarshalIndent(pretty, "    ", "  ")
-				fmt.Printf("    %s\n", string(formatted))
+				formatted, err := json.MarshalIndent(pretty, "    ", "  ")
+				if err == nil {
+					fmt.Printf("    %s\n", string(formatted))
+				}
 			}
 		}
 	}

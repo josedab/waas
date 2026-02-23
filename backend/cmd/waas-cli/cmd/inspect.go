@@ -30,7 +30,10 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create inspect request: %w", err)
+	}
 	req.Header.Set("X-API-Key", apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -39,7 +42,10 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read inspect response: %w", err)
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("inspect failed (HTTP %d): %s", resp.StatusCode, string(body))
@@ -104,7 +110,11 @@ func prettyPrintJSON(s string) {
 		fmt.Printf("    %s\n", s)
 		return
 	}
-	pretty, _ := json.MarshalIndent(obj, "    ", "  ")
+	pretty, err := json.MarshalIndent(obj, "    ", "  ")
+	if err != nil {
+		fmt.Printf("    %s\n", s)
+		return
+	}
 	for _, line := range strings.Split(string(pretty), "\n") {
 		fmt.Printf("    %s\n", line)
 	}

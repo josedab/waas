@@ -60,9 +60,15 @@ func runTunnel(cmd *cobra.Command, args []string) error {
 	payload := map[string]interface{}{
 		"ttl_seconds": 3600,
 	}
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal tunnel payload: %w", err)
+	}
 
-	req, _ := http.NewRequest("POST", createURL, bytes.NewReader(body))
+	req, err := http.NewRequest("POST", createURL, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create tunnel request: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-API-Key", apiKey)
 
@@ -72,13 +78,18 @@ func runTunnel(cmd *cobra.Command, args []string) error {
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read tunnel response: %w", err)
+	}
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to create endpoint (HTTP %d): %s", resp.StatusCode, string(respBody))
 	}
 
 	var endpoint map[string]interface{}
-	json.Unmarshal(respBody, &endpoint)
+	if err := json.Unmarshal(respBody, &endpoint); err != nil {
+		return fmt.Errorf("failed to parse endpoint response: %w", err)
+	}
 
 	endpointID, _ := endpoint["id"].(string)
 	endpointURL, _ := endpoint["url"].(string)
@@ -187,7 +198,12 @@ func tunnelStreamWS(endpointID, localTarget string, delivered, failed *uint64) {
 		ts := time.Now().Format("15:04:05")
 		if len(event.Payload) > 0 {
 			localURL := localTarget
-			localReq, _ := http.NewRequest("POST", localURL, bytes.NewReader(event.Payload))
+			localReq, err := http.NewRequest("POST", localURL, bytes.NewReader(event.Payload))
+			if err != nil {
+				atomic.AddUint64(failed, 1)
+				fmt.Printf("   [%s] \033[31m✗\033[0m failed to create request: %v\n", ts, err)
+				continue
+			}
 			localReq.Header.Set("Content-Type", "application/json")
 			localReq.Header.Set("X-WaaS-Delivery-ID", event.DeliveryID)
 
@@ -212,7 +228,10 @@ func tunnelForwardWebhooks(endpointID, localTarget string, delivered, failed *ui
 	if err != nil {
 		return
 	}
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return
+	}
 	req.Header.Set("X-API-Key", apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -225,7 +244,10 @@ func tunnelForwardWebhooks(endpointID, localTarget string, delivered, failed *ui
 		return
 	}
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
 	var result struct {
 		Receives []struct {
 			ID      string            `json:"id"`
@@ -239,7 +261,13 @@ func tunnelForwardWebhooks(endpointID, localTarget string, delivered, failed *ui
 	}
 
 	for _, recv := range result.Receives {
-		localReq, _ := http.NewRequest(recv.Method, localTarget, bytes.NewBufferString(recv.Body))
+		localReq, err := http.NewRequest(recv.Method, localTarget, bytes.NewBufferString(recv.Body))
+		if err != nil {
+			atomic.AddUint64(failed, 1)
+			fmt.Printf("   [%s] \033[31m✗\033[0m failed to create request: %v\n",
+				time.Now().Format("15:04:05"), err)
+			continue
+		}
 		for k, v := range recv.Headers {
 			localReq.Header.Set(k, v)
 		}

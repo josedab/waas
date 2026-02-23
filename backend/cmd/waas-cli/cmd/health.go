@@ -35,7 +35,11 @@ func runHealth(cmd *cobra.Command, args []string) error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("❌ Failed to read health response: %v\n", err)
+		return err
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("❌ API unhealthy (HTTP %d)\n", resp.StatusCode)
@@ -43,7 +47,10 @@ func runHealth(cmd *cobra.Command, args []string) error {
 	}
 
 	var health map[string]interface{}
-	json.Unmarshal(body, &health)
+	if err := json.Unmarshal(body, &health); err != nil {
+		fmt.Printf("✅ API healthy (%s, %dms) — could not parse response\n", getAPIURL(), latency.Milliseconds())
+		return nil
+	}
 
 	fmt.Printf("✅ API healthy (%s, %dms)\n", getAPIURL(), latency.Milliseconds())
 

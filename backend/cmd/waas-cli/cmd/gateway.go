@@ -63,15 +63,15 @@ Examples:
 }
 
 var (
-	gwProvider       string
-	gwSecret         string
-	gwPayloadFile    string
-	gwPayloadInline  string
-	gwInline         bool
-	gwHeaders        string
-	gwHeadersFile    string
-	gwSigHeader      string
-	gwAlgorithm      string
+	gwProvider      string
+	gwSecret        string
+	gwPayloadFile   string
+	gwPayloadInline string
+	gwInline        bool
+	gwHeaders       string
+	gwHeadersFile   string
+	gwSigHeader     string
+	gwAlgorithm     string
 )
 
 func init() {
@@ -95,8 +95,8 @@ func init() {
 
 // Provider metadata for display
 type providerInfo struct {
-	Name     string
-	Type     string
+	Name      string
+	Type      string
 	SigHeader string
 	Algorithm string
 }
@@ -162,7 +162,10 @@ func runGatewayProviders(cmd *cobra.Command, args []string) error {
 	providers := getSupportedProviders()
 
 	if output == "json" {
-		data, _ := json.MarshalIndent(providers, "", "  ")
+		data, err := json.MarshalIndent(providers, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal providers: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}
@@ -268,28 +271,28 @@ func runGatewayDetect(cmd *cobra.Command, args []string) error {
 
 	// Auto-detection logic matching pkg/gateway/providers_extended.go
 	headerSignatures := map[string]string{
-		"Stripe-Signature":                       "stripe",
-		"X-Hub-Signature-256":                    "github",
-		"X-Shopify-Hmac-Sha256":                  "shopify",
-		"X-Twilio-Signature":                     "twilio",
-		"X-Slack-Signature":                      "slack",
-		"Paddle-Signature":                       "paddle",
-		"Linear-Signature":                       "linear",
-		"X-Signature-Ed25519":                    "discord",
-		"X-Gitlab-Token":                         "gitlab",
-		"X-Zm-Signature":                         "zoom",
-		"X-Square-Hmacsha256-Signature":          "square",
-		"X-Hubspot-Signature-V3":                 "hubspot",
-		"X-Pagerduty-Signature":                  "pagerduty",
-		"X-Zendesk-Webhook-Signature":            "zendesk",
-		"Cf-Webhook-Auth":                        "cloudflare",
-		"X-Figma-Signature":                      "figma",
-		"X-Amz-Ce-Signature":                     "aws_eventbridge",
-		"Dd-Webhook-Signature":                   "datadog",
-		"X-Vercel-Signature":                     "vercel",
-		"Sentry-Hook-Signature":                  "sentry",
-		"Circleci-Signature":                     "circleci",
-		"X-Salesforce-Signature":                 "salesforce",
+		"Stripe-Signature":              "stripe",
+		"X-Hub-Signature-256":           "github",
+		"X-Shopify-Hmac-Sha256":         "shopify",
+		"X-Twilio-Signature":            "twilio",
+		"X-Slack-Signature":             "slack",
+		"Paddle-Signature":              "paddle",
+		"Linear-Signature":              "linear",
+		"X-Signature-Ed25519":           "discord",
+		"X-Gitlab-Token":                "gitlab",
+		"X-Zm-Signature":                "zoom",
+		"X-Square-Hmacsha256-Signature": "square",
+		"X-Hubspot-Signature-V3":        "hubspot",
+		"X-Pagerduty-Signature":         "pagerduty",
+		"X-Zendesk-Webhook-Signature":   "zendesk",
+		"Cf-Webhook-Auth":               "cloudflare",
+		"X-Figma-Signature":             "figma",
+		"X-Amz-Ce-Signature":            "aws_eventbridge",
+		"Dd-Webhook-Signature":          "datadog",
+		"X-Vercel-Signature":            "vercel",
+		"Sentry-Hook-Signature":         "sentry",
+		"Circleci-Signature":            "circleci",
+		"X-Salesforce-Signature":        "salesforce",
 	}
 
 	detected := []string{}
@@ -306,7 +309,10 @@ func runGatewayDetect(cmd *cobra.Command, args []string) error {
 			"detected_providers": detected,
 			"headers_analyzed":   len(headers),
 		}
-		data, _ := json.MarshalIndent(result, "", "  ")
+		data, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal detection result: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil
 	}
