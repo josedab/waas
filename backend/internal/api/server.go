@@ -62,6 +62,16 @@ import (
 	"github.com/josedab/waas/pkg/pluginmarket"
 	"github.com/josedab/waas/pkg/portal"
 	"github.com/josedab/waas/pkg/portalsdk"
+	"github.com/josedab/waas/pkg/receiverdash"
+	"github.com/josedab/waas/pkg/nlbuilder"
+	"github.com/josedab/waas/pkg/depgraph"
+	"github.com/josedab/waas/pkg/e2ee"
+	"github.com/josedab/waas/pkg/selfhealing"
+	"github.com/josedab/waas/pkg/loadtest"
+	"github.com/josedab/waas/pkg/routingpolicy"
+	"github.com/josedab/waas/pkg/schemachangelog"
+	"github.com/josedab/waas/pkg/mobileinspector"
+	"github.com/josedab/waas/pkg/topologysim"
 	"github.com/josedab/waas/pkg/prediction"
 	"github.com/josedab/waas/pkg/protocolgw"
 	"github.com/josedab/waas/pkg/protocols"
@@ -183,6 +193,17 @@ type Server struct {
 	obscodepipelineService  *obscodepipeline.Service
 	compliancevaultService  *compliancevault.Service
 	portalsdkService        *portalsdk.Service
+	// Next-gen features v8
+	receiverdashService     *receiverdash.Service
+	nlbuilderService        *nlbuilder.Service
+	depgraphService         *depgraph.Service
+	e2eeService             *e2ee.Service
+	selfhealingService      *selfhealing.Service
+	loadtestService         *loadtest.Service
+	routingpolicyService    *routingpolicy.Service
+	schemachangelogService  *schemachangelog.Service
+	mobileinspectorService  *mobileinspector.Service
+	topologysimService      *topologysim.Service
 }
 
 // NewServer constructs and wires the entire API server. Initialization
@@ -430,6 +451,46 @@ func NewServer() (*Server, error) {
 	// Portal SDK
 	portalsdkService := portalsdk.NewService(nil)
 
+	// Receiver Dashboard
+	receiverdashRepo := receiverdash.NewMemoryRepository()
+	receiverdashService := receiverdash.NewService(receiverdashRepo, nil)
+
+	// NL Webhook Builder
+	nlbuilderRepo := nlbuilder.NewMemoryRepository()
+	nlbuilderService := nlbuilder.NewService(nlbuilderRepo, nil, nil)
+
+	// Dependency Graph
+	depgraphRepo := depgraph.NewMemoryRepository()
+	depgraphService := depgraph.NewService(depgraphRepo, nil)
+
+	// E2EE
+	e2eeRepo := e2ee.NewMemoryRepository()
+	e2eeService := e2ee.NewService(e2eeRepo, nil)
+
+	// Self-Healing
+	selfhealingRepo := selfhealing.NewMemoryRepository()
+	selfhealingService := selfhealing.NewService(selfhealingRepo, nil)
+
+	// Load Testing
+	loadtestRepo := loadtest.NewMemoryRepository()
+	loadtestService := loadtest.NewService(loadtestRepo, nil)
+
+	// Routing Policies
+	routingpolicyRepo := routingpolicy.NewMemoryRepository()
+	routingpolicyService := routingpolicy.NewService(routingpolicyRepo, nil)
+
+	// Schema Changelog
+	schemachangelogRepo := schemachangelog.NewMemoryRepository()
+	schemachangelogService := schemachangelog.NewService(schemachangelogRepo)
+
+	// Mobile Inspector
+	mobileinspectorRepo := mobileinspector.NewMemoryRepository()
+	mobileinspectorService := mobileinspector.NewService(mobileinspectorRepo, nil)
+
+	// Topology Simulator
+	topologysimRepo := topologysim.NewMemoryRepository()
+	topologysimService := topologysim.NewService(topologysimRepo, nil)
+
 	// ── Phase 9: HTTP layer (Gin router + middleware) ───────────────────
 	// Setup Gin with monitoring middleware
 	router := gin.New()
@@ -540,6 +601,16 @@ func NewServer() (*Server, error) {
 		obscodepipelineService:  obscodepipelineService,
 		compliancevaultService:  compliancevaultService,
 		portalsdkService:        portalsdkService,
+		receiverdashService:     receiverdashService,
+		nlbuilderService:        nlbuilderService,
+		depgraphService:         depgraphService,
+		e2eeService:             e2eeService,
+		selfhealingService:      selfhealingService,
+		loadtestService:         loadtestService,
+		routingpolicyService:    routingpolicyService,
+		schemachangelogService:  schemachangelogService,
+		mobileinspectorService:  mobileinspectorService,
+		topologysimService:      topologysimService,
 	}
 
 	server.setupRoutes()

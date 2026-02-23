@@ -33,6 +33,16 @@ import (
 	"github.com/josedab/waas/pkg/portalsdk"
 	"github.com/josedab/waas/pkg/prediction"
 	"github.com/josedab/waas/pkg/protocolgw"
+	"github.com/josedab/waas/pkg/receiverdash"
+	"github.com/josedab/waas/pkg/nlbuilder"
+	"github.com/josedab/waas/pkg/depgraph"
+	"github.com/josedab/waas/pkg/e2ee"
+	"github.com/josedab/waas/pkg/selfhealing"
+	"github.com/josedab/waas/pkg/loadtest"
+	"github.com/josedab/waas/pkg/routingpolicy"
+	"github.com/josedab/waas/pkg/schemachangelog"
+	"github.com/josedab/waas/pkg/mobileinspector"
+	"github.com/josedab/waas/pkg/topologysim"
 	"github.com/josedab/waas/pkg/remediation"
 	"github.com/josedab/waas/pkg/sandbox"
 	"github.com/josedab/waas/pkg/schemaregistry"
@@ -220,4 +230,44 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Portal SDK
 	portalsdkHandler := portalsdk.NewHandler(s.portalsdkService)
 	portalsdkHandler.RegisterRoutes(protected)
+
+	// Receiver Dashboard
+	receiverdashHandler := receiverdash.NewHandler(s.receiverdashService)
+	receiverdashHandler.RegisterRoutes(protected)
+
+	// NL Webhook Builder
+	nlbuilderHandler := nlbuilder.NewHandler(s.nlbuilderService)
+	nlbuilderHandler.RegisterRoutes(protected)
+
+	// Dependency Graph & Impact Analysis
+	depgraphHandler := depgraph.NewHandler(s.depgraphService)
+	depgraphHandler.RegisterRoutes(protected)
+
+	// E2EE Payloads
+	e2eeHandler := e2ee.NewHandler(s.e2eeService)
+	e2eeHandler.RegisterRoutes(protected)
+
+	// Self-Healing Endpoint Discovery
+	selfhealingHandler := selfhealing.NewHandler(s.selfhealingService)
+	selfhealingHandler.RegisterRoutes(protected)
+
+	// Load Testing Suite
+	loadtestHandler := loadtest.NewHandler(s.loadtestService)
+	loadtestHandler.RegisterRoutes(protected)
+
+	// Routing Policies
+	routingpolicyHandler := routingpolicy.NewHandler(s.routingpolicyService)
+	routingpolicyHandler.RegisterRoutes(protected)
+
+	// Schema Changelog
+	schemachangelogHandler := schemachangelog.NewHandler(s.schemachangelogService)
+	schemachangelogHandler.RegisterRoutes(protected)
+
+	// Mobile Inspector
+	mobileinspectorHandler := mobileinspector.NewHandler(s.mobileinspectorService)
+	mobileinspectorHandler.RegisterRoutes(protected)
+
+	// Topology Simulator
+	topologysimHandler := topologysim.NewHandler(s.topologysimService)
+	topologysimHandler.RegisterRoutes(protected)
 }
