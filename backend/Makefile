@@ -2,10 +2,10 @@
        docker-up docker-down docker-build \
        migrate-up migrate-down migrate-core migrate-status migrate-reset migrate-rollback dev-setup dev-setup-full ensure-env deps \
        docs docs-generate docs-serve docs-test open-docs \
-       lint lint-fast fmt fmt-fix fix vet help validate-setup ci-local \
-       smoke-test run-all run-dashboard \
+       lint lint-fast fmt fmt-fix fix vet profile help validate-setup ci-local \
+       smoke-test run-all run-dashboard logs \
        install-hooks uninstall-hooks \
-       test-coverage test-status test-stubs new-pkg audit-deps validate-env \
+       test-coverage test-status test-stubs test-single new-pkg audit-deps validate-env \
        dev dev-all dev-logs check seed quickstart _ensure-air _ensure-golangci-lint doctor
 
 # Configuration — DATABASE_URL must be set in the environment or .env file.
@@ -126,6 +126,14 @@ test-watch: ## Watch for changes and re-run tests (requires entr or fswatch)
 		exit 1; \
 	fi
 
+test-single: ## Run a single test (usage: make test-single TEST=TestName PKG=./pkg/auth)
+	@if [ -z "$(TEST)" ]; then \
+		echo "Usage: make test-single TEST=TestName [PKG=./pkg/auth/...]"; \
+		echo "Example: make test-single TEST=TestCreateTenant PKG=./pkg/auth/..."; \
+		exit 1; \
+	fi
+	go test -v -run $(TEST) $(or $(PKG),./...)
+
 test-coverage: ## Run tests with per-package coverage breakdown
 	@echo "Running tests with per-package coverage..."
 	@go test -short -coverprofile=coverage.out ./internal/... ./pkg/...
@@ -245,6 +253,16 @@ fix: fmt-fix ## Auto-format and tidy modules
 vet: ## Run go vet
 	go vet ./...
 
+profile: ## Run CPU profile and open pprof in browser (usage: make profile [PKG=./pkg/auth] [BENCH=.])
+	@echo "Running CPU profile..."
+	@PKG=$(or $(PKG),./pkg/...); \
+	BENCH=$(or $(BENCH),.); \
+	go test -bench=$$BENCH -cpuprofile=cpu.prof -benchmem $$PKG; \
+	echo ""; \
+	echo "Profile saved to cpu.prof"; \
+	echo "Opening pprof web UI..."; \
+	go tool pprof -http=:6060 cpu.prof
+
 check: fmt vet lint test ## Run all quality gates: fmt, vet, lint, test
 
 ci-local: ## Run the full CI pipeline locally (fmt, vet, lint, test+coverage, build, env check)
@@ -315,6 +333,9 @@ docker-build: ## Build Docker images
 up: docker-up ## Alias for docker-up
 
 down: docker-down ## Alias for docker-down
+
+logs: ## Stream logs from development containers
+	docker-compose logs -f
 
 # Database migrations (uses Docker image if local migrate CLI is not installed)
 _require-db-url:

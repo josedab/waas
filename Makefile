@@ -54,7 +54,7 @@ dev-logs: ## Run all services with colored log output
 	$(MAKE) -C $(BACKEND) dev-logs
 
 # ─── Testing & quality ──────────────────────────────────────────────
-.PHONY: test test-all test-watch test-coverage test-integration test-pkg test-stubs new-pkg lint lint-fast fmt fmt-fix fix vet check ci-local
+.PHONY: test test-all test-watch test-coverage test-integration test-pkg test-single test-stubs new-pkg lint lint-fast fmt fmt-fix fix vet check ci-local
 
 test: ## Run core tests with coverage summary
 	$(MAKE) -C $(BACKEND) test
@@ -80,6 +80,9 @@ test-integration: ## Integration tests in Docker
 test-pkg: ## Run tests for a single package (usage: make test-pkg PKG=./pkg/auth)
 	$(MAKE) -C $(BACKEND) -f Makefile.test test-pkg PKG=$(PKG)
 
+test-single: ## Run a single test (usage: make test-single TEST=TestName PKG=./pkg/auth)
+	$(MAKE) -C $(BACKEND) test-single TEST=$(TEST) PKG=$(PKG)
+
 lint: ## Run golangci-lint
 	$(MAKE) -C $(BACKEND) lint
 
@@ -103,6 +106,12 @@ check: ## Run all quality gates (fmt, vet, lint, test)
 
 ci-local: ## Mirror the full CI pipeline locally
 	$(MAKE) -C $(BACKEND) ci-local
+
+# ─── Profiling ──────────────────────────────────────────────────────
+.PHONY: profile
+
+profile: ## Run CPU profile and open pprof (usage: make profile PKG=./pkg/auth BENCH=.)
+	$(MAKE) -C $(BACKEND) profile PKG=$(PKG) BENCH=$(BENCH)
 
 # ─── Build ──────────────────────────────────────────────────────────
 .PHONY: build build-check clean
@@ -135,7 +144,7 @@ migrate-reset: ## Drop all and re-run migrations (DESTRUCTIVE)
 	$(MAKE) -C $(BACKEND) migrate-reset
 
 # ─── Docker ─────────────────────────────────────────────────────────
-.PHONY: docker-up docker-down docker-build up down
+.PHONY: docker-up docker-down docker-build up down logs
 
 docker-up: ## Start development containers (PostgreSQL + Redis)
 	$(MAKE) -C $(BACKEND) docker-up
@@ -148,6 +157,9 @@ docker-build: ## Build Docker images
 
 up: docker-up ## Alias for docker-up
 down: docker-down ## Alias for docker-down
+
+logs: ## Stream logs from development containers
+	$(MAKE) -C $(BACKEND) logs
 
 # ─── Documentation ──────────────────────────────────────────────────
 .PHONY: docs docs-serve open-docs smoke-test seed quickstart
