@@ -97,10 +97,22 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 
 // SaveDevice saves a push device
 func (r *PostgresRepository) SaveDevice(ctx context.Context, device *PushDevice) error {
-	deviceInfoJSON, _ := json.Marshal(device.DeviceInfo)
-	prefsJSON, _ := json.Marshal(device.Preferences)
-	tagsJSON, _ := json.Marshal(device.Tags)
-	metadataJSON, _ := json.Marshal(device.Metadata)
+	deviceInfoJSON, err := json.Marshal(device.DeviceInfo)
+	if err != nil {
+		return fmt.Errorf("marshal device info: %w", err)
+	}
+	prefsJSON, err := json.Marshal(device.Preferences)
+	if err != nil {
+		return fmt.Errorf("marshal preferences: %w", err)
+	}
+	tagsJSON, err := json.Marshal(device.Tags)
+	if err != nil {
+		return fmt.Errorf("marshal tags: %w", err)
+	}
+	metadataJSON, err := json.Marshal(device.Metadata)
+	if err != nil {
+		return fmt.Errorf("marshal metadata: %w", err)
+	}
 
 	query := `
 		INSERT INTO push_devices (
@@ -119,7 +131,7 @@ func (r *PostgresRepository) SaveDevice(ctx context.Context, device *PushDevice)
 			last_active_at = EXCLUDED.last_active_at,
 			updated_at = EXCLUDED.updated_at`
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = r.db.ExecContext(ctx, query,
 		device.ID, device.TenantID, device.UserID, device.Platform, device.PushToken,
 		deviceInfoJSON, device.Status, prefsJSON, tagsJSON, metadataJSON,
 		device.LastActiveAt, device.RegisteredAt, device.UpdatedAt)

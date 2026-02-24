@@ -78,8 +78,14 @@ func (r *PostgresRepository) GetWorkflow(ctx context.Context, id string) (*Workf
 	if err != nil {
 		return nil, err
 	}
-	w.Nodes, _ = r.GetNodes(ctx, id)
-	w.Edges, _ = r.GetEdges(ctx, id)
+	w.Nodes, err = r.GetNodes(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetch workflow nodes: %w", err)
+	}
+	w.Edges, err = r.GetEdges(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("fetch workflow edges: %w", err)
+	}
 	return &w, nil
 }
 
@@ -132,7 +138,9 @@ func (r *PostgresRepository) ListWorkflows(ctx context.Context, tenantID string,
 }
 
 func (r *PostgresRepository) SaveNodes(ctx context.Context, workflowID string, nodes []WorkflowNode) error {
-	_, _ = r.db.ExecContext(ctx, `DELETE FROM flow_nodes WHERE workflow_id = $1`, workflowID)
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM flow_nodes WHERE workflow_id = $1`, workflowID); err != nil {
+		return fmt.Errorf("delete existing nodes: %w", err)
+	}
 	for _, node := range nodes {
 		if node.ID == "" {
 			node.ID = uuid.New().String()
@@ -168,7 +176,9 @@ func (r *PostgresRepository) GetNodes(ctx context.Context, workflowID string) ([
 }
 
 func (r *PostgresRepository) SaveEdges(ctx context.Context, workflowID string, edges []WorkflowEdge) error {
-	_, _ = r.db.ExecContext(ctx, `DELETE FROM flow_edges WHERE workflow_id = $1`, workflowID)
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM flow_edges WHERE workflow_id = $1`, workflowID); err != nil {
+		return fmt.Errorf("delete existing edges: %w", err)
+	}
 	for _, edge := range edges {
 		if edge.ID == "" {
 			edge.ID = uuid.New().String()
