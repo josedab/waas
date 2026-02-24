@@ -3,11 +3,11 @@ package errors
 import (
 	"context"
 	"fmt"
+	"github.com/josedab/waas/pkg/utils"
 	"net/http"
 	"runtime/debug"
 	"strings"
 	"time"
-	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -39,11 +39,11 @@ func (h *ErrorHandler) Middleware() gin.HandlerFunc {
 // recoveryHandler handles panics and converts them to structured errors
 func (h *ErrorHandler) recoveryHandler(c *gin.Context, recovered interface{}) {
 	var err *WebhookError
-	
+
 	if recovered != nil {
 		// Handle panic
 		stack := debug.Stack()
-		
+
 		err = NewWebhookError(
 			"PANIC_RECOVERED",
 			"An unexpected error occurred",
@@ -54,7 +54,7 @@ func (h *ErrorHandler) recoveryHandler(c *gin.Context, recovered interface{}) {
 			"panic_value": fmt.Sprintf("%v", recovered),
 			"stack_trace": string(stack),
 		}).WithRequestID(h.getRequestID(c)).WithTraceID(h.getTraceID(c))
-		
+
 		h.logger.Error("Panic recovered", map[string]interface{}{
 			"error":      fmt.Sprintf("%v", recovered),
 			"path":       c.Request.URL.Path,
@@ -63,11 +63,12 @@ func (h *ErrorHandler) recoveryHandler(c *gin.Context, recovered interface{}) {
 			"trace_id":   err.TraceID,
 			"stack":      string(stack),
 		})
-		
+
 		// Send critical alert for panics
 		if h.alerter != nil {
+			reqCtx := c.Request.Context()
 			go func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(context.WithoutCancel(reqCtx), 5*time.Second)
 				defer cancel()
 				if alertErr := h.alerter.SendAlert(ctx, err); alertErr != nil {
 					h.logger.Error("Failed to send panic alert", map[string]interface{}{
@@ -77,7 +78,7 @@ func (h *ErrorHandler) recoveryHandler(c *gin.Context, recovered interface{}) {
 			}()
 		}
 	}
-	
+
 	h.HandleError(c, err)
 }
 
@@ -86,9 +87,9 @@ func (h *ErrorHandler) HandleError(c *gin.Context, err error) {
 	if err == nil {
 		return
 	}
-	
+
 	var webhookErr *WebhookError
-	
+
 	// Convert error to WebhookError if it isn't already
 	if we, ok := err.(*WebhookError); ok {
 		webhookErr = we
@@ -96,7 +97,7 @@ func (h *ErrorHandler) HandleError(c *gin.Context, err error) {
 		// Try to categorize the error based on its message or type
 		webhookErr = h.categorizeError(err)
 	}
-	
+
 	// Add request context if not already present
 	if webhookErr.RequestID == "" {
 		webhookErr.RequestID = h.getRequestID(c)
@@ -104,14 +105,15 @@ func (h *ErrorHandler) HandleError(c *gin.Context, err error) {
 	if webhookErr.TraceID == "" {
 		webhookErr.TraceID = h.getTraceID(c)
 	}
-	
+
 	// Log the error
 	h.logError(c, webhookErr)
-	
+
 	// Send alert if necessary
 	if webhookErr.ShouldAlert() && h.alerter != nil {
+		reqCtx := c.Request.Context()
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(reqCtx), 5*time.Second)
 			defer cancel()
 			if alertErr := h.alerter.SendAlert(ctx, webhookErr); alertErr != nil {
 				h.logger.Error("Failed to send error alert", map[string]interface{}{
@@ -121,18 +123,18 @@ func (h *ErrorHandler) HandleError(c *gin.Context, err error) {
 			}
 		}()
 	}
-	
+
 	// Prepare response
 	response := ErrorResponse{Error: webhookErr}
-	
+
 	// Remove sensitive information from response in production
 	if gin.Mode() == gin.ReleaseMode {
 		h.sanitizeErrorForProduction(webhookErr)
 	}
-	
+
 	// Set appropriate headers
 	h.setErrorHeaders(c, webhookErr)
-	
+
 	// Send JSON response
 	c.JSON(webhookErr.GetHTTPStatus(), response)
 	c.Abort()
@@ -142,47 +144,45 @@ func (h *ErrorHandler) HandleError(c *gin.Context, err error) {
 func (h *ErrorHandler) categorizeError(err error) *WebhookError {
 	errMsg := err.Error()
 	errMsgLower := strings.ToLower(errMsg)
-	
+
 	// Database errors (check specific database terms first)
-	if strings.Contains(errMsgLower, "database") || 
-	   strings.Contains(errMsgLower, "sql") {
+	if strings.Contains(errMsgLower, "database") ||
+		strings.Contains(errMsgLower, "sql") {
 		return FromDatabaseError(err)
 	}
-	
+
 	// Queue errors
 	if strings.Contains(errMsgLower, "queue") ||
-	   strings.Contains(errMsgLower, "redis") ||
-	   strings.Contains(errMsgLower, "rabbitmq") {
+		strings.Contains(errMsgLower, "redis") ||
+		strings.Contains(errMsgLower, "rabbitmq") {
 		return FromQueueError(err)
 	}
-	
 
-	
 	// Validation errors
 	if strings.Contains(errMsgLower, "validation") ||
-	   strings.Contains(errMsgLower, "invalid") ||
-	   strings.Contains(errMsgLower, "required") {
+		strings.Contains(errMsgLower, "invalid") ||
+		strings.Contains(errMsgLower, "required") {
 		return FromValidationError(err)
 	}
-	
+
 	// Timeout errors
 	if strings.Contains(errMsgLower, "timeout") ||
-	   strings.Contains(errMsgLower, "deadline exceeded") {
+		strings.Contains(errMsgLower, "deadline exceeded") {
 		return WrapError(err, "TIMEOUT", "Operation timed out", CategoryTimeout, SeverityMedium)
 	}
-	
+
 	// Network errors (check before general connection errors)
 	if strings.Contains(errMsgLower, "network") ||
-	   strings.Contains(errMsgLower, "connection refused") ||
-	   strings.Contains(errMsgLower, "no route to host") {
+		strings.Contains(errMsgLower, "connection refused") ||
+		strings.Contains(errMsgLower, "no route to host") {
 		return WrapError(err, "NETWORK_ERROR", "Network error occurred", CategoryExternalAPI, SeverityMedium)
 	}
-	
+
 	// General connection errors (could be database)
 	if strings.Contains(errMsgLower, "connection") {
 		return FromDatabaseError(err)
 	}
-	
+
 	// Default to internal server error
 	return WrapError(err, "INTERNAL_ERROR", "An internal error occurred", CategoryInternal, SeverityHigh)
 }
@@ -202,22 +202,22 @@ func (h *ErrorHandler) logError(c *gin.Context, err *WebhookError) {
 		"user_agent":    c.Request.UserAgent(),
 		"remote_addr":   c.ClientIP(),
 	}
-	
+
 	// Add error details if present
 	if err.Details != nil {
 		logData["details"] = err.Details
 	}
-	
+
 	// Add cause if present
 	if err.Cause != nil {
 		logData["cause"] = err.Cause.Error()
 	}
-	
+
 	// Add tenant information if available
 	if tenantID, exists := c.Get("tenant_id"); exists {
 		logData["tenant_id"] = tenantID
 	}
-	
+
 	// Log with appropriate level based on severity
 	switch err.Severity {
 	case SeverityLow:
@@ -237,14 +237,14 @@ func (h *ErrorHandler) sanitizeErrorForProduction(err *WebhookError) {
 	if err.Details != nil {
 		delete(err.Details, "stack_trace")
 		delete(err.Details, "panic_value")
-		
+
 		// Sanitize database error details
 		if err.Category == CategoryDatabase {
 			delete(err.Details, "query")
 			delete(err.Details, "connection_string")
 		}
 	}
-	
+
 	// Generic message for internal errors in production
 	if err.Category == CategoryInternal && err.Code != "PANIC_RECOVERED" {
 		err.Message = "An internal server error occurred"
@@ -256,17 +256,17 @@ func (h *ErrorHandler) sanitizeErrorForProduction(err *WebhookError) {
 func (h *ErrorHandler) setErrorHeaders(c *gin.Context, err *WebhookError) {
 	// Set content type
 	c.Header("Content-Type", "application/json")
-	
+
 	// Set request ID header for tracking
 	if err.RequestID != "" {
 		c.Header("X-Request-ID", err.RequestID)
 	}
-	
+
 	// Set trace ID header for distributed tracing
 	if err.TraceID != "" {
 		c.Header("X-Trace-ID", err.TraceID)
 	}
-	
+
 	// Set retry-after header for rate limit errors
 	if err.Category == CategoryRateLimit {
 		if retryAfter, ok := err.Details["retry_after_seconds"].(int); ok {
@@ -275,7 +275,7 @@ func (h *ErrorHandler) setErrorHeaders(c *gin.Context, err *WebhookError) {
 			c.Header("Retry-After", "60") // Default 1 minute
 		}
 	}
-	
+
 	// Set cache control for error responses
 	c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 	c.Header("Pragma", "no-cache")
@@ -290,12 +290,12 @@ func (h *ErrorHandler) getRequestID(c *gin.Context) string {
 			return id
 		}
 	}
-	
+
 	// Try to get from header
 	if requestID := c.GetHeader("X-Request-ID"); requestID != "" {
 		return requestID
 	}
-	
+
 	// Generate new request ID
 	return GenerateRequestID()
 }
@@ -308,12 +308,12 @@ func (h *ErrorHandler) getTraceID(c *gin.Context) string {
 			return id
 		}
 	}
-	
+
 	// Try to get from header
 	if traceID := c.GetHeader("X-Trace-ID"); traceID != "" {
 		return traceID
 	}
-	
+
 	// Generate new trace ID
 	return GenerateTraceID()
 }
@@ -325,7 +325,7 @@ func RequestIDMiddleware() gin.HandlerFunc {
 		if requestID == "" {
 			requestID = GenerateRequestID()
 		}
-		
+
 		c.Set("request_id", requestID)
 		c.Header("X-Request-ID", requestID)
 		c.Next()
@@ -339,7 +339,7 @@ func TraceIDMiddleware() gin.HandlerFunc {
 		if traceID == "" {
 			traceID = GenerateTraceID()
 		}
-		
+
 		c.Set("trace_id", traceID)
 		c.Header("X-Trace-ID", traceID)
 		c.Next()

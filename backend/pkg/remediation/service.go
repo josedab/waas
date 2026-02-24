@@ -172,7 +172,7 @@ func (s *Service) CreateAction(ctx context.Context, tenantID string, req *Create
 	// Auto-execute if approved
 	if action.Status == ActionStatusApproved {
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 			defer cancel()
 			s.executeActionAsync(ctx, action)
 		}()
