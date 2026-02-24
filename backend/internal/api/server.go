@@ -710,15 +710,18 @@ func (s *Server) setupRoutes() {
 	metricsGroup.Use(authMiddleware.RequireAuth())
 	metricsGroup.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	// API Documentation endpoints (no auth required)
-	s.router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// API Documentation endpoints (only available in development/debug mode)
+	if gin.Mode() != gin.ReleaseMode {
+		s.router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	// Public endpoints (no auth required, rate limited)
 	public := s.router.Group("/api/v1")
 	public.Use(rateLimiter.RateLimit())
 	{
-		public.POST("/tenants", tenantHandler.CreateTenant)
+		// Tenant creation has stricter IP-based rate limiting (5 req/min per IP)
+		public.POST("/tenants", rateLimiter.IPRateLimit(5, time.Minute), tenantHandler.CreateTenant)
 	}
 
 	// Test endpoint receivers (no auth required for webhook testing, rate limited)
