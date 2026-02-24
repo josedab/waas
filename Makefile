@@ -54,10 +54,13 @@ dev-logs: ## Run all services with colored log output
 	$(MAKE) -C $(BACKEND) dev-logs
 
 # ─── Testing & quality ──────────────────────────────────────────────
-.PHONY: test test-all test-watch test-coverage test-integration test-pkg test-single test-stubs new-pkg lint lint-fast fmt fmt-fix fix vet check ci-local
+.PHONY: test test-all test-watch test-coverage test-integration test-pkg test-single test-stubs test-quick new-pkg lint lint-fast fmt fmt-fix fix vet check ci-local
 
 test: ## Run core tests with coverage summary
 	$(MAKE) -C $(BACKEND) test
+
+test-quick: ## Fast inner-loop tests (no coverage, -short, parallel)
+	$(MAKE) -C $(BACKEND) test-quick
 
 test-all: ## Run all tests including enterprise packages
 	$(MAKE) -C $(BACKEND) test-all

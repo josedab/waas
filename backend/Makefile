@@ -1,4 +1,4 @@
-.PHONY: build run-api run-delivery run-analytics test test-all clean \
+.PHONY: build run-api run-delivery run-analytics test test-quick test-all clean \
        docker-up docker-down docker-build \
        migrate-up migrate-down migrate-core migrate-status migrate-reset migrate-rollback dev-setup dev-setup-full ensure-env deps \
        docs docs-generate docs-serve docs-test open-docs \
@@ -105,6 +105,9 @@ test: ## Run core tests with coverage summary
 		echo "⚠️  WARNING: Coverage $${COVERAGE}% is below the 70% CI threshold."; \
 	fi
 	@echo "Detailed report: go tool cover -html=coverage.out"
+
+test-quick: ## Fast inner-loop tests: no coverage, parallel, -short (for TDD)
+	@go test -short -count=1 -parallel=4 ./internal/... ./pkg/...
 
 test-all: ## Run all tests including enterprise packages
 	go test -v -timeout=15m ./...
@@ -221,7 +224,7 @@ test-integration: ## Run integration tests in Docker (isolated from dev environm
 	@echo "Running integration tests..."
 	@TEST_DATABASE_URL=postgres://postgres:password@localhost:5433/webhook_platform_test?sslmode=disable \
 		TEST_REDIS_URL=redis://localhost:6380/10 \
-		go test -v -timeout=10m ./test/integration/... || (docker-compose -f docker-compose.test.yml down -v && exit 1)
+		go test -v -tags integration -timeout=10m ./test/integration/... || (docker-compose -f docker-compose.test.yml down -v && exit 1)
 	@docker-compose -f docker-compose.test.yml down -v
 	@echo "Integration tests complete. Test environment cleaned up."
 
