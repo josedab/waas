@@ -5,6 +5,7 @@ run:
 linters:
   enable:
     - errcheck
+    - errorlint
     - gosimple
     - govet
     - ineffassign
@@ -32,6 +33,11 @@ linters-settings:
     excludes: []
   misspell:
     locale: US
+  errorlint:
+    errorf: true
+    errorf-multi: true
+    asserts: true
+    comparison: true
 
 issues:
   exclude-dirs:
@@ -48,5 +54,13 @@ issues:
       linters:
         - gosec
         - errcheck
+    # Exclude existing code from errorlint to avoid a mass fix.
+    # Remove entries progressively as packages are updated.
+    - path: pkg/
+      linters:
+        - errorlint
+    - path: internal/
+      linters:
+        - errorlint
   max-issues-per-linter: 50
   max-same-issues: 5
