@@ -186,13 +186,11 @@ func TestConsumer_ProcessMessage(t *testing.T) {
 	err = publisher.PublishDelivery(ctx, message)
 	require.NoError(t, err)
 
-	// Wait for processing
-	time.Sleep(2 * time.Second)
-
-	// Verify queue is empty (message was processed)
-	length, err := publisher.GetQueueLength(ctx, DeliveryQueue)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(0), length)
+	// Poll until queue is drained
+	require.Eventually(t, func() bool {
+		length, _ := publisher.GetQueueLength(ctx, DeliveryQueue)
+		return length == 0
+	}, 5*time.Second, 100*time.Millisecond, "queue should be empty after processing")
 }
 
 func TestConsumer_RetryLogic(t *testing.T) {
@@ -233,13 +231,11 @@ func TestConsumer_RetryLogic(t *testing.T) {
 	err = publisher.PublishDelivery(ctx, message)
 	require.NoError(t, err)
 
-	// Wait for processing
-	time.Sleep(2 * time.Second)
-
-	// Verify message was moved to retry queue
-	retryLength, err := publisher.GetQueueLength(ctx, RetryQueue)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(1), retryLength)
+	// Poll until message moves to retry queue
+	require.Eventually(t, func() bool {
+		retryLength, _ := publisher.GetQueueLength(ctx, RetryQueue)
+		return retryLength == 1
+	}, 5*time.Second, 100*time.Millisecond, "message should be in retry queue")
 }
 
 func TestConsumer_DeadLetterQueue(t *testing.T) {
@@ -280,13 +276,11 @@ func TestConsumer_DeadLetterQueue(t *testing.T) {
 	err = publisher.PublishDelivery(ctx, message)
 	require.NoError(t, err)
 
-	// Wait for processing
-	time.Sleep(2 * time.Second)
-
-	// Verify message was moved to dead letter queue
-	dlqLength, err := publisher.GetQueueLength(ctx, DeadLetterQueue)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(1), dlqLength)
+	// Poll until message moves to dead letter queue
+	require.Eventually(t, func() bool {
+		dlqLength, _ := publisher.GetQueueLength(ctx, DeadLetterQueue)
+		return dlqLength == 1
+	}, 5*time.Second, 100*time.Millisecond, "message should be in dead letter queue")
 }
 
 func TestRetryProcessor(t *testing.T) {
@@ -361,13 +355,11 @@ func TestManager_Integration(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Wait for processing
-	time.Sleep(3 * time.Second)
-
-	// Check queue stats
-	stats, err := manager.GetQueueStats(ctx)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(0), stats[DeliveryQueue]) // All messages should be processed
+	// Poll until all messages are processed
+	require.Eventually(t, func() bool {
+		stats, _ := manager.GetQueueStats(ctx)
+		return stats[DeliveryQueue] == 0
+	}, 5*time.Second, 100*time.Millisecond, "all messages should be processed")
 }
 
 func TestQueueStats(t *testing.T) {
