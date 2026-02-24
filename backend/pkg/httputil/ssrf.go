@@ -19,6 +19,11 @@ const (
 // IsPrivateIP returns true if the IP is in a private/internal range that
 // should not be reachable via user-provided URLs (SSRF protection).
 func IsPrivateIP(ip net.IP) bool {
+	// Check IPv4-mapped IPv6 addresses (e.g., ::ffff:10.0.0.1)
+	if ip4 := ip.To4(); ip4 != nil {
+		ip = ip4
+	}
+
 	privateRanges := []net.IPNet{
 		{IP: net.IPv4(127, 0, 0, 0), Mask: net.CIDRMask(8, 32)},    // 127.0.0.0/8
 		{IP: net.IPv4(10, 0, 0, 0), Mask: net.CIDRMask(8, 32)},     // 10.0.0.0/8
@@ -27,7 +32,18 @@ func IsPrivateIP(ip net.IP) bool {
 		{IP: net.IPv4(169, 254, 0, 0), Mask: net.CIDRMask(16, 32)}, // 169.254.0.0/16
 		{IP: net.IPv4(0, 0, 0, 0), Mask: net.CIDRMask(8, 32)},      // 0.0.0.0/8
 	}
+
+	ipv6PrivateRanges := []net.IPNet{
+		{IP: net.ParseIP("fc00::"), Mask: net.CIDRMask(7, 128)},  // fc00::/7 (IPv6 ULA)
+		{IP: net.ParseIP("fe80::"), Mask: net.CIDRMask(10, 128)}, // fe80::/10 (IPv6 link-local)
+	}
+
 	for _, cidr := range privateRanges {
+		if cidr.Contains(ip) {
+			return true
+		}
+	}
+	for _, cidr := range ipv6PrivateRanges {
 		if cidr.Contains(ip) {
 			return true
 		}
