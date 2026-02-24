@@ -186,3 +186,52 @@ func (rl *RateLimiter) ResetRateLimit(ctx context.Context, tenantID string) erro
 	key := fmt.Sprintf("rate_limit:%s", tenantID)
 	return rl.redisClient.Del(ctx, key).Err()
 }
+
+// IPRateLimit returns middleware that enforces a per-IP rate limit using Redis.
+// This is suitable for unauthenticated endpoints like tenant creation.
+func (rl *RateLimiter) IPRateLimit(maxRequests int, window time.Duration) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		key := fmt.Sprintf("rate_limit:ip:%s", ip)
+
+		now := time.Now()
+		windowEnd := now.Truncate(window).Add(window)
+
+		pipe := rl.redisClient.Pipeline()
+		incrCmd := pipe.Incr(c.Request.Context(), key)
+		pipe.ExpireAt(c.Request.Context(), key, windowEnd)
+		_, err := pipe.Exec(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": gin.H{
+					"code":    "RATE_LIMIT_ERROR",
+					"message": "Failed to check rate limit",
+				},
+			})
+			c.Abort()
+			return
+		}
+
+		currentCount := int(incrCmd.Val())
+		remaining := maxInt(0, maxRequests-currentCount)
+
+		c.Header("X-RateLimit-Limit", strconv.Itoa(maxRequests))
+		c.Header("X-RateLimit-Remaining", strconv.Itoa(remaining))
+		c.Header("X-RateLimit-Reset", strconv.FormatInt(windowEnd.Unix(), 10))
+
+		if currentCount > maxRequests {
+			retryAfter := int64(windowEnd.Sub(now).Seconds())
+			c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": gin.H{
+					"code":    "RATE_LIMIT_EXCEEDED",
+					"message": "Too many requests. Please try again later.",
+				},
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
