@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 	"time"
@@ -111,7 +112,7 @@ func (h *Handler) AnalyzeBatch(c *gin.Context) {
 
 	response, err := h.service.AnalyzeBatch(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -147,7 +148,7 @@ func (h *Handler) ListAnalyses(c *gin.Context) {
 
 	analyses, total, err := h.service.ListAnalyses(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -180,7 +181,7 @@ func (h *Handler) GetAnalysis(c *gin.Context) {
 	analysisID := c.Param("id")
 	analysis, err := h.service.GetAnalysis(c.Request.Context(), tenantID, analysisID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if analysis == nil {
@@ -218,7 +219,7 @@ func (h *Handler) GenerateTransform(c *gin.Context) {
 
 	response, err := h.service.GenerateTransformation(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -249,7 +250,7 @@ func (h *Handler) GetPatterns(c *gin.Context) {
 
 	patterns, err := h.service.GetPatterns(c.Request.Context(), tenantID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -288,7 +289,7 @@ func (h *Handler) GetHealthReport(c *gin.Context) {
 
 	report, err := h.recommender.GenerateHealthReport(c.Request.Context(), endpointID, timeRange)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": map[string]interface{}{"code": "INTERNAL_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "INTERNAL_ERROR", err)
 		return
 	}
 
@@ -324,7 +325,7 @@ func (h *Handler) GetRecommendations(c *gin.Context) {
 
 	rec, err := h.recommender.RecommendRetryStrategy(c.Request.Context(), endpointID, lastError)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": map[string]interface{}{"code": "INTERNAL_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "INTERNAL_ERROR", err)
 		return
 	}
 
@@ -361,7 +362,7 @@ func (h *Handler) GetAnomalies(c *gin.Context) {
 
 	anomalies, err := h.recommender.DetectAnomalies(c.Request.Context(), tenantID, timeRange)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": map[string]interface{}{"code": "INTERNAL_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "INTERNAL_ERROR", err)
 		return
 	}
 
@@ -390,7 +391,7 @@ func (h *Handler) GetInsights(c *gin.Context) {
 
 	insights, err := h.analyzer.GenerateInsights(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": map[string]interface{}{"code": "INTERNAL_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "INTERNAL_ERROR", err)
 		return
 	}
 
@@ -428,7 +429,7 @@ func (h *Handler) GetFailingEndpoints(c *gin.Context) {
 
 	endpoints, err := h.recommender.GetTopFailingEndpoints(c.Request.Context(), tenantID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": map[string]interface{}{"code": "INTERNAL_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "INTERNAL_ERROR", err)
 		return
 	}
 

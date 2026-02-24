@@ -1,6 +1,7 @@
 package compliancecenter
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"context"
 	"net/http"
 	"strconv"
@@ -89,7 +90,7 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -255,7 +256,7 @@ func (h *Handler) GetAssessments(c *gin.Context) {
 
 	assessments, err := h.service.GetAssessments(c.Request.Context(), tenantID, framework)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -278,7 +279,7 @@ func (h *Handler) RunAutomatedChecks(c *gin.Context) {
 
 	assessments, err := h.service.RunAutomatedChecks(c.Request.Context(), tenantID, framework)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -342,7 +343,7 @@ func (h *Handler) ListReports(c *gin.Context) {
 
 	response, err := h.service.ListReports(c.Request.Context(), tenantID, framework, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -453,7 +454,7 @@ func (h *Handler) GetAuditLogs(c *gin.Context) {
 
 	response, err := h.service.GetAuditLogs(c.Request.Context(), tenantID, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -512,7 +513,7 @@ func (h *Handler) ListPolicies(c *gin.Context) {
 
 	policies, err := h.service.repo.ListPolicies(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -643,7 +644,7 @@ func (h *Handler) ListRetentionPolicies(c *gin.Context) {
 
 	policies, err := h.service.repo.ListRetentionPolicies(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -664,7 +665,7 @@ func (h *Handler) ExportData(c *gin.Context) {
 
 	data, err := h.service.ExportTenantData(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -722,7 +723,7 @@ func (h *Handler) ListAuditTrailEntries(c *gin.Context) {
 
 	entries, total, err := h.auditTrail.ListEntries(c.Request.Context(), tenantID, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -779,7 +780,7 @@ func (h *Handler) VerifyAuditIntegrity(c *gin.Context) {
 
 	report, err := h.auditTrail.VerifyIntegrity(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -823,7 +824,7 @@ func (h *Handler) ExportComplianceReport(c *gin.Context) {
 		startDate, endDate,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 	"time"
@@ -270,7 +271,7 @@ func (h *Handler) GetPlanLimits(c *gin.Context) {
 
 	limits, err := h.billing.GetPlanLimits(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -295,7 +296,7 @@ func (h *Handler) ListInvoices(c *gin.Context) {
 
 	invoices, err := h.billing.repo.ListInvoices(c.Request.Context(), tenantID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -330,7 +331,7 @@ func (h *Handler) InviteMember(c *gin.Context) {
 
 	member, err := h.team.InviteMember(c.Request.Context(), tenantID, "system", req.Email, req.Name, req.Role)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -352,7 +353,7 @@ func (h *Handler) ListMembers(c *gin.Context) {
 
 	members, err := h.team.ListMembers(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -384,7 +385,7 @@ func (h *Handler) UpdateMemberRole(c *gin.Context) {
 	}
 
 	if err := h.team.UpdateMemberRole(c.Request.Context(), c.Param("id"), req.Role); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -404,7 +405,7 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 	}
 
 	if err := h.team.RemoveMember(c.Request.Context(), c.Param("id")); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -431,7 +432,7 @@ func (h *Handler) ListAuditLogs(c *gin.Context) {
 
 	logs, err := h.audit.ListLogs(c.Request.Context(), tenantID, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -470,7 +471,7 @@ func (h *Handler) StartOnboarding(c *gin.Context) {
 		req.UTMParams,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

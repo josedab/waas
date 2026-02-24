@@ -1,6 +1,7 @@
 package costing
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 	"time"
@@ -88,7 +89,7 @@ func (h *Handler) GetForecast(c *gin.Context) {
 
 	forecast, err := h.service.GetForecast(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -122,7 +123,7 @@ func (h *Handler) GetUsageStats(c *gin.Context) {
 
 	stats, err := h.service.GetUsageStats(c.Request.Context(), tenantID, startDate, endDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -156,7 +157,7 @@ func (h *Handler) GetAllocation(c *gin.Context) {
 
 	allocation, err := h.service.GetCostAllocation(c.Request.Context(), tenantID, period, resourceType, resourceID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if allocation == nil {
@@ -194,7 +195,7 @@ func (h *Handler) GetTopEndpoints(c *gin.Context) {
 
 	endpoints, err := h.service.GetTopEndpoints(c.Request.Context(), tenantID, period, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -266,7 +267,7 @@ func (h *Handler) ListBudgets(c *gin.Context) {
 
 	budgets, total, err := h.service.ListBudgets(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -300,7 +301,7 @@ func (h *Handler) GetBudget(c *gin.Context) {
 	budgetID := c.Param("id")
 	budget, err := h.service.GetBudget(c.Request.Context(), tenantID, budgetID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if budget == nil {
@@ -394,7 +395,7 @@ func (h *Handler) CheckAlerts(c *gin.Context) {
 
 	alertedBudgets, err := h.service.CheckBudgetAlerts(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

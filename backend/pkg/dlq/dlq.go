@@ -1,6 +1,7 @@
 package dlq
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -524,7 +525,7 @@ func (h *Handler) ListEntries(c *gin.Context) {
 
 	entries, total, err := h.service.GetEntries(c.Request.Context(), &filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DLQ_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "DLQ_ERROR", err)
 		return
 	}
 
@@ -589,7 +590,7 @@ func (h *Handler) BulkRetry(c *gin.Context) {
 
 	result, err := h.service.BulkRetry(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "BULK_RETRY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "BULK_RETRY_FAILED", err)
 		return
 	}
 
@@ -606,7 +607,7 @@ func (h *Handler) GetStats(c *gin.Context) {
 
 	stats, err := h.service.GetStats(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "STATS_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "STATS_ERROR", err)
 		return
 	}
 
@@ -623,7 +624,7 @@ func (h *Handler) ListAlertRules(c *gin.Context) {
 
 	rules, err := h.service.GetAlertRules(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "ALERT_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "ALERT_ERROR", err)
 		return
 	}
 
@@ -646,7 +647,7 @@ func (h *Handler) CreateAlertRule(c *gin.Context) {
 
 	created, err := h.service.CreateAlertRule(c.Request.Context(), tenantID, &rule)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -663,7 +664,7 @@ func (h *Handler) GetRetentionPolicy(c *gin.Context) {
 
 	policy, err := h.service.GetRetentionPolicy(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "RETENTION_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "RETENTION_ERROR", err)
 		return
 	}
 
@@ -686,7 +687,7 @@ func (h *Handler) UpdateRetentionPolicy(c *gin.Context) {
 
 	updated, err := h.service.UpdateRetentionPolicy(c.Request.Context(), tenantID, &policy)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -709,7 +710,7 @@ func (h *Handler) ExportEntries(c *gin.Context) {
 
 	data, err := h.service.ExportEntries(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "EXPORT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "EXPORT_FAILED", err)
 		return
 	}
 
@@ -752,7 +753,7 @@ func (h *Handler) SearchEntries(c *gin.Context) {
 
 	entries, total, err := h.service.GetEntries(c.Request.Context(), &filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SEARCH_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "SEARCH_ERROR", err)
 		return
 	}
 

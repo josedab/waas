@@ -1,6 +1,7 @@
 package costengine
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -43,7 +44,7 @@ func (h *FinOpsHandler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -72,7 +73,7 @@ func (h *FinOpsHandler) CreateBudget(c *gin.Context) {
 
 	budget, err := h.service.CreateBudget(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -114,7 +115,7 @@ func (h *FinOpsHandler) DeleteBudget(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteBudget(c.Request.Context(), tenantID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -149,7 +150,7 @@ func (h *FinOpsHandler) RecordDeliveryCost(c *gin.Context) {
 
 	attr, err := h.service.RecordDeliveryCost(c.Request.Context(), tenantID, req.EndpointID, req.EventType, req.Region, req.BytesOut, req.RetryCount)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

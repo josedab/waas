@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -47,7 +48,7 @@ func (h *PipelineHandler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.pipeline.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *PipelineHandler) ListPredictions(c *gin.Context) {
 
 	predictions, err := h.pipeline.ListPredictions(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -91,7 +92,7 @@ func (h *PipelineHandler) AcknowledgePrediction(c *gin.Context) {
 
 	predictionID := c.Param("id")
 	if err := h.pipeline.AcknowledgePrediction(c.Request.Context(), tenantID, predictionID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -124,7 +125,7 @@ func (h *PipelineHandler) EvaluateEndpoint(c *gin.Context) {
 
 	prediction, err := h.pipeline.EvaluateEndpoint(c.Request.Context(), tenantID, endpointID, req.Failures)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -145,7 +146,7 @@ func (h *PipelineHandler) EvaluateEndpoint(c *gin.Context) {
 func (h *PipelineHandler) ExecuteRemediation(c *gin.Context) {
 	actionID := c.Param("actionId")
 	if err := h.pipeline.ExecuteRemediation(c.Request.Context(), actionID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -172,7 +173,7 @@ func (h *PipelineHandler) ListReports(c *gin.Context) {
 
 	reports, err := h.pipeline.repo.ListRootCauseReports(c.Request.Context(), tenantID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -228,7 +229,7 @@ func (h *PipelineHandler) GenerateReport(c *gin.Context) {
 
 	report, err := h.pipeline.GenerateRootCauseReport(c.Request.Context(), tenantID, req.EndpointID, req.Failures)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

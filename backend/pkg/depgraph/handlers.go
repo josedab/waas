@@ -1,6 +1,7 @@
 package depgraph
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -41,7 +42,7 @@ func (h *Handler) GetGraph(c *gin.Context) {
 
 	graph, err := h.service.GetGraph(tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, graph)
@@ -120,7 +121,7 @@ func (h *Handler) RecordDelivery(c *gin.Context) {
 	}
 
 	if err := h.service.RecordDelivery(tenantID, req.ProducerID, req.ConsumerID, req.EventType, req.Success, req.LatencyMs); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "recorded"})

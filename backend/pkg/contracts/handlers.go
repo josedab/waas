@@ -1,6 +1,7 @@
 package contracts
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -54,7 +55,7 @@ func (h *Handler) CreateContract(c *gin.Context) {
 
 	contract, err := h.service.CreateContract(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -75,7 +76,7 @@ func (h *Handler) ListContracts(c *gin.Context) {
 
 	contracts, total, err := h.service.ListContracts(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -121,7 +122,7 @@ func (h *Handler) UpdateContract(c *gin.Context) {
 
 	contract, err := h.service.UpdateContract(c.Request.Context(), tenantID, contractID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -138,7 +139,7 @@ func (h *Handler) DeleteContract(c *gin.Context) {
 	contractID := c.Param("id")
 
 	if err := h.service.DeleteContract(c.Request.Context(), tenantID, contractID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -162,7 +163,7 @@ func (h *Handler) ValidatePayload(c *gin.Context) {
 
 	result, err := h.service.ValidatePayload(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "VALIDATION_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "VALIDATION_FAILED", err)
 		return
 	}
 
@@ -191,7 +192,7 @@ func (h *Handler) DiffContracts(c *gin.Context) {
 
 	diff, err := h.service.DiffContracts(c.Request.Context(), tenantID, contractID, req.OldVersion, req.NewVersion)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DIFF_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DIFF_FAILED", err)
 		return
 	}
 
@@ -208,7 +209,7 @@ func (h *Handler) GetContractStatus(c *gin.Context) {
 
 	status, err := h.service.GetContractStatus(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "STATUS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "STATUS_FAILED", err)
 		return
 	}
 
@@ -231,7 +232,7 @@ func (h *Handler) GetTestResults(c *gin.Context) {
 
 	results, err := h.service.GetTestResults(c.Request.Context(), tenantID, contractID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 

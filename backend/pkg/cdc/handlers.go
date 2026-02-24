@@ -1,6 +1,7 @@
 package cdc
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -60,7 +61,7 @@ func (h *Handlers) ListConnectors(c *gin.Context) {
 
 	connectors, err := h.service.ListConnectors(c.Request.Context(), tenantID, status)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -86,7 +87,7 @@ func (h *Handlers) CreateConnector(c *gin.Context) {
 
 	connector, err := h.service.CreateConnector(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -134,7 +135,7 @@ func (h *Handlers) UpdateConnector(c *gin.Context) {
 
 	connector, err := h.service.UpdateConnector(c.Request.Context(), tenantID, connID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -152,7 +153,7 @@ func (h *Handlers) DeleteConnector(c *gin.Context) {
 	connID := c.Param("id")
 
 	if err := h.service.DeleteConnector(c.Request.Context(), tenantID, connID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -172,7 +173,7 @@ func (h *Handlers) StartConnector(c *gin.Context) {
 
 	connector, err := h.service.StartConnector(c.Request.Context(), tenantID, connID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -192,7 +193,7 @@ func (h *Handlers) StopConnector(c *gin.Context) {
 
 	connector, err := h.service.StopConnector(c.Request.Context(), tenantID, connID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -212,7 +213,7 @@ func (h *Handlers) PauseConnector(c *gin.Context) {
 
 	connector, err := h.service.PauseConnector(c.Request.Context(), tenantID, connID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -233,7 +234,7 @@ func (h *Handlers) ResumeConnector(c *gin.Context) {
 	// Resume uses Start internally
 	connector, err := h.service.StartConnector(c.Request.Context(), tenantID, connID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -259,7 +260,7 @@ func (h *Handlers) TestConnection(c *gin.Context) {
 
 	result, err := h.service.TestConnection(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -288,7 +289,7 @@ func (h *Handlers) GetSchema(c *gin.Context) {
 
 	schemaInfo, err := h.service.GetSchema(c.Request.Context(), tenantID, connID, schema, table)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -308,7 +309,7 @@ func (h *Handlers) GetMetrics(c *gin.Context) {
 
 	metrics, err := h.service.GetMetrics(c.Request.Context(), tenantID, connID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -328,7 +329,7 @@ func (h *Handlers) GetHealth(c *gin.Context) {
 
 	health, err := h.service.GetHealth(c.Request.Context(), tenantID, connID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -353,7 +354,7 @@ func (h *Handlers) GetEventHistory(c *gin.Context) {
 
 	events, err := h.service.GetEventHistory(c.Request.Context(), tenantID, connID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

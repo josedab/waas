@@ -1,6 +1,7 @@
 package analyticsembed
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -56,7 +57,7 @@ func (h *Handler) CreateWidget(c *gin.Context) {
 
 	widget, err := h.service.CreateWidget(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -73,7 +74,7 @@ func (h *Handler) ListWidgets(c *gin.Context) {
 
 	widgets, err := h.service.ListWidgets(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -119,7 +120,7 @@ func (h *Handler) UpdateWidget(c *gin.Context) {
 
 	widget, err := h.service.UpdateWidget(c.Request.Context(), tenantID, widgetID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -136,7 +137,7 @@ func (h *Handler) DeleteWidget(c *gin.Context) {
 	widgetID := c.Param("id")
 
 	if err := h.service.DeleteWidget(c.Request.Context(), tenantID, widgetID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -198,7 +199,7 @@ func (h *Handler) GenerateEmbedToken(c *gin.Context) {
 
 	token, err := h.service.GenerateEmbedToken(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "TOKEN_GENERATION_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "TOKEN_GENERATION_FAILED", err)
 		return
 	}
 
@@ -240,7 +241,7 @@ func (h *Handler) GetTheme(c *gin.Context) {
 
 	theme, err := h.service.GetTheme(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "THEME_FETCH_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "THEME_FETCH_FAILED", err)
 		return
 	}
 
@@ -265,7 +266,7 @@ func (h *Handler) UpdateTheme(c *gin.Context) {
 
 	theme, err := h.service.UpdateTheme(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 

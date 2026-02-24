@@ -1,6 +1,7 @@
 package autoremediation
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -53,7 +54,7 @@ func (h *Handler) ListPatterns(c *gin.Context) {
 
 	patterns, err := h.service.GetPatterns(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -89,7 +90,7 @@ func (h *Handler) AnalyzeFailures(c *gin.Context) {
 
 	patterns, err := h.service.AnalyzeFailures(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "ANALYZE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "ANALYZE_FAILED", err)
 		return
 	}
 
@@ -106,7 +107,7 @@ func (h *Handler) GetRecommendations(c *gin.Context) {
 
 	recommendations, err := h.service.GetRecommendations(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "RECOMMENDATIONS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "RECOMMENDATIONS_FAILED", err)
 		return
 	}
 
@@ -130,7 +131,7 @@ func (h *Handler) CreateRule(c *gin.Context) {
 
 	rule, err := h.service.CreateRule(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -147,7 +148,7 @@ func (h *Handler) ListRules(c *gin.Context) {
 
 	rules, err := h.service.ListRules(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -171,7 +172,7 @@ func (h *Handler) ApplyRemediation(c *gin.Context) {
 
 	action, err := h.service.ApplyRemediation(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "APPLY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "APPLY_FAILED", err)
 		return
 	}
 
@@ -190,7 +191,7 @@ func (h *Handler) RevertAction(c *gin.Context) {
 
 	action, err := h.service.RevertAction(c.Request.Context(), tenantID, actionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "REVERT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REVERT_FAILED", err)
 		return
 	}
 
@@ -211,7 +212,7 @@ func (h *Handler) ListActions(c *gin.Context) {
 
 	actions, err := h.service.ListActions(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -228,7 +229,7 @@ func (h *Handler) PredictEndpointHealth(c *gin.Context) {
 
 	predictions, err := h.service.PredictEndpointHealth(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "PREDICTION_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "PREDICTION_FAILED", err)
 		return
 	}
 

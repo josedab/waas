@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -95,7 +96,7 @@ func (h *Handler) GetUsageSummary(c *gin.Context) {
 
 	summary, err := h.service.GetUsageSummary(c.Request.Context(), tenantID, period)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -119,7 +120,7 @@ func (h *Handler) GetUsageByResource(c *gin.Context) {
 
 	records, err := h.service.repo.GetUsageByResource(c.Request.Context(), tenantID, resourceType, period)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -138,7 +139,7 @@ func (h *Handler) GetCurrentSpend(c *gin.Context) {
 
 	spend, err := h.service.GetCurrentSpend(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -166,7 +167,7 @@ func (h *Handler) ForecastSpend(c *gin.Context) {
 
 	forecast, err := h.service.ForecastSpend(c.Request.Context(), tenantID, days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -193,7 +194,7 @@ func (h *Handler) CreateBudget(c *gin.Context) {
 
 	budget, err := h.service.CreateBudget(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -212,7 +213,7 @@ func (h *Handler) ListBudgets(c *gin.Context) {
 
 	budgets, err := h.service.ListBudgets(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -262,7 +263,7 @@ func (h *Handler) UpdateBudget(c *gin.Context) {
 
 	budget, err := h.service.UpdateBudget(c.Request.Context(), tenantID, budgetID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -281,7 +282,7 @@ func (h *Handler) DeleteBudget(c *gin.Context) {
 	budgetID := c.Param("id")
 
 	if err := h.service.DeleteBudget(c.Request.Context(), tenantID, budgetID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -307,7 +308,7 @@ func (h *Handler) ListAlerts(c *gin.Context) {
 
 	alerts, err := h.service.GetAlerts(c.Request.Context(), tenantID, status)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -326,7 +327,7 @@ func (h *Handler) AcknowledgeAlert(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	if err := h.service.AcknowledgeAlert(c.Request.Context(), alertID, userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -372,7 +373,7 @@ func (h *Handler) UpdateAlertConfig(c *gin.Context) {
 
 	config, err := h.service.UpdateAlertConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -391,7 +392,7 @@ func (h *Handler) GetOptimizations(c *gin.Context) {
 
 	opts, err := h.service.GetOptimizations(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -410,7 +411,7 @@ func (h *Handler) AnalyzeOptimizations(c *gin.Context) {
 
 	opts, err := h.service.AnalyzeOptimizations(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -429,7 +430,7 @@ func (h *Handler) ImplementOptimization(c *gin.Context) {
 	optID := c.Param("id")
 
 	if err := h.service.ImplementOptimization(c.Request.Context(), tenantID, optID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -448,7 +449,7 @@ func (h *Handler) DismissOptimization(c *gin.Context) {
 	optID := c.Param("id")
 
 	if err := h.service.DismissOptimization(c.Request.Context(), tenantID, optID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -467,7 +468,7 @@ func (h *Handler) ListInvoices(c *gin.Context) {
 
 	invoices, err := h.service.GetInvoices(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -507,7 +508,7 @@ func (h *Handler) DetectAnomaly(c *gin.Context) {
 
 	anomaly, err := h.service.DetectSpendAnomaly(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -553,7 +554,7 @@ func parseIntParam(c *gin.Context, name string) (int, error) {
 func (h *Handler) ListPricingPlans(c *gin.Context) {
 	plans, err := h.service.ListPricingPlans(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"plans": plans})
@@ -576,7 +577,7 @@ func (h *Handler) CreatePricingPlan(c *gin.Context) {
 
 	result, err := h.service.CreatePricingPlan(c.Request.Context(), &plan)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, result)
@@ -617,7 +618,7 @@ func (h *Handler) Subscribe(c *gin.Context) {
 	}
 	sub, err := h.service.CreateSubscriptionForTenant(c.Request.Context(), tid, planID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, sub)
@@ -675,7 +676,7 @@ func (h *Handler) ChangeSubscription(c *gin.Context) {
 	}
 	sub, err := h.service.ChangeSubscription(c.Request.Context(), tid, planID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, sub)
@@ -696,7 +697,7 @@ func (h *Handler) CancelSubscription(c *gin.Context) {
 	}
 
 	if err := h.service.CancelSubscriptionForTenant(c.Request.Context(), tid); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "cancelled"})
@@ -718,7 +719,7 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.service.GetBillingDashboard(c.Request.Context(), tid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, dashboard)
@@ -745,7 +746,7 @@ func (h *Handler) GetProjection(c *gin.Context) {
 
 	projection, err := h.service.ProjectCost(c.Request.Context(), tid, days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, projection)
@@ -775,7 +776,7 @@ func (h *Handler) HandleStripeWebhook(c *gin.Context) {
 	}
 
 	if err := h.service.HandleStripeWebhook(c.Request.Context(), event.Type, event.Data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"received": true})

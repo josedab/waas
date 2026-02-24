@@ -1,6 +1,7 @@
 package cloudmanaged
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 	"time"
@@ -419,7 +420,7 @@ func (h *Handler) HandleStripeWebhook(c *gin.Context) {
 	}
 
 	if err := h.service.HandleStripeWebhook(c.Request.Context(), &event); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

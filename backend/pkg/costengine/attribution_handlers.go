@@ -1,6 +1,7 @@
 package costengine
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -32,7 +33,7 @@ func (h *Handler) GetTenantCostSummary(c *gin.Context) {
 
 	summary, err := h.service.GetTenantCostSummary(c.Request.Context(), tenantID, period)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -64,7 +65,7 @@ func (h *Handler) GetCostForecast(c *gin.Context) {
 
 	forecast, err := h.service.GetCostForecast(c.Request.Context(), tenantID, days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

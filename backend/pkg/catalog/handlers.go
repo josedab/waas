@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
 	"net/http"
 
@@ -80,7 +81,7 @@ func (h *Handler) CreateEventType(c *gin.Context) {
 
 	et, err := h.service.CreateEventType(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -114,7 +115,7 @@ func (h *Handler) ListEventTypes(c *gin.Context) {
 
 	result, err := h.service.SearchEventTypes(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -165,7 +166,7 @@ func (h *Handler) UpdateEventType(c *gin.Context) {
 
 	et, err := h.service.UpdateEventType(c.Request.Context(), id, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -194,7 +195,7 @@ func (h *Handler) PublishVersion(c *gin.Context) {
 
 	ev, err := h.service.PublishVersion(c.Request.Context(), id, &req, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "PUBLISH_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "PUBLISH_FAILED", err)
 		return
 	}
 
@@ -216,7 +217,7 @@ func (h *Handler) GetVersions(c *gin.Context) {
 
 	versions, err := h.service.GetVersions(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "GET_VERSIONS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "GET_VERSIONS_FAILED", err)
 		return
 	}
 
@@ -273,7 +274,7 @@ func (h *Handler) ValidatePayloadByEventType(c *gin.Context) {
 
 	result, err := h.service.ValidatePayloadByEventType(c.Request.Context(), tenantID, req.EventType, req.Payload)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "VALIDATION_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "VALIDATION_FAILED", err)
 		return
 	}
 
@@ -302,7 +303,7 @@ func (h *Handler) DeprecateEventType(c *gin.Context) {
 
 	et, err := h.service.DeprecateEventType(c.Request.Context(), id, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DEPRECATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DEPRECATE_FAILED", err)
 		return
 	}
 
@@ -331,7 +332,7 @@ func (h *Handler) SubscribeEndpoint(c *gin.Context) {
 
 	sub, err := h.service.Subscribe(c.Request.Context(), id, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SUBSCRIBE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SUBSCRIBE_FAILED", err)
 		return
 	}
 
@@ -353,7 +354,7 @@ func (h *Handler) ListSubscribers(c *gin.Context) {
 
 	subs, err := h.service.ListSubscribers(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -407,7 +408,7 @@ func (h *Handler) SearchCatalog(c *gin.Context) {
 
 	result, err := h.service.SearchEventTypes(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SEARCH_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SEARCH_FAILED", err)
 		return
 	}
 
@@ -472,7 +473,7 @@ func (h *Handler) GetBreakingChangeNotifications(c *gin.Context) {
 	}
 	notifications, err := h.service.GetBreakingChangeNotifications(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "FETCH_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "FETCH_FAILED", err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"notifications": notifications})
@@ -509,7 +510,7 @@ func (h *Handler) UpdateValidationConfig(c *gin.Context) {
 	config.TenantID = tenantID
 
 	if err := h.service.UpdateValidationConfig(c.Request.Context(), &config); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -523,7 +524,7 @@ func (h *Handler) DeleteEventType(c *gin.Context) {
 		return
 	}
 	if err := h.service.DeleteEventType(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "event type deleted"})
@@ -537,7 +538,7 @@ func (h *Handler) ListCategories(c *gin.Context) {
 	}
 	categories, err := h.service.ListCategories(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"categories": categories})
@@ -556,7 +557,7 @@ func (h *Handler) CreateCategory(c *gin.Context) {
 	}
 	cat, err := h.service.CreateCategory(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 	c.JSON(http.StatusCreated, cat)
@@ -574,7 +575,7 @@ func (h *Handler) UnsubscribeEndpoint(c *gin.Context) {
 		return
 	}
 	if err := h.service.Unsubscribe(c.Request.Context(), eventTypeID, endpointID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UNSUBSCRIBE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UNSUBSCRIBE_FAILED", err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "unsubscribed"})
@@ -588,7 +589,7 @@ func (h *Handler) GetDocumentation(c *gin.Context) {
 	}
 	docs, err := h.service.GetDocumentation(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "GET_DOCS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "GET_DOCS_FAILED", err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"documentation": docs})
@@ -609,7 +610,7 @@ func (h *Handler) SaveDocumentation(c *gin.Context) {
 		return
 	}
 	if err := h.service.SaveDocumentation(c.Request.Context(), id, section, req.Content); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SAVE_DOCS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SAVE_DOCS_FAILED", err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "documentation saved"})
@@ -623,7 +624,7 @@ func (h *Handler) GenerateOpenAPISpec(c *gin.Context) {
 	}
 	spec, err := h.service.GenerateOpenAPISpec(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "GENERATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "GENERATE_FAILED", err)
 		return
 	}
 	c.Data(http.StatusOK, "application/json", spec)

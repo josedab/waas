@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -97,7 +98,7 @@ func (h *Handler) GetMonitor(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "monitor not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -160,7 +161,7 @@ func (h *Handler) DeleteMonitor(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "monitor not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -210,7 +211,7 @@ func (h *Handler) ListMonitors(c *gin.Context) {
 
 	response, err := h.service.ListMonitors(c.Request.Context(), tenantID, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -315,7 +316,7 @@ func (h *Handler) GetMonitorEvents(c *gin.Context) {
 
 	response, err := h.service.GetEvents(c.Request.Context(), tenantID, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -358,7 +359,7 @@ func (h *Handler) GetEvents(c *gin.Context) {
 
 	response, err := h.service.GetEvents(c.Request.Context(), tenantID, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -385,7 +386,7 @@ func (h *Handler) GetMonitorStats(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "monitor not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -447,7 +448,7 @@ func (h *Handler) ListProviders(c *gin.Context) {
 
 	providers, err := h.service.repo.ListProviders(c.Request.Context(), chain, network)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

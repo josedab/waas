@@ -1,6 +1,7 @@
 package canary
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -55,7 +56,7 @@ func (h *Handler) CreateDeployment(c *gin.Context) {
 
 	deployment, err := h.service.CreateDeployment(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -91,7 +92,7 @@ func (h *Handler) ListDeployments(c *gin.Context) {
 
 	deployments, total, err := h.service.ListDeployments(c.Request.Context(), tenantID, status, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -289,7 +290,7 @@ func (h *Handler) RecordMetrics(c *gin.Context) {
 	metrics.DeploymentID = deploymentID
 
 	if err := h.service.RecordMetrics(c.Request.Context(), tenantID, &metrics); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "METRICS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "METRICS_FAILED", err)
 		return
 	}
 

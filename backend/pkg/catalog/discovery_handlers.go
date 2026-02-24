@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +32,7 @@ func (h *Handler) ListDiscoveries(c *gin.Context) {
 
 	discoveries, err := h.service.ListDiscoveries(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -44,7 +45,7 @@ func (h *Handler) GetDiscoverySummary(c *gin.Context) {
 
 	summary, err := h.service.GetDiscoverySummary(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package debugger
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -54,7 +55,7 @@ func (h *Handler) ListTraces(c *gin.Context) {
 
 	traces, total, err := h.service.ListTraces(c.Request.Context(), tenantID, endpointID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -92,7 +93,7 @@ func (h *Handler) DiffPayloads(c *gin.Context) {
 
 	diff, err := h.service.DiffPayloads(c.Request.Context(), tenantID, deliveryID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DIFF_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DIFF_FAILED", err)
 		return
 	}
 
@@ -116,7 +117,7 @@ func (h *Handler) ReplayWithMods(c *gin.Context) {
 
 	trace, err := h.service.ReplayWithModifications(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "REPLAY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REPLAY_FAILED", err)
 		return
 	}
 
@@ -140,7 +141,7 @@ func (h *Handler) BulkReplay(c *gin.Context) {
 
 	result, err := h.service.BulkReplay(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "BULK_REPLAY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "BULK_REPLAY_FAILED", err)
 		return
 	}
 
@@ -164,7 +165,7 @@ func (h *Handler) CreateDebugSession(c *gin.Context) {
 
 	session, err := h.service.CreateDebugSession(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -181,7 +182,7 @@ func (h *Handler) ListDebugSessions(c *gin.Context) {
 
 	sessions, err := h.service.ListDebugSessions(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -219,7 +220,7 @@ func (h *Handler) StepDebugSession(c *gin.Context) {
 
 	session, stage, err := h.service.StepDebugSession(c.Request.Context(), tenantID, sessionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "STEP_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "STEP_FAILED", err)
 		return
 	}
 

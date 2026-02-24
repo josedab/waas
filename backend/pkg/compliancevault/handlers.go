@@ -1,6 +1,7 @@
 package compliancevault
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -86,7 +87,7 @@ func (h *Handler) DecryptPayload(c *gin.Context) {
 
 	plaintext, err := h.service.DecryptPayload(c.Request.Context(), tenantID, entryID, actorID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -100,7 +101,7 @@ func (h *Handler) ListEntries(c *gin.Context) {
 
 	entries, err := h.service.ListEntries(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -129,7 +130,7 @@ func (h *Handler) ListRetentionPolicies(c *gin.Context) {
 
 	policies, err := h.service.ListRetentionPolicies(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -141,7 +142,7 @@ func (h *Handler) DeleteRetentionPolicy(c *gin.Context) {
 	policyID := c.Param("id")
 
 	if err := h.service.DeleteRetentionPolicy(c.Request.Context(), tenantID, policyID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -170,7 +171,7 @@ func (h *Handler) ListErasureRequests(c *gin.Context) {
 
 	requests, err := h.service.ListErasureRequests(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -201,7 +202,7 @@ func (h *Handler) ListAuditTrail(c *gin.Context) {
 
 	trail, err := h.service.ListAuditTrail(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -213,7 +214,7 @@ func (h *Handler) GetVaultStats(c *gin.Context) {
 
 	stats, err := h.service.GetVaultStats(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

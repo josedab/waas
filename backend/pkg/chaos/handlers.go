@@ -1,6 +1,7 @@
 package chaos
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"time"
 
@@ -79,7 +80,7 @@ func (h *Handler) ListExperiments(c *gin.Context) {
 
 	experiments, total, err := h.service.ListExperiments(c.Request.Context(), tenantID, status, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -112,7 +113,7 @@ func (h *Handler) CreateExperiment(c *gin.Context) {
 
 	exp, err := h.service.CreateExperiment(c.Request.Context(), tenantID, userID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -153,7 +154,7 @@ func (h *Handler) DeleteExperiment(c *gin.Context) {
 	expID := c.Param("id")
 
 	if err := h.service.DeleteExperiment(c.Request.Context(), tenantID, expID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -224,7 +225,7 @@ func (h *Handler) GetEvents(c *gin.Context) {
 
 	events, err := h.service.GetEvents(c.Request.Context(), tenantID, expID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -259,7 +260,7 @@ func (h *Handler) GetResilienceReport(c *gin.Context) {
 
 	report, err := h.service.GetResilienceReport(c.Request.Context(), tenantID, start, end)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

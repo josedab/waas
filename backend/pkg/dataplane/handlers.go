@@ -1,6 +1,7 @@
 package dataplane
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -60,7 +61,7 @@ func (h *Handler) GetPlane(c *gin.Context) {
 func (h *Handler) ListPlanes(c *gin.Context) {
 	planes, err := h.service.ListPlanes(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -101,7 +102,7 @@ func (h *Handler) DecommissionPlane(c *gin.Context) {
 	tenantID := c.Param("tenant_id")
 
 	if err := h.service.DecommissionPlane(c.Request.Context(), tenantID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

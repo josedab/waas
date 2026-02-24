@@ -1,6 +1,7 @@
 package costengine
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -70,7 +71,7 @@ func (h *Handler) CreateCostModel(c *gin.Context) {
 
 	model, err := h.service.CreateCostModel(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -87,7 +88,7 @@ func (h *Handler) ListCostModels(c *gin.Context) {
 
 	models, err := h.service.ListCostModels(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -133,7 +134,7 @@ func (h *Handler) UpdateCostModel(c *gin.Context) {
 
 	model, err := h.service.UpdateCostModel(c.Request.Context(), tenantID, modelID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -157,7 +158,7 @@ func (h *Handler) RecordDeliveryCost(c *gin.Context) {
 
 	cost, err := h.service.RecordDeliveryCost(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "RECORD_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "RECORD_FAILED", err)
 		return
 	}
 
@@ -181,7 +182,7 @@ func (h *Handler) GenerateReport(c *gin.Context) {
 
 	report, err := h.service.GenerateReport(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "REPORT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REPORT_FAILED", err)
 		return
 	}
 
@@ -205,7 +206,7 @@ func (h *Handler) CreateBudget(c *gin.Context) {
 
 	budget, err := h.service.CreateBudget(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -222,7 +223,7 @@ func (h *Handler) ListBudgets(c *gin.Context) {
 
 	budgets, err := h.service.ListBudgets(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -268,7 +269,7 @@ func (h *Handler) UpdateBudget(c *gin.Context) {
 
 	budget, err := h.service.UpdateBudget(c.Request.Context(), tenantID, budgetID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -285,7 +286,7 @@ func (h *Handler) CheckBudgetAlerts(c *gin.Context) {
 
 	alerts, err := h.service.CheckBudgetAlerts(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CHECK_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CHECK_FAILED", err)
 		return
 	}
 
@@ -302,7 +303,7 @@ func (h *Handler) DetectAnomalies(c *gin.Context) {
 
 	anomalies, err := h.service.DetectAnomalies(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DETECTION_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DETECTION_FAILED", err)
 		return
 	}
 
@@ -319,7 +320,7 @@ func (h *Handler) GetCurrentSpend(c *gin.Context) {
 
 	spend, err := h.service.GetCurrentSpend(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SPEND_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SPEND_FAILED", err)
 		return
 	}
 

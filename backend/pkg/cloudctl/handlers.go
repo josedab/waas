@@ -1,6 +1,7 @@
 package cloudctl
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -61,7 +62,7 @@ func (h *Handler) ProvisionTenant(c *gin.Context) {
 
 	tenant, err := h.service.ProvisionTenant(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "PROVISION_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "PROVISION_FAILED", err)
 		return
 	}
 
@@ -83,7 +84,7 @@ func (h *Handler) ListTenants(c *gin.Context) {
 
 	tenants, total, err := h.service.ListTenants(c.Request.Context(), status, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -127,7 +128,7 @@ func (h *Handler) UpdatePlan(c *gin.Context) {
 
 	tenant, err := h.service.UpdatePlan(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -143,7 +144,7 @@ func (h *Handler) SuspendTenant(c *gin.Context) {
 	tenantID := c.Param("id")
 
 	if err := h.service.SuspendTenant(c.Request.Context(), tenantID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SUSPEND_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SUSPEND_FAILED", err)
 		return
 	}
 
@@ -159,7 +160,7 @@ func (h *Handler) ReactivateTenant(c *gin.Context) {
 	tenantID := c.Param("id")
 
 	if err := h.service.ReactivateTenant(c.Request.Context(), tenantID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "REACTIVATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REACTIVATE_FAILED", err)
 		return
 	}
 
@@ -175,7 +176,7 @@ func (h *Handler) DeleteTenant(c *gin.Context) {
 	tenantID := c.Param("id")
 
 	if err := h.service.DeleteTenant(c.Request.Context(), tenantID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -195,7 +196,7 @@ func (h *Handler) GetUsage(c *gin.Context) {
 
 	usage, err := h.service.GetUsage(c.Request.Context(), tenantID, period)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "USAGE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "USAGE_FAILED", err)
 		return
 	}
 
@@ -215,7 +216,7 @@ func (h *Handler) GetUsageHistory(c *gin.Context) {
 
 	history, err := h.service.GetUsageHistory(c.Request.Context(), tenantID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "HISTORY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "HISTORY_FAILED", err)
 		return
 	}
 
@@ -259,7 +260,7 @@ func (h *Handler) UpdateScalingConfig(c *gin.Context) {
 
 	config, err := h.service.UpdateScalingConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -274,7 +275,7 @@ func (h *Handler) UpdateScalingConfig(c *gin.Context) {
 func (h *Handler) GetDashboard(c *gin.Context) {
 	dashboard, err := h.service.GetDashboard(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DASHBOARD_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DASHBOARD_FAILED", err)
 		return
 	}
 
