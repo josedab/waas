@@ -224,7 +224,20 @@ func (e *Emitter) deliver(ctx context.Context, event *MetaEvent, sub *Subscripti
 		Timestamp:  time.Now(),
 	}
 
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		e.repo.CreateDelivery(ctx, &Delivery{
+			ID:             uuid.New().String(),
+			SubscriptionID: sub.ID,
+			EventID:        event.ID,
+			TenantID:       event.TenantID,
+			Status:         "failed",
+			Error:          fmt.Sprintf("marshal payload: %v", err),
+			Attempt:        1,
+			CreatedAt:      time.Now(),
+		})
+		return
+	}
 
 	// Create delivery record
 	delivery := &Delivery{
@@ -279,7 +292,7 @@ func (e *Emitter) deliver(ctx context.Context, event *MetaEvent, sub *Subscripti
 			delivery.Error = err.Error()
 		} else {
 			delivery.StatusCode = resp.StatusCode
-			resp.Body.Close()
+			_ = resp.Body.Close()
 
 			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				delivery.Status = "delivered"
