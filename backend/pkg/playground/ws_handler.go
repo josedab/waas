@@ -101,7 +101,7 @@ func (hub *WebSocketHub) ConnectionCount(sessionID string) int {
 	return len(hub.connections[sessionID])
 }
 
-// Default hub instance
+// Default hub instance (kept for backward compatibility; prefer Handler.hub)
 var defaultHub = NewWebSocketHub()
 
 // RegisterWSRoutes registers WebSocket routes for real-time playground communication
@@ -130,8 +130,8 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	defaultHub.Register(sessionID, conn)
-	defer defaultHub.Unregister(sessionID, conn)
+	h.hub.Register(sessionID, conn)
+	defer h.hub.Unregister(sessionID, conn)
 
 	// Send connected message
 	connectMsg := WSMessage{
@@ -212,7 +212,7 @@ func (h *Handler) SendWebhookEvent(c *gin.Context) {
 			Body:      req.Payload,
 		},
 	}
-	defaultHub.Broadcast(sessionID, outbound)
+	h.hub.Broadcast(sessionID, outbound)
 
 	// Simulate response after a short delay
 	inbound := WSMessage{
@@ -226,12 +226,12 @@ func (h *Handler) SendWebhookEvent(c *gin.Context) {
 			Body:       `{"status":"ok"}`,
 		},
 	}
-	defaultHub.Broadcast(sessionID, inbound)
+	h.hub.Broadcast(sessionID, inbound)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":     "webhook sent",
 		"session_id":  sessionID,
-		"connections": defaultHub.ConnectionCount(sessionID),
+		"connections": h.hub.ConnectionCount(sessionID),
 	})
 }
 
@@ -275,7 +275,7 @@ func (h *Handler) SimulateFailure(c *gin.Context) {
 			Body:       body,
 		},
 	}
-	defaultHub.Broadcast(sessionID, event)
+	h.hub.Broadcast(sessionID, event)
 
 	c.JSON(http.StatusOK, gin.H{
 		"simulation": map[string]interface{}{
@@ -329,7 +329,7 @@ func (h *Handler) PreviewTransform(c *gin.Context) {
 			"error":  result.ErrorMessage,
 		},
 	}
-	defaultHub.Broadcast(sessionID, event)
+	h.hub.Broadcast(sessionID, event)
 
 	c.JSON(http.StatusOK, gin.H{
 		"output":       result.OutputPayload,

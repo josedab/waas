@@ -12,11 +12,12 @@ import (
 // Handler handles playground HTTP requests
 type Handler struct {
 	service *Service
+	hub     *WebSocketHub
 }
 
 // NewHandler creates a new playground handler
 func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+	return &Handler{service: service, hub: NewWebSocketHub()}
 }
 
 // RegisterRoutes registers playground routes
