@@ -29,30 +29,30 @@ test-unit: ## Run unit tests with coverage
 test-integration: test-deps ## Run integration tests
 	@echo "Running integration tests..."
 	@TEST_DATABASE_URL=$(TEST_DATABASE_URL) TEST_REDIS_URL=$(TEST_REDIS_URL) \
-		go test -v -race -timeout=10m ./test/integration/...
+		go test -v -race -tags integration -timeout=10m ./test/integration/...
 	@echo "Integration tests completed."
 
 test-e2e: test-deps ## Run end-to-end tests
 	@echo "Running end-to-end tests..."
 	@TEST_DATABASE_URL=$(TEST_DATABASE_URL) TEST_REDIS_URL=$(TEST_REDIS_URL) \
-		go test -v -timeout=15m ./test/e2e/...
+		go test -v -tags integration -timeout=15m ./test/e2e/...
 	@echo "End-to-end tests completed."
 
 test-performance: test-deps ## Run performance and load tests
 	@echo "Running performance tests..."
 	@RUN_LOAD_TESTS=true TEST_DATABASE_URL=$(TEST_DATABASE_URL) TEST_REDIS_URL=$(TEST_REDIS_URL) \
-		go test -v -timeout=30m ./test/performance/...
+		go test -v -tags integration -timeout=30m ./test/performance/...
 	@echo "Performance tests completed."
 
 test-chaos: test-deps ## Run chaos engineering tests
 	@echo "Running chaos engineering tests..."
 	@RUN_CHAOS_TESTS=true TEST_DATABASE_URL=$(TEST_DATABASE_URL) TEST_REDIS_URL=$(TEST_REDIS_URL) \
-		go test -v -timeout=20m ./test/chaos/...
+		go test -v -tags integration -timeout=20m ./test/chaos/...
 	@echo "Chaos tests completed."
 
 test-all: test-deps ## Run all test suites
 	@echo "Running all test suites..."
-	@RUN_ALL_TESTS=true go run test/runner/test_runner.go -suite=all -verbose
+	@RUN_ALL_TESTS=true go run -tags integration test/runner/test_runner.go -suite=all -verbose
 	@echo "All tests completed."
 
 # Test utilities
