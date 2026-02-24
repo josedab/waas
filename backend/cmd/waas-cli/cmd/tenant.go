@@ -133,7 +133,9 @@ func runTenantRegenerateKey(cmd *cobra.Command, args []string) error {
 	viper.Set("api_key", result.APIKey)
 	home, _ := os.UserHomeDir()
 	configPath := home + "/.waas.yaml"
-	_ = viper.WriteConfigAs(configPath)
+	if err := viper.WriteConfigAs(configPath); err != nil {
+		return fmt.Errorf("failed to write config to %s: %w", configPath, err)
+	}
 
 	if output == "json" {
 		return jsonOutput(map[string]string{"api_key": result.APIKey})
