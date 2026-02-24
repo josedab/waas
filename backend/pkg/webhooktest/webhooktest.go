@@ -204,7 +204,13 @@ func (r *Runner) runTest(suite *TestSuite, tc TestCase) TestResult {
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		tr.Status = StatusError
+		tr.Error = fmt.Sprintf("failed to read response body: %v", err)
+		tr.DurationMs = float64(time.Since(start).Milliseconds())
+		return tr
+	}
 	tr.DurationMs = float64(time.Since(start).Milliseconds())
 
 	allPassed := true
