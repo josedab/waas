@@ -192,7 +192,7 @@ func (dt *DeliveryTracer) CompleteDeliveryTrace(ctx context.Context, trace *Deli
 	// Record spans in the tracing service
 	if dt.service != nil {
 		for _, stage := range trace.Stages {
-			_, _ = dt.service.RecordSpan(ctx, trace.TenantID, &CreateSpanRequest{
+			if _, err := dt.service.RecordSpan(ctx, trace.TenantID, &CreateSpanRequest{
 				TraceID:       trace.TraceID,
 				SpanID:        stage.SpanID,
 				ParentSpanID:  stage.ParentSpanID,
@@ -204,7 +204,9 @@ func (dt *DeliveryTracer) CompleteDeliveryTrace(ctx context.Context, trace *Deli
 				Attributes:    stage.Attributes,
 				DurationMs:    stage.DurationMs,
 				StartedAt:     stage.StartedAt.Format(time.RFC3339Nano),
-			})
+			}); err != nil {
+				return fmt.Errorf("record span for stage %s: %w", stage.Stage, err)
+			}
 		}
 	}
 
