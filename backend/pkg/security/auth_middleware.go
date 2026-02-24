@@ -138,6 +138,9 @@ func (sam *SecureAuthMiddleware) SecurityHeaders() gin.HandlerFunc {
 		// Enable XSS protection
 		c.Header("X-XSS-Protection", "1; mode=block")
 		
+		// Content Security Policy
+		c.Header("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'")
+		
 		// Enforce HTTPS in production
 		if gin.Mode() == gin.ReleaseMode {
 			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
