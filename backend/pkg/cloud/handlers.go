@@ -210,7 +210,10 @@ type cancelRequest struct {
 func (h *Handler) CancelSubscription(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req cancelRequest
-	_ = c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body: " + err.Error()})
+		return
+	}
 
 	if h.billing == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "billing service unavailable"})
