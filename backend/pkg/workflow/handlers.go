@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -82,7 +83,7 @@ func (h *Handlers) ListWorkflows(c *gin.Context) {
 
 	workflows, err := h.service.ListWorkflows(c.Request.Context(), tenantID, filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -108,7 +109,7 @@ func (h *Handlers) CreateWorkflow(c *gin.Context) {
 
 	workflow, err := h.service.CreateWorkflow(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -156,7 +157,7 @@ func (h *Handlers) UpdateWorkflow(c *gin.Context) {
 
 	workflow, err := h.service.UpdateWorkflow(c.Request.Context(), tenantID, workflowID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -174,7 +175,7 @@ func (h *Handlers) DeleteWorkflow(c *gin.Context) {
 	workflowID := c.Param("id")
 
 	if err := h.service.DeleteWorkflow(c.Request.Context(), tenantID, workflowID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -194,7 +195,7 @@ func (h *Handlers) PublishWorkflow(c *gin.Context) {
 
 	workflow, err := h.service.PublishWorkflow(c.Request.Context(), tenantID, workflowID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -214,7 +215,7 @@ func (h *Handlers) UnpublishWorkflow(c *gin.Context) {
 
 	workflow, err := h.service.UnpublishWorkflow(c.Request.Context(), tenantID, workflowID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -244,7 +245,7 @@ func (h *Handlers) CloneWorkflow(c *gin.Context) {
 
 	workflow, err := h.service.CloneWorkflow(c.Request.Context(), tenantID, workflowID, req.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -285,7 +286,7 @@ func (h *Handlers) ListWorkflowVersions(c *gin.Context) {
 
 	versions, err := h.service.ListWorkflowVersions(c.Request.Context(), tenantID, workflowID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -335,7 +336,7 @@ func (h *Handlers) ExecuteWorkflow(c *gin.Context) {
 
 	execution, err := h.service.ExecuteWorkflow(c.Request.Context(), tenantID, workflowID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -370,7 +371,7 @@ func (h *Handlers) ListExecutions(c *gin.Context) {
 
 	executions, err := h.service.ListExecutions(c.Request.Context(), tenantID, workflowID, filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -410,7 +411,7 @@ func (h *Handlers) CancelExecution(c *gin.Context) {
 
 	execution, err := h.service.CancelExecution(c.Request.Context(), tenantID, execID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -430,7 +431,7 @@ func (h *Handlers) GetWorkflowStats(c *gin.Context) {
 
 	stats, err := h.service.GetWorkflowStats(c.Request.Context(), tenantID, workflowID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -460,7 +461,7 @@ func (h *Handlers) ListTemplates(c *gin.Context) {
 
 	templates, err := h.service.ListTemplates(c.Request.Context(), category)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

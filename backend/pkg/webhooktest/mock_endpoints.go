@@ -1,6 +1,7 @@
 package webhooktest
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -478,7 +479,7 @@ func (h *MockEndpointHandler) CreateTestEndpoint(c *gin.Context) {
 	}
 	ep, err := h.service.CreateTestEndpoint(c.Request.Context(), tenantID, baseURL, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 	c.JSON(http.StatusCreated, ep)

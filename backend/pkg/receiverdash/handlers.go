@@ -1,6 +1,7 @@
 package receiverdash
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -109,7 +110,7 @@ func (h *Handler) ListTokens(c *gin.Context) {
 
 	tokens, err := h.service.ListTokens(tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, tokens)

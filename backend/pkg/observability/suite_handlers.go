@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -47,7 +48,7 @@ func (h *SuiteHandler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.suite.GetDashboard(c.Request.Context(), tenantID, period)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DASHBOARD_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "DASHBOARD_ERROR", err)
 		return
 	}
 

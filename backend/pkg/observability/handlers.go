@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"time"
 
@@ -115,7 +116,7 @@ func (h *Handler) SearchTraces(c *gin.Context) {
 
 	result, err := h.service.SearchTraces(c.Request.Context(), query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -217,7 +218,7 @@ func (h *Handler) GetTraceMetrics(c *gin.Context) {
 
 	metrics, err := h.service.GetTraceMetrics(c.Request.Context(), tenantID, start, end)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -253,7 +254,7 @@ func (h *Handler) GetServiceMap(c *gin.Context) {
 
 	serviceMap, err := h.service.GetServiceMap(c.Request.Context(), tenantID, start, end)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -273,7 +274,7 @@ func (h *Handler) ListExportConfigs(c *gin.Context) {
 
 	configs, err := h.service.ListExportConfigs(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -300,7 +301,7 @@ func (h *Handler) CreateExportConfig(c *gin.Context) {
 
 	config, err := h.service.CreateExportConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -321,7 +322,7 @@ func (h *Handler) DeleteExportConfig(c *gin.Context) {
 	configID := c.Param("configId")
 
 	if err := h.service.DeleteExportConfig(c.Request.Context(), tenantID, configID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

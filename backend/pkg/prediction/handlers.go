@@ -1,6 +1,7 @@
 package prediction
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -72,7 +73,7 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -93,7 +94,7 @@ func (h *Handler) ListEndpointHealth(c *gin.Context) {
 
 	health, err := h.service.ListEndpointHealth(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -121,7 +122,7 @@ func (h *Handler) GetEndpointHealth(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "endpoint not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -182,7 +183,7 @@ func (h *Handler) Predict(c *gin.Context) {
 			c.JSON(http.StatusServiceUnavailable, ErrorResponse{Error: "prediction model not ready"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -232,7 +233,7 @@ func (h *Handler) ListPredictions(c *gin.Context) {
 
 	response, err := h.service.ListPredictions(c.Request.Context(), tenantID, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -260,7 +261,7 @@ func (h *Handler) GetPrediction(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "prediction not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -346,7 +347,7 @@ func (h *Handler) ListAlerts(c *gin.Context) {
 
 	response, err := h.service.ListAlerts(c.Request.Context(), tenantID, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -374,7 +375,7 @@ func (h *Handler) GetAlert(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "alert not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -461,7 +462,7 @@ func (h *Handler) ListAlertRules(c *gin.Context) {
 
 	rules, err := h.service.ListAlertRules(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -489,7 +490,7 @@ func (h *Handler) GetAlertRule(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "rule not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -598,7 +599,7 @@ func (h *Handler) ListNotificationConfigs(c *gin.Context) {
 
 	configs, err := h.service.ListNotificationConfigs(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

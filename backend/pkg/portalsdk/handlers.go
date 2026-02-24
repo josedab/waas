@@ -1,6 +1,7 @@
 package portalsdk
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -74,7 +75,7 @@ func (h *Handler) ListConfigs(c *gin.Context) {
 
 	configs, err := h.service.ListConfigs(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"configs": configs})
@@ -102,7 +103,7 @@ func (h *Handler) DeleteConfig(c *gin.Context) {
 	configID := c.Param("id")
 
 	if err := h.service.DeleteConfig(c.Request.Context(), tenantID, configID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusNoContent, nil)
@@ -145,7 +146,7 @@ func (h *Handler) RevokeSession(c *gin.Context) {
 	sessionID := c.Param("id")
 
 	if err := h.service.RevokeSession(c.Request.Context(), sessionID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusNoContent, nil)
@@ -172,7 +173,7 @@ func (h *Handler) GetUsageStats(c *gin.Context) {
 
 	stats, err := h.service.GetUsageStats(c.Request.Context(), configID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, stats)

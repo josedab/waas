@@ -1,6 +1,7 @@
 package tracing
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -60,7 +61,7 @@ func (h *Handler) SearchTraces(c *gin.Context) {
 
 	traces, total, err := h.service.SearchTraces(c.Request.Context(), tenantID, filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SEARCH_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SEARCH_FAILED", err)
 		return
 	}
 
@@ -123,7 +124,7 @@ func (h *Handler) RecordSpan(c *gin.Context) {
 
 	span, err := h.service.RecordSpan(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "RECORD_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "RECORD_FAILED", err)
 		return
 	}
 
@@ -142,7 +143,7 @@ func (h *Handler) CompleteTrace(c *gin.Context) {
 
 	trace, err := h.service.CompleteTrace(c.Request.Context(), tenantID, traceID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "COMPLETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "COMPLETE_FAILED", err)
 		return
 	}
 
@@ -163,7 +164,7 @@ func (h *Handler) GetTraceStats(c *gin.Context) {
 
 	stats, err := h.service.GetTraceStats(c.Request.Context(), tenantID, startTime, endTime)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "STATS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "STATS_FAILED", err)
 		return
 	}
 
@@ -180,7 +181,7 @@ func (h *Handler) GetPropagationConfig(c *gin.Context) {
 
 	config, err := h.service.GetPropagationConfig(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CONFIG_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CONFIG_FAILED", err)
 		return
 	}
 
@@ -205,7 +206,7 @@ func (h *Handler) UpdatePropagationConfig(c *gin.Context) {
 
 	config, err := h.service.UpdatePropagationConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -222,7 +223,7 @@ func (h *Handler) GenerateTraceContext(c *gin.Context) {
 
 	traceCtx, err := h.service.GenerateTraceContext(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "GENERATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "GENERATE_FAILED", err)
 		return
 	}
 

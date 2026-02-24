@@ -1,6 +1,7 @@
 package schemachangelog
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -67,7 +68,7 @@ func (h *Handler) RegisterSchema(c *gin.Context) {
 func (h *Handler) GetSchemaVersions(c *gin.Context) {
 	versions, err := h.service.GetSchemaVersions(c.Param("event_type"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, versions)
@@ -82,7 +83,7 @@ func (h *Handler) GetSchemaVersions(c *gin.Context) {
 func (h *Handler) GetChangelogs(c *gin.Context) {
 	changelogs, err := h.service.GetChangelogs(c.Param("event_type"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, changelogs)
@@ -166,7 +167,7 @@ func (h *Handler) CreateMigrationTracking(c *gin.Context) {
 func (h *Handler) GetMigrationStatus(c *gin.Context) {
 	migrations, err := h.service.GetMigrationStatus(c.Param("changelog_id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, migrations)

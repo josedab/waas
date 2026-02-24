@@ -1,6 +1,7 @@
 package pushbridge
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -55,7 +56,7 @@ func (h *PushGatewayHandler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -84,7 +85,7 @@ func (h *PushGatewayHandler) SendPush(c *gin.Context) {
 
 	sent, failed, err := h.service.SendPush(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -139,7 +140,7 @@ func (h *PushGatewayHandler) ListGateways(c *gin.Context) {
 
 	gateways, err := h.service.ListGateways(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -185,7 +186,7 @@ func (h *PushGatewayHandler) DeleteGateway(c *gin.Context) {
 
 	gatewayID := c.Param("gatewayId")
 	if err := h.service.DeleteGateway(c.Request.Context(), tenantID, gatewayID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -218,7 +219,7 @@ func (h *PushGatewayHandler) QueueForOffline(c *gin.Context) {
 	}
 
 	if err := h.service.QueueForOffline(c.Request.Context(), tenantID, req.DeviceID, req.WebhookID, req.EventType, req.Payload, req.Priority); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -242,7 +243,7 @@ func (h *PushGatewayHandler) DrainOfflineQueue(c *gin.Context) {
 
 	entries, err := h.service.DrainOfflineQueue(c.Request.Context(), deviceID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

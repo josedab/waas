@@ -1,6 +1,7 @@
 package portal
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -73,7 +74,7 @@ func (h *Handler) CreatePortal(c *gin.Context) {
 
 	config, err := h.service.CreatePortal(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -90,7 +91,7 @@ func (h *Handler) ListPortals(c *gin.Context) {
 
 	configs, err := h.service.ListPortals(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -136,7 +137,7 @@ func (h *Handler) UpdatePortal(c *gin.Context) {
 
 	config, err := h.service.UpdatePortal(c.Request.Context(), tenantID, portalID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -153,7 +154,7 @@ func (h *Handler) DeletePortal(c *gin.Context) {
 	portalID := c.Param("id")
 
 	if err := h.service.DeletePortal(c.Request.Context(), tenantID, portalID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -177,7 +178,7 @@ func (h *Handler) CreateToken(c *gin.Context) {
 
 	token, err := h.service.CreateEmbedToken(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "TOKEN_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "TOKEN_FAILED", err)
 		return
 	}
 
@@ -196,7 +197,7 @@ func (h *Handler) ListTokens(c *gin.Context) {
 
 	tokens, err := h.service.ListTokens(c.Request.Context(), tenantID, portalID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -213,7 +214,7 @@ func (h *Handler) RevokeToken(c *gin.Context) {
 	tokenID := c.Param("token_id")
 
 	if err := h.service.RevokeToken(c.Request.Context(), tenantID, tokenID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "REVOKE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REVOKE_FAILED", err)
 		return
 	}
 
@@ -239,7 +240,7 @@ func (h *Handler) GetEmbedSnippet(c *gin.Context) {
 
 	snippet, err := h.service.GetEmbedSnippet(c.Request.Context(), tenantID, portalID, apiURL)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SNIPPET_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SNIPPET_FAILED", err)
 		return
 	}
 
@@ -256,7 +257,7 @@ func (h *Handler) ListSessions(c *gin.Context) {
 
 	sessions, err := h.service.ListSessions(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -297,7 +298,7 @@ func (h *Handler) UpdatePortalConfig(c *gin.Context) {
 
 	config, err := h.service.UpdatePortalConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -330,7 +331,7 @@ func (h *Handler) GetEmbedCode(c *gin.Context) {
 
 	code, err := h.service.GenerateEmbedSnippetForFormat(c.Request.Context(), tenantID, portalID, format, apiURL)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SNIPPET_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SNIPPET_FAILED", err)
 		return
 	}
 
@@ -351,7 +352,7 @@ func (h *Handler) GetPortalEndpoints(c *gin.Context) {
 
 	endpoints, total, err := h.service.GetPortalEndpoints(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -380,7 +381,7 @@ func (h *Handler) GetPortalDeliveries(c *gin.Context) {
 
 	deliveries, total, err := h.service.GetPortalDeliveries(c.Request.Context(), tenantID, filter, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -414,7 +415,7 @@ func (h *Handler) GetPortalStats(c *gin.Context) {
 
 	stats, err := h.service.GetPortalStats(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "STATS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "STATS_FAILED", err)
 		return
 	}
 

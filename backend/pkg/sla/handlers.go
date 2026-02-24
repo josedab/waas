@@ -1,6 +1,7 @@
 package sla
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -60,7 +61,7 @@ func (h *Handler) CreateTarget(c *gin.Context) {
 
 	target, err := h.service.CreateTarget(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -77,7 +78,7 @@ func (h *Handler) ListTargets(c *gin.Context) {
 
 	targets, err := h.service.ListTargets(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -123,7 +124,7 @@ func (h *Handler) UpdateTarget(c *gin.Context) {
 
 	target, err := h.service.UpdateTarget(c.Request.Context(), tenantID, targetID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -140,7 +141,7 @@ func (h *Handler) DeleteTarget(c *gin.Context) {
 	targetID := c.Param("id")
 
 	if err := h.service.DeleteTarget(c.Request.Context(), tenantID, targetID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -165,7 +166,7 @@ func (h *Handler) GetTargetCompliance(c *gin.Context) {
 
 	status, err := h.service.GetComplianceStatus(c.Request.Context(), tenantID, target)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "COMPLIANCE_CHECK_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "COMPLIANCE_CHECK_FAILED", err)
 		return
 	}
 
@@ -182,7 +183,7 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DASHBOARD_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DASHBOARD_FAILED", err)
 		return
 	}
 
@@ -203,7 +204,7 @@ func (h *Handler) ListBreaches(c *gin.Context) {
 
 	breaches, err := h.service.GetBreachHistory(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -220,7 +221,7 @@ func (h *Handler) ListActiveBreaches(c *gin.Context) {
 
 	breaches, err := h.service.repo.ListActiveBreaches(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -237,7 +238,7 @@ func (h *Handler) CheckBreaches(c *gin.Context) {
 
 	breaches, err := h.service.CheckAndRecordBreaches(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CHECK_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CHECK_FAILED", err)
 		return
 	}
 
@@ -283,7 +284,7 @@ func (h *Handler) UpdateAlertConfig(c *gin.Context) {
 
 	config, err := h.service.UpdateAlertConfig(c.Request.Context(), tenantID, targetID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 

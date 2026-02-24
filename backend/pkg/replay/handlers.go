@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 
@@ -139,7 +140,7 @@ func (h *Handler) ListSnapshots(c *gin.Context) {
 
 	snapshots, _, err := h.service.ListSnapshots(c.Request.Context(), tenantID, 100, 0)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -98,7 +99,7 @@ func (h *Handler) ListPipelines(c *gin.Context) {
 
 	pipelines, total, err := h.service.ListPipelines(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -149,7 +150,7 @@ func (h *Handler) DeletePipeline(c *gin.Context) {
 	pipelineID := c.Param("pipelineId")
 
 	if err := h.service.DeletePipeline(c.Request.Context(), tenantID, pipelineID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -206,7 +207,7 @@ func (h *Handler) ListExecutions(c *gin.Context) {
 
 	executions, total, err := h.service.ListExecutions(c.Request.Context(), tenantID, pipelineID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

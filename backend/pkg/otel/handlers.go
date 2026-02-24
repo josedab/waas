@@ -1,6 +1,7 @@
 package otel
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 
@@ -98,7 +99,7 @@ func (h *Handler) ListConfigs(c *gin.Context) {
 
 	configs, total, err := h.service.ListConfigs(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -132,7 +133,7 @@ func (h *Handler) GetConfig(c *gin.Context) {
 	configID := c.Param("id")
 	config, err := h.service.GetConfig(c.Request.Context(), tenantID, configID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if config == nil {
@@ -229,7 +230,7 @@ func (h *Handler) TestConnection(c *gin.Context) {
 	configID := c.Param("id")
 	config, err := h.service.GetConfig(c.Request.Context(), tenantID, configID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if config == nil {

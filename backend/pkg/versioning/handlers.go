@@ -1,6 +1,7 @@
 package versioning
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -72,7 +73,7 @@ func (h *Handler) CreateVersion(c *gin.Context) {
 
 	version, err := h.service.CreateVersion(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -93,7 +94,7 @@ func (h *Handler) ListVersions(c *gin.Context) {
 
 	versions, err := h.service.ListVersions(c.Request.Context(), tenantID, webhookID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -204,7 +205,7 @@ func (h *Handler) GetVersionMetrics(c *gin.Context) {
 
 	metrics, err := h.service.GetVersionMetrics(c.Request.Context(), tenantID, versionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -232,7 +233,7 @@ func (h *Handler) CompareVersions(c *gin.Context) {
 
 	comparison, err := h.service.CompareVersions(c.Request.Context(), tenantID, sourceID, targetID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -260,7 +261,7 @@ func (h *Handler) CheckCompatibility(c *gin.Context) {
 
 	result, err := h.service.CheckCompatibility(c.Request.Context(), tenantID, sourceID, targetID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -287,7 +288,7 @@ func (h *Handler) StartMigration(c *gin.Context) {
 
 	migration, err := h.service.StartMigration(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -328,7 +329,7 @@ func (h *Handler) ListMigrations(c *gin.Context) {
 
 	migrations, err := h.service.ListMigrations(c.Request.Context(), tenantID, webhookID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -355,7 +356,7 @@ func (h *Handler) CreateSchema(c *gin.Context) {
 
 	schema, err := h.service.CreateSchema(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -374,7 +375,7 @@ func (h *Handler) ListSchemas(c *gin.Context) {
 
 	schemas, err := h.service.ListSchemas(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -441,7 +442,7 @@ func (h *Handler) UpdatePolicy(c *gin.Context) {
 
 	policy, err := h.service.UpdatePolicy(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

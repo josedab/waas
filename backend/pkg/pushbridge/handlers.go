@@ -1,6 +1,7 @@
 package pushbridge
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 	"time"
@@ -71,7 +72,7 @@ func (h *Handlers) RegisterDevice(c *gin.Context) {
 
 	device, err := h.service.RegisterDevice(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -113,7 +114,7 @@ func (h *Handlers) ListDevices(c *gin.Context) {
 
 	devices, err := h.service.ListDevices(c.Request.Context(), tenantID, filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -161,7 +162,7 @@ func (h *Handlers) UpdateDevice(c *gin.Context) {
 
 	device, err := h.service.UpdateDevice(c.Request.Context(), tenantID, deviceID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -179,7 +180,7 @@ func (h *Handlers) DeleteDevice(c *gin.Context) {
 	deviceID := c.Param("id")
 
 	if err := h.service.DeleteDevice(c.Request.Context(), tenantID, deviceID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -197,7 +198,7 @@ func (h *Handlers) UnregisterDevice(c *gin.Context) {
 	deviceID := c.Param("id")
 
 	if err := h.service.UnregisterDevice(c.Request.Context(), tenantID, deviceID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -223,7 +224,7 @@ func (h *Handlers) CreateMapping(c *gin.Context) {
 
 	mapping, err := h.service.CreateMapping(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -241,7 +242,7 @@ func (h *Handlers) ListMappings(c *gin.Context) {
 
 	mappings, err := h.service.ListMappings(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -279,7 +280,7 @@ func (h *Handlers) DeleteMapping(c *gin.Context) {
 	mappingID := c.Param("id")
 
 	if err := h.service.DeleteMapping(c.Request.Context(), tenantID, mappingID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -305,7 +306,7 @@ func (h *Handlers) SendPush(c *gin.Context) {
 
 	notifications, err := h.service.SendPush(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -335,7 +336,7 @@ func (h *Handlers) ProcessWebhook(c *gin.Context) {
 
 	notifications, err := h.service.ProcessWebhook(c.Request.Context(), tenantID, webhookID, payload)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -379,7 +380,7 @@ func (h *Handlers) ListNotifications(c *gin.Context) {
 
 	notifications, err := h.service.ListNotifications(c.Request.Context(), tenantID, filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -417,7 +418,7 @@ func (h *Handlers) RecordOpen(c *gin.Context) {
 	notifID := c.Param("id")
 
 	if err := h.service.RecordOpen(c.Request.Context(), tenantID, notifID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -451,7 +452,7 @@ func (h *Handlers) GetStats(c *gin.Context) {
 
 	stats, err := h.service.GetStats(c.Request.Context(), tenantID, from, to)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -480,7 +481,7 @@ func (h *Handlers) ListProviders(c *gin.Context) {
 
 	providers, err := h.service.ListProviders(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

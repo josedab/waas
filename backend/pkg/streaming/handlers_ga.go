@@ -1,6 +1,7 @@
 package streaming
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -95,7 +96,7 @@ func (h *GAHandler) CreateConsumerGroup(c *gin.Context) {
 
 	group, err := h.groups.CreateGroup(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -119,7 +120,7 @@ func (h *GAHandler) ListConsumerGroups(c *gin.Context) {
 	bridgeID := c.Query("bridge_id")
 	groups, err := h.groups.ListGroups(c.Request.Context(), tenantID, bridgeID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -165,7 +166,7 @@ func (h *GAHandler) DeleteConsumerGroup(c *gin.Context) {
 
 	groupID := c.Param("groupId")
 	if err := h.groups.DeleteGroup(c.Request.Context(), tenantID, groupID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -199,7 +200,7 @@ func (h *GAHandler) JoinConsumerGroup(c *gin.Context) {
 
 	member, err := h.groups.JoinGroup(c.Request.Context(), tenantID, groupID, req.ClientID, req.Host)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -230,7 +231,7 @@ func (h *GAHandler) LeaveConsumerGroup(c *gin.Context) {
 	}
 
 	if err := h.groups.LeaveGroup(c.Request.Context(), tenantID, groupID, req.MemberID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -256,7 +257,7 @@ func (h *GAHandler) CommitOffset(c *gin.Context) {
 	}
 
 	if err := h.groups.CommitOffset(c.Request.Context(), groupID, req.Partition, req.Offset); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -285,7 +286,7 @@ func (h *GAHandler) CreateDeadLetterPolicy(c *gin.Context) {
 
 	policy, err := h.dlq.CreatePolicy(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -341,7 +342,7 @@ func (h *GAHandler) ListDeadLetterEvents(c *gin.Context) {
 
 	events, total, err := h.dlq.ListDeadLetterEvents(c.Request.Context(), tenantID, bridgeID, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -366,7 +367,7 @@ func (h *GAHandler) ReprocessDeadLetterEvent(c *gin.Context) {
 
 	eventID := c.Param("eventId")
 	if err := h.dlq.ReprocessEvent(c.Request.Context(), tenantID, eventID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -390,7 +391,7 @@ func (h *GAHandler) GetDeadLetterStats(c *gin.Context) {
 	bridgeID := c.Param("bridgeId")
 	stats, err := h.dlq.GetDeadLetterStats(c.Request.Context(), tenantID, bridgeID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -419,7 +420,7 @@ func (h *GAHandler) CreateTopic(c *gin.Context) {
 
 	topic, err := h.topicAdmin.CreateTopic(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -443,7 +444,7 @@ func (h *GAHandler) ListTopics(c *gin.Context) {
 	bridgeID := c.Query("bridge_id")
 	topics, err := h.topicAdmin.ListTopics(c.Request.Context(), tenantID, bridgeID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -498,7 +499,7 @@ func (h *GAHandler) UpdateTopic(c *gin.Context) {
 
 	topic, err := h.topicAdmin.UpdateTopic(c.Request.Context(), tenantID, topicID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -520,7 +521,7 @@ func (h *GAHandler) DeleteTopic(c *gin.Context) {
 
 	topicID := c.Param("topicId")
 	if err := h.topicAdmin.DeleteTopic(c.Request.Context(), tenantID, topicID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -542,7 +543,7 @@ func (h *GAHandler) GetMonitoringDashboard(c *gin.Context) {
 
 	dashboard, err := h.monitoring.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -566,7 +567,7 @@ func (h *GAHandler) GetAlerts(c *gin.Context) {
 	activeOnly := c.Query("active_only") == "true"
 	alerts, err := h.monitoring.GetAlerts(c.Request.Context(), tenantID, activeOnly)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -582,7 +583,7 @@ func (h *GAHandler) GetAlerts(c *gin.Context) {
 func (h *GAHandler) ResolveAlert(c *gin.Context) {
 	alertID := c.Param("alertId")
 	if err := h.monitoring.ResolveAlert(c.Request.Context(), alertID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -604,7 +605,7 @@ func (h *GAHandler) RunHealthCheck(c *gin.Context) {
 
 	alerts, err := h.monitoring.CheckBridgeHealth(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

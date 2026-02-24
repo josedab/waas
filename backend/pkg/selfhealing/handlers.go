@@ -1,6 +1,7 @@
 package selfhealing
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -55,7 +56,7 @@ func (h *Handler) RecordFailure(c *gin.Context) {
 
 	discovery, err := h.service.RecordFailure(tenantID, req.EndpointID, req.CurrentURL)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -82,7 +83,7 @@ func (h *Handler) RecordSuccess(c *gin.Context) {
 	}
 
 	if err := h.service.RecordSuccess(req.EndpointID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "reset"})
@@ -141,7 +142,7 @@ func (h *Handler) ValidateAndApply(c *gin.Context) {
 func (h *Handler) GetDiscoveries(c *gin.Context) {
 	discoveries, err := h.service.GetDiscoveries(c.Param("endpoint_id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, discoveries)
@@ -156,7 +157,7 @@ func (h *Handler) GetDiscoveries(c *gin.Context) {
 func (h *Handler) GetFailureStatus(c *gin.Context) {
 	ft, err := h.service.GetFailureStatus(c.Param("endpoint_id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, ft)
@@ -183,7 +184,7 @@ func (h *Handler) GetMigrationEvents(c *gin.Context) {
 
 	events, err := h.service.GetMigrationEvents(tenantID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, events)

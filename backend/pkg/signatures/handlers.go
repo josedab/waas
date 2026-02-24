@@ -1,6 +1,7 @@
 package signatures
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -51,7 +52,7 @@ func (h *Handlers) ListSchemes(c *gin.Context) {
 
 	schemes, err := h.service.ListSchemes(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -77,7 +78,7 @@ func (h *Handlers) CreateScheme(c *gin.Context) {
 
 	scheme, err := h.service.CreateScheme(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -125,7 +126,7 @@ func (h *Handlers) UpdateScheme(c *gin.Context) {
 
 	scheme, err := h.service.UpdateScheme(c.Request.Context(), tenantID, schemeID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -143,7 +144,7 @@ func (h *Handlers) DeleteScheme(c *gin.Context) {
 	schemeID := c.Param("id")
 
 	if err := h.service.DeleteScheme(c.Request.Context(), tenantID, schemeID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -163,7 +164,7 @@ func (h *Handlers) GetKeys(c *gin.Context) {
 
 	keys, err := h.service.GetKeys(c.Request.Context(), tenantID, schemeID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -196,7 +197,7 @@ func (h *Handlers) RotateKey(c *gin.Context) {
 
 	rotation, err := h.service.RotateKey(c.Request.Context(), tenantID, schemeID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -216,7 +217,7 @@ func (h *Handlers) RevokeKey(c *gin.Context) {
 	keyID := c.Param("keyId")
 
 	if err := h.service.RevokeKey(c.Request.Context(), tenantID, schemeID, keyID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -236,7 +237,7 @@ func (h *Handlers) GetRotations(c *gin.Context) {
 
 	rotations, err := h.service.GetRotations(c.Request.Context(), tenantID, schemeID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -256,7 +257,7 @@ func (h *Handlers) GetStats(c *gin.Context) {
 
 	stats, err := h.service.GetStats(c.Request.Context(), tenantID, schemeID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -282,7 +283,7 @@ func (h *Handlers) Sign(c *gin.Context) {
 
 	result, err := h.service.Sign(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -308,7 +309,7 @@ func (h *Handlers) Verify(c *gin.Context) {
 
 	result, err := h.service.Verify(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

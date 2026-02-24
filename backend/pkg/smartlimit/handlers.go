@@ -1,6 +1,7 @@
 package smartlimit
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"time"
 
@@ -55,7 +56,7 @@ func (h *Handler) ListConfigs(c *gin.Context) {
 
 	configs, err := h.service.ListConfigs(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -82,7 +83,7 @@ func (h *Handler) CreateConfig(c *gin.Context) {
 
 	config, err := h.service.CreateConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -133,7 +134,7 @@ func (h *Handler) UpdateConfig(c *gin.Context) {
 
 	config, err := h.service.UpdateConfig(c.Request.Context(), tenantID, endpointID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -154,7 +155,7 @@ func (h *Handler) DeleteConfig(c *gin.Context) {
 	endpointID := c.Param("endpointId")
 
 	if err := h.service.DeleteConfig(c.Request.Context(), tenantID, endpointID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -198,7 +199,7 @@ func (h *Handler) TrainModel(c *gin.Context) {
 
 	model, err := h.service.TrainModel(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -239,7 +240,7 @@ func (h *Handler) GetStats(c *gin.Context) {
 
 	stats, err := h.service.GetStats(c.Request.Context(), tenantID, start, end)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -261,7 +262,7 @@ func (h *Handler) GetPattern(c *gin.Context) {
 
 	pattern, err := h.service.GetEndpointPattern(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if pattern == nil {
@@ -287,7 +288,7 @@ func (h *Handler) GetRecommendation(c *gin.Context) {
 
 	recommendation, err := h.service.GetRateRecommendation(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if recommendation == nil {

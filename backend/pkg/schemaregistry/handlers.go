@@ -1,6 +1,7 @@
 package schemaregistry
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -49,7 +50,7 @@ func (h *Handler) RegisterSchema(c *gin.Context) {
 
 	schema, err := h.service.RegisterSchema(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "REGISTER_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REGISTER_FAILED", err)
 		return
 	}
 
@@ -70,7 +71,7 @@ func (h *Handler) ListSchemas(c *gin.Context) {
 
 	schemas, err := h.service.ListSchemas(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -87,7 +88,7 @@ func (h *Handler) GetStats(c *gin.Context) {
 
 	stats, err := h.service.GetStats(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "STATS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "STATS_FAILED", err)
 		return
 	}
 
@@ -125,7 +126,7 @@ func (h *Handler) ListVersions(c *gin.Context) {
 
 	versions, err := h.service.ListVersions(c.Request.Context(), tenantID, subject)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -168,7 +169,7 @@ func (h *Handler) CheckCompatibility(c *gin.Context) {
 
 	result, err := h.service.CheckCompatibility(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "COMPATIBILITY_CHECK_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "COMPATIBILITY_CHECK_FAILED", err)
 		return
 	}
 
@@ -187,7 +188,7 @@ func (h *Handler) DeprecateSchema(c *gin.Context) {
 
 	schema, err := h.service.DeprecateSchema(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DEPRECATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DEPRECATE_FAILED", err)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package protocolgw
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -48,7 +49,7 @@ func (h *Handler) CreateRoute(c *gin.Context) {
 
 	route, err := h.service.CreateRoute(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -65,7 +66,7 @@ func (h *Handler) ListRoutes(c *gin.Context) {
 
 	routes, err := h.service.ListRoutes(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -111,7 +112,7 @@ func (h *Handler) UpdateRoute(c *gin.Context) {
 
 	route, err := h.service.UpdateRoute(c.Request.Context(), tenantID, routeID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -128,7 +129,7 @@ func (h *Handler) DeleteRoute(c *gin.Context) {
 	routeID := c.Param("id")
 
 	if err := h.service.DeleteRoute(c.Request.Context(), tenantID, routeID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -152,7 +153,7 @@ func (h *Handler) TranslateMessage(c *gin.Context) {
 
 	result, err := h.service.TranslateMessage(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "TRANSLATION_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "TRANSLATION_FAILED", err)
 		return
 	}
 
@@ -188,7 +189,7 @@ func (h *Handler) GetProtocolStats(c *gin.Context) {
 
 	stats, err := h.service.GetProtocolStats(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "STATS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "STATS_FAILED", err)
 		return
 	}
 

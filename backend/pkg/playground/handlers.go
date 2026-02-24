@@ -1,6 +1,7 @@
 package playground
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -80,7 +81,7 @@ func (h *Handler) CreateSession(c *gin.Context) {
 
 	session, err := h.service.CreateSession(c.Request.Context(), tid, req.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, session)
@@ -299,7 +300,7 @@ func (h *Handler) SaveSnippet(c *gin.Context) {
 		SnippetType: "transformation",
 	}
 	if err := h.service.CreateSnippet(c.Request.Context(), snippet); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, snippet)
@@ -324,7 +325,7 @@ func (h *Handler) ListSnippets(c *gin.Context) {
 	snippetType := c.DefaultQuery("type", "")
 	snippets, err := h.service.ListSnippets(c.Request.Context(), tid, snippetType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"snippets": snippets})

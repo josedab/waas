@@ -1,6 +1,7 @@
 package portal
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -42,7 +43,7 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 
 	view, err := h.service.GetUnifiedPortalView(c.Request.Context(), tenantID, apiURL)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DASHBOARD_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "DASHBOARD_ERROR", err)
 		return
 	}
 
@@ -66,7 +67,7 @@ func (h *Handler) StartOnboarding(c *gin.Context) {
 
 	wizard, err := h.service.StartOnboarding(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "ONBOARDING_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "ONBOARDING_FAILED", err)
 		return
 	}
 
@@ -91,7 +92,7 @@ func (h *Handler) CompleteOnboardingStep(c *gin.Context) {
 	// Start a new wizard for demo purposes if none exists
 	wizard, err := h.service.StartOnboarding(c.Request.Context(), tenantID, &StartOnboardingRequest{TenantName: "default"})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "ONBOARDING_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "ONBOARDING_ERROR", err)
 		return
 	}
 

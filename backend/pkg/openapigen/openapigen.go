@@ -1,6 +1,7 @@
 package openapigen
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -561,7 +562,7 @@ func (h *Handler) GenerateConfig(c *gin.Context) {
 
 	config, err := h.service.GenerateFromSpec(c.Request.Context(), spec, req.Options)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -589,7 +590,7 @@ func (h *Handler) GenerateSDK(c *gin.Context) {
 
 	config, err := h.service.GenerateFromSpec(c.Request.Context(), spec, req.Options)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -628,13 +629,13 @@ func (h *Handler) GenerateTests(c *gin.Context) {
 
 	config, err := h.service.GenerateFromSpec(c.Request.Context(), spec, req.Options)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
 	suite, err := h.service.GenerateContractTests(c.Request.Context(), config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

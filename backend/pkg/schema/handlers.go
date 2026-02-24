@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 
@@ -111,7 +112,7 @@ func (h *Handler) ListSchemas(c *gin.Context) {
 
 	schemas, total, err := h.service.ListSchemas(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -144,7 +145,7 @@ func (h *Handler) GetSchema(c *gin.Context) {
 	schemaID := c.Param("id")
 	schema, err := h.service.GetSchema(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if schema == nil {
@@ -458,7 +459,7 @@ func (h *Handler) GetEndpointSchema(c *gin.Context) {
 	endpointID := c.Param("id")
 	assignment, err := h.service.GetEndpointSchema(c.Request.Context(), endpointID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if assignment == nil {

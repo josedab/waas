@@ -1,6 +1,7 @@
 package piidetection
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -75,7 +76,7 @@ func (h *Handler) ListPolicies(c *gin.Context) {
 
 	policies, err := h.service.ListPolicies(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -106,7 +107,7 @@ func (h *Handler) DeletePolicy(c *gin.Context) {
 	policyID := c.Param("id")
 
 	if err := h.service.DeletePolicy(c.Request.Context(), tenantID, policyID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -123,7 +124,7 @@ func (h *Handler) ScanPayload(c *gin.Context) {
 
 	resp, err := h.service.ScanPayload(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -150,7 +151,7 @@ func (h *Handler) ListScanResults(c *gin.Context) {
 
 	results, err := h.service.ListScanResults(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -162,7 +163,7 @@ func (h *Handler) GetDashboardStats(c *gin.Context) {
 
 	stats, err := h.service.GetDashboardStats(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

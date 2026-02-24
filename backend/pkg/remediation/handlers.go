@@ -1,6 +1,7 @@
 package remediation
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -64,7 +65,7 @@ func (h *Handler) CreateAction(c *gin.Context) {
 
 	action, err := h.service.CreateAction(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -95,7 +96,7 @@ func (h *Handler) GetAction(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "action not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -144,7 +145,7 @@ func (h *Handler) ListActions(c *gin.Context) {
 
 	response, err := h.service.ListActions(c.Request.Context(), tenantID, filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -168,7 +169,7 @@ func (h *Handler) GetPendingActions(c *gin.Context) {
 
 	actions, err := h.service.GetPendingActions(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -210,7 +211,7 @@ func (h *Handler) ApproveAction(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -308,7 +309,7 @@ func (h *Handler) GetAuditLogs(c *gin.Context) {
 
 	logs, err := h.service.GetAuditLogs(c.Request.Context(), actionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -332,7 +333,7 @@ func (h *Handler) GetPolicy(c *gin.Context) {
 
 	policy, err := h.service.GetPolicy(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -363,7 +364,7 @@ func (h *Handler) UpdatePolicy(c *gin.Context) {
 	}
 
 	if err := h.service.UpdatePolicy(c.Request.Context(), tenantID, &policy); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -390,7 +391,7 @@ func (h *Handler) GetMetrics(c *gin.Context) {
 
 	metrics, err := h.service.GetMetrics(c.Request.Context(), tenantID, period)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -417,7 +418,7 @@ func (h *Handler) AnalyzeAndSuggest(c *gin.Context) {
 
 	analysis, err := h.service.AnalyzeAndSuggest(c.Request.Context(), tenantID, deliveryID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

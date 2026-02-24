@@ -1,6 +1,7 @@
 package sandbox
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 
@@ -60,7 +61,7 @@ func (h *Handler) CreateSandbox(c *gin.Context) {
 
 	sandbox, err := h.service.CreateSandbox(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -77,7 +78,7 @@ func (h *Handler) ListSandboxes(c *gin.Context) {
 
 	sandboxes, err := h.service.ListSandboxes(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -123,7 +124,7 @@ func (h *Handler) ReplayEvents(c *gin.Context) {
 
 	sessions, err := h.service.ReplayEvents(c.Request.Context(), tenantID, sandboxID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "REPLAY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REPLAY_FAILED", err)
 		return
 	}
 
@@ -142,7 +143,7 @@ func (h *Handler) GetComparisonReport(c *gin.Context) {
 
 	report, err := h.service.GetComparisonReport(c.Request.Context(), tenantID, sandboxID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "COMPARISON_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "COMPARISON_FAILED", err)
 		return
 	}
 
@@ -161,7 +162,7 @@ func (h *Handler) TerminateSandbox(c *gin.Context) {
 
 	sandbox, err := h.service.TerminateSandbox(c.Request.Context(), tenantID, sandboxID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "TERMINATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "TERMINATE_FAILED", err)
 		return
 	}
 
@@ -178,7 +179,7 @@ func (h *Handler) CleanupExpired(c *gin.Context) {
 
 	count, err := h.service.CleanupExpired(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CLEANUP_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CLEANUP_FAILED", err)
 		return
 	}
 
@@ -204,7 +205,7 @@ func (h *Handler) CreateMockEndpoint(c *gin.Context) {
 
 	endpoint, err := h.service.CreateMockEndpoint(c.Request.Context(), sandboxID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_MOCK_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_MOCK_FAILED", err)
 		return
 	}
 
@@ -241,7 +242,7 @@ func (h *Handler) HandleMockRequest(c *gin.Context) {
 		c.Request.Method, c.Request.URL.String(), headers, body,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "MOCK_REQUEST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "MOCK_REQUEST_FAILED", err)
 		return
 	}
 
@@ -274,7 +275,7 @@ func (h *Handler) GetCapturedRequests(c *gin.Context) {
 
 	requests, err := h.service.GetCapturedRequests(c.Request.Context(), sandboxID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "GET_REQUESTS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "GET_REQUESTS_FAILED", err)
 		return
 	}
 
@@ -299,7 +300,7 @@ func (h *Handler) InjectChaos(c *gin.Context) {
 	}
 
 	if err := h.service.InjectChaos(c.Request.Context(), sandboxID, req.FailureType, req.Probability); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CHAOS_INJECTION_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CHAOS_INJECTION_FAILED", err)
 		return
 	}
 
@@ -324,7 +325,7 @@ func (h *Handler) CreateTestScenario(c *gin.Context) {
 
 	scenario, err := h.service.CreateTestScenario(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_SCENARIO_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_SCENARIO_FAILED", err)
 		return
 	}
 
@@ -341,7 +342,7 @@ func (h *Handler) ListTestScenarios(c *gin.Context) {
 
 	scenarios, err := h.service.ListTestScenarios(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_SCENARIOS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_SCENARIOS_FAILED", err)
 		return
 	}
 
@@ -359,7 +360,7 @@ func (h *Handler) RunTestScenario(c *gin.Context) {
 
 	result, err := h.service.RunTestScenario(c.Request.Context(), scenarioID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "RUN_SCENARIO_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "RUN_SCENARIO_FAILED", err)
 		return
 	}
 

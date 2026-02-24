@@ -1,6 +1,7 @@
 package policyengine
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -71,7 +72,7 @@ func (h *Handler) ListPolicies(c *gin.Context) {
 
 	policies, err := h.service.ListPolicies(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -102,7 +103,7 @@ func (h *Handler) DeletePolicy(c *gin.Context) {
 	policyID := c.Param("id")
 
 	if err := h.service.DeletePolicy(c.Request.Context(), tenantID, policyID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -142,7 +143,7 @@ func (h *Handler) ListPolicyVersions(c *gin.Context) {
 
 	versions, err := h.service.ListPolicyVersions(c.Request.Context(), policyID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -156,7 +157,7 @@ func (h *Handler) ListEvaluationLogs(c *gin.Context) {
 
 	logs, err := h.service.ListEvaluationLogs(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package obscodepipeline
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -72,7 +73,7 @@ func (h *Handler) ListPipelines(c *gin.Context) {
 
 	pipelines, err := h.service.ListPipelines(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -103,7 +104,7 @@ func (h *Handler) DeletePipeline(c *gin.Context) {
 	pipelineID := c.Param("id")
 
 	if err := h.service.DeletePipeline(c.Request.Context(), tenantID, pipelineID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -159,7 +160,7 @@ func (h *Handler) GetPipelineStats(c *gin.Context) {
 
 	stats, err := h.service.GetPipelineStats(c.Request.Context(), pipelineID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -173,7 +174,7 @@ func (h *Handler) ListExecutions(c *gin.Context) {
 
 	executions, err := h.service.ListExecutions(c.Request.Context(), pipelineID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -187,7 +188,7 @@ func (h *Handler) ListAlertEvents(c *gin.Context) {
 
 	alerts, err := h.service.ListAlertEvents(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -199,7 +200,7 @@ func (h *Handler) GetActiveAlerts(c *gin.Context) {
 
 	alerts, err := h.service.GetActiveAlerts(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

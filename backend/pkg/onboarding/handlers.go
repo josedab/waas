@@ -1,6 +1,7 @@
 package onboarding
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -38,7 +39,7 @@ func (h *Handler) StartOnboarding(c *gin.Context) {
 
 	progress, err := h.service.StartOnboarding(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -100,7 +101,7 @@ func (h *Handler) GetSnippets(c *gin.Context) {
 
 	snippets, err := h.service.GetSnippets(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -110,7 +111,7 @@ func (h *Handler) GetSnippets(c *gin.Context) {
 func (h *Handler) GetAnalytics(c *gin.Context) {
 	analytics, err := h.service.GetAnalytics(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

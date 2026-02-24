@@ -1,6 +1,7 @@
 package routingpolicy
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -74,7 +75,7 @@ func (h *Handler) ListPolicies(c *gin.Context) {
 
 	policies, err := h.service.ListPolicies(tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, policies)
@@ -168,7 +169,7 @@ func (h *Handler) TogglePolicy(c *gin.Context) {
 func (h *Handler) GetVersions(c *gin.Context) {
 	versions, err := h.service.GetVersions(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, versions)
@@ -184,7 +185,7 @@ func (h *Handler) GetVersions(c *gin.Context) {
 func (h *Handler) GetAuditLog(c *gin.Context) {
 	entries, err := h.service.GetAuditLog(c.Param("id"), 50)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, entries)
@@ -211,7 +212,7 @@ func (h *Handler) Evaluate(c *gin.Context) {
 
 	results, err := h.service.Evaluate(tenantID, &ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, results)

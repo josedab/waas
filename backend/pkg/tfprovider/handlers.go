@@ -1,6 +1,7 @@
 package tfprovider
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -73,7 +74,7 @@ func (h *Handler) ListResources(c *gin.Context) {
 
 	resources, err := h.service.ListManagedResources(c.Request.Context(), tenantID, resourceType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -105,7 +106,7 @@ func (h *Handler) RegisterResource(c *gin.Context) {
 
 	resource, err := h.service.RegisterResource(c.Request.Context(), tenantID, req.ResourceType, req.ResourceID, req.Attributes, req.ManagedBy)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "REGISTER_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REGISTER_FAILED", err)
 		return
 	}
 
@@ -124,7 +125,7 @@ func (h *Handler) DeregisterResource(c *gin.Context) {
 	resourceID := c.Param("id")
 
 	if err := h.service.DeregisterResource(c.Request.Context(), tenantID, resourceType, resourceID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DEREGISTER_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DEREGISTER_FAILED", err)
 		return
 	}
 

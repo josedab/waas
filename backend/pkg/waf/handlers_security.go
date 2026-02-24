@@ -1,6 +1,7 @@
 package waf
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -49,7 +50,7 @@ func (h *SecuritySuiteHandler) GetSecurityPosture(c *gin.Context) {
 
 	posture, err := h.suite.GetSecurityPosture(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -83,7 +84,7 @@ func (h *SecuritySuiteHandler) VerifyDelivery(c *gin.Context) {
 
 	verification, err := h.suite.VerifyDelivery(c.Request.Context(), tenantID, req.EndpointID, req.DeliveryID, req.SourceIP, req.Payload)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -109,7 +110,7 @@ func (h *SecuritySuiteHandler) ListIPAllowlist(c *gin.Context) {
 
 	entries, err := h.suite.ListIPAllowlist(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -160,7 +161,7 @@ func (h *SecuritySuiteHandler) RemoveIPAllowlist(c *gin.Context) {
 
 	entryID := c.Param("entryId")
 	if err := h.suite.RemoveIPAllowlist(c.Request.Context(), tenantID, entryID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -188,7 +189,7 @@ func (h *SecuritySuiteHandler) ListAuditLogs(c *gin.Context) {
 
 	logs, err := h.suite.ListAuditLogs(c.Request.Context(), tenantID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
