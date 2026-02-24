@@ -179,10 +179,20 @@ func (s *Service) ExecuteTransformation(ctx context.Context, sessionID *uuid.UUI
 		execution.ErrorMessage = err.Error()
 	} else {
 		execution.Success = true
-		output, _ = json.Marshal(result.Output)
-		execution.OutputPayload = output
-		logsJSON, _ := json.Marshal(result.Logs)
-		execution.Logs = logsJSON
+		output, err = json.Marshal(result.Output)
+		if err != nil {
+			execution.Success = false
+			execution.ErrorMessage = fmt.Sprintf("failed to marshal output: %v", err)
+		} else {
+			execution.OutputPayload = output
+		}
+		logsJSON, err := json.Marshal(result.Logs)
+		if err != nil {
+			execution.Success = false
+			execution.ErrorMessage = fmt.Sprintf("failed to marshal logs: %v", err)
+		} else {
+			execution.Logs = logsJSON
+		}
 	}
 
 	// Save execution to history

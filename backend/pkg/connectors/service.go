@@ -186,7 +186,9 @@ func (s *Service) ExecuteConnector(ctx context.Context, tenantID, installedID st
 
 	var config interface{}
 	if installed.Config != nil {
-		json.Unmarshal(installed.Config, &config)
+		if err := json.Unmarshal(installed.Config, &config); err != nil {
+			return nil, fmt.Errorf("invalid connector config: %w", err)
+		}
 	}
 
 	// Execute transformation
@@ -208,7 +210,10 @@ func (s *Service) ExecuteConnector(ctx context.Context, tenantID, installedID st
 	// Convert result to JSON
 	var outputPayload []byte
 	if result != nil {
-		outputPayload, _ = json.Marshal(result)
+		outputPayload, err = json.Marshal(result)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal connector output: %w", err)
+		}
 	}
 
 	// Log execution
