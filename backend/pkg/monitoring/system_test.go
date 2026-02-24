@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+	"github.com/josedab/waas/pkg/testutil"
 	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -104,12 +105,11 @@ func testAlertManagerIntegration(t *testing.T, alertManager *AlertManager, testN
 	// Test firing an alert using a metric that matches default rules
 	alertManager.EvaluateMetric("delivery_failure_rate", 0.1, testLabels) // Above 5% threshold
 	
-	// Wait for alert processing
-	time.Sleep(100 * time.Millisecond)
-	
-	// Check that alert was fired
-	activeAlerts := alertManager.GetActiveAlerts()
-	assert.Greater(t, len(activeAlerts), 0, "Expected at least one active alert")
+	// Poll until alert is processed
+	err := testutil.WaitFor(func() bool {
+		return len(alertManager.GetActiveAlerts()) > 0
+	}, 2*time.Second, 10*time.Millisecond)
+	assert.NoError(t, err, "Expected at least one active alert")
 	
 	// Check that notification was sent
 	assert.Greater(t, len(testNotifier.alerts), 0, "Expected at least one notification")
@@ -117,12 +117,11 @@ func testAlertManagerIntegration(t *testing.T, alertManager *AlertManager, testN
 	// Test resolving the alert
 	alertManager.EvaluateMetric("delivery_failure_rate", 0.01, testLabels) // Below threshold
 	
-	// Wait for alert processing
-	time.Sleep(100 * time.Millisecond)
-	
-	// Check alert history
-	alertHistory := alertManager.GetAlertHistory(10, "")
-	assert.Greater(t, len(alertHistory), 0, "Expected alert history")
+	// Poll until alert history is updated
+	err = testutil.WaitFor(func() bool {
+		return len(alertManager.GetAlertHistory(10, "")) > 0
+	}, 2*time.Second, 10*time.Millisecond)
+	assert.NoError(t, err, "Expected alert history")
 }
 
 func testMetricsRecorderIntegration(t *testing.T, metricsRecorder *MetricsRecorder) {
@@ -201,7 +200,10 @@ func testEndToEndMonitoringFlow(t *testing.T, healthChecker *HealthChecker, aler
 	assert.NotNil(t, healthStatus)
 	
 	// Wait for async processing
-	time.Sleep(200 * time.Millisecond)
+	err := testutil.WaitFor(func() bool {
+		return len(testNotifier.alerts) > 0
+	}, 2*time.Second, 10*time.Millisecond)
+	require.NoError(t, err)
 	
 	// Verify the complete flow
 	assert.Equal(t, TraceStatusError, span.Status)

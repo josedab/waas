@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"github.com/josedab/waas/pkg/testutil"
 	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -679,8 +680,10 @@ func testPerformanceMonitoringValidation(t *testing.T) {
 		}
 	}
 	
-	// Wait for processing
-	time.Sleep(100 * time.Millisecond)
+	// Poll until alerts are generated from high load
+	_ = testutil.WaitFor(func() bool {
+		return len(alertManager.GetActiveAlerts()) > 0
+	}, 2*time.Second, 10*time.Millisecond)
 	
 	// Verify performance monitoring captured the load
 	activeAlerts := alertManager.GetActiveAlerts()

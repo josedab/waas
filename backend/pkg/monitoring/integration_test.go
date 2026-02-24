@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+	"github.com/josedab/waas/pkg/testutil"
 	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -129,7 +130,10 @@ func testCompleteMonitoringWorkflow(t *testing.T, healthChecker *HealthChecker, 
 	healthStatus := healthChecker.GetHealthStatus(ctx)
 	
 	// Wait for async processing
-	time.Sleep(200 * time.Millisecond)
+	err := testutil.WaitFor(func() bool {
+		return deliverySpan.EndTime != nil
+	}, 2*time.Second, 10*time.Millisecond)
+	assert.NoError(t, err)
 	
 	// Verify complete workflow
 	assert.Equal(t, TraceStatusError, deliverySpan.Status)
