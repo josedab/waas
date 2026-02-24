@@ -2,7 +2,7 @@ package webhooktest
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"sync"
 	"time"
@@ -249,7 +249,7 @@ func (e *ChaosEngine) computeLatency() time.Duration {
 			delayMs = minMs
 		}
 	default: // uniform
-		delayMs = minMs + rand.Intn(maxMs-minMs)
+		delayMs = minMs + rand.IntN(maxMs-minMs)
 	}
 
 	return time.Duration(delayMs) * time.Millisecond
@@ -282,7 +282,7 @@ func (e *ChaosEngine) pickErrorCode() int {
 	if len(codes) == 0 {
 		codes = []int{500, 502, 503, 504}
 	}
-	return codes[rand.Intn(len(codes))]
+	return codes[rand.IntN(len(codes))]
 }
 
 func (e *ChaosEngine) pickErrorBody() string {
@@ -290,7 +290,7 @@ func (e *ChaosEngine) pickErrorBody() string {
 	if len(bodies) == 0 {
 		return `{"error": "internal server error (simulated)"}`
 	}
-	return bodies[rand.Intn(len(bodies))]
+	return bodies[rand.IntN(len(bodies))]
 }
 
 // ChaosResult represents the result of chaos injection

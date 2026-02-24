@@ -3,7 +3,7 @@ package topologysim
 import (
 	"fmt"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"sort"
 	"time"
 
@@ -123,9 +123,9 @@ func (s *Service) ListResults(topologyID string) ([]*SimulationResult, error) {
 }
 
 func (s *Service) simulateOnce(topology *Topology, duration time.Duration, seed int64) *SimulationResult {
-	rng := rand.New(rand.NewSource(seed))
+	rng := rand.New(rand.NewPCG(uint64(seed), 0))
 	if seed == 0 {
-		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+		rng = rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
 	}
 
 	durationMs := duration.Seconds() * 1000
