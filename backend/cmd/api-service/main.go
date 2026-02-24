@@ -29,6 +29,7 @@ import (
 	_ "github.com/josedab/waas/docs"
 	"github.com/josedab/waas/pkg/utils"
 	"os"
+	"strings"
 	
 	// Import feature packages for swagger doc generation
 	_ "github.com/josedab/waas/pkg/costing"
@@ -49,10 +50,30 @@ func main() {
 	server, err := api.NewServer()
 	if err != nil {
 		logger.Error("Failed to initialize API service", map[string]interface{}{"error": err.Error()})
+		logStartupHint(err)
 		os.Exit(1)
 	}
-	if err := server.Start(":8080"); err != nil {
+	port := os.Getenv("API_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	if err := server.Start(":" + port); err != nil {
 		logger.Error("Failed to start API service", map[string]interface{}{"error": err.Error()})
 		os.Exit(1)
+	}
+}
+
+// logStartupHint inspects an initialization error and logs actionable guidance.
+func logStartupHint(err error) {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "database connection failed"), strings.Contains(msg, "sqlx database connection"):
+		logger.Error("Hint: ensure PostgreSQL is running and DATABASE_URL is set. Try: make docker-up", nil)
+	case strings.Contains(msg, "redis connection failed"):
+		logger.Error("Hint: ensure Redis is running and REDIS_URL is set. Try: make docker-up", nil)
+	case strings.Contains(msg, "migration"):
+		logger.Error("Hint: database migrations failed. Try: make migrate-up", nil)
+	case strings.Contains(msg, "configuration error"):
+		logger.Error("Hint: check your .env file. Try: make ensure-env && make validate-env", nil)
 	}
 }

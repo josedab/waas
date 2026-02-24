@@ -15,6 +15,7 @@ package main
 import (
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"github.com/josedab/waas/internal/delivery"
 	"github.com/josedab/waas/pkg/utils"
@@ -28,6 +29,7 @@ func main() {
 	engine, err := delivery.NewEngine()
 	if err != nil {
 		logger.Error("Failed to initialize delivery engine", map[string]interface{}{"error": err.Error()})
+		logStartupHint(err)
 		os.Exit(1)
 	}
 	if err := engine.Start(); err != nil {
@@ -43,4 +45,17 @@ func main() {
 	logger.Info("Shutting down delivery engine...", nil)
 	engine.Stop()
 	logger.Info("Delivery engine stopped", nil)
+}
+
+// logStartupHint inspects an initialization error and logs actionable guidance.
+func logStartupHint(err error) {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "database connection"), strings.Contains(msg, "database"):
+		logger.Error("Hint: ensure PostgreSQL is running and DATABASE_URL is set. Try: make docker-up", nil)
+	case strings.Contains(msg, "redis"):
+		logger.Error("Hint: ensure Redis is running and REDIS_URL is set. Try: make docker-up", nil)
+	case strings.Contains(msg, "configuration error"):
+		logger.Error("Hint: check your .env file. Try: make ensure-env && make validate-env", nil)
+	}
 }
