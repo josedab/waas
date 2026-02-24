@@ -9,8 +9,8 @@ import (
 )
 
 func TestCreateAdaptiveConfig(t *testing.T) {
-	resetAdaptiveState()
 	svc := NewService(nil, nil)
+	svc.resetAdaptiveState()
 
 	config, err := svc.CreateAdaptiveConfig(context.Background(), "tenant-1", &CreateRecvAdaptiveConfigRequest{
 		EndpointID:        "ep-1",

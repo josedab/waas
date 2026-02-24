@@ -16,6 +16,7 @@ type Service struct {
 	analyzer   *PatternAnalyzer
 	throttlers sync.Map // map[endpointID]*Throttler
 	config     *ServiceConfig
+	adaptive   *adaptiveState
 }
 
 // ServiceConfig holds service configuration
@@ -49,6 +50,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 		predictor: NewPredictor(),
 		analyzer:  NewPatternAnalyzer(repo, DefaultPatternConfig()),
 		config:    config,
+		adaptive:  newAdaptiveState(),
 	}
 }
 

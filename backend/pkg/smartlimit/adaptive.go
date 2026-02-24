@@ -132,14 +132,24 @@ var globalAdaptiveState = &adaptiveState{
 	deliveryWindow: make(map[string]*deliveryWindow),
 }
 
-// resetAdaptiveState resets global state; used by tests to prevent state leakage.
-func resetAdaptiveState() {
-	globalAdaptiveState.mu.Lock()
-	defer globalAdaptiveState.mu.Unlock()
-	globalAdaptiveState.configs = make(map[string]*RecvAdaptiveConfig)
-	globalAdaptiveState.health = make(map[string]*ReceiverHealth)
-	globalAdaptiveState.adjustments = make(map[string][]RecvRateAdjustment)
-	globalAdaptiveState.deliveryWindow = make(map[string]*deliveryWindow)
+// newAdaptiveState creates a fresh adaptiveState instance.
+func newAdaptiveState() *adaptiveState {
+	return &adaptiveState{
+		configs:        make(map[string]*RecvAdaptiveConfig),
+		health:         make(map[string]*ReceiverHealth),
+		adjustments:    make(map[string][]RecvRateAdjustment),
+		deliveryWindow: make(map[string]*deliveryWindow),
+	}
+}
+
+// resetAdaptiveState resets the adaptive state; used by tests to prevent state leakage.
+func (s *Service) resetAdaptiveState() {
+	s.adaptive.mu.Lock()
+	defer s.adaptive.mu.Unlock()
+	s.adaptive.configs = make(map[string]*RecvAdaptiveConfig)
+	s.adaptive.health = make(map[string]*ReceiverHealth)
+	s.adaptive.adjustments = make(map[string][]RecvRateAdjustment)
+	s.adaptive.deliveryWindow = make(map[string]*deliveryWindow)
 }
 
 // CreateAdaptiveConfig creates an adaptive rate limit configuration.
@@ -180,19 +190,19 @@ func (s *Service) CreateAdaptiveConfig(ctx context.Context, tenantID string, req
 		config.MaxRate = req.BaseRatePerSecond * 5
 	}
 
-	globalAdaptiveState.mu.Lock()
-	globalAdaptiveState.configs[req.EndpointID] = config
-	globalAdaptiveState.mu.Unlock()
+	s.adaptive.mu.Lock()
+	s.adaptive.configs[req.EndpointID] = config
+	s.adaptive.mu.Unlock()
 
 	return config, nil
 }
 
 // GetAdaptiveConfig returns the adaptive config for an endpoint.
 func (s *Service) GetAdaptiveConfig(ctx context.Context, tenantID, endpointID string) (*RecvAdaptiveConfig, error) {
-	globalAdaptiveState.mu.RLock()
-	defer globalAdaptiveState.mu.RUnlock()
+	s.adaptive.mu.RLock()
+	defer s.adaptive.mu.RUnlock()
 
-	config, exists := globalAdaptiveState.configs[endpointID]
+	config, exists := s.adaptive.configs[endpointID]
 	if !exists {
 		return nil, fmt.Errorf("no adaptive config for endpoint %s", endpointID)
 	}
@@ -205,14 +215,14 @@ func (s *Service) RecordRecvDeliveryResult(ctx context.Context, tenantID string,
 		return nil, fmt.Errorf("endpoint_id is required")
 	}
 
-	globalAdaptiveState.mu.Lock()
-	defer globalAdaptiveState.mu.Unlock()
+	s.adaptive.mu.Lock()
+	defer s.adaptive.mu.Unlock()
 
 	// Update delivery window
-	window, exists := globalAdaptiveState.deliveryWindow[req.EndpointID]
+	window, exists := s.adaptive.deliveryWindow[req.EndpointID]
 	if !exists {
 		window = &deliveryWindow{}
-		globalAdaptiveState.deliveryWindow[req.EndpointID] = window
+		s.adaptive.deliveryWindow[req.EndpointID] = window
 	}
 
 	window.count++
@@ -228,10 +238,10 @@ func (s *Service) RecordRecvDeliveryResult(ctx context.Context, tenantID string,
 
 	// Compute health
 	health := s.computeHealth(req.EndpointID, tenantID, window)
-	globalAdaptiveState.health[req.EndpointID] = health
+	s.adaptive.health[req.EndpointID] = health
 
 	// Adjust rate based on health
-	if config, exists := globalAdaptiveState.configs[req.EndpointID]; exists && config.Enabled {
+	if config, exists := s.adaptive.configs[req.EndpointID]; exists && config.Enabled {
 		s.adjustRate(config, health)
 	}
 
@@ -240,10 +250,10 @@ func (s *Service) RecordRecvDeliveryResult(ctx context.Context, tenantID string,
 
 // GetReceiverHealth returns the current health status of a receiver.
 func (s *Service) GetReceiverHealth(ctx context.Context, tenantID, endpointID string) (*ReceiverHealth, error) {
-	globalAdaptiveState.mu.RLock()
-	defer globalAdaptiveState.mu.RUnlock()
+	s.adaptive.mu.RLock()
+	defer s.adaptive.mu.RUnlock()
 
-	health, exists := globalAdaptiveState.health[endpointID]
+	health, exists := s.adaptive.health[endpointID]
 	if !exists {
 		return &ReceiverHealth{
 			EndpointID: endpointID,
@@ -256,21 +266,21 @@ func (s *Service) GetReceiverHealth(ctx context.Context, tenantID, endpointID st
 
 // GetAdaptiveStats returns statistics about adaptive rate limiting for an endpoint.
 func (s *Service) GetAdaptiveStats(ctx context.Context, tenantID, endpointID string) (*RecvAdaptiveStats, error) {
-	globalAdaptiveState.mu.RLock()
-	defer globalAdaptiveState.mu.RUnlock()
+	s.adaptive.mu.RLock()
+	defer s.adaptive.mu.RUnlock()
 
 	stats := &RecvAdaptiveStats{EndpointID: endpointID}
 
-	if config, exists := globalAdaptiveState.configs[endpointID]; exists {
+	if config, exists := s.adaptive.configs[endpointID]; exists {
 		stats.CurrentRate = config.CurrentRate
 		stats.BaseRate = config.BaseRatePerSecond
 	}
 
-	if health, exists := globalAdaptiveState.health[endpointID]; exists {
+	if health, exists := s.adaptive.health[endpointID]; exists {
 		stats.HealthScore = health.SuccessRate
 	}
 
-	if adjustments, exists := globalAdaptiveState.adjustments[endpointID]; exists {
+	if adjustments, exists := s.adaptive.adjustments[endpointID]; exists {
 		stats.AdjustmentCount = len(adjustments)
 		limit := 10
 		if len(adjustments) < limit {
@@ -365,8 +375,8 @@ func (s *Service) adjustRate(config *RecvAdaptiveConfig, health *ReceiverHealth)
 			HealthScore:  health.SuccessRate,
 			Timestamp:    time.Now(),
 		}
-		globalAdaptiveState.adjustments[config.EndpointID] = append(
-			globalAdaptiveState.adjustments[config.EndpointID], adjustment,
+		s.adaptive.adjustments[config.EndpointID] = append(
+			s.adaptive.adjustments[config.EndpointID], adjustment,
 		)
 	}
 }
