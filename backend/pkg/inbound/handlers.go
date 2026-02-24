@@ -1,6 +1,7 @@
 package inbound
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"io"
 	"net/http"
 	"strconv"
@@ -71,7 +72,7 @@ func (h *Handler) CreateSource(c *gin.Context) {
 
 	source, err := h.service.CreateSource(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -105,7 +106,7 @@ func (h *Handler) ListSources(c *gin.Context) {
 
 	sources, total, err := h.service.ListSources(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -221,7 +222,7 @@ func (h *Handler) GetSourceEvents(c *gin.Context) {
 
 	events, total, err := h.service.GetSourceEvents(c.Request.Context(), tenantID, sourceID, status, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -315,7 +316,7 @@ func (h *Handler) GetDLQ(c *gin.Context) {
 
 	entries, err := h.service.GetDLQEntries(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DLQ_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DLQ_FAILED", err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"entries": entries, "total": len(entries)})

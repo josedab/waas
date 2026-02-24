@@ -1,6 +1,7 @@
 package marketplacetpl
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -54,7 +55,7 @@ func (h *Handler) ListTemplates(c *gin.Context) {
 
 	templates, total, err := h.service.ListTemplates(c.Request.Context(), category, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -85,7 +86,7 @@ func (h *Handler) SearchTemplates(c *gin.Context) {
 
 	templates, total, err := h.service.SearchTemplates(c.Request.Context(), query, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SEARCH_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SEARCH_FAILED", err)
 		return
 	}
 
@@ -126,7 +127,7 @@ func (h *Handler) CreateTemplate(c *gin.Context) {
 
 	template, err := h.service.CreateTemplate(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -153,7 +154,7 @@ func (h *Handler) InstallTemplate(c *gin.Context) {
 
 	install, err := h.service.InstallTemplate(c.Request.Context(), tenantID, templateID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "INSTALL_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "INSTALL_FAILED", err)
 		return
 	}
 
@@ -170,7 +171,7 @@ func (h *Handler) ListInstallations(c *gin.Context) {
 
 	installs, err := h.service.ListInstallations(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -187,7 +188,7 @@ func (h *Handler) UninstallTemplate(c *gin.Context) {
 	installID := c.Param("id")
 
 	if err := h.service.UninstallTemplate(c.Request.Context(), tenantID, installID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UNINSTALL_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UNINSTALL_FAILED", err)
 		return
 	}
 
@@ -214,7 +215,7 @@ func (h *Handler) SubmitReview(c *gin.Context) {
 
 	review, err := h.service.SubmitReview(c.Request.Context(), tenantID, templateID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "REVIEW_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REVIEW_FAILED", err)
 		return
 	}
 
@@ -236,7 +237,7 @@ func (h *Handler) ListReviews(c *gin.Context) {
 
 	reviews, err := h.service.ListReviews(c.Request.Context(), templateID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -251,7 +252,7 @@ func (h *Handler) ListReviews(c *gin.Context) {
 func (h *Handler) GetStats(c *gin.Context) {
 	stats, err := h.service.GetStats(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "STATS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "STATS_FAILED", err)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package multicloud
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 	"time"
@@ -76,7 +77,7 @@ func (h *FederationHandler) RegisterCluster(c *gin.Context) {
 
 	result, err := h.service.RegisterCluster(c.Request.Context(), tenantID, &cluster)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -104,7 +105,7 @@ func (h *FederationHandler) ListClusters(c *gin.Context) {
 
 	clusters, err := h.service.ListClusters(c.Request.Context(), tenantID, provider)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -147,7 +148,7 @@ func (h *FederationHandler) UpdateCluster(c *gin.Context) {
 	cluster.ID = c.Param("id")
 
 	if err := h.service.UpdateCluster(c.Request.Context(), &cluster); err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -163,7 +164,7 @@ func (h *FederationHandler) UpdateCluster(c *gin.Context) {
 // @Router /federation/clusters/{id} [delete]
 func (h *FederationHandler) DeleteCluster(c *gin.Context) {
 	if err := h.service.repo.DeleteCluster(c.Request.Context(), c.Param("id")); err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -184,7 +185,7 @@ func (h *FederationHandler) CheckClusterHealth(c *gin.Context) {
 
 	clusters, err := h.service.CheckClusterHealth(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -213,7 +214,7 @@ func (h *FederationHandler) CreateRoute(c *gin.Context) {
 
 	result, err := h.service.CreateFederationRoute(c.Request.Context(), tenantID, &route)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -234,7 +235,7 @@ func (h *FederationHandler) ListRoutes(c *gin.Context) {
 
 	routes, err := h.service.ListFederationRoutes(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -277,7 +278,7 @@ func (h *FederationHandler) UpdateRoute(c *gin.Context) {
 	route.ID = c.Param("id")
 
 	if err := h.service.repo.UpdateFederationRoute(c.Request.Context(), &route); err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -293,7 +294,7 @@ func (h *FederationHandler) UpdateRoute(c *gin.Context) {
 // @Router /federation/routes/{id} [delete]
 func (h *FederationHandler) DeleteRoute(c *gin.Context) {
 	if err := h.service.repo.DeleteFederationRoute(c.Request.Context(), c.Param("id")); err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -335,7 +336,7 @@ func (h *FederationHandler) InitiateFailover(c *gin.Context) {
 
 	event, err := h.service.InitiateFailover(c.Request.Context(), tenantID, req.RouteID, req.FromClusterID, req.ToClusterID, req.Reason, initiatedBy)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -360,7 +361,7 @@ func (h *FederationHandler) GetFailoverHistory(c *gin.Context) {
 
 	events, err := h.service.repo.ListFailoverEvents(c.Request.Context(), tenantID, since)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -381,7 +382,7 @@ func (h *FederationHandler) GetCloudMetrics(c *gin.Context) {
 
 	metrics, err := h.service.GetCloudMetrics(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -410,7 +411,7 @@ func (h *FederationHandler) ForwardRequest(c *gin.Context) {
 
 	resp, err := h.service.RouteRequest(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"io"
 	"net/http"
@@ -98,7 +99,7 @@ func (h *Handler) ListProviders(c *gin.Context) {
 
 	providers, total, err := h.service.ListProviders(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -125,7 +126,7 @@ func (h *Handler) GetProvider(c *gin.Context) {
 
 	provider, err := h.service.GetProvider(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if provider == nil {
@@ -223,7 +224,7 @@ func (h *Handler) GetRoutingRule(c *gin.Context) {
 
 	rule, err := h.service.GetRoutingRule(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if rule == nil {
@@ -299,7 +300,7 @@ func (h *Handler) ListRoutingRules(c *gin.Context) {
 
 	rules, err := h.service.ListRoutingRules(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -367,7 +368,7 @@ func (h *Handler) ListInboundWebhooks(c *gin.Context) {
 
 	webhooks, total, err := h.service.ListInboundWebhooks(c.Request.Context(), tenantID, providerID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -394,7 +395,7 @@ func (h *Handler) GetInboundWebhook(c *gin.Context) {
 
 	webhook, err := h.service.GetInboundWebhook(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if webhook == nil {

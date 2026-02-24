@@ -1,6 +1,7 @@
 package mocking
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 
@@ -110,7 +111,7 @@ func (h *Handler) ListEndpoints(c *gin.Context) {
 
 	endpoints, total, err := h.service.ListMockEndpoints(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -144,7 +145,7 @@ func (h *Handler) GetEndpoint(c *gin.Context) {
 	endpointID := c.Param("id")
 	endpoint, err := h.service.GetMockEndpoint(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if endpoint == nil {
@@ -291,7 +292,7 @@ func (h *Handler) ListDeliveries(c *gin.Context) {
 
 	deliveries, total, err := h.service.ListDeliveries(c.Request.Context(), tenantID, endpointID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -370,7 +371,7 @@ func (h *Handler) ListTemplates(c *gin.Context) {
 
 	templates, total, err := h.service.ListTemplates(c.Request.Context(), tenantID, includePublic, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -404,7 +405,7 @@ func (h *Handler) GetTemplate(c *gin.Context) {
 	templateID := c.Param("id")
 	template, err := h.service.GetTemplate(c.Request.Context(), tenantID, templateID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if template == nil {

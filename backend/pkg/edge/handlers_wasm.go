@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -75,7 +76,7 @@ func (h *WasmHandler) ListFunctions(c *gin.Context) {
 
 	functions, err := h.runtime.ListFunctions(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -121,7 +122,7 @@ func (h *WasmHandler) DeleteFunction(c *gin.Context) {
 
 	functionID := c.Param("functionId")
 	if err := h.runtime.DeleteFunction(c.Request.Context(), tenantID, functionID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -152,7 +153,7 @@ func (h *WasmHandler) InvokeFunction(c *gin.Context) {
 
 	invocation, err := h.runtime.InvokeFunction(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -182,7 +183,7 @@ func (h *WasmHandler) ListInvocations(c *gin.Context) {
 
 	invocations, err := h.runtime.ListInvocations(c.Request.Context(), tenantID, functionID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -198,7 +199,7 @@ func (h *WasmHandler) ListInvocations(c *gin.Context) {
 func (h *WasmHandler) ListTemplates(c *gin.Context) {
 	templates, err := h.runtime.ListTemplates(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

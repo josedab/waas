@@ -1,6 +1,7 @@
 package livemigration
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -70,7 +71,7 @@ func (h *Handler) CreateMigration(c *gin.Context) {
 
 	job, err := h.service.CreateMigration(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -87,7 +88,7 @@ func (h *Handler) ListMigrations(c *gin.Context) {
 
 	jobs, err := h.service.ListMigrations(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -125,7 +126,7 @@ func (h *Handler) DiscoverEndpoints(c *gin.Context) {
 
 	endpoints, err := h.service.DiscoverEndpoints(c.Request.Context(), tenantID, jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DISCOVER_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DISCOVER_FAILED", err)
 		return
 	}
 
@@ -144,7 +145,7 @@ func (h *Handler) ImportEndpoints(c *gin.Context) {
 
 	endpoints, err := h.service.ImportEndpoints(c.Request.Context(), tenantID, jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "IMPORT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "IMPORT_FAILED", err)
 		return
 	}
 
@@ -163,7 +164,7 @@ func (h *Handler) ValidateEndpoints(c *gin.Context) {
 
 	endpoints, err := h.service.ValidateEndpoints(c.Request.Context(), tenantID, jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "VALIDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "VALIDATE_FAILED", err)
 		return
 	}
 
@@ -191,7 +192,7 @@ func (h *Handler) StartParallelDelivery(c *gin.Context) {
 
 	results, err := h.service.StartParallelDelivery(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "PARALLEL_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "PARALLEL_FAILED", err)
 		return
 	}
 
@@ -210,7 +211,7 @@ func (h *Handler) GetCutoverPlan(c *gin.Context) {
 
 	plan, err := h.service.GetCutoverPlan(c.Request.Context(), tenantID, jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CUTOVER_PLAN_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CUTOVER_PLAN_FAILED", err)
 		return
 	}
 
@@ -229,7 +230,7 @@ func (h *Handler) ExecuteCutover(c *gin.Context) {
 
 	job, err := h.service.ExecuteCutover(c.Request.Context(), tenantID, jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CUTOVER_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CUTOVER_FAILED", err)
 		return
 	}
 
@@ -248,7 +249,7 @@ func (h *Handler) RollbackMigration(c *gin.Context) {
 
 	job, err := h.service.RollbackMigration(c.Request.Context(), tenantID, jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "ROLLBACK_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "ROLLBACK_FAILED", err)
 		return
 	}
 
@@ -267,7 +268,7 @@ func (h *Handler) GetMigrationStats(c *gin.Context) {
 
 	stats, err := h.service.GetMigrationStats(c.Request.Context(), tenantID, jobID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "STATS_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "STATS_FAILED", err)
 		return
 	}
 
@@ -292,7 +293,7 @@ func (h *Handler) DryRunMigration(c *gin.Context) {
 
 	result, err := h.service.DryRunMigration(c.Request.Context(), tenantID, &config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DRY_RUN_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DRY_RUN_FAILED", err)
 		return
 	}
 
@@ -317,7 +318,7 @@ func (h *Handler) ImportFromSvix(c *gin.Context) {
 
 	job, err := h.service.ImportFromSvix(c.Request.Context(), tenantID, &config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SVIX_IMPORT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SVIX_IMPORT_FAILED", err)
 		return
 	}
 
@@ -342,7 +343,7 @@ func (h *Handler) ImportFromConvoy(c *gin.Context) {
 
 	job, err := h.service.ImportFromConvoy(c.Request.Context(), tenantID, &config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CONVOY_IMPORT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CONVOY_IMPORT_FAILED", err)
 		return
 	}
 
@@ -367,7 +368,7 @@ func (h *Handler) ImportFromCSV(c *gin.Context) {
 
 	job, err := h.service.ImportFromCSV(c.Request.Context(), tenantID, &config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CSV_IMPORT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CSV_IMPORT_FAILED", err)
 		return
 	}
 
@@ -410,7 +411,7 @@ func (h *Handler) SvixCreateEndpoint(c *gin.Context) {
 
 	out, err := h.svixCompat.CreateEndpoint(appUID, endpoint)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SVIX_COMPAT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SVIX_COMPAT_FAILED", err)
 		return
 	}
 
@@ -427,7 +428,7 @@ func (h *Handler) SvixListEndpoints(c *gin.Context) {
 
 	endpoints, err := h.svixCompat.ListEndpoints(appUID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SVIX_COMPAT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SVIX_COMPAT_FAILED", err)
 		return
 	}
 
@@ -452,7 +453,7 @@ func (h *Handler) ConvoyCreateEndpoint(c *gin.Context) {
 
 	out, err := h.convoyCompat.CreateEndpoint(projectID, endpoint)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CONVOY_COMPAT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CONVOY_COMPAT_FAILED", err)
 		return
 	}
 
@@ -469,7 +470,7 @@ func (h *Handler) ConvoyListEndpoints(c *gin.Context) {
 
 	endpoints, err := h.convoyCompat.ListEndpoints(projectID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CONVOY_COMPAT_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CONVOY_COMPAT_FAILED", err)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package fanout
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -60,7 +61,7 @@ func (h *Handler) CreateTopic(c *gin.Context) {
 
 	topic, err := h.service.CreateTopic(c.Request.Context(), tid, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -79,7 +80,7 @@ func (h *Handler) ListTopics(c *gin.Context) {
 
 	topics, total, err := h.service.ListTopics(c.Request.Context(), tid, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -158,7 +159,7 @@ func (h *Handler) DeleteTopic(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteTopic(c.Request.Context(), tid, topicID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -208,7 +209,7 @@ func (h *Handler) Unsubscribe(c *gin.Context) {
 	}
 
 	if err := h.service.Unsubscribe(c.Request.Context(), subID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UNSUBSCRIBE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UNSUBSCRIBE_FAILED", err)
 		return
 	}
 
@@ -226,7 +227,7 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 
 	subs, total, err := h.service.GetTopicSubscribers(c.Request.Context(), topicID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -267,7 +268,7 @@ func (h *Handler) PublishEvent(c *gin.Context) {
 
 	result, err := h.service.Publish(c.Request.Context(), tid, topic.Name, req.EventType, req.Payload, req.Metadata)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "PUBLISH_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "PUBLISH_FAILED", err)
 		return
 	}
 
@@ -314,7 +315,7 @@ func (h *Handler) ListEvents(c *gin.Context) {
 
 	events, total, err := h.service.GetTopicEvents(c.Request.Context(), topicID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -364,7 +365,7 @@ func (h *Handler) CreateRoutingRule(c *gin.Context) {
 
 	rule, err := h.service.CreateRoutingRule(c.Request.Context(), tid, topicID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -387,7 +388,7 @@ func (h *Handler) ListRoutingRules(c *gin.Context) {
 
 	rules, err := h.service.ListRoutingRules(c.Request.Context(), tid, topicID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -461,7 +462,7 @@ func (h *Handler) DeleteRoutingRule(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteRoutingRule(c.Request.Context(), tid, ruleID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -535,7 +536,7 @@ func (h *Handler) GetRuleVersions(c *gin.Context) {
 
 	versions, err := h.service.GetRuleVersions(c.Request.Context(), ruleID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 

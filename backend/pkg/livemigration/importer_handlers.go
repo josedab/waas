@@ -1,6 +1,7 @@
 package livemigration
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -55,7 +56,7 @@ func runImport(c *gin.Context, platform string) {
 
 	result, err := importer.Import(c.Request.Context(), &config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, result)
@@ -81,7 +82,7 @@ func (h *Handler) StartCutoverV2(c *gin.Context) {
 	svc := NewCutoverService(h.service.repo)
 	plan, err := svc.StartCutover(c.Request.Context(), tenantID, req.JobID, req.DryRun)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, plan)

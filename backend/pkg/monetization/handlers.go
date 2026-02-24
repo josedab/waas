@@ -1,6 +1,7 @@
 package monetization
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -79,7 +80,7 @@ func (h *Handler) CreatePlan(c *gin.Context) {
 
 	result, err := h.service.CreatePlan(c.Request.Context(), tenantID, &plan)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -103,7 +104,7 @@ func (h *Handler) ListPlans(c *gin.Context) {
 
 	plans, err := h.service.ListPlans(c.Request.Context(), tenantID, publicOnly)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -157,7 +158,7 @@ func (h *Handler) UpdatePlan(c *gin.Context) {
 	plan.TenantID = tenantID
 
 	if err := h.service.repo.UpdatePlan(c.Request.Context(), &plan); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -186,7 +187,7 @@ func (h *Handler) CreateCustomer(c *gin.Context) {
 
 	result, err := h.service.CreateCustomer(c.Request.Context(), tenantID, &customer)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -212,7 +213,7 @@ func (h *Handler) ListCustomers(c *gin.Context) {
 
 	customers, total, err := h.service.repo.ListCustomers(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -354,7 +355,7 @@ func (h *Handler) CreateAPIKey(c *gin.Context) {
 
 	key, secret, err := h.service.CreateAPIKey(c.Request.Context(), tenantID, c.Param("id"), req.Name, req.Scopes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -379,7 +380,7 @@ func (h *Handler) ListAPIKeys(c *gin.Context) {
 
 	keys, err := h.service.repo.ListAPIKeys(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -395,7 +396,7 @@ func (h *Handler) ListAPIKeys(c *gin.Context) {
 // @Router /monetization/api-keys/{id} [delete]
 func (h *Handler) RevokeAPIKey(c *gin.Context) {
 	if err := h.service.repo.DeleteAPIKey(c.Request.Context(), c.Param("id")); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -440,7 +441,7 @@ func (h *Handler) GenerateInvoice(c *gin.Context) {
 
 	invoice, err := h.service.GenerateInvoice(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -460,7 +461,7 @@ func (h *Handler) ListInvoices(c *gin.Context) {
 
 	invoices, err := h.service.repo.ListInvoices(c.Request.Context(), c.Param("id"), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

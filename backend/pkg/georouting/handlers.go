@@ -1,6 +1,7 @@
 package georouting
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 
@@ -76,7 +77,7 @@ func (h *Handler) GetRegions(c *gin.Context) {
 func (h *Handler) GetRegionHealth(c *gin.Context) {
 	health, err := h.service.GetRegionHealth(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"health": health})
@@ -142,7 +143,7 @@ func (h *Handler) GetRouting(c *gin.Context) {
 	endpointID := c.Param("id")
 	routing, err := h.service.GetEndpointRouting(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if routing == nil {
@@ -274,7 +275,7 @@ func (h *Handler) GetStats(c *gin.Context) {
 
 	stats, err := h.service.GetRoutingStats(c.Request.Context(), tenantID, period)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -323,7 +324,7 @@ func (h *Handler) GetRegionHealthByName(c *gin.Context) {
 	name := c.Param("name")
 	health, err := h.service.GetRouter().healthTracker.CheckRegionHealth(c.Request.Context(), name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, health)
@@ -403,7 +404,7 @@ func (h *Handler) ListGeoRoutingPolicies(c *gin.Context) {
 
 	policies, err := h.service.ListGeoRoutingPolicies(c.Request.Context(), tid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -570,7 +571,7 @@ func (h *Handler) GetRoutingHistory(c *gin.Context) {
 
 	history, err := h.service.GetRoutingHistory(c.Request.Context(), tid, 50)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -589,7 +590,7 @@ func (h *Handler) GetRoutingHistory(c *gin.Context) {
 func (h *Handler) GetDashboard(c *gin.Context) {
 	dashboard, err := h.service.GetGeoDashboard(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

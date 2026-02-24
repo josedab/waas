@@ -1,6 +1,7 @@
 package metaevents
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 
@@ -105,7 +106,7 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 
 	subs, total, err := h.service.ListSubscriptions(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -139,7 +140,7 @@ func (h *Handler) GetSubscription(c *gin.Context) {
 	subID := c.Param("id")
 	sub, err := h.service.GetSubscription(c.Request.Context(), tenantID, subID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if sub == nil {
@@ -332,7 +333,7 @@ func (h *Handler) ListDeliveries(c *gin.Context) {
 
 	deliveries, total, err := h.service.ListDeliveries(c.Request.Context(), tenantID, subID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -381,7 +382,7 @@ func (h *Handler) ListEvents(c *gin.Context) {
 
 	events, total, err := h.service.ListEvents(c.Request.Context(), tenantID, eventType, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -415,7 +416,7 @@ func (h *Handler) GetEvent(c *gin.Context) {
 	eventID := c.Param("id")
 	event, err := h.service.GetEvent(c.Request.Context(), tenantID, eventID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if event == nil {

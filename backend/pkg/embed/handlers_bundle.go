@@ -1,6 +1,7 @@
 package embed
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -59,7 +60,7 @@ func (h *WidgetBundleHandler) CreateBundle(c *gin.Context) {
 
 	bundle, err := h.service.CreateBundle(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -81,7 +82,7 @@ func (h *WidgetBundleHandler) ListBundles(c *gin.Context) {
 
 	bundles, err := h.service.ListBundles(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -127,7 +128,7 @@ func (h *WidgetBundleHandler) DeleteBundle(c *gin.Context) {
 
 	bundleID := c.Param("bundleId")
 	if err := h.service.DeleteBundle(c.Request.Context(), tenantID, bundleID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -156,7 +157,7 @@ func (h *WidgetBundleHandler) CreateTheme(c *gin.Context) {
 
 	theme, err := h.service.CreateTheme(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -178,7 +179,7 @@ func (h *WidgetBundleHandler) ListThemes(c *gin.Context) {
 
 	themes, err := h.service.ListThemes(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -200,7 +201,7 @@ func (h *WidgetBundleHandler) DeleteTheme(c *gin.Context) {
 
 	themeID := c.Param("themeId")
 	if err := h.service.DeleteTheme(c.Request.Context(), tenantID, themeID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

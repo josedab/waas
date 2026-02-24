@@ -1,6 +1,7 @@
 package graphqlsub
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -265,7 +266,7 @@ func (h *Handler) GetStats(c *gin.Context) {
 
 	stats, err := h.service.GetStats(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -297,7 +298,7 @@ func (h *Handler) PublishEvent(c *gin.Context) {
 	event.Timestamp = time.Now()
 
 	if err := h.service.PublishEvent(c.Request.Context(), &event); err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

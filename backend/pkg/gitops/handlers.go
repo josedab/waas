@@ -1,6 +1,7 @@
 package gitops
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -102,7 +103,7 @@ func (h *Handler) ListManifests(c *gin.Context) {
 
 	manifests, err := h.service.ListManifests(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -140,7 +141,7 @@ func (h *Handler) PlanApply(c *gin.Context) {
 
 	plan, err := h.service.PlanApply(c.Request.Context(), tenantID, manifestID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "PLAN_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "PLAN_FAILED", err)
 		return
 	}
 
@@ -172,7 +173,7 @@ func (h *Handler) ApplyManifest(c *gin.Context) {
 	if req.DryRun {
 		plan, err := h.service.PlanApply(c.Request.Context(), tenantID, manifestID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "PLAN_FAILED", "message": err.Error()}})
+			httputil.InternalError(c, "PLAN_FAILED", err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"dry_run": true, "plan": plan})
@@ -181,7 +182,7 @@ func (h *Handler) ApplyManifest(c *gin.Context) {
 
 	result, err := h.service.ApplyManifest(c.Request.Context(), tenantID, manifestID, req.Force)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "APPLY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "APPLY_FAILED", err)
 		return
 	}
 
@@ -200,7 +201,7 @@ func (h *Handler) RollbackManifest(c *gin.Context) {
 
 	result, err := h.service.RollbackManifest(c.Request.Context(), tenantID, manifestID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "ROLLBACK_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "ROLLBACK_FAILED", err)
 		return
 	}
 
@@ -217,7 +218,7 @@ func (h *Handler) DetectDrift(c *gin.Context) {
 
 	report, err := h.service.DetectDrift(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DRIFT_DETECTION_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DRIFT_DETECTION_FAILED", err)
 		return
 	}
 
@@ -234,7 +235,7 @@ func (h *Handler) ListDriftReports(c *gin.Context) {
 
 	reports, err := h.service.ListDriftReports(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -307,7 +308,7 @@ func (h *Handler) GetSyncState(c *gin.Context) {
 
 	state, err := h.service.GetSyncState(c.Request.Context(), tenantID, manifestID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "SYNC_STATE_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "SYNC_STATE_ERROR", err)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 
@@ -112,7 +113,7 @@ func (h *Handler) ListFlows(c *gin.Context) {
 
 	flows, total, err := h.service.ListFlows(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -146,7 +147,7 @@ func (h *Handler) GetFlow(c *gin.Context) {
 	flowID := c.Param("id")
 	flow, err := h.service.GetFlow(c.Request.Context(), tenantID, flowID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if flow == nil {
@@ -290,7 +291,7 @@ func (h *Handler) ListExecutions(c *gin.Context) {
 
 	executions, total, err := h.service.ListExecutions(c.Request.Context(), tenantID, flowID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -324,7 +325,7 @@ func (h *Handler) GetExecution(c *gin.Context) {
 	executionID := c.Param("id")
 	execution, err := h.service.GetExecution(c.Request.Context(), tenantID, executionID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if execution == nil {
@@ -442,7 +443,7 @@ func (h *Handler) GetEndpointFlows(c *gin.Context) {
 	endpointID := c.Param("id")
 	assignments, err := h.service.GetEndpointFlows(c.Request.Context(), endpointID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

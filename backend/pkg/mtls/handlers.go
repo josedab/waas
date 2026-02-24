@@ -1,6 +1,7 @@
 package mtls
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -57,7 +58,7 @@ func (h *Handler) IssueCertificate(c *gin.Context) {
 
 	cert, err := h.service.IssueCertificate(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "ISSUE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "ISSUE_FAILED", err)
 		return
 	}
 
@@ -74,7 +75,7 @@ func (h *Handler) ListCertificates(c *gin.Context) {
 
 	certs, err := h.service.ListCertificates(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -112,7 +113,7 @@ func (h *Handler) RenewCertificate(c *gin.Context) {
 
 	cert, err := h.service.RenewCertificate(c.Request.Context(), tenantID, certID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "RENEW_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "RENEW_FAILED", err)
 		return
 	}
 
@@ -129,7 +130,7 @@ func (h *Handler) RevokeCertificate(c *gin.Context) {
 	certID := c.Param("id")
 
 	if err := h.service.RevokeCertificate(c.Request.Context(), tenantID, certID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "REVOKE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REVOKE_FAILED", err)
 		return
 	}
 
@@ -146,7 +147,7 @@ func (h *Handler) GetInventory(c *gin.Context) {
 
 	inv, err := h.service.GetInventory(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "INVENTORY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "INVENTORY_FAILED", err)
 		return
 	}
 
@@ -170,7 +171,7 @@ func (h *Handler) CreateTLSPolicy(c *gin.Context) {
 
 	policy, err := h.service.CreateTLSPolicy(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CREATE_FAILED", err)
 		return
 	}
 
@@ -187,7 +188,7 @@ func (h *Handler) ListTLSPolicies(c *gin.Context) {
 
 	policies, err := h.service.ListTLSPolicies(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "LIST_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "LIST_FAILED", err)
 		return
 	}
 
@@ -233,7 +234,7 @@ func (h *Handler) UpdateTLSPolicy(c *gin.Context) {
 
 	policy, err := h.service.UpdateTLSPolicy(c.Request.Context(), tenantID, policyID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "UPDATE_FAILED", err)
 		return
 	}
 
@@ -250,7 +251,7 @@ func (h *Handler) DeleteTLSPolicy(c *gin.Context) {
 	policyID := c.Param("id")
 
 	if err := h.service.DeleteTLSPolicy(c.Request.Context(), tenantID, policyID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -265,7 +266,7 @@ func (h *Handler) DeleteTLSPolicy(c *gin.Context) {
 func (h *Handler) CheckExpiring(c *gin.Context) {
 	renewed, err := h.service.CheckExpiringCerts(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"code": "CHECK_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "CHECK_FAILED", err)
 		return
 	}
 

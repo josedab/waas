@@ -1,6 +1,7 @@
 package federation
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -87,7 +88,7 @@ func (h *MeshHandler) ListEvents(c *gin.Context) {
 
 	events, err := h.mesh.ListFederatedEvents(c.Request.Context(), peerID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -134,7 +135,7 @@ func (h *MeshHandler) PublishSchema(c *gin.Context) {
 
 	schema, err := h.mesh.PublishSchema(c.Request.Context(), h.mesh.selfPeerID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -152,7 +153,7 @@ func (h *MeshHandler) ListSchemas(c *gin.Context) {
 	publicOnly := c.Query("public_only") == "true"
 	schemas, err := h.mesh.ListSchemas(c.Request.Context(), publicOnly)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -175,7 +176,7 @@ func (h *MeshHandler) SetGovernancePolicy(c *gin.Context) {
 
 	policy.PeerID = h.mesh.selfPeerID
 	if err := h.mesh.SetGovernancePolicy(c.Request.Context(), &policy); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

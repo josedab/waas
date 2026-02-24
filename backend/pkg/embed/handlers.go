@@ -1,6 +1,7 @@
 package embed
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
 	"net/http"
 
@@ -143,7 +144,7 @@ func (h *Handler) ListTokens(c *gin.Context) {
 
 	tokens, total, err := h.service.ListTokens(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -177,7 +178,7 @@ func (h *Handler) GetToken(c *gin.Context) {
 	tokenID := c.Param("id")
 	token, err := h.service.GetToken(c.Request.Context(), tenantID, tokenID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	if token == nil {
@@ -323,7 +324,7 @@ func (h *Handler) GetStats(c *gin.Context) {
 
 	stats, err := h.service.GetDeliveryStats(c.Request.Context(), token.TenantID, token.Scopes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -355,7 +356,7 @@ func (h *Handler) GetActivity(c *gin.Context) {
 
 	items, err := h.service.GetActivityFeed(c.Request.Context(), token.TenantID, token.Scopes, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -383,7 +384,7 @@ func (h *Handler) GetChart(c *gin.Context) {
 	chartType := c.Param("type")
 	data, err := h.service.GetChartData(c.Request.Context(), token.TenantID, chartType, token.Scopes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -409,7 +410,7 @@ func (h *Handler) GetErrors(c *gin.Context) {
 
 	summary, err := h.service.GetErrorSummary(c.Request.Context(), token.TenantID, token.Scopes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

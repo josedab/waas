@@ -1,6 +1,7 @@
 package multiregion
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -61,7 +62,7 @@ func (h *ActiveActiveHandler) CreateActiveActiveConfig(c *gin.Context) {
 
 	config, err := h.service.CreateConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -115,7 +116,7 @@ func (h *ActiveActiveHandler) SelectRegion(c *gin.Context) {
 
 	region, err := h.service.SelectRegion(c.Request.Context(), tenantID, req.Latitude, req.Longitude)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -150,7 +151,7 @@ func (h *ActiveActiveHandler) SyncEvent(c *gin.Context) {
 
 	event, err := h.service.SyncEvent(c.Request.Context(), tenantID, req.SourceRegion, req.EventType, payloadBytes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -177,7 +178,7 @@ func (h *ActiveActiveHandler) ListCrossRegionEvents(c *gin.Context) {
 
 	events, err := h.service.ListCrossRegionEvents(c.Request.Context(), tenantID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -206,7 +207,7 @@ func (h *ActiveActiveHandler) CreateFailoverConfig(c *gin.Context) {
 
 	config, err := h.service.CreateFailoverConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

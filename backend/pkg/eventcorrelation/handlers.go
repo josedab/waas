@@ -1,6 +1,7 @@
 package eventcorrelation
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -67,7 +68,7 @@ func (h *Handler) ListRules(c *gin.Context) {
 
 	rules, err := h.service.ListRules(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -79,7 +80,7 @@ func (h *Handler) DeleteRule(c *gin.Context) {
 	ruleID := c.Param("id")
 
 	if err := h.service.DeleteRule(c.Request.Context(), tenantID, ruleID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -96,7 +97,7 @@ func (h *Handler) IngestEvent(c *gin.Context) {
 
 	composites, err := h.service.IngestEvent(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -110,7 +111,7 @@ func (h *Handler) ListMatches(c *gin.Context) {
 
 	matches, err := h.service.ListMatches(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -122,7 +123,7 @@ func (h *Handler) GetStats(c *gin.Context) {
 
 	stats, err := h.service.GetStats(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

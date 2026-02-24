@@ -1,6 +1,7 @@
 package experiment
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -65,7 +66,7 @@ func (h *Handler) ListExperiments(c *gin.Context) {
 
 	experiments, err := h.service.ListExperiments(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -104,7 +105,7 @@ func (h *Handler) GetResults(c *gin.Context) {
 
 	results, err := h.service.GetResults(c.Request.Context(), tenantID, expID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -116,7 +117,7 @@ func (h *Handler) DeleteExperiment(c *gin.Context) {
 	expID := c.Param("id")
 
 	if err := h.service.DeleteExperiment(c.Request.Context(), tenantID, expID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

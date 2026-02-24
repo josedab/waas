@@ -1,6 +1,7 @@
 package e2ee
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -85,7 +86,7 @@ func (h *Handler) GetPublicKey(c *gin.Context) {
 func (h *Handler) ListKeyPairs(c *gin.Context) {
 	pairs, err := h.service.repo.ListKeyPairs(c.Param("endpoint_id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, pairs)
@@ -178,7 +179,7 @@ func (h *Handler) Decrypt(c *gin.Context) {
 func (h *Handler) CheckHealth(c *gin.Context) {
 	hc, err := h.service.CheckHealth(c.Param("endpoint_id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, hc)
@@ -202,7 +203,7 @@ func (h *Handler) GetAuditLog(c *gin.Context) {
 
 	entries, err := h.service.GetAuditLog(c.Param("endpoint_id"), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, entries)

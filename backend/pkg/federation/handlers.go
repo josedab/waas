@@ -1,6 +1,7 @@
 package federation
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -83,7 +84,7 @@ func (h *Handler) RegisterMember(c *gin.Context) {
 
 	member, err := h.service.RegisterMember(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -109,7 +110,7 @@ func (h *Handler) ListMembers(c *gin.Context) {
 
 	members, err := h.service.ListMembers(c.Request.Context(), tenantID, status)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -148,7 +149,7 @@ func (h *Handler) ActivateMember(c *gin.Context) {
 
 	member, err := h.service.ActivateMember(c.Request.Context(), memberID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -167,7 +168,7 @@ func (h *Handler) SuspendMember(c *gin.Context) {
 
 	member, err := h.service.SuspendMember(c.Request.Context(), memberID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -187,7 +188,7 @@ func (h *Handler) HealthCheck(c *gin.Context) {
 
 	health, err := h.service.HealthCheck(c.Request.Context(), memberID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -214,7 +215,7 @@ func (h *Handler) RequestTrust(c *gin.Context) {
 
 	trustReq, err := h.service.RequestTrust(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -240,7 +241,7 @@ func (h *Handler) ListTrustRequests(c *gin.Context) {
 
 	requests, err := h.service.GetTrustRequests(c.Request.Context(), tenantID, status)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -267,7 +268,7 @@ func (h *Handler) ApproveTrust(c *gin.Context) {
 
 	trustReq, err := h.service.ApproveTrust(c.Request.Context(), reqID, body.Response)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -292,7 +293,7 @@ func (h *Handler) RejectTrust(c *gin.Context) {
 	c.ShouldBindJSON(&body)
 
 	if err := h.service.RejectTrust(c.Request.Context(), reqID, body.Response); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -313,7 +314,7 @@ func (h *Handler) ListTrustRelationships(c *gin.Context) {
 
 	relationships, err := h.service.GetTrustRelationships(c.Request.Context(), tenantID, memberID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -340,7 +341,7 @@ func (h *Handler) CreateCatalog(c *gin.Context) {
 
 	catalog, err := h.service.CreateCatalog(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -361,7 +362,7 @@ func (h *Handler) ListCatalogs(c *gin.Context) {
 
 	catalogs, err := h.service.ListCatalogs(c.Request.Context(), tenantID, public)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -398,7 +399,7 @@ func (h *Handler) GetCatalog(c *gin.Context) {
 func (h *Handler) DiscoverCatalogs(c *gin.Context) {
 	catalogs, err := h.service.DiscoverCatalogs(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -425,7 +426,7 @@ func (h *Handler) Subscribe(c *gin.Context) {
 
 	sub, err := h.service.Subscribe(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -451,7 +452,7 @@ func (h *Handler) ListSubscriptions(c *gin.Context) {
 
 	subs, err := h.service.ListSubscriptions(c.Request.Context(), tenantID, status)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -489,7 +490,7 @@ func (h *Handler) PauseSubscription(c *gin.Context) {
 	subID := c.Param("id")
 
 	if err := h.service.PauseSubscription(c.Request.Context(), subID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -507,7 +508,7 @@ func (h *Handler) ResumeSubscription(c *gin.Context) {
 	subID := c.Param("id")
 
 	if err := h.service.ResumeSubscription(c.Request.Context(), subID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -531,7 +532,7 @@ func (h *Handler) PublishEvent(c *gin.Context) {
 	}
 
 	if err := h.service.PublishEvent(c.Request.Context(), &event); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -577,7 +578,7 @@ func (h *Handler) UpdatePolicy(c *gin.Context) {
 
 	policy, err := h.service.UpdatePolicy(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -596,7 +597,7 @@ func (h *Handler) GetMetrics(c *gin.Context) {
 
 	metrics, err := h.service.GetMetrics(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -613,7 +614,7 @@ func (h *Handler) GetMetrics(c *gin.Context) {
 func (h *Handler) GenerateKeyPair(c *gin.Context) {
 	keyPair, err := h.service.GenerateKeyPair()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

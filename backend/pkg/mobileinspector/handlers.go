@@ -1,6 +1,7 @@
 package mobileinspector
 
 import (
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 	"time"
@@ -157,7 +158,7 @@ func (h *Handler) GetEndpointOverviews(c *gin.Context) {
 
 	overviews, err := h.service.GetEndpointOverviews(session.TenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, overviews)
@@ -186,7 +187,7 @@ func (h *Handler) GetAlerts(c *gin.Context) {
 
 	alerts, err := h.service.GetAlerts(session.UserID, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, alerts)
@@ -235,7 +236,7 @@ func (h *Handler) SnoozeAlerts(c *gin.Context) {
 
 	cfg, err := h.service.SnoozeAlerts(session.UserID, duration)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, cfg)
@@ -255,7 +256,7 @@ func (h *Handler) GetAlertConfig(c *gin.Context) {
 
 	cfg, err := h.service.GetAlertConfig(session.UserID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, cfg)
@@ -282,7 +283,7 @@ func (h *Handler) UpdateAlertConfig(c *gin.Context) {
 
 	result, err := h.service.UpdateAlertConfig(session.UserID, &cfg)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, result)
