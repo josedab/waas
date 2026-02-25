@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/josedab/waas/pkg/database"
+	apperrors "github.com/josedab/waas/pkg/errors"
 	"github.com/josedab/waas/pkg/models"
 
 	"github.com/google/uuid"
@@ -72,7 +73,7 @@ func (r *transformationRepository) GetByID(ctx context.Context, id uuid.UUID) (*
 		&t.CreatedAt, &t.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
-		return nil, fmt.Errorf("transformation not found")
+		return nil, fmt.Errorf("transformation: %w", apperrors.ErrNotFound)
 	}
 	return t, err
 }
@@ -132,7 +133,7 @@ func (r *transformationRepository) Update(ctx context.Context, t *models.Transfo
 		return err
 	}
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("transformation not found")
+		return fmt.Errorf("transformation: %w", apperrors.ErrNotFound)
 	}
 	return nil
 }
@@ -144,7 +145,7 @@ func (r *transformationRepository) Delete(ctx context.Context, id uuid.UUID) err
 		return err
 	}
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("transformation not found")
+		return fmt.Errorf("transformation: %w", apperrors.ErrNotFound)
 	}
 	return nil
 }

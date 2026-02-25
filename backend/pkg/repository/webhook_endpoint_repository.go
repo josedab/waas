@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
 	"github.com/josedab/waas/pkg/database"
+	apperrors "github.com/josedab/waas/pkg/errors"
 	"github.com/josedab/waas/pkg/models"
 
 	"github.com/google/uuid"
@@ -85,7 +87,7 @@ func (r *webhookEndpointRepository) GetByID(ctx context.Context, id uuid.UUID) (
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, fmt.Errorf("webhook endpoint not found")
+			return nil, fmt.Errorf("webhook endpoint: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get webhook endpoint: %w", err)
 	}
@@ -163,7 +165,7 @@ func (r *webhookEndpointRepository) Update(ctx context.Context, endpoint *models
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("webhook endpoint not found")
+		return fmt.Errorf("webhook endpoint: %w", apperrors.ErrNotFound)
 	}
 
 	return nil
@@ -178,7 +180,7 @@ func (r *webhookEndpointRepository) Delete(ctx context.Context, id uuid.UUID) er
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("webhook endpoint not found")
+		return fmt.Errorf("webhook endpoint: %w", apperrors.ErrNotFound)
 	}
 
 	return nil
@@ -193,7 +195,7 @@ func (r *webhookEndpointRepository) SetActive(ctx context.Context, id uuid.UUID,
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("webhook endpoint not found")
+		return fmt.Errorf("webhook endpoint: %w", apperrors.ErrNotFound)
 	}
 
 	return nil

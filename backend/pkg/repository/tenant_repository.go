@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"time"
+
 	"github.com/josedab/waas/pkg/database"
+	apperrors "github.com/josedab/waas/pkg/errors"
 	"github.com/josedab/waas/pkg/models"
 
 	"github.com/google/uuid"
@@ -70,7 +72,7 @@ func (r *tenantRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.T
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, fmt.Errorf("tenant not found")
+			return nil, fmt.Errorf("tenant: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get tenant: %w", err)
 	}
@@ -97,7 +99,7 @@ func (r *tenantRepository) GetByAPIKeyHash(ctx context.Context, apiKeyHash strin
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, fmt.Errorf("tenant not found")
+			return nil, fmt.Errorf("tenant: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get tenant by API key: %w", err)
 	}
@@ -144,7 +146,7 @@ func (r *tenantRepository) FindByAPIKey(ctx context.Context, apiKey string) (*mo
 		return nil, fmt.Errorf("error iterating tenant rows: %w", err)
 	}
 
-	return nil, fmt.Errorf("tenant not found")
+	return nil, fmt.Errorf("tenant: %w", apperrors.ErrNotFound)
 }
 
 func (r *tenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
@@ -171,7 +173,7 @@ func (r *tenantRepository) Update(ctx context.Context, tenant *models.Tenant) er
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("tenant not found")
+		return fmt.Errorf("tenant: %w", apperrors.ErrNotFound)
 	}
 
 	return nil
@@ -186,7 +188,7 @@ func (r *tenantRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("tenant not found")
+		return fmt.Errorf("tenant: %w", apperrors.ErrNotFound)
 	}
 
 	return nil

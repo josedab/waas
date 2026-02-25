@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"time"
+
 	"github.com/josedab/waas/pkg/database"
+	apperrors "github.com/josedab/waas/pkg/errors"
 	"github.com/josedab/waas/pkg/models"
 
 	"github.com/google/uuid"
@@ -78,7 +80,7 @@ func (r *deliveryAttemptRepository) GetByID(ctx context.Context, id uuid.UUID) (
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, fmt.Errorf("delivery attempt not found")
+			return nil, fmt.Errorf("delivery attempt: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get delivery attempt: %w", err)
 	}
@@ -151,7 +153,7 @@ func (r *deliveryAttemptRepository) Update(ctx context.Context, attempt *models.
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("delivery attempt not found")
+		return fmt.Errorf("delivery attempt: %w", apperrors.ErrNotFound)
 	}
 
 	return nil
@@ -166,7 +168,7 @@ func (r *deliveryAttemptRepository) UpdateStatus(ctx context.Context, id uuid.UU
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("delivery attempt not found")
+		return fmt.Errorf("delivery attempt: %w", apperrors.ErrNotFound)
 	}
 
 	return nil
@@ -181,7 +183,7 @@ func (r *deliveryAttemptRepository) Delete(ctx context.Context, id uuid.UUID) er
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("delivery attempt not found")
+		return fmt.Errorf("delivery attempt: %w", apperrors.ErrNotFound)
 	}
 
 	return nil
