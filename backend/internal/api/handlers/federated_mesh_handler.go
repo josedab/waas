@@ -116,9 +116,8 @@ func (h *FederatedMeshHandler) GetRegionsWithMetrics(c *gin.Context) {
 
 // SetupTenantRegion sets up tenant region configuration
 func (h *FederatedMeshHandler) SetupTenantRegion(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -128,7 +127,7 @@ func (h *FederatedMeshHandler) SetupTenantRegion(c *gin.Context) {
 		return
 	}
 
-	tenantRegion, err := h.service.SetupTenantRegion(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	tenantRegion, err := h.service.SetupTenantRegion(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -139,13 +138,12 @@ func (h *FederatedMeshHandler) SetupTenantRegion(c *gin.Context) {
 
 // GetTenantRegion retrieves tenant region configuration
 func (h *FederatedMeshHandler) GetTenantRegion(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
-	tenantRegion, err := h.service.GetTenantRegion(c.Request.Context(), tenantID.(uuid.UUID))
+	tenantRegion, err := h.service.GetTenantRegion(c.Request.Context(), tenantID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "tenant region not configured"})
 		return
@@ -156,9 +154,8 @@ func (h *FederatedMeshHandler) GetTenantRegion(c *gin.Context) {
 
 // CreateRoutingRule creates a geo-routing rule
 func (h *FederatedMeshHandler) CreateRoutingRule(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -168,7 +165,7 @@ func (h *FederatedMeshHandler) CreateRoutingRule(c *gin.Context) {
 		return
 	}
 
-	rule, err := h.service.CreateRoutingRule(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	rule, err := h.service.CreateRoutingRule(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -179,13 +176,12 @@ func (h *FederatedMeshHandler) CreateRoutingRule(c *gin.Context) {
 
 // GetRoutingRules retrieves routing rules for a tenant
 func (h *FederatedMeshHandler) GetRoutingRules(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
-	rules, err := h.service.GetRoutingRules(c.Request.Context(), tenantID.(uuid.UUID))
+	rules, err := h.service.GetRoutingRules(c.Request.Context(), tenantID)
 	if err != nil {
 		InternalErrorGeneric(c, err)
 		return
@@ -196,9 +192,8 @@ func (h *FederatedMeshHandler) GetRoutingRules(c *gin.Context) {
 
 // RouteEvent routes an event to the optimal region
 func (h *FederatedMeshHandler) RouteEvent(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -208,7 +203,7 @@ func (h *FederatedMeshHandler) RouteEvent(c *gin.Context) {
 		return
 	}
 
-	decision, err := h.service.RouteEvent(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	decision, err := h.service.RouteEvent(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -219,9 +214,8 @@ func (h *FederatedMeshHandler) RouteEvent(c *gin.Context) {
 
 // CreateReplicationStream creates a replication stream
 func (h *FederatedMeshHandler) CreateReplicationStream(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -231,7 +225,7 @@ func (h *FederatedMeshHandler) CreateReplicationStream(c *gin.Context) {
 		return
 	}
 
-	stream, err := h.service.CreateReplicationStream(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	stream, err := h.service.CreateReplicationStream(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -242,13 +236,12 @@ func (h *FederatedMeshHandler) CreateReplicationStream(c *gin.Context) {
 
 // GetReplicationStreams retrieves replication streams for a tenant
 func (h *FederatedMeshHandler) GetReplicationStreams(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
-	streams, err := h.service.GetReplicationStreams(c.Request.Context(), tenantID.(uuid.UUID))
+	streams, err := h.service.GetReplicationStreams(c.Request.Context(), tenantID)
 	if err != nil {
 		InternalErrorGeneric(c, err)
 		return
@@ -276,9 +269,8 @@ func (h *FederatedMeshHandler) InitiateFailover(c *gin.Context) {
 
 // CheckDataResidencyCompliance checks data residency compliance
 func (h *FederatedMeshHandler) CheckDataResidencyCompliance(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -305,7 +297,7 @@ func (h *FederatedMeshHandler) CheckDataResidencyCompliance(c *gin.Context) {
 		return
 	}
 
-	audit, err := h.service.CheckDataResidencyCompliance(c.Request.Context(), tenantID.(uuid.UUID), sourceRegionID, targetRegionID, req.DataType)
+	audit, err := h.service.CheckDataResidencyCompliance(c.Request.Context(), tenantID, sourceRegionID, targetRegionID, req.DataType)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -321,13 +313,12 @@ func (h *FederatedMeshHandler) CheckDataResidencyCompliance(c *gin.Context) {
 
 // GetDashboard retrieves the federated mesh dashboard
 func (h *FederatedMeshHandler) GetDashboard(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
-	dashboard, err := h.service.GetMeshDashboard(c.Request.Context(), tenantID.(uuid.UUID))
+	dashboard, err := h.service.GetMeshDashboard(c.Request.Context(), tenantID)
 	if err != nil {
 		InternalErrorGeneric(c, err)
 		return

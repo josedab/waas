@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"errors"
+	apperrors "github.com/josedab/waas/pkg/errors"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/monitoring"
 	"github.com/josedab/waas/pkg/repository"
@@ -118,17 +120,8 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 	}
 
 	// Get tenant from context
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		h.logger.ErrorWithCorrelation("Tenant not found in context", correlationID, map[string]interface{}{
-			"request_id": c.GetHeader("X-Request-ID"),
-		})
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": map[string]interface{}{
-				"code":    "UNAUTHORIZED",
-				"message": "Tenant not found in context",
-			},
-		})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -137,7 +130,7 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 	if err := c.ShouldBindQuery(&req); err != nil {
 		h.logger.WarnWithCorrelation("Invalid delivery history request parameters", correlationID, map[string]interface{}{
 			"error":      err.Error(),
-			"tenant_id":  tenantID.(uuid.UUID).String(),
+			"tenant_id":  tenantID.String(),
 			"request_id": c.GetHeader("X-Request-ID"),
 		})
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -166,7 +159,7 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 		} else {
 			h.logger.WarnWithCorrelation("Invalid endpoint ID in request", correlationID, map[string]interface{}{
 				"invalid_id": idStr,
-				"tenant_id":  tenantID.(uuid.UUID).String(),
+				"tenant_id":  tenantID.String(),
 				"request_id": c.GetHeader("X-Request-ID"),
 			})
 		}
@@ -181,7 +174,7 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 	}
 
 	h.logger.InfoWithCorrelation("Fetching delivery history", correlationID, map[string]interface{}{
-		"tenant_id":  tenantID.(uuid.UUID).String(),
+		"tenant_id":  tenantID.String(),
 		"filters":    filters,
 		"limit":      req.Limit,
 		"offset":     req.Offset,
@@ -191,7 +184,7 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 	// Get delivery history from repository
 	attempts, totalCount, err := h.deliveryAttemptRepo.GetDeliveryHistoryWithFilters(
 		c.Request.Context(),
-		tenantID.(uuid.UUID),
+		tenantID,
 		filters,
 		req.Limit,
 		req.Offset,
@@ -199,7 +192,7 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 	if err != nil {
 		h.logger.ErrorWithCorrelation("Failed to get delivery history", correlationID, map[string]interface{}{
 			"error":      err.Error(),
-			"tenant_id":  tenantID.(uuid.UUID).String(),
+			"tenant_id":  tenantID.String(),
 			"request_id": c.GetHeader("X-Request-ID"),
 		})
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -241,7 +234,7 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 	}
 
 	h.logger.InfoWithCorrelation("Delivery history retrieved successfully", correlationID, map[string]interface{}{
-		"tenant_id":     tenantID.(uuid.UUID).String(),
+		"tenant_id":     tenantID.String(),
 		"results_count": len(deliveries),
 		"total_count":   totalCount,
 		"request_id":    c.GetHeader("X-Request-ID"),
@@ -289,24 +282,14 @@ func (h *MonitoringHandler) GetDeliveryDetails(c *gin.Context) {
 	}
 
 	// Get tenant from context
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		h.logger.ErrorWithCorrelation("Tenant not found in context", correlationID, map[string]interface{}{
-			"delivery_id": deliveryID.String(),
-			"request_id":  c.GetHeader("X-Request-ID"),
-		})
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": map[string]interface{}{
-				"code":    "UNAUTHORIZED",
-				"message": "Tenant not found in context",
-			},
-		})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
 	h.logger.InfoWithCorrelation("Fetching delivery details", correlationID, map[string]interface{}{
 		"delivery_id": deliveryID.String(),
-		"tenant_id":   tenantID.(uuid.UUID).String(),
+		"tenant_id":   tenantID.String(),
 		"request_id":  c.GetHeader("X-Request-ID"),
 	})
 
@@ -314,13 +297,13 @@ func (h *MonitoringHandler) GetDeliveryDetails(c *gin.Context) {
 	attempts, err := h.deliveryAttemptRepo.GetDeliveryAttemptsByDeliveryID(
 		c.Request.Context(),
 		deliveryID,
-		tenantID.(uuid.UUID),
+		tenantID,
 	)
 	if err != nil {
 		h.logger.ErrorWithCorrelation("Failed to get delivery attempts", correlationID, map[string]interface{}{
 			"error":       err.Error(),
 			"delivery_id": deliveryID.String(),
-			"tenant_id":   tenantID.(uuid.UUID).String(),
+			"tenant_id":   tenantID.String(),
 			"request_id":  c.GetHeader("X-Request-ID"),
 		})
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -335,7 +318,7 @@ func (h *MonitoringHandler) GetDeliveryDetails(c *gin.Context) {
 	if len(attempts) == 0 {
 		h.logger.WarnWithCorrelation("Delivery not found", correlationID, map[string]interface{}{
 			"delivery_id": deliveryID.String(),
-			"tenant_id":   tenantID.(uuid.UUID).String(),
+			"tenant_id":   tenantID.String(),
 			"request_id":  c.GetHeader("X-Request-ID"),
 		})
 		c.JSON(http.StatusNotFound, gin.H{
@@ -377,7 +360,7 @@ func (h *MonitoringHandler) GetDeliveryDetails(c *gin.Context) {
 
 	h.logger.InfoWithCorrelation("Delivery details retrieved successfully", correlationID, map[string]interface{}{
 		"delivery_id":    deliveryID.String(),
-		"tenant_id":      tenantID.(uuid.UUID).String(),
+		"tenant_id":      tenantID.String(),
 		"attempts_count": len(attempts),
 		"final_status":   summary.Status,
 		"request_id":     c.GetHeader("X-Request-ID"),
@@ -412,28 +395,18 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 	}
 
 	// Get tenant from context
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		h.logger.ErrorWithCorrelation("Tenant not found in context", correlationID, map[string]interface{}{
-			"endpoint_id": endpointID.String(),
-			"request_id":  c.GetHeader("X-Request-ID"),
-		})
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": map[string]interface{}{
-				"code":    "UNAUTHORIZED",
-				"message": "Tenant not found in context",
-			},
-		})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
 	// Verify endpoint ownership
 	endpoint, err := h.webhookRepo.GetByID(c.Request.Context(), endpointID)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			h.logger.WarnWithCorrelation("Endpoint not found", correlationID, map[string]interface{}{
 				"endpoint_id": endpointID.String(),
-				"tenant_id":   tenantID.(uuid.UUID).String(),
+				"tenant_id":   tenantID.String(),
 				"request_id":  c.GetHeader("X-Request-ID"),
 			})
 			c.JSON(http.StatusNotFound, gin.H{
@@ -460,10 +433,10 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 	}
 
 	// Verify tenant ownership
-	if endpoint.TenantID != tenantID.(uuid.UUID) {
+	if endpoint.TenantID != tenantID {
 		h.logger.WarnWithCorrelation("Access denied to endpoint", correlationID, map[string]interface{}{
 			"endpoint_id":       endpointID.String(),
-			"tenant_id":         tenantID.(uuid.UUID).String(),
+			"tenant_id":         tenantID.String(),
 			"endpoint_owner_id": endpoint.TenantID.String(),
 			"request_id":        c.GetHeader("X-Request-ID"),
 		})
@@ -499,7 +472,7 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 
 	h.logger.InfoWithCorrelation("Fetching endpoint delivery history", correlationID, map[string]interface{}{
 		"endpoint_id": endpointID.String(),
-		"tenant_id":   tenantID.(uuid.UUID).String(),
+		"tenant_id":   tenantID.String(),
 		"limit":       limit,
 		"offset":      offset,
 		"statuses":    statuses,
@@ -518,7 +491,7 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 		h.logger.ErrorWithCorrelation("Failed to get endpoint delivery history", correlationID, map[string]interface{}{
 			"error":       err.Error(),
 			"endpoint_id": endpointID.String(),
-			"tenant_id":   tenantID.(uuid.UUID).String(),
+			"tenant_id":   tenantID.String(),
 			"request_id":  c.GetHeader("X-Request-ID"),
 		})
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -561,7 +534,7 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 
 	h.logger.InfoWithCorrelation("Endpoint delivery history retrieved successfully", correlationID, map[string]interface{}{
 		"endpoint_id":   endpointID.String(),
-		"tenant_id":     tenantID.(uuid.UUID).String(),
+		"tenant_id":     tenantID.String(),
 		"results_count": len(deliveries),
 		"request_id":    c.GetHeader("X-Request-ID"),
 	})

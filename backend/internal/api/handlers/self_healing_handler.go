@@ -31,9 +31,12 @@ func NewSelfHealingHandler(service *services.SelfHealingService, logger *utils.L
 // @Success 200 {object} models.SelfHealingDashboard
 // @Router /self-healing/dashboard [get]
 func (h *SelfHealingHandler) GetDashboard(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID.(uuid.UUID))
+	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get dashboard", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -53,7 +56,10 @@ func (h *SelfHealingHandler) GetDashboard(c *gin.Context) {
 // @Success 200 {object} models.EndpointHealthPrediction
 // @Router /self-healing/endpoints/{endpoint_id}/predict [post]
 func (h *SelfHealingHandler) PredictHealth(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	endpointID, err := uuid.Parse(c.Param("endpoint_id"))
 	if err != nil {
@@ -69,7 +75,7 @@ func (h *SelfHealingHandler) PredictHealth(c *gin.Context) {
 
 	features.EndpointID = endpointID
 
-	prediction, err := h.service.PredictEndpointHealth(c.Request.Context(), tenantID.(uuid.UUID), endpointID, &features)
+	prediction, err := h.service.PredictEndpointHealth(c.Request.Context(), tenantID, endpointID, &features)
 	if err != nil {
 		h.logger.Error("Failed to predict health", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -87,7 +93,10 @@ func (h *SelfHealingHandler) PredictHealth(c *gin.Context) {
 // @Success 200 {object} models.EndpointHealthAnalysis
 // @Router /self-healing/endpoints/{endpoint_id}/analysis [get]
 func (h *SelfHealingHandler) GetEndpointAnalysis(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	endpointID, err := uuid.Parse(c.Param("endpoint_id"))
 	if err != nil {
@@ -95,7 +104,7 @@ func (h *SelfHealingHandler) GetEndpointAnalysis(c *gin.Context) {
 		return
 	}
 
-	analysis, err := h.service.GetEndpointHealthAnalysis(c.Request.Context(), tenantID.(uuid.UUID), endpointID)
+	analysis, err := h.service.GetEndpointHealthAnalysis(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -111,9 +120,12 @@ func (h *SelfHealingHandler) GetEndpointAnalysis(c *gin.Context) {
 // @Success 200 {array} models.EndpointHealthPrediction
 // @Router /self-healing/predictions [get]
 func (h *SelfHealingHandler) GetPredictions(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	predictions, err := h.service.GetPredictions(c.Request.Context(), tenantID.(uuid.UUID), 20)
+	predictions, err := h.service.GetPredictions(c.Request.Context(), tenantID, 20)
 	if err != nil {
 		h.logger.Error("Failed to get predictions", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -132,7 +144,10 @@ func (h *SelfHealingHandler) GetPredictions(c *gin.Context) {
 // @Success 201 {object} models.AutoRemediationRule
 // @Router /self-healing/rules [post]
 func (h *SelfHealingHandler) CreateRemediationRule(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.CreateRemediationRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -140,7 +155,7 @@ func (h *SelfHealingHandler) CreateRemediationRule(c *gin.Context) {
 		return
 	}
 
-	rule, err := h.service.CreateRemediationRule(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	rule, err := h.service.CreateRemediationRule(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to create rule", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -157,9 +172,12 @@ func (h *SelfHealingHandler) CreateRemediationRule(c *gin.Context) {
 // @Success 200 {array} models.AutoRemediationRule
 // @Router /self-healing/rules [get]
 func (h *SelfHealingHandler) GetRemediationRules(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	rules, err := h.service.GetRemediationRules(c.Request.Context(), tenantID.(uuid.UUID))
+	rules, err := h.service.GetRemediationRules(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get rules", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -178,7 +196,10 @@ func (h *SelfHealingHandler) GetRemediationRules(c *gin.Context) {
 // @Success 200 {object} models.RemediationAction
 // @Router /self-healing/remediate [post]
 func (h *SelfHealingHandler) TriggerRemediation(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.TriggerRemediationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -186,7 +207,7 @@ func (h *SelfHealingHandler) TriggerRemediation(c *gin.Context) {
 		return
 	}
 
-	action, err := h.service.TriggerManualRemediation(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	action, err := h.service.TriggerManualRemediation(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to trigger remediation", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -203,9 +224,12 @@ func (h *SelfHealingHandler) TriggerRemediation(c *gin.Context) {
 // @Success 200 {array} models.RemediationAction
 // @Router /self-healing/actions [get]
 func (h *SelfHealingHandler) GetRemediationActions(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	actions, err := h.service.GetRemediationActions(c.Request.Context(), tenantID.(uuid.UUID), 20)
+	actions, err := h.service.GetRemediationActions(c.Request.Context(), tenantID, 20)
 	if err != nil {
 		h.logger.Error("Failed to get actions", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -224,7 +248,10 @@ func (h *SelfHealingHandler) GetRemediationActions(c *gin.Context) {
 // @Success 200 {object} models.EndpointCircuitBreaker
 // @Router /self-healing/circuit-breakers [put]
 func (h *SelfHealingHandler) UpdateCircuitBreaker(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.UpdateCircuitBreakerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -232,7 +259,7 @@ func (h *SelfHealingHandler) UpdateCircuitBreaker(c *gin.Context) {
 		return
 	}
 
-	cb, err := h.service.UpdateCircuitBreaker(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	cb, err := h.service.UpdateCircuitBreaker(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to update circuit breaker", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -249,9 +276,12 @@ func (h *SelfHealingHandler) UpdateCircuitBreaker(c *gin.Context) {
 // @Success 200 {array} models.EndpointOptimizationSuggestion
 // @Router /self-healing/suggestions [get]
 func (h *SelfHealingHandler) GetSuggestions(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	suggestions, err := h.service.GetSuggestions(c.Request.Context(), tenantID.(uuid.UUID))
+	suggestions, err := h.service.GetSuggestions(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get suggestions", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -269,7 +299,10 @@ func (h *SelfHealingHandler) GetSuggestions(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /self-healing/suggestions/{suggestion_id}/apply [post]
 func (h *SelfHealingHandler) ApplySuggestion(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	suggestionID, err := uuid.Parse(c.Param("suggestion_id"))
 	if err != nil {
@@ -277,7 +310,7 @@ func (h *SelfHealingHandler) ApplySuggestion(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.ApplySuggestion(c.Request.Context(), tenantID.(uuid.UUID), suggestionID); err != nil {
+	if err := h.service.ApplySuggestion(c.Request.Context(), tenantID, suggestionID); err != nil {
 		h.logger.Error("Failed to apply suggestion", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
 		return

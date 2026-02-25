@@ -38,9 +38,8 @@ func NewAIComposerHandler(service *services.AIComposerService, logger *utils.Log
 // @Security ApiKeyAuth
 // @Router /ai/compose [post]
 func (h *AIComposerHandler) Compose(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -55,7 +54,7 @@ func (h *AIComposerHandler) Compose(c *gin.Context) {
 		return
 	}
 
-	response, err := h.service.Compose(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	response, err := h.service.Compose(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to compose webhook", map[string]interface{}{"error": err.Error()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to process request"})
@@ -80,9 +79,8 @@ func (h *AIComposerHandler) Compose(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /ai/configs/{config_id}/apply [post]
 func (h *AIComposerHandler) ApplyConfig(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -93,7 +91,7 @@ func (h *AIComposerHandler) ApplyConfig(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.ApplyConfig(c.Request.Context(), tenantID.(uuid.UUID), configID); err != nil {
+	if err := h.service.ApplyConfig(c.Request.Context(), tenantID, configID); err != nil {
 		h.logger.Error("Failed to apply config", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
 		return

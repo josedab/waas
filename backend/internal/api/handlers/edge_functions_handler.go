@@ -65,9 +65,8 @@ func (h *EdgeFunctionsHandler) RegisterRoutes(rg *gin.RouterGroup) {
 
 // CreateFunction creates a new edge function
 func (h *EdgeFunctionsHandler) CreateFunction(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -77,7 +76,7 @@ func (h *EdgeFunctionsHandler) CreateFunction(c *gin.Context) {
 		return
 	}
 
-	fn, err := h.service.CreateFunction(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	fn, err := h.service.CreateFunction(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -88,13 +87,12 @@ func (h *EdgeFunctionsHandler) CreateFunction(c *gin.Context) {
 
 // GetFunctions retrieves all functions for a tenant
 func (h *EdgeFunctionsHandler) GetFunctions(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
-	functions, err := h.service.GetFunctions(c.Request.Context(), tenantID.(uuid.UUID))
+	functions, err := h.service.GetFunctions(c.Request.Context(), tenantID)
 	if err != nil {
 		InternalErrorGeneric(c, err)
 		return
@@ -105,9 +103,8 @@ func (h *EdgeFunctionsHandler) GetFunctions(c *gin.Context) {
 
 // GetFunction retrieves a function by ID
 func (h *EdgeFunctionsHandler) GetFunction(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -119,7 +116,7 @@ func (h *EdgeFunctionsHandler) GetFunction(c *gin.Context) {
 
 	// Check if details are requested
 	if c.Query("details") == "true" {
-		fn, err := h.service.GetFunctionWithDetails(c.Request.Context(), tenantID.(uuid.UUID), functionID)
+		fn, err := h.service.GetFunctionWithDetails(c.Request.Context(), tenantID, functionID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
@@ -128,7 +125,7 @@ func (h *EdgeFunctionsHandler) GetFunction(c *gin.Context) {
 		return
 	}
 
-	fn, err := h.service.GetFunction(c.Request.Context(), tenantID.(uuid.UUID), functionID)
+	fn, err := h.service.GetFunction(c.Request.Context(), tenantID, functionID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -139,9 +136,8 @@ func (h *EdgeFunctionsHandler) GetFunction(c *gin.Context) {
 
 // UpdateFunction updates a function
 func (h *EdgeFunctionsHandler) UpdateFunction(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -157,7 +153,7 @@ func (h *EdgeFunctionsHandler) UpdateFunction(c *gin.Context) {
 		return
 	}
 
-	fn, err := h.service.UpdateFunction(c.Request.Context(), tenantID.(uuid.UUID), functionID, &req)
+	fn, err := h.service.UpdateFunction(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -168,9 +164,8 @@ func (h *EdgeFunctionsHandler) UpdateFunction(c *gin.Context) {
 
 // DeleteFunction deletes a function
 func (h *EdgeFunctionsHandler) DeleteFunction(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -180,7 +175,7 @@ func (h *EdgeFunctionsHandler) DeleteFunction(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteFunction(c.Request.Context(), tenantID.(uuid.UUID), functionID); err != nil {
+	if err := h.service.DeleteFunction(c.Request.Context(), tenantID, functionID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -190,9 +185,8 @@ func (h *EdgeFunctionsHandler) DeleteFunction(c *gin.Context) {
 
 // DeployFunction deploys a function to edge locations
 func (h *EdgeFunctionsHandler) DeployFunction(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -208,7 +202,7 @@ func (h *EdgeFunctionsHandler) DeployFunction(c *gin.Context) {
 		return
 	}
 
-	deployments, err := h.service.DeployFunction(c.Request.Context(), tenantID.(uuid.UUID), functionID, &req)
+	deployments, err := h.service.DeployFunction(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -222,9 +216,8 @@ func (h *EdgeFunctionsHandler) DeployFunction(c *gin.Context) {
 
 // GetDeployments retrieves deployments for a function
 func (h *EdgeFunctionsHandler) GetDeployments(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -234,7 +227,7 @@ func (h *EdgeFunctionsHandler) GetDeployments(c *gin.Context) {
 		return
 	}
 
-	deployments, err := h.service.GetDeployments(c.Request.Context(), tenantID.(uuid.UUID), functionID)
+	deployments, err := h.service.GetDeployments(c.Request.Context(), tenantID, functionID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -245,9 +238,8 @@ func (h *EdgeFunctionsHandler) GetDeployments(c *gin.Context) {
 
 // InvokeFunction invokes a function
 func (h *EdgeFunctionsHandler) InvokeFunction(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -263,7 +255,7 @@ func (h *EdgeFunctionsHandler) InvokeFunction(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.InvokeFunction(c.Request.Context(), tenantID.(uuid.UUID), functionID, &req)
+	result, err := h.service.InvokeFunction(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -274,9 +266,8 @@ func (h *EdgeFunctionsHandler) InvokeFunction(c *gin.Context) {
 
 // GetInvocations retrieves invocations for a function
 func (h *EdgeFunctionsHandler) GetInvocations(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -293,7 +284,7 @@ func (h *EdgeFunctionsHandler) GetInvocations(c *gin.Context) {
 		}
 	}
 
-	invocations, err := h.service.GetInvocations(c.Request.Context(), tenantID.(uuid.UUID), functionID, limit)
+	invocations, err := h.service.GetInvocations(c.Request.Context(), tenantID, functionID, limit)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -304,9 +295,8 @@ func (h *EdgeFunctionsHandler) GetInvocations(c *gin.Context) {
 
 // CreateTrigger creates a function trigger
 func (h *EdgeFunctionsHandler) CreateTrigger(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -322,7 +312,7 @@ func (h *EdgeFunctionsHandler) CreateTrigger(c *gin.Context) {
 		return
 	}
 
-	trigger, err := h.service.CreateTrigger(c.Request.Context(), tenantID.(uuid.UUID), functionID, &req)
+	trigger, err := h.service.CreateTrigger(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -333,9 +323,8 @@ func (h *EdgeFunctionsHandler) CreateTrigger(c *gin.Context) {
 
 // GetTriggers retrieves triggers for a function
 func (h *EdgeFunctionsHandler) GetTriggers(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -345,7 +334,7 @@ func (h *EdgeFunctionsHandler) GetTriggers(c *gin.Context) {
 		return
 	}
 
-	triggers, err := h.service.GetTriggers(c.Request.Context(), tenantID.(uuid.UUID), functionID)
+	triggers, err := h.service.GetTriggers(c.Request.Context(), tenantID, functionID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -356,9 +345,8 @@ func (h *EdgeFunctionsHandler) GetTriggers(c *gin.Context) {
 
 // GetVersions retrieves versions for a function
 func (h *EdgeFunctionsHandler) GetVersions(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -368,7 +356,7 @@ func (h *EdgeFunctionsHandler) GetVersions(c *gin.Context) {
 		return
 	}
 
-	versions, err := h.service.GetVersions(c.Request.Context(), tenantID.(uuid.UUID), functionID)
+	versions, err := h.service.GetVersions(c.Request.Context(), tenantID, functionID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -379,9 +367,8 @@ func (h *EdgeFunctionsHandler) GetVersions(c *gin.Context) {
 
 // RollbackFunction rolls back to a previous version
 func (h *EdgeFunctionsHandler) RollbackFunction(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -400,7 +387,7 @@ func (h *EdgeFunctionsHandler) RollbackFunction(c *gin.Context) {
 		return
 	}
 
-	fn, err := h.service.RollbackFunction(c.Request.Context(), tenantID.(uuid.UUID), functionID, req.Version)
+	fn, err := h.service.RollbackFunction(c.Request.Context(), tenantID, functionID, req.Version)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -411,9 +398,8 @@ func (h *EdgeFunctionsHandler) RollbackFunction(c *gin.Context) {
 
 // RunTest runs a function test
 func (h *EdgeFunctionsHandler) RunTest(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -429,7 +415,7 @@ func (h *EdgeFunctionsHandler) RunTest(c *gin.Context) {
 		return
 	}
 
-	test, err := h.service.RunTest(c.Request.Context(), tenantID.(uuid.UUID), functionID, &req)
+	test, err := h.service.RunTest(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -451,13 +437,12 @@ func (h *EdgeFunctionsHandler) GetLocations(c *gin.Context) {
 
 // GetDashboard retrieves the edge functions dashboard
 func (h *EdgeFunctionsHandler) GetDashboard(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
-	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID.(uuid.UUID))
+	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
 		InternalErrorGeneric(c, err)
 		return

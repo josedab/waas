@@ -33,7 +33,10 @@ func NewSDKGeneratorHandler(service *services.SDKGeneratorService, logger *utils
 // @Success 201 {object} models.SDKConfiguration
 // @Router /sdk/configs [post]
 func (h *SDKGeneratorHandler) CreateConfig(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.CreateSDKConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -41,7 +44,7 @@ func (h *SDKGeneratorHandler) CreateConfig(c *gin.Context) {
 		return
 	}
 
-	config, err := h.service.CreateConfig(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	config, err := h.service.CreateConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to create SDK config", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -58,9 +61,12 @@ func (h *SDKGeneratorHandler) CreateConfig(c *gin.Context) {
 // @Success 200 {array} models.SDKConfiguration
 // @Router /sdk/configs [get]
 func (h *SDKGeneratorHandler) GetConfigs(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	configs, err := h.service.GetConfigs(c.Request.Context(), tenantID.(uuid.UUID))
+	configs, err := h.service.GetConfigs(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get SDK configs", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -78,7 +84,10 @@ func (h *SDKGeneratorHandler) GetConfigs(c *gin.Context) {
 // @Success 200 {object} models.SDKConfiguration
 // @Router /sdk/configs/{config_id} [get]
 func (h *SDKGeneratorHandler) GetConfig(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	configID, err := uuid.Parse(c.Param("config_id"))
 	if err != nil {
@@ -86,7 +95,7 @@ func (h *SDKGeneratorHandler) GetConfig(c *gin.Context) {
 		return
 	}
 
-	config, err := h.service.GetConfig(c.Request.Context(), tenantID.(uuid.UUID), configID)
+	config, err := h.service.GetConfig(c.Request.Context(), tenantID, configID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "config not found"})
 		return
@@ -104,7 +113,10 @@ func (h *SDKGeneratorHandler) GetConfig(c *gin.Context) {
 // @Success 202 {object} map[string]interface{}
 // @Router /sdk/generate [post]
 func (h *SDKGeneratorHandler) GenerateSDK(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.GenerateSDKRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -112,7 +124,7 @@ func (h *SDKGeneratorHandler) GenerateSDK(c *gin.Context) {
 		return
 	}
 
-	results, err := h.service.GenerateSDK(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	results, err := h.service.GenerateSDK(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to generate SDK", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -133,7 +145,10 @@ func (h *SDKGeneratorHandler) GenerateSDK(c *gin.Context) {
 // @Success 200 {array} models.SDKGeneration
 // @Router /sdk/configs/{config_id}/generations [get]
 func (h *SDKGeneratorHandler) GetGenerations(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	configID, err := uuid.Parse(c.Param("config_id"))
 	if err != nil {
@@ -141,7 +156,7 @@ func (h *SDKGeneratorHandler) GetGenerations(c *gin.Context) {
 		return
 	}
 
-	generations, err := h.service.GetGenerations(c.Request.Context(), tenantID.(uuid.UUID), configID)
+	generations, err := h.service.GetGenerations(c.Request.Context(), tenantID, configID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -158,7 +173,10 @@ func (h *SDKGeneratorHandler) GetGenerations(c *gin.Context) {
 // @Success 200 {object} models.SDKGeneration
 // @Router /sdk/generations/{generation_id} [get]
 func (h *SDKGeneratorHandler) GetGeneration(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	generationID, err := uuid.Parse(c.Param("generation_id"))
 	if err != nil {
@@ -166,7 +184,7 @@ func (h *SDKGeneratorHandler) GetGeneration(c *gin.Context) {
 		return
 	}
 
-	generation, err := h.service.GetGeneration(c.Request.Context(), tenantID.(uuid.UUID), generationID)
+	generation, err := h.service.GetGeneration(c.Request.Context(), tenantID, generationID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "generation not found"})
 		return
@@ -183,7 +201,10 @@ func (h *SDKGeneratorHandler) GetGeneration(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /sdk/generations/{generation_id}/download [get]
 func (h *SDKGeneratorHandler) DownloadSDK(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	generationID, err := uuid.Parse(c.Param("generation_id"))
 	if err != nil {
@@ -191,7 +212,7 @@ func (h *SDKGeneratorHandler) DownloadSDK(c *gin.Context) {
 		return
 	}
 
-	generation, err := h.service.GetGeneration(c.Request.Context(), tenantID.(uuid.UUID), generationID)
+	generation, err := h.service.GetGeneration(c.Request.Context(), tenantID, generationID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "generation not found"})
 		return
@@ -208,7 +229,7 @@ func (h *SDKGeneratorHandler) DownloadSDK(c *gin.Context) {
 	// Record download (best-effort, don't block the response)
 	if err := h.service.RecordDownload(
 		c.Request.Context(),
-		tenantID.(uuid.UUID),
+		tenantID,
 		generationID,
 		"direct",
 		c.ClientIP(),

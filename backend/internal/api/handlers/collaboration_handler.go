@@ -38,9 +38,8 @@ func NewCollaborationHandler(repo repository.CollaborationRepository, logger *ut
 // @Security ApiKeyAuth
 // @Router /teams [post]
 func (h *CollaborationHandler) CreateTeam(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -51,7 +50,7 @@ func (h *CollaborationHandler) CreateTeam(c *gin.Context) {
 	}
 
 	team := &models.Team{
-		TenantID:    tenantID.(uuid.UUID),
+		TenantID:    tenantID,
 		Name:        req.Name,
 		Description: req.Description,
 		Settings:    req.Settings,
@@ -79,13 +78,12 @@ func (h *CollaborationHandler) CreateTeam(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /teams [get]
 func (h *CollaborationHandler) GetTeams(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
-	teams, err := h.repo.GetTeamsByTenant(c.Request.Context(), tenantID.(uuid.UUID))
+	teams, err := h.repo.GetTeamsByTenant(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get teams", map[string]interface{}{"error": err.Error()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get teams"})

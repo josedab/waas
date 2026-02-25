@@ -33,7 +33,10 @@ func NewComplianceHandler(service *services.ComplianceService, logger *utils.Log
 // @Success 201 {object} models.ComplianceProfile
 // @Router /compliance/profiles [post]
 func (h *ComplianceHandler) CreateProfile(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.CreateComplianceProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -41,7 +44,7 @@ func (h *ComplianceHandler) CreateProfile(c *gin.Context) {
 		return
 	}
 
-	profile, err := h.service.CreateProfile(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	profile, err := h.service.CreateProfile(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to create compliance profile", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -58,9 +61,12 @@ func (h *ComplianceHandler) CreateProfile(c *gin.Context) {
 // @Success 200 {array} models.ComplianceProfile
 // @Router /compliance/profiles [get]
 func (h *ComplianceHandler) GetProfiles(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	profiles, err := h.service.GetProfiles(c.Request.Context(), tenantID.(uuid.UUID))
+	profiles, err := h.service.GetProfiles(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get compliance profiles", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -78,7 +84,10 @@ func (h *ComplianceHandler) GetProfiles(c *gin.Context) {
 // @Success 200 {object} models.ComplianceProfile
 // @Router /compliance/profiles/{profile_id} [get]
 func (h *ComplianceHandler) GetProfile(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	profileID, err := uuid.Parse(c.Param("profile_id"))
 	if err != nil {
@@ -86,7 +95,7 @@ func (h *ComplianceHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	profile, err := h.service.GetProfile(c.Request.Context(), tenantID.(uuid.UUID), profileID)
+	profile, err := h.service.GetProfile(c.Request.Context(), tenantID, profileID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "profile not found"})
 		return
@@ -104,7 +113,10 @@ func (h *ComplianceHandler) GetProfile(c *gin.Context) {
 // @Success 200 {object} models.PIIScanResult
 // @Router /compliance/pii/scan [post]
 func (h *ComplianceHandler) ScanForPII(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.ScanForPIIRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -112,7 +124,7 @@ func (h *ComplianceHandler) ScanForPII(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.ScanForPII(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	result, err := h.service.ScanForPII(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to scan for PII", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -131,7 +143,10 @@ func (h *ComplianceHandler) ScanForPII(c *gin.Context) {
 // @Success 202 {object} models.ComplianceReport
 // @Router /compliance/reports [post]
 func (h *ComplianceHandler) GenerateReport(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.GenerateReportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -139,7 +154,7 @@ func (h *ComplianceHandler) GenerateReport(c *gin.Context) {
 		return
 	}
 
-	report, err := h.service.GenerateReport(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	report, err := h.service.GenerateReport(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to generate report", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -156,9 +171,12 @@ func (h *ComplianceHandler) GenerateReport(c *gin.Context) {
 // @Success 200 {array} models.ComplianceReport
 // @Router /compliance/reports [get]
 func (h *ComplianceHandler) GetReports(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	reports, err := h.service.GetReports(c.Request.Context(), tenantID.(uuid.UUID), 20)
+	reports, err := h.service.GetReports(c.Request.Context(), tenantID, 20)
 	if err != nil {
 		h.logger.Error("Failed to get reports", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -176,7 +194,10 @@ func (h *ComplianceHandler) GetReports(c *gin.Context) {
 // @Success 200 {object} models.ComplianceReport
 // @Router /compliance/reports/{report_id} [get]
 func (h *ComplianceHandler) GetReport(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	reportID, err := uuid.Parse(c.Param("report_id"))
 	if err != nil {
@@ -184,7 +205,7 @@ func (h *ComplianceHandler) GetReport(c *gin.Context) {
 		return
 	}
 
-	report, err := h.service.GetReport(c.Request.Context(), tenantID.(uuid.UUID), reportID)
+	report, err := h.service.GetReport(c.Request.Context(), tenantID, reportID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "report not found"})
 		return
@@ -201,7 +222,10 @@ func (h *ComplianceHandler) GetReport(c *gin.Context) {
 // @Success 200 {array} models.ComplianceFinding
 // @Router /compliance/reports/{report_id}/findings [get]
 func (h *ComplianceHandler) GetFindings(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	reportID, err := uuid.Parse(c.Param("report_id"))
 	if err != nil {
@@ -209,7 +233,7 @@ func (h *ComplianceHandler) GetFindings(c *gin.Context) {
 		return
 	}
 
-	findings, err := h.service.GetFindings(c.Request.Context(), tenantID.(uuid.UUID), reportID)
+	findings, err := h.service.GetFindings(c.Request.Context(), tenantID, reportID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -227,7 +251,10 @@ func (h *ComplianceHandler) GetFindings(c *gin.Context) {
 // @Success 201 {object} models.DataSubjectRequest
 // @Router /compliance/dsr [post]
 func (h *ComplianceHandler) CreateDSR(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.CreateDSRRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -235,7 +262,7 @@ func (h *ComplianceHandler) CreateDSR(c *gin.Context) {
 		return
 	}
 
-	dsr, err := h.service.CreateDSR(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	dsr, err := h.service.CreateDSR(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to create DSR", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -253,10 +280,13 @@ func (h *ComplianceHandler) CreateDSR(c *gin.Context) {
 // @Success 200 {array} models.DataSubjectRequest
 // @Router /compliance/dsr [get]
 func (h *ComplianceHandler) GetDSRs(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 	status := c.Query("status")
 
-	dsrs, err := h.service.GetDSRs(c.Request.Context(), tenantID.(uuid.UUID), status)
+	dsrs, err := h.service.GetDSRs(c.Request.Context(), tenantID, status)
 	if err != nil {
 		h.logger.Error("Failed to get DSRs", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -274,7 +304,10 @@ func (h *ComplianceHandler) GetDSRs(c *gin.Context) {
 // @Success 200 {object} models.DataSubjectRequest
 // @Router /compliance/dsr/{dsr_id} [get]
 func (h *ComplianceHandler) GetDSR(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	dsrID, err := uuid.Parse(c.Param("dsr_id"))
 	if err != nil {
@@ -282,7 +315,7 @@ func (h *ComplianceHandler) GetDSR(c *gin.Context) {
 		return
 	}
 
-	dsr, err := h.service.GetDSR(c.Request.Context(), tenantID.(uuid.UUID), dsrID)
+	dsr, err := h.service.GetDSR(c.Request.Context(), tenantID, dsrID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "DSR not found"})
 		return
@@ -299,7 +332,10 @@ func (h *ComplianceHandler) GetDSR(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /compliance/dsr/{dsr_id}/process [post]
 func (h *ComplianceHandler) ProcessDSR(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	dsrID, err := uuid.Parse(c.Param("dsr_id"))
 	if err != nil {
@@ -307,7 +343,7 @@ func (h *ComplianceHandler) ProcessDSR(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.ProcessDSR(c.Request.Context(), tenantID.(uuid.UUID), dsrID); err != nil {
+	if err := h.service.ProcessDSR(c.Request.Context(), tenantID, dsrID); err != nil {
 		h.logger.Error("Failed to process DSR", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
 		return
@@ -326,10 +362,13 @@ func (h *ComplianceHandler) ProcessDSR(c *gin.Context) {
 // @Success 200 {array} models.ComplianceAuditLog
 // @Router /compliance/audit-logs [get]
 func (h *ComplianceHandler) GetAuditLogs(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	query := &models.AuditLogQuery{
-		TenantID:     tenantID.(uuid.UUID),
+		TenantID:     tenantID,
 		Action:       c.Query("action"),
 		ResourceType: c.Query("resource_type"),
 		Limit:        100,
@@ -370,9 +409,12 @@ func (h *ComplianceHandler) GetAuditLogs(c *gin.Context) {
 // @Success 200 {object} models.ComplianceDashboard
 // @Router /compliance/dashboard [get]
 func (h *ComplianceHandler) GetDashboard(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID.(uuid.UUID))
+	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get dashboard", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -391,7 +433,10 @@ func (h *ComplianceHandler) GetDashboard(c *gin.Context) {
 // @Success 201 {object} models.DataRetentionPolicy
 // @Router /compliance/retention-policies [post]
 func (h *ComplianceHandler) CreateRetentionPolicy(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.CreateRetentionPolicyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -399,7 +444,7 @@ func (h *ComplianceHandler) CreateRetentionPolicy(c *gin.Context) {
 		return
 	}
 
-	policy, err := h.service.CreateRetentionPolicy(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	policy, err := h.service.CreateRetentionPolicy(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to create retention policy", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -416,9 +461,12 @@ func (h *ComplianceHandler) CreateRetentionPolicy(c *gin.Context) {
 // @Success 200 {array} models.DataRetentionPolicy
 // @Router /compliance/retention-policies [get]
 func (h *ComplianceHandler) GetRetentionPolicies(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	policies, err := h.service.GetRetentionPolicies(c.Request.Context(), tenantID.(uuid.UUID))
+	policies, err := h.service.GetRetentionPolicies(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get retention policies", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)

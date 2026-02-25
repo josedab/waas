@@ -3,7 +3,9 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	apperrors "github.com/josedab/waas/pkg/errors"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
 	"github.com/josedab/waas/pkg/repository"
@@ -166,14 +168,8 @@ func (h *TestingHandler) TestWebhook(c *gin.Context) {
 	}
 
 	// Get tenant from context
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": map[string]interface{}{
-				"code":    "UNAUTHORIZED",
-				"message": "Tenant not found in context",
-			},
-		})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -255,14 +251,8 @@ func (h *TestingHandler) CreateTestEndpoint(c *gin.Context) {
 	}
 
 	// Get tenant from context
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": map[string]interface{}{
-				"code":    "UNAUTHORIZED",
-				"message": "Tenant not found in context",
-			},
-		})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -334,21 +324,15 @@ func (h *TestingHandler) InspectDelivery(c *gin.Context) {
 	}
 
 	// Get tenant from context
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": map[string]interface{}{
-				"code":    "UNAUTHORIZED",
-				"message": "Tenant not found in context",
-			},
-		})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
 	// Get delivery attempts for this delivery ID
-	attempts, err := h.deliveryAttemptRepo.GetDeliveryAttemptsByDeliveryID(c.Request.Context(), deliveryID, tenantID.(uuid.UUID))
+	attempts, err := h.deliveryAttemptRepo.GetDeliveryAttemptsByDeliveryID(c.Request.Context(), deliveryID, tenantID)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": map[string]interface{}{
 					"code":    "DELIVERY_NOT_FOUND",
@@ -422,19 +406,13 @@ func (h *TestingHandler) GetDeliveryLogs(c *gin.Context) {
 	}
 
 	// Get tenant from context
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": map[string]interface{}{
-				"code":    "UNAUTHORIZED",
-				"message": "Tenant not found in context",
-			},
-		})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
 	// Get delivery attempts
-	attempts, err := h.deliveryAttemptRepo.GetDeliveryAttemptsByDeliveryID(c.Request.Context(), deliveryID, tenantID.(uuid.UUID))
+	attempts, err := h.deliveryAttemptRepo.GetDeliveryAttemptsByDeliveryID(c.Request.Context(), deliveryID, tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get delivery logs", map[string]interface{}{
 			"error":       err.Error(),
@@ -474,14 +452,8 @@ func (h *TestingHandler) GetDeliveryLogs(c *gin.Context) {
 // WebSocketUpdates handles WebSocket connections for real-time delivery updates
 func (h *TestingHandler) WebSocketUpdates(c *gin.Context) {
 	// Get tenant from context
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": map[string]interface{}{
-				"code":    "UNAUTHORIZED",
-				"message": "Tenant not found in context",
-			},
-		})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -500,7 +472,7 @@ func (h *TestingHandler) WebSocketUpdates(c *gin.Context) {
 	})
 
 	// Handle WebSocket connection
-	h.handleWebSocketConnection(conn, tenantID.(uuid.UUID))
+	h.handleWebSocketConnection(conn, tenantID)
 }
 
 // Helper methods

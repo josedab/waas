@@ -132,7 +132,10 @@ func (h *TransformationHandler) CreateTransformation(c *gin.Context) {
 		return
 	}
 
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	enabled := true
 	if req.Enabled != nil {
@@ -156,7 +159,7 @@ func (h *TransformationHandler) CreateTransformation(c *gin.Context) {
 	}
 
 	transformation := &models.Transformation{
-		TenantID:    tenantID.(uuid.UUID),
+		TenantID:    tenantID,
 		Name:        req.Name,
 		Description: req.Description,
 		Script:      req.Script,
@@ -187,7 +190,10 @@ func (h *TransformationHandler) CreateTransformation(c *gin.Context) {
 // @Success 200 {array} models.Transformation
 // @Router /transformations [get]
 func (h *TransformationHandler) ListTransformations(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "20"))
@@ -199,7 +205,7 @@ func (h *TransformationHandler) ListTransformations(c *gin.Context) {
 	}
 	offset := (page - 1) * perPage
 
-	transformations, err := h.transformRepo.GetByTenantID(c.Request.Context(), tenantID.(uuid.UUID), perPage, offset)
+	transformations, err := h.transformRepo.GetByTenantID(c.Request.Context(), tenantID, perPage, offset)
 	if err != nil {
 		h.logger.Error("Failed to list transformations", map[string]interface{}{
 			"error": err.Error(),
@@ -401,10 +407,7 @@ func (h *TransformationHandler) TestTransformation(c *gin.Context) {
 	// Execute transformation
 	result, err := h.engine.Transform(c.Request.Context(), req.Script, req.InputPayload)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Code:    "EXECUTION_FAILED",
-			Message: err.Error(),
-		})
+		InternalErrorGeneric(c, err)
 		return
 	}
 

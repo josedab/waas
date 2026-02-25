@@ -58,9 +58,8 @@ func (h *BidirectionalSyncHandler) RegisterRoutes(rg *gin.RouterGroup) {
 
 // CreateConfig creates a new sync configuration
 func (h *BidirectionalSyncHandler) CreateConfig(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -70,7 +69,7 @@ func (h *BidirectionalSyncHandler) CreateConfig(c *gin.Context) {
 		return
 	}
 
-	config, err := h.service.CreateConfig(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	config, err := h.service.CreateConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -81,13 +80,12 @@ func (h *BidirectionalSyncHandler) CreateConfig(c *gin.Context) {
 
 // GetConfigs retrieves all sync configurations
 func (h *BidirectionalSyncHandler) GetConfigs(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
-	configs, err := h.service.GetConfigs(c.Request.Context(), tenantID.(uuid.UUID))
+	configs, err := h.service.GetConfigs(c.Request.Context(), tenantID)
 	if err != nil {
 		InternalErrorGeneric(c, err)
 		return
@@ -98,9 +96,8 @@ func (h *BidirectionalSyncHandler) GetConfigs(c *gin.Context) {
 
 // GetConfig retrieves a sync configuration
 func (h *BidirectionalSyncHandler) GetConfig(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -110,7 +107,7 @@ func (h *BidirectionalSyncHandler) GetConfig(c *gin.Context) {
 		return
 	}
 
-	config, err := h.service.GetConfig(c.Request.Context(), tenantID.(uuid.UUID), configID)
+	config, err := h.service.GetConfig(c.Request.Context(), tenantID, configID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -121,9 +118,8 @@ func (h *BidirectionalSyncHandler) GetConfig(c *gin.Context) {
 
 // SendSyncRequest sends a synchronous webhook request
 func (h *BidirectionalSyncHandler) SendSyncRequest(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -133,7 +129,7 @@ func (h *BidirectionalSyncHandler) SendSyncRequest(c *gin.Context) {
 		return
 	}
 
-	tx, err := h.service.SendSyncRequest(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	tx, err := h.service.SendSyncRequest(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -144,9 +140,8 @@ func (h *BidirectionalSyncHandler) SendSyncRequest(c *gin.Context) {
 
 // ReceiveSyncResponse processes an incoming sync response
 func (h *BidirectionalSyncHandler) ReceiveSyncResponse(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -156,7 +151,7 @@ func (h *BidirectionalSyncHandler) ReceiveSyncResponse(c *gin.Context) {
 		return
 	}
 
-	tx, err := h.service.ReceiveSyncResponse(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	tx, err := h.service.ReceiveSyncResponse(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -167,9 +162,8 @@ func (h *BidirectionalSyncHandler) ReceiveSyncResponse(c *gin.Context) {
 
 // GetTransaction retrieves a sync transaction
 func (h *BidirectionalSyncHandler) GetTransaction(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -179,7 +173,7 @@ func (h *BidirectionalSyncHandler) GetTransaction(c *gin.Context) {
 		return
 	}
 
-	tx, err := h.service.GetTransaction(c.Request.Context(), tenantID.(uuid.UUID), txID)
+	tx, err := h.service.GetTransaction(c.Request.Context(), tenantID, txID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -190,9 +184,8 @@ func (h *BidirectionalSyncHandler) GetTransaction(c *gin.Context) {
 
 // GetTransactions retrieves transactions for a config
 func (h *BidirectionalSyncHandler) GetTransactions(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -203,7 +196,7 @@ func (h *BidirectionalSyncHandler) GetTransactions(c *gin.Context) {
 	}
 
 	limit := 20
-	transactions, err := h.service.GetTransactions(c.Request.Context(), tenantID.(uuid.UUID), configID, limit)
+	transactions, err := h.service.GetTransactions(c.Request.Context(), tenantID, configID, limit)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -214,9 +207,8 @@ func (h *BidirectionalSyncHandler) GetTransactions(c *gin.Context) {
 
 // SendAcknowledgment sends an acknowledgment for an event
 func (h *BidirectionalSyncHandler) SendAcknowledgment(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -226,7 +218,7 @@ func (h *BidirectionalSyncHandler) SendAcknowledgment(c *gin.Context) {
 		return
 	}
 
-	ack, err := h.service.SendAcknowledgment(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	ack, err := h.service.SendAcknowledgment(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -256,9 +248,8 @@ func (h *BidirectionalSyncHandler) ConfirmAcknowledgment(c *gin.Context) {
 
 // UpdateState updates local state for state sync
 func (h *BidirectionalSyncHandler) UpdateState(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -268,7 +259,7 @@ func (h *BidirectionalSyncHandler) UpdateState(c *gin.Context) {
 		return
 	}
 
-	record, err := h.service.UpdateState(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	record, err := h.service.UpdateState(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -279,9 +270,8 @@ func (h *BidirectionalSyncHandler) UpdateState(c *gin.Context) {
 
 // ReceiveRemoteState receives state update from remote
 func (h *BidirectionalSyncHandler) ReceiveRemoteState(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -303,7 +293,7 @@ func (h *BidirectionalSyncHandler) ReceiveRemoteState(c *gin.Context) {
 		return
 	}
 
-	record, err := h.service.ReceiveRemoteState(c.Request.Context(), tenantID.(uuid.UUID), configID, req.ResourceType, req.ResourceID, req.RemoteState)
+	record, err := h.service.ReceiveRemoteState(c.Request.Context(), tenantID, configID, req.ResourceType, req.ResourceID, req.RemoteState)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -314,13 +304,12 @@ func (h *BidirectionalSyncHandler) ReceiveRemoteState(c *gin.Context) {
 
 // GetConflicts retrieves conflicted state records
 func (h *BidirectionalSyncHandler) GetConflicts(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
-	conflicts, err := h.service.GetConflicts(c.Request.Context(), tenantID.(uuid.UUID))
+	conflicts, err := h.service.GetConflicts(c.Request.Context(), tenantID)
 	if err != nil {
 		InternalErrorGeneric(c, err)
 		return
@@ -331,9 +320,8 @@ func (h *BidirectionalSyncHandler) GetConflicts(c *gin.Context) {
 
 // ResolveConflict resolves a state conflict
 func (h *BidirectionalSyncHandler) ResolveConflict(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
@@ -343,7 +331,7 @@ func (h *BidirectionalSyncHandler) ResolveConflict(c *gin.Context) {
 		return
 	}
 
-	record, err := h.service.ResolveConflict(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	record, err := h.service.ResolveConflict(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -354,13 +342,12 @@ func (h *BidirectionalSyncHandler) ResolveConflict(c *gin.Context) {
 
 // GetDashboard retrieves the sync dashboard
 func (h *BidirectionalSyncHandler) GetDashboard(c *gin.Context) {
-	tenantID, exists := c.Get("tenant_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "tenant_id not found"})
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
 		return
 	}
 
-	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID.(uuid.UUID))
+	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
 		InternalErrorGeneric(c, err)
 		return

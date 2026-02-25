@@ -33,7 +33,10 @@ func NewGraphQLHandler(service *services.GraphQLService, logger *utils.Logger) *
 // @Success 201 {object} models.GraphQLSchema
 // @Router /graphql/schemas [post]
 func (h *GraphQLHandler) CreateSchema(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.CreateGraphQLSchemaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -41,7 +44,7 @@ func (h *GraphQLHandler) CreateSchema(c *gin.Context) {
 		return
 	}
 
-	schema, err := h.service.CreateSchema(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	schema, err := h.service.CreateSchema(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to create schema", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -58,9 +61,12 @@ func (h *GraphQLHandler) CreateSchema(c *gin.Context) {
 // @Success 200 {array} models.GraphQLSchema
 // @Router /graphql/schemas [get]
 func (h *GraphQLHandler) GetSchemas(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	schemas, err := h.service.GetSchemas(c.Request.Context(), tenantID.(uuid.UUID))
+	schemas, err := h.service.GetSchemas(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get schemas", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -78,7 +84,10 @@ func (h *GraphQLHandler) GetSchemas(c *gin.Context) {
 // @Success 200 {object} models.GraphQLSchema
 // @Router /graphql/schemas/{schema_id} [get]
 func (h *GraphQLHandler) GetSchema(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	schemaID, err := uuid.Parse(c.Param("schema_id"))
 	if err != nil {
@@ -86,7 +95,7 @@ func (h *GraphQLHandler) GetSchema(c *gin.Context) {
 		return
 	}
 
-	schema, err := h.service.GetSchema(c.Request.Context(), tenantID.(uuid.UUID), schemaID)
+	schema, err := h.service.GetSchema(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "schema not found"})
 		return
@@ -131,7 +140,10 @@ func (h *GraphQLHandler) ParseSchema(c *gin.Context) {
 // @Success 201 {object} models.GraphQLSubscription
 // @Router /graphql/subscriptions [post]
 func (h *GraphQLHandler) CreateSubscription(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.CreateGraphQLSubscriptionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -139,7 +151,7 @@ func (h *GraphQLHandler) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	sub, err := h.service.CreateSubscription(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	sub, err := h.service.CreateSubscription(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to create subscription", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -156,9 +168,12 @@ func (h *GraphQLHandler) CreateSubscription(c *gin.Context) {
 // @Success 200 {array} models.GraphQLSubscription
 // @Router /graphql/subscriptions [get]
 func (h *GraphQLHandler) GetSubscriptions(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
-	subs, err := h.service.GetSubscriptions(c.Request.Context(), tenantID.(uuid.UUID))
+	subs, err := h.service.GetSubscriptions(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to get subscriptions", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -176,7 +191,10 @@ func (h *GraphQLHandler) GetSubscriptions(c *gin.Context) {
 // @Success 200 {object} models.GraphQLSubscription
 // @Router /graphql/subscriptions/{subscription_id} [get]
 func (h *GraphQLHandler) GetSubscription(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	subID, err := uuid.Parse(c.Param("subscription_id"))
 	if err != nil {
@@ -184,7 +202,7 @@ func (h *GraphQLHandler) GetSubscription(c *gin.Context) {
 		return
 	}
 
-	sub, err := h.service.GetSubscription(c.Request.Context(), tenantID.(uuid.UUID), subID)
+	sub, err := h.service.GetSubscription(c.Request.Context(), tenantID, subID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "subscription not found"})
 		return
@@ -243,7 +261,10 @@ func (h *GraphQLHandler) IngestEvent(c *gin.Context) {
 // @Success 201 {object} models.GraphQLFederationSource
 // @Router /graphql/federation/sources [post]
 func (h *GraphQLHandler) AddFederationSource(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.AddFederationSourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -251,7 +272,7 @@ func (h *GraphQLHandler) AddFederationSource(c *gin.Context) {
 		return
 	}
 
-	source, err := h.service.AddFederationSource(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	source, err := h.service.AddFederationSource(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to add federation source", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -269,7 +290,10 @@ func (h *GraphQLHandler) AddFederationSource(c *gin.Context) {
 // @Success 200 {array} models.GraphQLFederationSource
 // @Router /graphql/schemas/{schema_id}/federation/sources [get]
 func (h *GraphQLHandler) GetFederationSources(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	schemaID, err := uuid.Parse(c.Param("schema_id"))
 	if err != nil {
@@ -277,7 +301,7 @@ func (h *GraphQLHandler) GetFederationSources(c *gin.Context) {
 		return
 	}
 
-	sources, err := h.service.GetFederationSources(c.Request.Context(), tenantID.(uuid.UUID), schemaID)
+	sources, err := h.service.GetFederationSources(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -295,7 +319,10 @@ func (h *GraphQLHandler) GetFederationSources(c *gin.Context) {
 // @Success 201 {object} models.GraphQLTypeMapping
 // @Router /graphql/type-mappings [post]
 func (h *GraphQLHandler) CreateTypeMapping(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	var req models.CreateTypeMappingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -303,7 +330,7 @@ func (h *GraphQLHandler) CreateTypeMapping(c *gin.Context) {
 		return
 	}
 
-	mapping, err := h.service.CreateTypeMapping(c.Request.Context(), tenantID.(uuid.UUID), &req)
+	mapping, err := h.service.CreateTypeMapping(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		h.logger.Error("Failed to create type mapping", map[string]interface{}{"error": err.Error()})
 		InternalErrorGeneric(c, err)
@@ -321,7 +348,10 @@ func (h *GraphQLHandler) CreateTypeMapping(c *gin.Context) {
 // @Success 200 {array} models.GraphQLTypeMapping
 // @Router /graphql/schemas/{schema_id}/type-mappings [get]
 func (h *GraphQLHandler) GetTypeMappings(c *gin.Context) {
-	tenantID, _ := c.Get("tenant_id")
+	tenantID, ok := RequireTenantID(c)
+	if !ok {
+		return
+	}
 
 	schemaID, err := uuid.Parse(c.Param("schema_id"))
 	if err != nil {
@@ -329,7 +359,7 @@ func (h *GraphQLHandler) GetTypeMappings(c *gin.Context) {
 		return
 	}
 
-	mappings, err := h.service.GetTypeMappings(c.Request.Context(), tenantID.(uuid.UUID), schemaID)
+	mappings, err := h.service.GetTypeMappings(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
