@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/josedab/waas/pkg/catalog"
 	"github.com/josedab/waas/pkg/database"
+	apperrors "github.com/josedab/waas/pkg/errors"
 	"github.com/josedab/waas/pkg/httputil"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
@@ -573,17 +575,17 @@ func isRetryableError(err error) bool {
 	}
 
 	// Context timeout errors are retryable
-	if err == context.DeadlineExceeded {
+	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
 
 	// DNS errors are retryable
-	if strings.Contains(err.Error(), "no such host") {
+	if errors.Is(err, apperrors.ErrNoSuchHost) || strings.Contains(err.Error(), "no such host") {
 		return true
 	}
 
 	// Connection refused is retryable
-	if strings.Contains(err.Error(), "connection refused") {
+	if errors.Is(err, apperrors.ErrConnectionRefused) || strings.Contains(err.Error(), "connection refused") {
 		return true
 	}
 
