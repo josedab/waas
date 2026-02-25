@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -113,7 +114,9 @@ func (s *Service) IngestEvent(ctx context.Context, tenantID string, req *IngestE
 			ExpiresAt:      time.Now().Add(time.Duration(rule.TimeWindowSec) * time.Second),
 			CreatedAt:      time.Now(),
 		}
-		_ = s.repo.CreateState(ctx, state)
+		if err := s.repo.CreateState(ctx, state); err != nil {
+			return nil, fmt.Errorf("failed to persist correlation state: %w", err)
+		}
 	}
 
 	// Check if this event is a follow event for any rules
@@ -133,7 +136,9 @@ func (s *Service) IngestEvent(ctx context.Context, tenantID string, req *IngestE
 		now := time.Now()
 		state.Status = StateCorrelated
 		state.CorrelatedAt = &now
-		_ = s.repo.UpdateState(ctx, state)
+		if err := s.repo.UpdateState(ctx, state); err != nil {
+			return nil, fmt.Errorf("failed to update correlation state: %w", err)
+		}
 
 		compositeID := uuid.New().String()
 		match := &CorrelationMatch{
@@ -146,7 +151,9 @@ func (s *Service) IngestEvent(ctx context.Context, tenantID string, req *IngestE
 			CompositeEventID: compositeID,
 			MatchedAt:        now,
 		}
-		_ = s.repo.CreateMatch(ctx, match)
+		if err := s.repo.CreateMatch(ctx, match); err != nil {
+			log.Printf("ERROR: failed to persist correlation match rule_id=%s match_key=%s: %v", rule.ID, matchKey, err)
+		}
 
 		composite := CompositeEvent{
 			ID:             compositeID,

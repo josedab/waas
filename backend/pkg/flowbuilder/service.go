@@ -3,6 +3,7 @@ package flowbuilder
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -205,7 +206,9 @@ func (s *Service) ExecuteWorkflow(ctx context.Context, tenantID, workflowID stri
 			result.Status = ExecFailed
 			result.Error = err.Error()
 			// best-effort: persist failed node result for observability
-			_ = s.repo.SaveNodeResult(ctx, result)
+			if saveErr := s.repo.SaveNodeResult(ctx, result); saveErr != nil {
+				log.Printf("ERROR: flowbuilder failed to save node result exec_id=%s node_id=%s: %v", exec.ID, nodeID, saveErr)
+			}
 
 			now := time.Now()
 			exec.Status = ExecFailed
@@ -213,14 +216,18 @@ func (s *Service) ExecuteWorkflow(ctx context.Context, tenantID, workflowID stri
 			exec.CompletedAt = &now
 			exec.DurationMs = time.Since(exec.StartedAt).Milliseconds()
 			// best-effort: persist execution failure state
-			_ = s.repo.UpdateExecution(ctx, exec)
+			if updateErr := s.repo.UpdateExecution(ctx, exec); updateErr != nil {
+				log.Printf("ERROR: flowbuilder failed to update execution state exec_id=%s: %v", exec.ID, updateErr)
+			}
 			return exec, nil
 		}
 
 		result.Status = ExecCompleted
 		result.Output = output
 		// best-effort: persist completed node result for observability
-		_ = s.repo.SaveNodeResult(ctx, result)
+		if saveErr := s.repo.SaveNodeResult(ctx, result); saveErr != nil {
+			log.Printf("ERROR: flowbuilder failed to save node result exec_id=%s node_id=%s: %v", exec.ID, nodeID, saveErr)
+		}
 
 		if output != nil {
 			currentData = output
@@ -233,7 +240,10 @@ func (s *Service) ExecuteWorkflow(ctx context.Context, tenantID, workflowID stri
 	exec.CompletedAt = &now
 	exec.DurationMs = time.Since(exec.StartedAt).Milliseconds()
 	// best-effort: persist final execution state; workflow completed successfully
-	_ = s.repo.UpdateExecution(ctx, exec)
+	if updateErr := s.repo.UpdateExecution(ctx, exec); updateErr != nil {
+		log.Printf("ERROR: flowbuilder failed to update final execution state exec_id=%s: %v", exec.ID, updateErr)
+		return exec, fmt.Errorf("workflow completed but failed to persist final state: %w", updateErr)
+	}
 
 	return exec, nil
 }
