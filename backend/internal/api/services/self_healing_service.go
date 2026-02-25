@@ -71,7 +71,11 @@ func (s *SelfHealingService) PredictEndpointHealth(ctx context.Context, tenantID
 	}
 
 	// Check if auto-remediation should be triggered
-	go s.checkAutoRemediation(context.Background(), tenantID, endpointID, prediction)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		s.checkAutoRemediation(ctx, tenantID, endpointID, prediction)
+	}()
 
 	return prediction, nil
 }

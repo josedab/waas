@@ -59,7 +59,11 @@ func (s *ComplianceService) CreateProfile(ctx context.Context, tenantID uuid.UUI
 	}
 
 	// Create default retention policies for the framework
-	go s.createDefaultRetentionPolicies(context.Background(), tenantID, profile)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		s.createDefaultRetentionPolicies(ctx, tenantID, profile)
+	}()
 
 	return profile, nil
 }
@@ -282,7 +286,11 @@ func (s *ComplianceService) GenerateReport(ctx context.Context, tenantID uuid.UU
 	}
 
 	// Generate report in background
-	go s.generateReportAsync(context.Background(), report)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		s.generateReportAsync(ctx, report)
+	}()
 
 	return report, nil
 }

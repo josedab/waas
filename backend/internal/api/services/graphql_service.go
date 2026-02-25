@@ -57,7 +57,11 @@ func (s *GraphQLService) CreateSchema(ctx context.Context, tenantID uuid.UUID, r
 	}
 
 	// Auto-generate type mappings from subscription types
-	go s.autoGenerateTypeMappings(context.Background(), schema)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.autoGenerateTypeMappings(ctx, schema)
+	}()
 
 	return schema, nil
 }
@@ -592,7 +596,11 @@ func (s *GraphQLService) AddFederationSource(ctx context.Context, tenantID uuid.
 	}
 
 	// Trigger async health check
-	go s.checkFederationSourceHealth(context.Background(), source)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.checkFederationSourceHealth(ctx, source)
+	}()
 
 	return source, nil
 }

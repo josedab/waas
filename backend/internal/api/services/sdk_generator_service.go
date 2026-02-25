@@ -126,7 +126,11 @@ func (s *SDKGeneratorService) GenerateSDK(ctx context.Context, tenantID uuid.UUI
 		}
 
 		// Generate SDK in background
-		go s.generateSDKForLanguage(context.Background(), config, gen)
+		go func(config *models.SDKConfiguration, gen *models.SDKGeneration) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			s.generateSDKForLanguage(ctx, config, gen)
+		}(config, gen)
 
 		results = append(results, &models.SDKGenerationResult{
 			Generation:   gen,
