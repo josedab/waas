@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -281,14 +282,33 @@ func parseDuration(s string) (time.Duration, error) {
 }
 
 func isOriginAllowed(origin string, allowed []string) bool {
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.Host == "" {
+		return false
+	}
+	// Enforce HTTPS scheme for security
+	if parsed.Scheme != "https" && parsed.Scheme != "http" {
+		return false
+	}
+	originHost := parsed.Host
+
 	for _, a := range allowed {
-		if a == "*" || a == origin {
+		if a == "*" {
 			return true
 		}
-		// Support wildcard subdomains
-		if strings.HasPrefix(a, "*.") {
-			suffix := a[1:] // Remove *
-			if strings.HasSuffix(origin, suffix) {
+		// Parse the allowed entry to extract host for comparison
+		allowedHost := a
+		if parsedAllowed, err := url.Parse(a); err == nil && parsedAllowed.Host != "" {
+			allowedHost = parsedAllowed.Host
+		}
+		if strings.EqualFold(originHost, allowedHost) {
+			return true
+		}
+		// Support wildcard subdomains: *.example.com matches sub.example.com
+		if strings.HasPrefix(allowedHost, "*.") {
+			wildcardDomain := allowedHost[1:] // e.g. ".example.com"
+			// Verify origin host ends with the wildcard domain at a subdomain boundary
+			if strings.HasSuffix(originHost, wildcardDomain) && len(originHost) > len(wildcardDomain) {
 				return true
 			}
 		}
