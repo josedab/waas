@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -8,32 +9,40 @@ import (
 	"github.com/google/uuid"
 )
 
+// Sentinel errors for use with errors.Is() instead of string matching.
+var (
+	ErrNotFound          = errors.New("not found")
+	ErrConflict          = errors.New("conflict")
+	ErrNoSuchHost        = errors.New("no such host")
+	ErrConnectionRefused = errors.New("connection refused")
+)
+
 // ErrorCategory represents the category of error
 type ErrorCategory string
 
 const (
 	// Client error categories (4xx)
-	CategoryValidation    ErrorCategory = "VALIDATION"
-	CategoryAuthentication ErrorCategory = "AUTHENTICATION"
-	CategoryAuthorization  ErrorCategory = "AUTHORIZATION"
-	CategoryNotFound       ErrorCategory = "NOT_FOUND"
-	CategoryRateLimit      ErrorCategory = "RATE_LIMIT"
-	CategoryQuotaExceeded  ErrorCategory = "QUOTA_EXCEEDED"
+	CategoryValidation      ErrorCategory = "VALIDATION"
+	CategoryAuthentication  ErrorCategory = "AUTHENTICATION"
+	CategoryAuthorization   ErrorCategory = "AUTHORIZATION"
+	CategoryNotFound        ErrorCategory = "NOT_FOUND"
+	CategoryRateLimit       ErrorCategory = "RATE_LIMIT"
+	CategoryQuotaExceeded   ErrorCategory = "QUOTA_EXCEEDED"
 	CategoryPayloadTooLarge ErrorCategory = "PAYLOAD_TOO_LARGE"
-	CategoryBadRequest     ErrorCategory = "BAD_REQUEST"
+	CategoryBadRequest      ErrorCategory = "BAD_REQUEST"
 
 	// Server error categories (5xx)
-	CategoryInternal      ErrorCategory = "INTERNAL"
-	CategoryDatabase      ErrorCategory = "DATABASE"
-	CategoryQueue         ErrorCategory = "QUEUE"
-	CategoryExternalAPI   ErrorCategory = "EXTERNAL_API"
-	CategoryTimeout       ErrorCategory = "TIMEOUT"
-	CategoryUnavailable   ErrorCategory = "UNAVAILABLE"
+	CategoryInternal    ErrorCategory = "INTERNAL"
+	CategoryDatabase    ErrorCategory = "DATABASE"
+	CategoryQueue       ErrorCategory = "QUEUE"
+	CategoryExternalAPI ErrorCategory = "EXTERNAL_API"
+	CategoryTimeout     ErrorCategory = "TIMEOUT"
+	CategoryUnavailable ErrorCategory = "UNAVAILABLE"
 
 	// Delivery error categories
-	CategoryDeliveryFailed    ErrorCategory = "DELIVERY_FAILED"
-	CategoryEndpointInactive  ErrorCategory = "ENDPOINT_INACTIVE"
-	CategorySignatureInvalid  ErrorCategory = "SIGNATURE_INVALID"
+	CategoryDeliveryFailed   ErrorCategory = "DELIVERY_FAILED"
+	CategoryEndpointInactive ErrorCategory = "ENDPOINT_INACTIVE"
+	CategorySignatureInvalid ErrorCategory = "SIGNATURE_INVALID"
 )
 
 // ErrorSeverity represents the severity level of an error
@@ -52,18 +61,18 @@ type WebhookError struct {
 	Code     string        `json:"code"`
 	Message  string        `json:"message"`
 	Category ErrorCategory `json:"category"`
-	
+
 	// Additional context
-	Details    map[string]interface{} `json:"details,omitempty"`
-	Timestamp  time.Time              `json:"timestamp"`
-	RequestID  string                 `json:"request_id,omitempty"`
-	TraceID    string                 `json:"trace_id,omitempty"`
-	
+	Details   map[string]interface{} `json:"details,omitempty"`
+	Timestamp time.Time              `json:"timestamp"`
+	RequestID string                 `json:"request_id,omitempty"`
+	TraceID   string                 `json:"trace_id,omitempty"`
+
 	// Internal fields (not exposed in JSON)
 	HTTPStatus int           `json:"-"`
 	Severity   ErrorSeverity `json:"-"`
 	Cause      error         `json:"-"`
-	
+
 	// Debugging information
 	DebuggingHints []string `json:"debugging_hints,omitempty"`
 	Documentation  string   `json:"documentation,omitempty"`
@@ -162,7 +171,7 @@ func (e *WebhookError) GetHTTPStatus() int {
 	if e.HTTPStatus != 0 {
 		return e.HTTPStatus
 	}
-	
+
 	// Default status codes based on category
 	switch e.Category {
 	case CategoryValidation, CategoryBadRequest, CategoryPayloadTooLarge:
