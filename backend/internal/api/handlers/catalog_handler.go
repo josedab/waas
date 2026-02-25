@@ -214,6 +214,17 @@ func (h *CatalogHandler) SearchEventTypes(c *gin.Context) {
 		SortOrder: c.DefaultQuery("sort_order", "asc"),
 	}
 
+	validStatuses := map[string]bool{"active": true, "deprecated": true, "draft": true}
+	if !validStatuses[params.Status] {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_STATUS", Message: "invalid status; must be one of: active, deprecated, draft"})
+		return
+	}
+	validSortOrders := map[string]bool{"asc": true, "desc": true}
+	if !validSortOrders[params.SortOrder] {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_SORT_ORDER", Message: "invalid sort_order; must be one of: asc, desc"})
+		return
+	}
+
 	if tags := c.QueryArray("tags"); len(tags) > 0 {
 		params.Tags = tags
 	}

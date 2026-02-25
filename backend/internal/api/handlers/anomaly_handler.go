@@ -64,6 +64,22 @@ func (h *AnomalyHandler) ListAnomalies(c *gin.Context) {
 	status := c.Query("status")
 	severity := c.Query("severity")
 	endpointID := c.Query("endpoint_id")
+
+	if status != "" {
+		validStatuses := map[string]bool{"open": true, "acknowledged": true, "resolved": true}
+		if !validStatuses[status] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status; must be one of: open, acknowledged, resolved"})
+			return
+		}
+	}
+	if severity != "" {
+		validSeverities := map[string]bool{"critical": true, "warning": true, "info": true}
+		if !validSeverities[severity] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid severity; must be one of: critical, warning, info"})
+			return
+		}
+	}
+
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 

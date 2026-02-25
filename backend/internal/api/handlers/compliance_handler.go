@@ -335,6 +335,24 @@ func (h *ComplianceHandler) GetAuditLogs(c *gin.Context) {
 		Limit:        100,
 	}
 
+	// Validate enum-style parameters contain only safe characters
+	validParam := func(s string) bool {
+		for _, r := range s {
+			if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
+				return false
+			}
+		}
+		return true
+	}
+	if query.Action != "" && !validParam(query.Action) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid action parameter"})
+		return
+	}
+	if query.ResourceType != "" && !validParam(query.ResourceType) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid resource_type parameter"})
+		return
+	}
+
 	logs, err := h.service.QueryAuditLogs(c.Request.Context(), query)
 	if err != nil {
 		h.logger.Error("Failed to get audit logs", map[string]interface{}{"error": err.Error()})
