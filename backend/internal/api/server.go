@@ -555,12 +555,27 @@ func NewServer() (*Server, error) {
 	if origins := os.Getenv("CORS_ALLOWED_ORIGINS"); origins != "" {
 		allowedOrigins = strings.Split(origins, ",")
 	}
+
+	// Validate CORS configuration: AllowCredentials with wildcard or empty origins is insecure
+	allowCredentials := true
+	for _, o := range allowedOrigins {
+		if strings.TrimSpace(o) == "*" {
+			logger.Error("CORS_ALLOWED_ORIGINS contains '*' with AllowCredentials enabled; disabling AllowCredentials", nil)
+			allowCredentials = false
+			break
+		}
+	}
+	if len(allowedOrigins) == 0 {
+		logger.Error("CORS_ALLOWED_ORIGINS is empty with AllowCredentials enabled; disabling AllowCredentials", nil)
+		allowCredentials = false
+	}
+
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Request-ID"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
+		AllowCredentials: allowCredentials,
 		MaxAge:           12 * time.Hour,
 	}))
 
