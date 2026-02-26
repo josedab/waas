@@ -343,12 +343,18 @@ func (r *PostgresRepository) GetMarketplaceStats(ctx context.Context) (*PluginSt
 		return stats, err
 	}
 
-	_ = r.db.GetContext(ctx, &stats.TotalInstalls,
-		`SELECT COALESCE(SUM(installs), 0) FROM marketplace_plugins WHERE status = 'published'`)
-	_ = r.db.GetContext(ctx, &stats.AvgRating,
-		`SELECT COALESCE(AVG(avg_rating), 0) FROM marketplace_plugins WHERE status = 'published' AND review_count > 0`)
-	_ = r.db.GetContext(ctx, &stats.PublishedLast30d,
-		`SELECT COUNT(*) FROM marketplace_plugins WHERE status = 'published' AND published_at >= NOW() - INTERVAL '30 days'`)
+	if err = r.db.GetContext(ctx, &stats.TotalInstalls,
+		`SELECT COALESCE(SUM(installs), 0) FROM marketplace_plugins WHERE status = 'published'`); err != nil {
+		return stats, err
+	}
+	if err = r.db.GetContext(ctx, &stats.AvgRating,
+		`SELECT COALESCE(AVG(avg_rating), 0) FROM marketplace_plugins WHERE status = 'published' AND review_count > 0`); err != nil {
+		return stats, err
+	}
+	if err = r.db.GetContext(ctx, &stats.PublishedLast30d,
+		`SELECT COUNT(*) FROM marketplace_plugins WHERE status = 'published' AND published_at >= NOW() - INTERVAL '30 days'`); err != nil {
+		return stats, err
+	}
 
 	stats.ActivePlugins = stats.TotalPlugins
 	return stats, nil
