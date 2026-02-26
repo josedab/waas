@@ -122,14 +122,14 @@ func (h *Handler) CreateSubscription(c *gin.Context) {
 
 	sub, err := h.billing.CreateSubscription(c.Request.Context(), tenantID, req.PlanID, req.BillingCycle)
 	if err != nil {
-		status := http.StatusInternalServerError
 		switch err {
 		case ErrPlanNotFound:
-			status = http.StatusBadRequest
+			c.JSON(http.StatusBadRequest, gin.H{"error": "plan not found"})
 		case ErrPaymentRequired:
-			status = http.StatusPaymentRequired
+			c.JSON(http.StatusPaymentRequired, gin.H{"error": "payment required"})
+		default:
+			httputil.InternalErrorGeneric(c, err)
 		}
-		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -189,7 +189,20 @@ func (h *Handler) ChangePlan(c *gin.Context) {
 
 	sub, err := h.billing.ChangePlan(c.Request.Context(), tenantID, req.PlanID)
 	if err != nil {
-		c.JSON(status(err), gin.H{"error": err.Error()})
+		switch err {
+		case ErrPlanNotFound:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "plan not found"})
+		case ErrSubscriptionNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "subscription not found"})
+		case ErrUsageLimitExceeded:
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "usage limit exceeded"})
+		case ErrInvalidPlanUpgrade:
+			c.JSON(http.StatusConflict, gin.H{"error": "invalid plan upgrade"})
+		case ErrPaymentRequired:
+			c.JSON(http.StatusPaymentRequired, gin.H{"error": "payment required"})
+		default:
+			httputil.InternalErrorGeneric(c, err)
+		}
 		return
 	}
 
@@ -222,7 +235,20 @@ func (h *Handler) CancelSubscription(c *gin.Context) {
 
 	sub, err := h.billing.CancelSubscription(c.Request.Context(), tenantID, req.Immediate)
 	if err != nil {
-		c.JSON(status(err), gin.H{"error": err.Error()})
+		switch err {
+		case ErrPlanNotFound:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "plan not found"})
+		case ErrSubscriptionNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "subscription not found"})
+		case ErrUsageLimitExceeded:
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "usage limit exceeded"})
+		case ErrInvalidPlanUpgrade:
+			c.JSON(http.StatusConflict, gin.H{"error": "invalid plan upgrade"})
+		case ErrPaymentRequired:
+			c.JSON(http.StatusPaymentRequired, gin.H{"error": "payment required"})
+		default:
+			httputil.InternalErrorGeneric(c, err)
+		}
 		return
 	}
 
@@ -564,6 +590,7 @@ func (h *Handler) GetOnboardingStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, session)
 }
 
+// status maps a cloud service error to an HTTP status code.
 func status(err error) int {
 	switch err {
 	case ErrPlanNotFound:
@@ -580,3 +607,4 @@ func status(err error) int {
 		return http.StatusInternalServerError
 	}
 }
+
