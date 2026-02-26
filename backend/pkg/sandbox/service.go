@@ -12,16 +12,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides sandbox management functionality
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new sandbox service
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("sandbox-service")}
 }
 
 // CreateSandbox creates a new sandbox environment
@@ -410,7 +412,9 @@ func (s *Service) RunTestScenario(ctx context.Context, scenarioID string) (*Scen
 	scenario.Status = ScenarioStatusRunning
 	scenario.UpdatedAt = time.Now()
 	// best-effort: persist running status; execution proceeds regardless
-	_ = s.repo.UpdateTestScenario(ctx, scenario)
+	if err := s.repo.UpdateTestScenario(ctx, scenario); err != nil {
+		s.logger.Error("failed to update test scenario", map[string]interface{}{"error": err.Error(), "scenario_id": scenarioID})
+	}
 
 	result := &ScenarioResult{
 		ID:         uuid.New().String(),
@@ -442,8 +446,12 @@ func (s *Service) RunTestScenario(ctx context.Context, scenarioID string) (*Scen
 
 	scenario.UpdatedAt = time.Now()
 	// best-effort: persist final scenario state and result; execution already completed
-	_ = s.repo.UpdateTestScenario(ctx, scenario)
-	_ = s.repo.CreateScenarioResult(ctx, result)
+	if err := s.repo.UpdateTestScenario(ctx, scenario); err != nil {
+		s.logger.Error("failed to update test scenario", map[string]interface{}{"error": err.Error(), "scenario_id": scenarioID})
+	}
+	if err := s.repo.CreateScenarioResult(ctx, result); err != nil {
+		s.logger.Error("failed to create scenario result", map[string]interface{}{"error": err.Error(), "scenario_id": scenarioID, "result_id": result.ID})
+	}
 
 	return result, nil
 }

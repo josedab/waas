@@ -7,16 +7,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides protocol gateway translation functionality
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new protocol gateway service
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("protocolgw-service")}
 }
 
 var validProtocols = map[string]bool{
@@ -208,7 +210,9 @@ func (s *Service) TranslateMessage(ctx context.Context, tenantID string, req *Tr
 		result.Success = true
 	}
 
-	_ = s.repo.RecordMessage(ctx, msg)
+	if err := s.repo.RecordMessage(ctx, msg); err != nil {
+		s.logger.Error("failed to record message", map[string]interface{}{"error": err.Error(), "message_id": msg.ID})
+	}
 
 	return result, nil
 }

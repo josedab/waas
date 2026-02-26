@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // WasmRuntimeStatus represents the status of a Wasm runtime instance
@@ -92,6 +93,7 @@ type WasmRuntime struct {
 	repo    WasmRuntimeRepository
 	sandbox *Sandbox
 	mu      sync.RWMutex
+	logger  *utils.Logger
 }
 
 // Sandbox provides isolated execution for edge functions
@@ -118,6 +120,7 @@ func NewWasmRuntime(repo WasmRuntimeRepository, sandbox *Sandbox) *WasmRuntime {
 	return &WasmRuntime{
 		repo:    repo,
 		sandbox: sandbox,
+		logger:  utils.NewLogger("edge-wasm-runtime"),
 	}
 }
 
@@ -198,7 +201,9 @@ func (r *WasmRuntime) InvokeFunction(ctx context.Context, tenantID, functionID s
 		invocation.Output = output
 	}
 
-	_ = r.repo.SaveInvocation(ctx, invocation)
+	if err := r.repo.SaveInvocation(ctx, invocation); err != nil {
+		r.logger.Error("failed to save invocation", map[string]interface{}{"error": err.Error(), "function_id": invocation.FunctionID})
+	}
 
 	return invocation, execErr
 }

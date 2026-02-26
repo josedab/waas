@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // ServiceConfig configures the routing policy service.
@@ -28,6 +29,7 @@ func DefaultServiceConfig() *ServiceConfig {
 type Service struct {
 	repo   Repository
 	config *ServiceConfig
+	logger *utils.Logger
 }
 
 // NewService creates a new routing policy service.
@@ -35,7 +37,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 	if config == nil {
 		config = DefaultServiceConfig()
 	}
-	return &Service{repo: repo, config: config}
+	return &Service{repo: repo, config: config, logger: utils.NewLogger("routingpolicy-service")}
 }
 
 // CreatePolicy creates a new routing policy.
@@ -309,7 +311,9 @@ func (s *Service) storeVersion(policy *Policy) {
 		Policy:    policy,
 		CreatedAt: time.Now(),
 	}
-	_ = s.repo.StoreVersion(v)
+	if err := s.repo.StoreVersion(v); err != nil {
+		s.logger.Error("failed to store policy version", map[string]interface{}{"error": err.Error(), "policy_id": policy.ID})
+	}
 }
 
 func (s *Service) auditLog(policyID, action string, version int, changedBy string) {
@@ -321,5 +325,7 @@ func (s *Service) auditLog(policyID, action string, version int, changedBy strin
 		ChangedBy: changedBy,
 		Timestamp: time.Now(),
 	}
-	_ = s.repo.AppendAudit(entry)
+	if err := s.repo.AppendAudit(entry); err != nil {
+		s.logger.Error("failed to append audit entry", map[string]interface{}{"error": err.Error(), "policy_id": policyID, "action": action})
+	}
 }

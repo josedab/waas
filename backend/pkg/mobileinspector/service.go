@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // ServiceConfig configures the mobile inspector service.
@@ -30,6 +31,7 @@ func DefaultServiceConfig() *ServiceConfig {
 // Service implements the mobile inspector business logic.
 type Service struct {
 	repo   Repository
+	logger *utils.Logger
 	config *ServiceConfig
 }
 
@@ -38,7 +40,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 	if config == nil {
 		config = DefaultServiceConfig()
 	}
-	return &Service{repo: repo, config: config}
+	return &Service{repo: repo, logger: utils.NewLogger("mobileinspector-service"), config: config}
 }
 
 // RegisterDevice creates a new mobile session for a device.
@@ -82,7 +84,9 @@ func (s *Service) RegisterDevice(tenantID, userID string, reg *DeviceRegistratio
 			Enabled:   true,
 			CreatedAt: time.Now(),
 		}
-		_ = s.repo.CreatePushRegistration(pushReg)
+		if err := s.repo.CreatePushRegistration(pushReg); err != nil {
+			s.logger.Error("failed to create push registration", map[string]interface{}{"error": err.Error(), "device_id": reg.DeviceID})
+		}
 	}
 
 	return session, nil

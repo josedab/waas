@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 var (
@@ -301,6 +302,7 @@ type PaymentMethod struct {
 type Service struct {
 	repo      Repository
 	billing   BillingProvider
+	logger    *utils.Logger
 	mu        sync.RWMutex
 	config    *ServiceConfig
 	planCache map[string]*Plan
@@ -334,6 +336,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 
 	return &Service{
 		repo:      repo,
+		logger:    utils.NewLogger("monetization-service"),
 		config:    config,
 		planCache: make(map[string]*Plan),
 	}
@@ -478,7 +481,9 @@ func (s *Service) SubscribeToPlan(ctx context.Context, tenantID, customerID, pla
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
-	_ = s.repo.CreateUsageRecord(ctx, usage)
+	if err := s.repo.CreateUsageRecord(ctx, usage); err != nil {
+		s.logger.Error("failed to create usage record", map[string]interface{}{"error": err.Error(), "subscription_id": sub.ID})
+	}
 
 	return sub, nil
 }
@@ -563,7 +568,9 @@ func (s *Service) ValidateAPIKey(ctx context.Context, rawKey string) (*APIKey, e
 	// Update last used
 	now := time.Now()
 	key.LastUsedAt = &now
-	_ = s.repo.UpdateAPIKey(ctx, key)
+	if err := s.repo.UpdateAPIKey(ctx, key); err != nil {
+		s.logger.Error("failed to update API key", map[string]interface{}{"error": err.Error(), "key_id": key.ID})
+	}
 
 	return key, nil
 }

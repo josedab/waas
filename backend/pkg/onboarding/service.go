@@ -6,16 +6,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides onboarding business logic.
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new onboarding service.
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("onboarding-service")}
 }
 
 // StartOnboarding begins a new onboarding session for a tenant.
@@ -103,7 +105,9 @@ func (s *Service) CompleteStep(ctx context.Context, tenantID string, req *Comple
 	session.UpdatedAt = time.Now()
 
 	if s.repo != nil {
-		_ = s.repo.UpdateSession(ctx, session)
+		if err := s.repo.UpdateSession(ctx, session); err != nil {
+			s.logger.Error("failed to update session", map[string]interface{}{"error": err.Error(), "session_id": session.ID})
+		}
 	}
 
 	return s.buildProgress(session), nil

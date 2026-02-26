@@ -9,17 +9,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides compliance vault business logic.
 type Service struct {
 	repo      Repository
 	encryptor Encryptor
+	logger    *utils.Logger
 }
 
 // NewService creates a new compliance vault service.
 func NewService(repo Repository, encryptor Encryptor) *Service {
-	return &Service{repo: repo, encryptor: encryptor}
+	return &Service{repo: repo, encryptor: encryptor, logger: utils.NewLogger("compliancevault-service")}
 }
 
 // StorePayload encrypts and stores a webhook payload in the vault.
@@ -224,7 +226,9 @@ func (s *Service) RequestErasure(ctx context.Context, tenantID string, req *Crea
 			now := time.Now()
 			erasure.CompletedAt = &now
 		}
-		_ = s.repo.UpdateErasureRequest(ctx, erasure)
+		if err := s.repo.UpdateErasureRequest(ctx, erasure); err != nil {
+			s.logger.Error("failed to update erasure request", map[string]interface{}{"error": err.Error(), "erasure_id": erasure.ID})
+		}
 
 		s.recordAudit(ctx, tenantID, "", "system", AuditActionErasure, "erasure_request",
 			map[string]string{"subject_id": req.SubjectID, "entries_erased": fmt.Sprintf("%d", erasure.EntriesErased)})
@@ -313,7 +317,9 @@ func (s *Service) recordAudit(ctx context.Context, tenantID, entryID, actorID, a
 		Details:   details,
 		CreatedAt: time.Now(),
 	}
-	_ = s.repo.RecordAudit(ctx, audit)
+	if err := s.repo.RecordAudit(ctx, audit); err != nil {
+		s.logger.Error("failed to record audit", map[string]interface{}{"error": err.Error(), "action": action})
+	}
 }
 
 type frameworkControl struct {

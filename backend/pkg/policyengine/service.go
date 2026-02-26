@@ -10,16 +10,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides OPA/Rego policy engine business logic.
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new policy engine service.
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("policyengine-service")}
 }
 
 // CreatePolicy creates a new Rego policy with syntax validation.
@@ -61,7 +63,9 @@ func (s *Service) CreatePolicy(ctx context.Context, tenantID string, req *Create
 			CreatedBy:  "system",
 			CreatedAt:  now,
 		}
-		_ = s.repo.CreatePolicyVersion(ctx, version)
+		if err := s.repo.CreatePolicyVersion(ctx, version); err != nil {
+			s.logger.Error("failed to create policy version", map[string]interface{}{"error": err.Error(), "policy_id": policy.ID})
+		}
 	}
 
 	return policy, nil
@@ -125,7 +129,9 @@ func (s *Service) UpdatePolicy(ctx context.Context, tenantID, policyID string, r
 			CreatedBy:  "system",
 			CreatedAt:  time.Now(),
 		}
-		_ = s.repo.CreatePolicyVersion(ctx, version)
+		if err := s.repo.CreatePolicyVersion(ctx, version); err != nil {
+			s.logger.Error("failed to create policy version", map[string]interface{}{"error": err.Error(), "policy_id": policy.ID})
+		}
 	}
 
 	return policy, nil
@@ -192,7 +198,9 @@ func (s *Service) Evaluate(ctx context.Context, tenantID string, req *EvaluateRe
 			Result:     resultJSON,
 			CreatedAt:  time.Now(),
 		}
-		_ = s.repo.StoreEvaluationLog(ctx, evalLog)
+		if err := s.repo.StoreEvaluationLog(ctx, evalLog); err != nil {
+			s.logger.Error("failed to store evaluation log", map[string]interface{}{"error": err.Error()})
+		}
 	}
 
 	return result, nil

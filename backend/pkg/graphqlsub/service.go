@@ -513,8 +513,12 @@ func (s *Service) PublishEvent(ctx context.Context, event *Event) error {
 	}
 
 	// best-effort: persist event for replay; delivery to subscribers already succeeded
-	_ = s.repo.SaveEvent(ctx, event)
-	_ = s.repo.IncrementEventCounter(ctx, event.TenantID, 1)
+	if err := s.repo.SaveEvent(ctx, event); err != nil {
+		s.logger.Error("failed to save event", map[string]interface{}{"error": err.Error(), "event_id": event.ID})
+	}
+	if err := s.repo.IncrementEventCounter(ctx, event.TenantID, 1); err != nil {
+		s.logger.Error("failed to increment event counter", map[string]interface{}{"error": err.Error(), "tenant_id": event.TenantID})
+	}
 
 	return nil
 }

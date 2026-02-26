@@ -7,16 +7,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides live migration management functionality
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new live migration service
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("livemigration-service")}
 }
 
 // CreateMigration creates a new migration job after validating the platform
@@ -129,7 +131,9 @@ func (s *Service) ImportEndpoints(ctx context.Context, tenantID, jobID string) (
 		if err := s.repo.UpdateEndpoint(ctx, &endpoints[i]); err != nil {
 			endpoints[i].Status = EndpointStatusFailed
 			endpoints[i].ErrorMessage = err.Error()
-			_ = s.repo.UpdateEndpoint(ctx, &endpoints[i])
+			if err := s.repo.UpdateEndpoint(ctx, &endpoints[i]); err != nil {
+				s.logger.Error("failed to update endpoint", map[string]interface{}{"error": err.Error(), "endpoint_id": endpoints[i].ID})
+			}
 			continue
 		}
 		importedCount++

@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides predictive failure prevention operations
 type Service struct {
 	repo       Repository
+	logger     *utils.Logger
 	predictor  Predictor
 	extractor  FeatureExtractor
 	notifier   Notifier
@@ -55,6 +57,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 
 	return &Service{
 		repo:   repo,
+		logger: utils.NewLogger("prediction-service"),
 		config: config,
 		stopCh: make(chan struct{}),
 	}
@@ -237,7 +240,9 @@ func (s *Service) Predict(ctx context.Context, tenantID string, req *PredictRequ
 		predictions[i].TimeWindow = horizon / 4 // 25% uncertainty window
 
 		// best-effort: persist individual prediction; caller still receives the full list
-		_ = s.repo.SavePrediction(ctx, &predictions[i])
+		if err := s.repo.SavePrediction(ctx, &predictions[i]); err != nil {
+			s.logger.Error("failed to save prediction", map[string]interface{}{"error": err.Error(), "prediction_id": predictions[i].ID})
+		}
 	}
 
 	return predictions, nil
@@ -418,7 +423,9 @@ func (s *Service) sendAlertNotifications(ctx context.Context, tenantID string, a
 	}
 
 	// best-effort: persist alert notification state; notifications were already sent
-	_ = s.repo.UpdateAlert(ctx, alert)
+	if err := s.repo.UpdateAlert(ctx, alert); err != nil {
+		s.logger.Error("failed to update alert", map[string]interface{}{"error": err.Error(), "alert_id": alert.ID})
+	}
 }
 
 // GetEndpointHealth retrieves health for an endpoint

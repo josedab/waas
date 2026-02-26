@@ -8,16 +8,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides portal SDK business logic.
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new portal SDK service.
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("portalsdk-service")}
 }
 
 // CreateConfig creates a new portal configuration.
@@ -204,12 +206,16 @@ func (s *Service) ValidateSession(ctx context.Context, token string) (*PortalSes
 
 	if time.Now().After(session.ExpiresAt) {
 		session.Status = SessionStatusExpired
-		_ = s.repo.UpdateSession(ctx, session)
+		if err := s.repo.UpdateSession(ctx, session); err != nil {
+			s.logger.Error("failed to update session", map[string]interface{}{"error": err.Error(), "session_id": session.ID})
+		}
 		return nil, fmt.Errorf("session has expired")
 	}
 
 	session.LastAccessAt = time.Now()
-	_ = s.repo.UpdateSession(ctx, session)
+	if err := s.repo.UpdateSession(ctx, session); err != nil {
+		s.logger.Error("failed to update session", map[string]interface{}{"error": err.Error(), "session_id": session.ID})
+	}
 
 	return session, nil
 }

@@ -9,17 +9,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 	"gopkg.in/yaml.v3"
 )
 
 // Service provides GitOps configuration management functionality
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new GitOps service
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("gitops-service")}
 }
 
 // ValidateManifest parses YAML content and validates its structure
@@ -218,7 +220,9 @@ func (s *Service) ApplyManifest(ctx context.Context, tenantID, manifestID string
 		manifest.AppliedAt = &now
 		manifest.UpdatedAt = now
 		// best-effort: persist manifest status after apply; result is still returned
-		_ = s.repo.UpdateManifest(ctx, manifest)
+		if err := s.repo.UpdateManifest(ctx, manifest); err != nil {
+			s.logger.Error("failed to update manifest", map[string]interface{}{"error": err.Error(), "manifest_id": manifest.ID})
+		}
 	}
 
 	return result, nil
@@ -270,7 +274,9 @@ func (s *Service) RollbackManifest(ctx context.Context, tenantID, manifestID str
 	manifest.Status = result.Status
 	manifest.UpdatedAt = time.Now()
 	// best-effort: persist manifest status after drift detection
-	_ = s.repo.UpdateManifest(ctx, manifest)
+	if err := s.repo.UpdateManifest(ctx, manifest); err != nil {
+		s.logger.Error("failed to update manifest", map[string]interface{}{"error": err.Error(), "manifest_id": manifest.ID})
+	}
 
 	return result, nil
 }

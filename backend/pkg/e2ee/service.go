@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/nacl/box"
 )
@@ -31,6 +32,7 @@ func DefaultServiceConfig() *ServiceConfig {
 type Service struct {
 	repo   Repository
 	config *ServiceConfig
+	logger *utils.Logger
 }
 
 // NewService creates a new E2EE service.
@@ -38,7 +40,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 	if config == nil {
 		config = DefaultServiceConfig()
 	}
-	return &Service{repo: repo, config: config}
+	return &Service{repo: repo, config: config, logger: utils.NewLogger("e2ee-service")}
 }
 
 // GenerateKeyPair creates a new X25519 key pair for an endpoint.
@@ -295,5 +297,7 @@ func (s *Service) audit(tenantID, endpointID, operation string, version int, suc
 		Details:    details,
 		Timestamp:  time.Now(),
 	}
-	_ = s.repo.AppendAuditEntry(entry)
+	if err := s.repo.AppendAuditEntry(entry); err != nil {
+		s.logger.Error("failed to append audit entry", map[string]interface{}{"error": err.Error(), "tenant_id": tenantID, "endpoint_id": endpointID})
+	}
 }

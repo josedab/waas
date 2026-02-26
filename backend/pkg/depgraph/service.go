@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // ServiceConfig configures the dependency graph service.
@@ -29,6 +30,7 @@ func DefaultServiceConfig() *ServiceConfig {
 type Service struct {
 	repo   Repository
 	config *ServiceConfig
+	logger *utils.Logger
 }
 
 // NewService creates a new dependency graph service.
@@ -36,7 +38,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 	if config == nil {
 		config = DefaultServiceConfig()
 	}
-	return &Service{repo: repo, config: config}
+	return &Service{repo: repo, config: config, logger: utils.NewLogger("depgraph-service")}
 }
 
 // RecordDelivery ingests a delivery event to update the dependency graph.
@@ -260,12 +262,16 @@ func (s *Service) ensureNode(tenantID, endpointID, nodeType string) {
 			Type:         nodeType,
 			HealthStatus: "unknown",
 		}
-		_ = s.repo.UpsertEndpointNode(node)
+		if err := s.repo.UpsertEndpointNode(node); err != nil {
+			s.logger.Error("failed to upsert endpoint node", map[string]interface{}{"error": err.Error(), "endpoint_id": endpointID})
+		}
 		return
 	}
 	if existing.Type != nodeType && existing.Type != "both" {
 		existing.Type = "both"
-		_ = s.repo.UpsertEndpointNode(existing)
+		if err := s.repo.UpsertEndpointNode(existing); err != nil {
+			s.logger.Error("failed to upsert endpoint node", map[string]interface{}{"error": err.Error(), "endpoint_id": endpointID})
+		}
 	}
 }
 

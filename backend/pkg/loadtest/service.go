@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // ServiceConfig configures the load test service.
@@ -34,6 +35,7 @@ func DefaultServiceConfig() *ServiceConfig {
 // Service implements the load test business logic.
 type Service struct {
 	repo       Repository
+	logger     *utils.Logger
 	config     *ServiceConfig
 	client     *http.Client
 	activeRuns sync.Map
@@ -46,6 +48,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 	}
 	return &Service{
 		repo:   repo,
+		logger: utils.NewLogger("loadtest-service"),
 		config: config,
 		client: &http.Client{Timeout: 30 * time.Second},
 	}
@@ -259,7 +262,9 @@ done:
 
 	report.Recommendations = s.generateRecommendations(report)
 	run.Report = report
-	_ = s.repo.UpdateTestRun(run)
+	if err := s.repo.UpdateTestRun(run); err != nil {
+		s.logger.Error("failed to update test run", map[string]interface{}{"error": err.Error(), "run_id": run.ID})
+	}
 }
 
 func (s *Service) computeRPS(cfg *TestConfig, elapsed, total float64) int {

@@ -6,16 +6,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides PII detection business logic.
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new PII detection service.
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("piidetection-service")}
 }
 
 // CreatePolicy creates a new PII detection policy for a tenant.
@@ -200,7 +202,9 @@ func (s *Service) ScanPayload(ctx context.Context, tenantID string, req *ScanReq
 	}
 
 	if s.repo != nil {
-		_ = s.repo.StoreScanResult(ctx, result)
+		if err := s.repo.StoreScanResult(ctx, result); err != nil {
+			s.logger.Error("failed to store scan result", map[string]interface{}{"error": err.Error()})
+		}
 	}
 
 	return &ScanResponse{

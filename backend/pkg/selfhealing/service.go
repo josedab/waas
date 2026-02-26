@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service implements the self-healing endpoint discovery logic.
@@ -17,6 +18,7 @@ type Service struct {
 	repo   Repository
 	config *ServiceConfig
 	client *http.Client
+	logger *utils.Logger
 }
 
 // NewService creates a new self-healing service.
@@ -33,6 +35,7 @@ func NewService(repo Repository, config *ServiceConfig) *Service {
 				return http.ErrUseLastResponse // don't follow redirects automatically
 			},
 		},
+		logger: utils.NewLogger("selfhealing-service"),
 	}
 }
 
@@ -52,7 +55,9 @@ func (s *Service) RecordFailure(tenantID, endpointID, currentURL string) (*Endpo
 
 	if ft.ConsecutiveFailures >= s.config.FailureThreshold && !ft.HealingTriggered {
 		ft.HealingTriggered = true
-		_ = s.repo.UpsertFailureTracker(ft)
+		if err := s.repo.UpsertFailureTracker(ft); err != nil {
+			s.logger.Error("failed to upsert failure tracker", map[string]interface{}{"error": err.Error(), "endpoint_id": endpointID})
+		}
 		return s.DiscoverNewURL(tenantID, endpointID, currentURL)
 	}
 
@@ -105,7 +110,9 @@ func (s *Service) ValidateAndApply(discoveryID string) (*EndpointDiscovery, erro
 		s.emitMigrationEvent(discovery)
 
 		// Reset failure tracker
-		_ = s.repo.ResetFailureTracker(discovery.EndpointID)
+		if err := s.repo.ResetFailureTracker(discovery.EndpointID); err != nil {
+			s.logger.Error("failed to reset failure tracker", map[string]interface{}{"error": err.Error(), "endpoint_id": discovery.EndpointID})
+		}
 	} else {
 		discovery.Status = "rejected"
 	}
@@ -258,5 +265,7 @@ func (s *Service) emitMigrationEvent(discovery *EndpointDiscovery) {
 		Method:     discovery.Method,
 		Timestamp:  time.Now(),
 	}
-	_ = s.repo.AppendMigrationEvent(evt)
+	if err := s.repo.AppendMigrationEvent(evt); err != nil {
+		s.logger.Error("failed to append migration event", map[string]interface{}{"error": err.Error(), "endpoint_id": discovery.EndpointID})
+	}
 }

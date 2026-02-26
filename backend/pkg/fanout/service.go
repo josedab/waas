@@ -258,7 +258,9 @@ func (s *Service) Publish(ctx context.Context, tenantID uuid.UUID, topicName, ev
 	if result.Failed > 0 {
 		status = EventStatusPartialFailure
 	}
-	_ = s.repo.UpdateEventStatus(ctx, event.ID, status, result.TotalTargets)
+	if err := s.repo.UpdateEventStatus(ctx, event.ID, status, result.TotalTargets); err != nil {
+		s.logger.Error("failed to update event status", map[string]interface{}{"error": err.Error(), "event_id": event.ID})
+	}
 
 	return result, nil
 }

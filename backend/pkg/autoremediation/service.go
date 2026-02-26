@@ -6,16 +6,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service provides auto-remediation functionality
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger *utils.Logger
 }
 
 // NewService creates a new auto-remediation service
 func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{repo: repo, logger: utils.NewLogger("autoremediation-service")}
 }
 
 // AnalyzeFailures scans recent failures, identifies patterns, and calculates confidence
@@ -136,7 +138,9 @@ func (s *Service) ApplyRemediation(ctx context.Context, tenantID string, req *Ap
 	rule.SuccessCount++
 	rule.UpdatedAt = time.Now()
 	// best-effort: update rule stats; action was already applied successfully
-	_ = s.repo.UpdateRule(ctx, rule)
+	if err := s.repo.UpdateRule(ctx, rule); err != nil {
+		s.logger.Error("failed to update rule", map[string]interface{}{"error": err.Error(), "rule_id": rule.ID})
+	}
 
 	return action, nil
 }
@@ -165,7 +169,9 @@ func (s *Service) RevertAction(ctx context.Context, tenantID, actionID string) (
 		rule.FailureCount++
 		rule.UpdatedAt = time.Now()
 		// best-effort: update rule stats; action revert was already persisted
-		_ = s.repo.UpdateRule(ctx, rule)
+		if err := s.repo.UpdateRule(ctx, rule); err != nil {
+			s.logger.Error("failed to update rule", map[string]interface{}{"error": err.Error(), "rule_id": rule.ID})
+		}
 	}
 
 	return action, nil

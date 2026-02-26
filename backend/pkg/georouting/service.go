@@ -6,12 +6,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/utils"
 )
 
 // Service manages geographic routing
 type Service struct {
 	repo   Repository
 	router *Router
+	logger *utils.Logger
 }
 
 // NewService creates a new geo-routing service
@@ -19,6 +21,7 @@ func NewService(repo Repository, geoIP GeoIPProvider) *Service {
 	return &Service{
 		repo:   repo,
 		router: NewRouter(repo, geoIP),
+		logger: utils.NewLogger("georouting-service"),
 	}
 }
 
@@ -230,7 +233,9 @@ func (s *Service) RouteEvent(ctx context.Context, tenantID, endpointID uuid.UUID
 		return nil, err
 	}
 	// Persist the decision
-	_ = s.repo.RecordGeoRoutingDecision(ctx, decision)
+	if err := s.repo.RecordGeoRoutingDecision(ctx, decision); err != nil {
+		s.logger.Error("failed to record geo-routing decision", map[string]interface{}{"error": err.Error(), "tenant_id": tenantID.String()})
+	}
 	return decision, nil
 }
 
