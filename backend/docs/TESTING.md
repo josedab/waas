@@ -293,6 +293,23 @@ brew install graphviz
 apt install graphviz
 ```
 
+## Test Environment Variables
+
+The following environment variables control which test suites run:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RUN_ALL_TESTS` | unset | Set to `true` to run all test suites, including chaos and load tests |
+| `RUN_CHAOS_TESTS` | unset | Set to `true` to enable chaos engineering tests (fault injection, failure scenarios) |
+| `RUN_LOAD_TESTS` | unset | Set to `true` to enable load/performance tests (may take several minutes) |
+
+These are checked by `Makefile.test` targets. Example usage:
+
+```bash
+RUN_CHAOS_TESTS=true make -f Makefile.test test-all
+RUN_ALL_TESTS=true make -f Makefile.test test-all
+```
+
 ## Troubleshooting
 
 - **Tests skip with "TEST_DATABASE_URL not set"** — These are integration tests. Start Docker: `docker-compose up -d`
