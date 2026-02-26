@@ -55,15 +55,6 @@ issues:
         - gosec
         - errcheck
     # Progressive errorlint rollout: internal/ is now fully enabled.
-    # Remaining pkg/ sub-packages are excluded until they are updated.
-    - path: pkg/delivery/
-      linters:
-        - errorlint
-    - path: pkg/waf/
-      linters:
-        - errorlint
-    - path: pkg/edge/
-      linters:
-        - errorlint
+    # All pkg/ sub-packages are now enabled.
   max-issues-per-linter: 50
   max-same-issues: 5
