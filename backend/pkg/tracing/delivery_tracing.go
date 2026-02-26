@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // DeliveryStage represents stages in the webhook delivery pipeline
@@ -351,6 +349,3 @@ func BuildWaterfall(trace *DeliveryTrace) []WaterfallNode {
 
 	return nodes
 }
-
-// Ensure uuid import is used
-var _ = uuid.New
