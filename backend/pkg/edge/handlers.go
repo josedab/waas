@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"errors"
 	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
 	"net/http"
@@ -102,7 +103,7 @@ func (h *Handler) GetFunction(c *gin.Context) {
 
 	fn, err := h.service.GetFunction(c.Request.Context(), tenantID, functionID)
 	if err != nil {
-		if err == ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "function not found"})
 			return
 		}
@@ -138,7 +139,7 @@ func (h *Handler) UpdateFunction(c *gin.Context) {
 
 	fn, err := h.service.UpdateFunction(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
-		if err == ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "function not found"})
 			return
 		}
@@ -165,7 +166,7 @@ func (h *Handler) DeleteFunction(c *gin.Context) {
 
 	err := h.service.DeleteFunction(c.Request.Context(), tenantID, functionID)
 	if err != nil {
-		if err == ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "function not found"})
 			return
 		}
@@ -308,7 +309,7 @@ func (h *Handler) GetLogs(c *gin.Context) {
 
 	logs, err := h.service.GetLogs(c.Request.Context(), tenantID, functionID, since, limit)
 	if err != nil {
-		if err == ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "function not found"})
 			return
 		}
@@ -338,7 +339,7 @@ func (h *Handler) GetMetrics(c *gin.Context) {
 
 	metrics, err := h.service.GetMetrics(c.Request.Context(), tenantID, functionID, period)
 	if err != nil {
-		if err == ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "function not found"})
 			return
 		}
@@ -371,7 +372,7 @@ func (h *Handler) GetDeployments(c *gin.Context) {
 
 	deployments, err := h.service.GetDeployments(c.Request.Context(), tenantID, functionID, limit)
 	if err != nil {
-		if err == ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "function not found"})
 			return
 		}
