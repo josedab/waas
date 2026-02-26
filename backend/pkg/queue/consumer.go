@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -213,7 +214,7 @@ func (c *Consumer) calculateRetryDelay(attemptNumber int) time.Duration {
 
 	// Add jitter (±25%)
 	jitter := time.Duration(float64(delay) * 0.25)
-	jitterMultiplier := float64(2*(time.Now().UnixNano()%2) - 1)
+	jitterMultiplier := 2*rand.Float64() - 1
 	delay = delay + time.Duration(float64(jitter)*jitterMultiplier)
 
 	return delay
