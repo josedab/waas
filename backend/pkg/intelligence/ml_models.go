@@ -3,6 +3,7 @@ package intelligence
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"sort"
 	"sync"
@@ -488,8 +489,10 @@ func (ar *AutoRemediator) ExecuteRemediation(ctx context.Context, tenantID, endp
 	ar.mu.Unlock()
 
 	// Build notifications
-	_ = ar.buildSlackNotification(action)
-	_ = ar.buildPagerDutyEvent(action)
+	slackNotification := ar.buildSlackNotification(action)
+	pagerDutyEvent := ar.buildPagerDutyEvent(action)
+	log.Printf("intelligence: remediation %s completed — slack channel: %s, pagerduty severity: %s",
+		action.ID, slackNotification.Channel, pagerDutyEvent.Payload.Severity)
 
 	return action, nil
 }
