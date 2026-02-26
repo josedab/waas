@@ -1,6 +1,7 @@
 package waf
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -214,7 +215,7 @@ func (h *Handler) UpdateRule(c *gin.Context) {
 
 	rule, err := h.service.UpdateWAFRule(c.Request.Context(), tenantID, ruleID, &req)
 	if err != nil {
-		if err == ErrWAFRuleNotFound {
+		if errors.Is(err, ErrWAFRuleNotFound) {
 			pkgerrors.AbortWithNotFound(c, "rule")
 			return
 		}
@@ -244,7 +245,7 @@ func (h *Handler) DeleteRule(c *gin.Context) {
 	ruleID := c.Param("id")
 
 	if err := h.service.DeleteWAFRule(c.Request.Context(), tenantID, ruleID); err != nil {
-		if err == ErrWAFRuleNotFound {
+		if errors.Is(err, ErrWAFRuleNotFound) {
 			pkgerrors.AbortWithNotFound(c, "rule")
 			return
 		}
@@ -330,11 +331,11 @@ func (h *Handler) ReviewQuarantine(c *gin.Context) {
 
 	quarantine, err := h.service.ReviewQuarantine(c.Request.Context(), tenantID, quarantineID, userID, &req)
 	if err != nil {
-		if err == ErrQuarantineNotFound {
+		if errors.Is(err, ErrQuarantineNotFound) {
 			pkgerrors.AbortWithNotFound(c, "quarantined webhook")
 			return
 		}
-		if err == ErrAlreadyReviewed {
+		if errors.Is(err, ErrAlreadyReviewed) {
 			pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
 			return
 		}
@@ -539,11 +540,11 @@ func (h *Handler) AcknowledgeAlert(c *gin.Context) {
 
 	alert, err := h.service.AcknowledgeAlert(c.Request.Context(), tenantID, alertID)
 	if err != nil {
-		if err == ErrAlertNotFound {
+		if errors.Is(err, ErrAlertNotFound) {
 			pkgerrors.AbortWithNotFound(c, "alert")
 			return
 		}
-		if err == ErrAlreadyAcknowledged {
+		if errors.Is(err, ErrAlreadyAcknowledged) {
 			pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
 			return
 		}

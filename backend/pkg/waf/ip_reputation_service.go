@@ -2,6 +2,7 @@ package waf
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -9,7 +10,7 @@ import (
 // CheckIPReputation checks the reputation of an IP address
 func (s *Service) CheckIPReputation(ctx context.Context, ip string) (*IPReputation, error) {
 	reputation, err := s.repo.GetIPReputation(ctx, ip)
-	if err == ErrIPReputationNotFound {
+	if errors.Is(err, ErrIPReputationNotFound) {
 		return &IPReputation{
 			IP:          ip,
 			ThreatScore: 0,
@@ -24,7 +25,7 @@ func (s *Service) CheckIPReputation(ctx context.Context, ip string) (*IPReputati
 // ReportIP reports a malicious IP address
 func (s *Service) ReportIP(ctx context.Context, req *ReportIPRequest) (*IPReputation, error) {
 	existing, err := s.repo.GetIPReputation(ctx, req.IP)
-	if err == ErrIPReputationNotFound {
+	if errors.Is(err, ErrIPReputationNotFound) {
 		existing = &IPReputation{
 			IP:          req.IP,
 			ThreatScore: 0,
