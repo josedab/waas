@@ -67,4 +67,4 @@ func TestOnboardingHandler_SelectPlan_InvalidBody(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// TODO: Add tests with mock OnboardingService for GetSession, GetPlans
+// TODO(#11): Add tests with mock OnboardingService for GetSession, GetPlans — https://github.com/josedab/waas/issues/11
