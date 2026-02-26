@@ -518,8 +518,6 @@ kubectl -n waas logs -l app=waas-api --tail=50
 | `LOG_LEVEL` | No | `info` | `debug` / `info` / `warn` / `error` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | — | OTLP collector URL for tracing |
 | `OTEL_SERVICE_NAME` | No | — | Service name for tracing |
-| `METRICS_ENABLED` | No | `false` | Enable Prometheus metrics endpoint |
-| `METRICS_PORT` | No | `9100` | Metrics endpoint port |
 
 
 This deployment guide ensures a secure, scalable, and maintainable production deployment of the Webhook Service Platform.
