@@ -2,8 +2,6 @@ package whitelabel
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // WhitelabelConfig represents a tenant's whitelabel configuration
@@ -162,6 +160,3 @@ type UpdateBrandingRequest struct {
 	AccentColor    string `json:"accent_color,omitempty"`
 	CustomCSS      string `json:"custom_css,omitempty"`
 }
-
-// Ensure uuid is used
-var _ = uuid.New

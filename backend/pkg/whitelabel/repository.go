@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -459,10 +458,3 @@ func (r *PostgresRepository) GetAnalytics(ctx context.Context, configID, tenantI
 
 	return analytics, nil
 }
-
-// Ensure imports are used
-var (
-	_ = uuid.New
-	_ = fmt.Errorf
-	_ = time.Now
-)
