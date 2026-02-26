@@ -274,7 +274,11 @@ func (e *fanOutExecutor) Execute(ctx context.Context, input json.RawMessage, con
 				}
 			}
 			delete(payload, "_pipeline_routed_endpoints")
-			input, _ = json.Marshal(payload)
+			remarshaled, marshalErr := json.Marshal(payload)
+			if marshalErr != nil {
+				return nil, fmt.Errorf("failed to re-marshal payload after extracting routed endpoints: %w", marshalErr)
+			}
+			input = remarshaled
 		}
 	}
 
