@@ -701,3 +701,104 @@ func TestBuildSignedPayload_NoTemplate(t *testing.T) {
 		t.Fatalf("expected raw payload, got %q", string(result))
 	}
 }
+
+// --- Benchmarks ---
+
+func BenchmarkSign_HMACSHA256(b *testing.B) {
+	svc, _ := newTestService()
+	ctx := context.Background()
+
+	scheme, err := svc.CreateScheme(ctx, "tenant-bench", &CreateSchemeRequest{
+		Name:      "bench-scheme",
+		Type:      TypeCustomHMAC,
+		Algorithm: AlgorithmHMACSHA256,
+	})
+	if err != nil {
+		b.Fatalf("CreateScheme: %v", err)
+	}
+
+	payload := []byte(`{"event":"benchmark","data":{"id":12345,"name":"test"}}`)
+	now := time.Now()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := svc.Sign(ctx, "tenant-bench", &SignatureRequest{
+			SchemeID:  scheme.ID,
+			Payload:   payload,
+			Timestamp: &now,
+		})
+		if err != nil {
+			b.Fatalf("Sign: %v", err)
+		}
+	}
+}
+
+func BenchmarkVerify_HMACSHA256(b *testing.B) {
+	svc, _ := newTestService()
+	ctx := context.Background()
+
+	scheme, err := svc.CreateScheme(ctx, "tenant-bench", &CreateSchemeRequest{
+		Name:      "bench-verify",
+		Type:      TypeCustomHMAC,
+		Algorithm: AlgorithmHMACSHA256,
+	})
+	if err != nil {
+		b.Fatalf("CreateScheme: %v", err)
+	}
+
+	payload := []byte(`{"event":"benchmark","data":{"id":12345,"name":"test"}}`)
+	now := time.Now()
+
+	signResult, err := svc.Sign(ctx, "tenant-bench", &SignatureRequest{
+		SchemeID:  scheme.ID,
+		Payload:   payload,
+		Timestamp: &now,
+	})
+	if err != nil {
+		b.Fatalf("Sign: %v", err)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result, err := svc.Verify(ctx, "tenant-bench", &VerifyRequest{
+			SchemeID:  scheme.ID,
+			Payload:   payload,
+			Signature: signResult.Signature,
+			Timestamp: &now,
+		})
+		if err != nil {
+			b.Fatalf("Verify: %v", err)
+		}
+		if !result.Valid {
+			b.Fatalf("expected valid signature")
+		}
+	}
+}
+
+func BenchmarkComputeSignature_HMACSHA256(b *testing.B) {
+	svc, _ := newTestService()
+	secret := "bench-secret-key-value"
+	payload := []byte(`{"event":"benchmark","data":{"id":12345,"name":"test"}}`)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := svc.computeSignature(AlgorithmHMACSHA256, secret, payload)
+		if err != nil {
+			b.Fatalf("computeSignature: %v", err)
+		}
+	}
+}
+
+func BenchmarkComputeSignature_HMACSHA512(b *testing.B) {
+	svc, _ := newTestService()
+	secret := "bench-secret-key-value"
+	payload := []byte(`{"event":"benchmark","data":{"id":12345,"name":"test"}}`)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := svc.computeSignature(AlgorithmHMACSHA512, secret, payload)
+		if err != nil {
+			b.Fatalf("computeSignature: %v", err)
+		}
+	}
+}
