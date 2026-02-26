@@ -2,6 +2,7 @@ package streaming
 
 import (
 	"context"
+	"log"
 	"time"
 )
 
@@ -202,7 +203,9 @@ func (m *MonitoringService) CheckBridgeHealth(ctx context.Context, tenantID stri
 				CurrentVal:  h.ErrorRate,
 				TriggeredAt: time.Now(),
 			}
-			_ = m.repo.CreateAlert(ctx, &alert)
+			if err := m.repo.CreateAlert(ctx, &alert); err != nil {
+				log.Printf("streaming: failed to create high_error_rate alert for bridge %s: %v", h.BridgeID, err)
+			}
 			newAlerts = append(newAlerts, alert)
 		}
 
@@ -217,7 +220,9 @@ func (m *MonitoringService) CheckBridgeHealth(ctx context.Context, tenantID stri
 				CurrentVal:  float64(h.ConsumerLag),
 				TriggeredAt: time.Now(),
 			}
-			_ = m.repo.CreateAlert(ctx, &alert)
+			if err := m.repo.CreateAlert(ctx, &alert); err != nil {
+				log.Printf("streaming: failed to create high_consumer_lag alert for bridge %s: %v", h.BridgeID, err)
+			}
 			newAlerts = append(newAlerts, alert)
 		}
 
@@ -232,7 +237,9 @@ func (m *MonitoringService) CheckBridgeHealth(ctx context.Context, tenantID stri
 				CurrentVal:  h.HealthScore,
 				TriggeredAt: time.Now(),
 			}
-			_ = m.repo.CreateAlert(ctx, &alert)
+			if err := m.repo.CreateAlert(ctx, &alert); err != nil {
+				log.Printf("streaming: failed to create low_health_score alert for bridge %s: %v", h.BridgeID, err)
+			}
 			newAlerts = append(newAlerts, alert)
 		}
 	}
