@@ -264,6 +264,8 @@ See [`.env.example`](.env.example) for the full list with defaults. Key variable
 - [Error Catalog](docs/ERROR_CATALOG.md) - Complete reference for all API error codes
 - [Quick Reference](docs/QUICK_REFERENCE.md) - Cheat sheet for common development tasks
 - [Contributing](CONTRIBUTING.md) - Development workflow and guidelines
+- [Testing Guide](docs/TESTING.md) - How to write, run, and debug tests
+- [Testing Tools](docs/testing_tools.md) - Webhook testing and debugging utilities
 - [SDK Development](sdk/CONTRIBUTING.md) - Building and maintaining SDKs
 - [Dashboard](web/dashboard/README.md) - Frontend development
 

@@ -155,6 +155,8 @@ make validate-setup    # Check prerequisites
 | [**API Reference**](backend/docs/README.md) | REST endpoints, request/response examples, authentication |
 | [**Contributing**](backend/CONTRIBUTING.md) | Development workflow, commit conventions, PR guidelines |
 | [**Deployment**](backend/docs/deployment-guide.md) | Production Kubernetes deployment with Helm and Terraform |
+| [**Feature Matrix**](backend/docs/FEATURE_MATRIX.md) | Platform capabilities and maturity status |
+| [**Troubleshooting**](backend/docs/TROUBLESHOOTING.md) | Common issues and solutions for local development |
 | [**Dashboard**](backend/web/dashboard/README.md) | React frontend development |
 
 ## Prerequisites

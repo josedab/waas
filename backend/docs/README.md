@@ -13,6 +13,7 @@ This directory contains the complete API documentation for the Webhook Service P
 - **Go SDK**: Complete SDK with examples in `../sdk/go/`
 - **Code Examples**: Practical usage examples for common scenarios
 - **API Reference**: Comprehensive reference documentation
+- **Testing Tools**: Webhook testing and debugging utilities — see [testing_tools.md](testing_tools.md)
 
 ## 🚀 Quick Start
 
@@ -447,8 +448,12 @@ When adding new features:
 
 - [API Specification](swagger.json) - Complete OpenAPI 3.0 specification
 - [Error Catalog](ERROR_CATALOG.md) - Complete reference for all API error codes
+- [Feature Matrix](FEATURE_MATRIX.md) - Platform capabilities and maturity status
+- [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
+- [Testing Guide](TESTING.md) - How to write, run, and debug tests
+- [Testing Tools](testing_tools.md) - Webhook testing and debugging utilities
 - [Go SDK](../sdk/go/) - Official Go SDK with examples
-- [Testing Guide](../sdk/go/examples/testing_webhooks.go) - Webhook testing examples
+- [Testing Examples](../sdk/go/examples/testing_webhooks.go) - Webhook testing examples
 - [Error Handling](../sdk/go/examples/error_handling.go) - Error handling patterns
 
 ## 📞 Support
