@@ -56,11 +56,11 @@ func (h *MeshHandler) RouteEvent(c *gin.Context) {
 
 	event, err := h.mesh.RouteEvent(c.Request.Context(), &req)
 	if err != nil {
-		status := http.StatusInternalServerError
 		if event != nil && event.Status == "rejected" {
-			status = http.StatusForbidden
+			c.JSON(http.StatusForbidden, gin.H{"error": "event rejected", "event": event})
+		} else {
+			httputil.InternalErrorGeneric(c, err)
 		}
-		c.JSON(status, gin.H{"error": err.Error(), "event": event})
 		return
 	}
 

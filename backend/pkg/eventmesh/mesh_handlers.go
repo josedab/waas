@@ -97,7 +97,7 @@ func (mh *MeshHandler) RouteMeshEvent(c *gin.Context) {
 
 	node, err := mh.manager.RouteToMesh(c.Request.Context(), &event)
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

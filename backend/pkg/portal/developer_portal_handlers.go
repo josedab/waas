@@ -155,7 +155,7 @@ func (h *Handler) TryAPIEndpoint(c *gin.Context) {
 
 	resp, err := h.service.TryAPIEndpoint(c.Request.Context(), apiURL, tenantID, apiKey, &req)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": gin.H{"code": "REQUEST_FAILED", "message": err.Error()}})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
