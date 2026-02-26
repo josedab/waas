@@ -3,6 +3,7 @@ package collabdebug
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -98,7 +99,9 @@ func (s *Service) JoinSession(ctx context.Context, tenantID, sessionID string, r
 	}
 
 	// Record the join activity
-	_ = s.RecordActivity(ctx, sessionID, req.UserID, "joined", req.DisplayName+" joined the session")
+	if err := s.RecordActivity(ctx, sessionID, req.UserID, "joined", req.DisplayName+" joined the session"); err != nil {
+		log.Printf("collabdebug: failed to record join activity for session %s: %v", sessionID, err)
+	}
 
 	return participant, nil
 }
@@ -109,7 +112,9 @@ func (s *Service) LeaveSession(ctx context.Context, sessionID, userID string) er
 		return fmt.Errorf("failed to leave session: %w", err)
 	}
 
-	_ = s.RecordActivity(ctx, sessionID, userID, "left", "User left the session")
+	if err := s.RecordActivity(ctx, sessionID, userID, "left", "User left the session"); err != nil {
+		log.Printf("collabdebug: failed to record leave activity for session %s: %v", sessionID, err)
+	}
 
 	return nil
 }
@@ -170,7 +175,9 @@ func (s *Service) CreateAnnotation(ctx context.Context, sessionID string, req *C
 		return nil, fmt.Errorf("failed to create annotation: %w", err)
 	}
 
-	_ = s.RecordActivity(ctx, sessionID, req.AuthorID, "annotation_created", req.Content)
+	if err := s.RecordActivity(ctx, sessionID, req.AuthorID, "annotation_created", req.Content); err != nil {
+		log.Printf("collabdebug: failed to record annotation activity for session %s: %v", sessionID, err)
+	}
 
 	return annotation, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -215,12 +216,18 @@ func (r *PostgresRepository) GetRecording(ctx context.Context, sessionID string)
 
 func (r *PostgresRepository) GetSessionSummary(ctx context.Context, tenantID string) (*SessionSummary, error) {
 	summary := &SessionSummary{}
-	// best-effort queries: individual count failures leave zero-value, which is acceptable for summary
-	_ = r.db.GetContext(ctx, &summary.TotalSessions,
-		`SELECT COUNT(*) FROM collab_sessions WHERE tenant_id = $1`, tenantID)
-	_ = r.db.GetContext(ctx, &summary.ActiveSessions,
-		`SELECT COUNT(*) FROM collab_sessions WHERE tenant_id = $1 AND status = 'active'`, tenantID)
-	_ = r.db.GetContext(ctx, &summary.AnnotationsCreated,
-		`SELECT COUNT(*) FROM collab_annotations a JOIN collab_sessions s ON a.session_id = s.id WHERE s.tenant_id = $1`, tenantID)
+	// best-effort queries: individual count failures are logged but leave zero-value, which is acceptable for summary
+	if err := r.db.GetContext(ctx, &summary.TotalSessions,
+		`SELECT COUNT(*) FROM collab_sessions WHERE tenant_id = $1`, tenantID); err != nil {
+		log.Printf("collabdebug: failed to get total sessions for tenant %s: %v", tenantID, err)
+	}
+	if err := r.db.GetContext(ctx, &summary.ActiveSessions,
+		`SELECT COUNT(*) FROM collab_sessions WHERE tenant_id = $1 AND status = 'active'`, tenantID); err != nil {
+		log.Printf("collabdebug: failed to get active sessions for tenant %s: %v", tenantID, err)
+	}
+	if err := r.db.GetContext(ctx, &summary.AnnotationsCreated,
+		`SELECT COUNT(*) FROM collab_annotations a JOIN collab_sessions s ON a.session_id = s.id WHERE s.tenant_id = $1`, tenantID); err != nil {
+		log.Printf("collabdebug: failed to get annotations count for tenant %s: %v", tenantID, err)
+	}
 	return summary, nil
 }
