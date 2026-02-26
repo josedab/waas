@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -135,8 +136,9 @@ func (r *secretRepository) DeleteExpiredSecrets(ctx context.Context) error {
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
-	// Log the number of deleted secrets (in a real implementation, use proper logging)
-	_ = rowsAffected
+	if rowsAffected > 0 {
+		log.Printf("secret_repository: deleted %d expired secrets", rowsAffected)
+	}
 
 	return nil
 }
