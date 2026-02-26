@@ -189,8 +189,8 @@ func (e *DeliveryEngine) Start() error {
 func (e *DeliveryEngine) Stop() {
 	e.logger.Info("Stopping delivery engine", nil)
 
-	e.cancel()
 	e.consumer.Stop()
+	e.cancel()
 	e.wg.Wait()
 
 	e.logger.Info("Delivery engine stopped", nil)
