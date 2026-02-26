@@ -447,3 +447,57 @@ func TestCreateHTTPClient(t *testing.T) {
 	assert.Equal(t, config.TLSHandshakeTimeout, transport.TLSHandshakeTimeout)
 	assert.Equal(t, config.ResponseHeaderTimeout, transport.ResponseHeaderTimeout)
 }
+
+// --- Benchmarks ---
+
+func BenchmarkHandleDelivery_Success(b *testing.B) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer server.Close()
+
+	engine, mockWebhookRepo, mockDeliveryRepo := createTestEngine()
+
+	endpointID := uuid.New()
+	endpoint := &models.WebhookEndpoint{
+		ID:       endpointID,
+		URL:      server.URL,
+		IsActive: true,
+	}
+
+	mockWebhookRepo.On("GetByID", mock.Anything, endpointID).Return(endpoint, nil)
+	mockDeliveryRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.DeliveryAttempt")).Return(nil)
+	mockDeliveryRepo.On("Update", mock.Anything, mock.AnythingOfType("*models.DeliveryAttempt")).Return(nil)
+
+	payload := json.RawMessage(`{"event":"bench","data":{"id":1}}`)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		message := &queue.DeliveryMessage{
+			DeliveryID:    uuid.New(),
+			EndpointID:    endpointID,
+			Payload:       payload,
+			AttemptNumber: 1,
+			MaxAttempts:   3,
+			ScheduledAt:   time.Now(),
+		}
+		_, _ = engine.HandleDelivery(context.Background(), message)
+	}
+}
+
+func BenchmarkIsRetryableStatusCode(b *testing.B) {
+	codes := []int{200, 400, 408, 429, 500, 502, 503, 504}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		isRetryableStatusCode(codes[i%len(codes)])
+	}
+}
+
+func BenchmarkCreateHTTPClient(b *testing.B) {
+	config := getDeliveryConfig()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		createHTTPClient(config)
+	}
+}
