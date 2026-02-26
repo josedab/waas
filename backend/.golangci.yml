@@ -54,12 +54,15 @@ issues:
       linters:
         - gosec
         - errcheck
-    # Exclude existing code from errorlint to avoid a mass fix.
-    # Remove entries progressively as packages are updated.
-    - path: pkg/
+    # Progressive errorlint rollout: internal/ is now fully enabled.
+    # Remaining pkg/ sub-packages are excluded until they are updated.
+    - path: pkg/delivery/
       linters:
         - errorlint
-    - path: internal/
+    - path: pkg/waf/
+      linters:
+        - errorlint
+    - path: pkg/edge/
       linters:
         - errorlint
   max-issues-per-linter: 50
