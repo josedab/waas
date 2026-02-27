@@ -157,6 +157,8 @@ make validate-setup    # Check prerequisites
 | [**Deployment**](backend/docs/deployment-guide.md) | Production Kubernetes deployment with Helm and Terraform |
 | [**Feature Matrix**](backend/docs/FEATURE_MATRIX.md) | Platform capabilities and maturity status |
 | [**Troubleshooting**](backend/docs/TROUBLESHOOTING.md) | Common issues and solutions for local development |
+| [**Observability**](backend/docs/observability-guide.md) | Tracing, metrics, and Grafana dashboards setup |
+| [**CLI Tool**](backend/cmd/waas-cli/README.md) | Terminal-based webhook management, testing, and GitOps workflows |
 | [**Dashboard**](backend/web/dashboard/README.md) | React frontend development |
 
 ## Prerequisites
@@ -164,6 +166,11 @@ make validate-setup    # Check prerequisites
 - **Go 1.24+** — [Download](https://go.dev/dl/)
 - **Docker & Docker Compose** — [Install](https://docs.docker.com/get-docker/)
 - **Node.js 18+** *(optional, for dashboard)* — [Download](https://nodejs.org/)
+
+> **IDE support:** Copy `go.work.example` to `go.work` at the repository root so that `gopls` (VS Code, GoLand) can resolve imports across the monorepo:
+> ```bash
+> cp go.work.example go.work
+> ```
 
 That's it. All other tools (database migrations, linters) are handled automatically or are optional.
 

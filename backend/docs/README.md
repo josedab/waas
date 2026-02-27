@@ -454,6 +454,7 @@ When adding new features:
 - [Testing Tools](testing_tools.md) - Webhook testing and debugging utilities
 - [Go SDK](../sdk/go/) - Official Go SDK with examples
 - [Testing Examples](../sdk/go/examples/testing_webhooks.go) - Webhook testing examples
+- [Backend Examples](../examples/) - Backend code examples and demos
 - [Error Handling](../sdk/go/examples/error_handling.go) - Error handling patterns
 
 ## 📞 Support

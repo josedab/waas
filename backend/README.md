@@ -261,12 +261,16 @@ See [`.env.example`](.env.example) for the full list with defaults. Key variable
 - [API Documentation](docs/README.md) - REST API reference and SDK usage
 - [Architecture](ARCHITECTURE.md) - System design and package structure
 - [Deployment Guide](docs/deployment-guide.md) - Production Kubernetes deployment
+- [Migrations Guide](migrations/README.md) - Database migration tiers, commands, and guidelines
 - [Error Catalog](docs/ERROR_CATALOG.md) - Complete reference for all API error codes
 - [Quick Reference](docs/QUICK_REFERENCE.md) - Cheat sheet for common development tasks
 - [Contributing](CONTRIBUTING.md) - Development workflow and guidelines
 - [Testing Guide](docs/TESTING.md) - How to write, run, and debug tests
+- [Observability Guide](docs/observability-guide.md) - Tracing, metrics, and Grafana dashboards
 - [Testing Tools](docs/testing_tools.md) - Webhook testing and debugging utilities
+- [Backend Examples](examples/) - Backend code examples and demos
 - [SDK Development](sdk/CONTRIBUTING.md) - Building and maintaining SDKs
+- [CLI Tool](cmd/waas-cli/README.md) - Terminal-based webhook management, testing, and GitOps workflows
 - [Dashboard](web/dashboard/README.md) - Frontend development
 
 ## Troubleshooting
