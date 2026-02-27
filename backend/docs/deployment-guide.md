@@ -509,15 +509,68 @@ kubectl -n waas logs -l app=waas-api --tail=50
 
 ### Environment Variable Reference
 
+#### Core (Required)
+
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `DATABASE_URL` | Yes | — | PostgreSQL connection string |
 | `REDIS_URL` | Yes | `localhost:6379` | Redis connection string |
 | `JWT_SECRET` | Yes | — | JWT signing key (use different per env) |
-| `API_PORT` | No | `8080` | HTTP listen port |
+
+#### Application
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `API_PORT` | No | `8080` | API service HTTP listen port |
+| `ANALYTICS_PORT` | No | `8082` | Analytics service HTTP listen port |
+| `ENVIRONMENT` | No | `development` | `development` or `production` |
 | `LOG_LEVEL` | No | `info` | `debug` / `info` / `warn` / `error` |
+| `LOG_FORMAT` | No | `text` | Log output format: `json` or `text` |
+
+#### Security & Access Control
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `ADMIN_TENANT_IDS` | No | — | Comma-separated tenant IDs with admin privileges |
+| `CORS_ALLOWED_ORIGINS` | No | — | Comma-separated allowed CORS origins |
+| `ALLOW_INSECURE_TLS` | No | `false` | Skip TLS certificate verification for webhook delivery |
+| `WEBSOCKET_ALLOWED_ORIGINS` | No | — | Comma-separated allowed WebSocket origins |
+
+#### AI / LLM Integration
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `OPENAI_API_KEY` | No | — | OpenAI API key for AI-powered features |
+| `ANTHROPIC_API_KEY` | No | — | Anthropic API key for AI-powered features |
+
+#### Billing
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `STRIPE_API_KEY` | No | — | Stripe secret key for billing integration |
+
+#### Observability (OpenTelemetry)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | — | OTLP collector URL for tracing |
 | `OTEL_SERVICE_NAME` | No | — | Service name for tracing |
+| `OTEL_SERVICE_VERSION` | No | — | Service version tag for telemetry |
+| `OTEL_ENVIRONMENT` | No | — | Environment tag for telemetry |
+| `OTEL_INSECURE` | No | — | Use insecure connection to OTLP collector |
+
+#### Platform Webhooks
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `WEBHOOK_PLATFORM_API_KEY` | No | — | API key for platform-level webhook notifications |
+
+#### Test Environment
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `TEST_DATABASE_URL` | No | — | PostgreSQL connection string for test database |
+| `TEST_REDIS_URL` | No | — | Redis connection string for test database (use a separate DB index) |
 
 
 This deployment guide ensures a secure, scalable, and maintainable production deployment of the Webhook Service Platform.
