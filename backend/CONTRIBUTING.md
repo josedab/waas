@@ -85,6 +85,21 @@ make -f Makefile.test help           # All available test commands
 
 See [sdk/CONTRIBUTING.md](sdk/CONTRIBUTING.md) for guidelines on developing and maintaining client SDKs.
 
+## Architecture Decision Records (ADRs)
+
+Significant architectural decisions are recorded as ADRs in [`docs/adrs/`](docs/adrs/README.md).
+
+**When to create an ADR:**
+- Introducing a new technology or framework
+- Changing a core system design pattern
+- Making a trade-off that future contributors should understand
+
+**How to create one:**
+1. Copy the template from [`docs/adrs/README.md`](docs/adrs/README.md#template)
+2. Name the file `NNNN-short-title.md` (use the next available number)
+3. Add an entry to the index table in `docs/adrs/README.md`
+4. Submit the ADR as part of your PR for team review
+
 ## Questions?
 
 - Open a GitHub issue for bugs or feature requests
