@@ -114,7 +114,7 @@ func runTunnel(cmd *cobra.Command, args []string) error {
 	out.PrintKeyValue("Expires", time.Now().Add(time.Hour).Format(time.RFC3339))
 	fmt.Println()
 	fmt.Println("   Ready! Send webhooks to the public URL above.")
-	fmt.Println("   Press Ctrl+C to stop.\n")
+	fmt.Println("   Press Ctrl+C to stop.")
 
 	var delivered uint64
 	var failed uint64

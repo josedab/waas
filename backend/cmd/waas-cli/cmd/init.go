@@ -135,7 +135,7 @@ func runOnboardingWizard(dir string) error {
 
 	fmt.Println("🚀 WAAS Onboarding Wizard")
 	fmt.Println("=========================")
-	fmt.Println("This wizard will help you set up your first webhook in under 5 minutes.\n")
+	fmt.Println("This wizard will help you set up your first webhook in under 5 minutes.")
 
 	// Step 1: Project name
 	fmt.Print("📋 Project name [my-webhooks]: ")
@@ -338,10 +338,10 @@ func getTemplatePayloads(template string) map[string]interface{} {
 			"subscription_changed": map[string]interface{}{
 				"event": "subscription.updated",
 				"data": map[string]interface{}{
-					"user_id":       "usr_abc123",
-					"old_plan":      "free",
-					"new_plan":      "pro",
-					"effective_at":  "2026-02-01T00:00:00Z",
+					"user_id":      "usr_abc123",
+					"old_plan":     "free",
+					"new_plan":     "pro",
+					"effective_at": "2026-02-01T00:00:00Z",
 				},
 				"timestamp": "2026-01-15T00:00:00Z",
 			},
@@ -362,10 +362,10 @@ func getTemplatePayloads(template string) map[string]interface{} {
 			"payment_failed": map[string]interface{}{
 				"event": "payment.failed",
 				"data": map[string]interface{}{
-					"payment_id":  "pay_xyz790",
-					"amount":      49.99,
-					"currency":    "USD",
-					"error_code":  "card_declined",
+					"payment_id": "pay_xyz790",
+					"amount":     49.99,
+					"currency":   "USD",
+					"error_code": "card_declined",
 				},
 				"timestamp": "2026-01-01T01:00:00Z",
 			},
