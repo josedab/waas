@@ -1,0 +1,20 @@
+-- Reverse migration for next-gen v11 features
+DROP TABLE IF EXISTS capacity_alerts;
+DROP TABLE IF EXISTS capacity_reports;
+DROP TABLE IF EXISTS mobile_notifications;
+DROP TABLE IF EXISTS mobile_devices;
+DROP TABLE IF EXISTS endpoint_mesh_reroute_events;
+DROP TABLE IF EXISTS endpoint_mesh_nodes;
+DROP TABLE IF EXISTS progressive_rollouts;
+DROP TABLE IF EXISTS faas_executions;
+DROP TABLE IF EXISTS faas_functions;
+DROP TABLE IF EXISTS plugin_reviews;
+DROP TABLE IF EXISTS plugin_installations;
+DROP TABLE IF EXISTS marketplace_plugins;
+DROP TABLE IF EXISTS security_policies;
+DROP TABLE IF EXISTS security_events;
+DROP TABLE IF EXISTS platform_migrations;
+DROP TABLE IF EXISTS edge_network_routing_rules;
+DROP TABLE IF EXISTS edge_network_nodes;
+DROP TABLE IF EXISTS ai_builder_messages;
+DROP TABLE IF EXISTS ai_builder_conversations;
