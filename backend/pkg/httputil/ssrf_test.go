@@ -46,6 +46,21 @@ func TestIsPrivateIP(t *testing.T) {
 
 		// IPv6 loopback
 		{"ipv6 loopback", "::1", true},
+
+		// IPv4-mapped IPv6 addresses
+		{"ipv4-mapped ipv6 10.0.0.1", "::ffff:10.0.0.1", true},
+		{"ipv4-mapped ipv6 192.168.1.1", "::ffff:192.168.1.1", true},
+		{"ipv4-mapped ipv6 127.0.0.1", "::ffff:127.0.0.1", true},
+
+		// IPv6 ULA (fc00::/7)
+		{"ipv6 ULA fd00::1", "fd00::1", true},
+		{"ipv6 ULA fc00::1", "fc00::1", true},
+
+		// IPv6 link-local (fe80::/10)
+		{"ipv6 link-local fe80::1", "fe80::1", true},
+
+		// Public IPv6
+		{"public ipv6 2001:db8::1", "2001:db8::1", false},
 	}
 
 	for _, tt := range tests {
@@ -95,6 +110,19 @@ func TestNewSSRFSafeTransport(t *testing.T) {
 	}
 	if transport.TLSClientConfig.InsecureSkipVerify {
 		t.Error("expected InsecureSkipVerify to be false")
+	}
+}
+
+func TestSSRFSafeDialContext_DNSMixedIPs(t *testing.T) {
+	// If DNS resolves to any private IP, the dial should be rejected
+	dialer := &net.Dialer{Timeout: 2 * time.Second}
+	dialFunc := SSRFSafeDialContext(dialer)
+	ctx := context.Background()
+
+	// localhost resolves to 127.0.0.1 (private) — must be rejected
+	_, err := dialFunc(ctx, "tcp", "localhost:80")
+	if err == nil {
+		t.Error("expected error when DNS resolves to private IP, got nil")
 	}
 }
 
