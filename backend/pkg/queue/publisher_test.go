@@ -267,3 +267,82 @@ func TestPublishDelivery_MultipleMessages(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, items, 5)
 }
+
+func TestPublishDelayedDelivery_RedisFailure(t *testing.T) {
+	t.Parallel()
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	pub := NewPublisher(&database.RedisClient{Client: client})
+	mr.Close()
+
+	err := pub.PublishDelayedDelivery(context.Background(), newTestMessage(), 30*time.Second)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to publish delayed delivery message")
+}
+
+func TestGetQueueStats_PartialRedisFailure(t *testing.T) {
+	t.Parallel()
+	pub, mr := setupTestPublisher(t)
+	ctx := context.Background()
+
+	// Populate delivery queue
+	mr.Lpush(DeliveryQueue, "d1")
+	mr.Lpush(DeliveryQueue, "d2")
+
+	// Stats should work on a normal setup
+	stats, err := pub.GetQueueStats(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), stats[DeliveryQueue])
+	assert.Equal(t, int64(0), stats[RetryQueue])
+}
+
+func TestPublishDelivery_MessageIntegrity(t *testing.T) {
+	t.Parallel()
+	pub, mr := setupTestPublisher(t)
+	ctx := context.Background()
+
+	msg := newTestMessage()
+	err := pub.PublishDelivery(ctx, msg)
+	require.NoError(t, err)
+
+	items, err := mr.List(DeliveryQueue)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+
+	// Verify deserialized message matches
+	var decoded DeliveryMessage
+	require.NoError(t, decoded.FromJSON([]byte(items[0])))
+	assert.Equal(t, msg.DeliveryID, decoded.DeliveryID)
+	assert.Equal(t, msg.EndpointID, decoded.EndpointID)
+	assert.Equal(t, msg.TenantID, decoded.TenantID)
+	assert.Equal(t, msg.AttemptNumber, decoded.AttemptNumber)
+	assert.Equal(t, msg.MaxAttempts, decoded.MaxAttempts)
+	assert.Equal(t, msg.Signature, decoded.Signature)
+}
+
+func TestPublishToDeadLetter_MessageContainsAllFields(t *testing.T) {
+	t.Parallel()
+	pub, mr := setupTestPublisher(t)
+	ctx := context.Background()
+
+	msg := newTestMessage()
+	reason := "exhausted retries after 3 attempts"
+	err := pub.PublishToDeadLetter(ctx, msg, reason)
+	require.NoError(t, err)
+
+	items, err := mr.List(DeadLetterQueue)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+
+	var dlqMsg struct {
+		DeliveryID uuid.UUID `json:"delivery_id"`
+		EndpointID uuid.UUID `json:"endpoint_id"`
+		Reason     string    `json:"reason"`
+		Timestamp  time.Time `json:"timestamp"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(items[0]), &dlqMsg))
+	assert.Equal(t, msg.DeliveryID, dlqMsg.DeliveryID)
+	assert.Equal(t, msg.EndpointID, dlqMsg.EndpointID)
+	assert.Equal(t, reason, dlqMsg.Reason)
+	assert.WithinDuration(t, time.Now(), dlqMsg.Timestamp, 5*time.Second)
+}
