@@ -3,6 +3,8 @@ package billing
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -748,4 +750,115 @@ func TestHandleStripeWebhook_UnknownEvent(t *testing.T) {
 
 	err := svc.HandleStripeWebhook(ctx, "unknown.event", nil)
 	assert.NoError(t, err)
+}
+
+// =====================
+// Goroutine Error Paths
+// =====================
+
+func TestRecordWebhookUsage_ListBudgetsFails_UsageStillRecorded(t *testing.T) {
+	repo := new(mockRepository)
+	svc := newTestService(repo, nil)
+	ctx := context.Background()
+
+	// Usage recording succeeds
+	repo.On("RecordUsage", ctx, mock.MatchedBy(func(r *CostUsageRecord) bool {
+		return r.ResourceType == "webhook_requests" && r.Quantity == 10
+	})).Return(nil).Once()
+
+	// Budget check fails in goroutine — should not affect usage recording
+	repo.On("ListBudgets", mock.Anything, "tenant-1").Return([]BudgetConfig(nil), errors.New("db error")).Maybe()
+	repo.On("GetCurrentSpend", mock.Anything, "tenant-1").Return(0.0, nil).Maybe()
+
+	err := svc.RecordWebhookUsage(ctx, "tenant-1", "wh-1", 10, 0, 0)
+	require.NoError(t, err, "usage should be recorded even if budget check fails")
+
+	time.Sleep(100 * time.Millisecond)
+	repo.AssertCalled(t, "RecordUsage", ctx, mock.Anything)
+}
+
+func TestRecordWebhookUsage_GetCurrentSpendFails(t *testing.T) {
+	repo := new(mockRepository)
+	svc := newTestService(repo, nil)
+	ctx := context.Background()
+
+	repo.On("RecordUsage", ctx, mock.Anything).Return(nil).Once()
+
+	// ListBudgets succeeds but GetCurrentSpend fails
+	repo.On("ListBudgets", mock.Anything, "tenant-1").Return([]BudgetConfig{
+		{ID: "b1", Amount: 100, Enabled: true},
+	}, nil).Maybe()
+	repo.On("GetCurrentSpend", mock.Anything, "tenant-1").Return(0.0, errors.New("redis error")).Maybe()
+
+	err := svc.RecordWebhookUsage(ctx, "tenant-1", "wh-1", 5, 0, 0)
+	require.NoError(t, err, "usage should be recorded even if spend check fails")
+
+	time.Sleep(100 * time.Millisecond)
+}
+
+func TestCheckBudgetAlerts_NilNotifier_NoPanic(t *testing.T) {
+	repo := new(mockRepository)
+	// notifier is nil
+	svc := NewService(repo, nil, nil)
+	ctx := context.Background()
+
+	repo.On("ListBudgets", ctx, "tenant-1").Return([]BudgetConfig{
+		{
+			ID:      "b1",
+			Amount:  100,
+			Enabled: true,
+			Alerts: []AlertThreshold{
+				{Percentage: 50, Channels: []AlertChannel{ChannelEmail}},
+			},
+		},
+	}, nil)
+	repo.On("GetCurrentSpend", ctx, "tenant-1").Return(80.0, nil)
+	repo.On("SaveAlert", ctx, mock.Anything).Return(nil)
+	repo.On("GetAlertConfig", ctx, "tenant-1").Return((*AlertConfig)(nil), errors.New("no config"))
+
+	// Should not panic even with nil notifier
+	assert.NotPanics(t, func() {
+		svc.checkBudgetAlerts(ctx, "tenant-1")
+	})
+}
+
+func TestRecordWebhookUsage_NegativeQuantity(t *testing.T) {
+	repo := new(mockRepository)
+	svc := newTestService(repo, nil)
+	ctx := context.Background()
+
+	// Negative requests — the service records if quantity > 0, so negative is skipped
+	repo.On("ListBudgets", mock.Anything, "tenant-1").Return([]BudgetConfig{}, nil).Maybe()
+	repo.On("GetCurrentSpend", mock.Anything, "tenant-1").Return(0.0, nil).Maybe()
+
+	err := svc.RecordWebhookUsage(ctx, "tenant-1", "wh-1", -5, 0, 0)
+	require.NoError(t, err)
+
+	// RecordUsage should NOT be called since requests <= 0
+	repo.AssertNotCalled(t, "RecordUsage", mock.Anything, mock.Anything)
+}
+
+func TestRecordWebhookUsage_Concurrent(t *testing.T) {
+	repo := new(mockRepository)
+	svc := newTestService(repo, nil)
+	ctx := context.Background()
+
+	repo.On("RecordUsage", ctx, mock.Anything).Return(nil)
+	repo.On("ListBudgets", mock.Anything, mock.Anything).Return([]BudgetConfig{}, nil).Maybe()
+	repo.On("GetCurrentSpend", mock.Anything, mock.Anything).Return(0.0, nil).Maybe()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			tenantID := fmt.Sprintf("tenant-%d", i)
+			_ = svc.RecordWebhookUsage(ctx, tenantID, "wh-1", 1, 0, 0)
+		}(i)
+	}
+	wg.Wait()
+
+	time.Sleep(100 * time.Millisecond)
+	// Each goroutine records 1 usage call
+	repo.AssertNumberOfCalls(t, "RecordUsage", 10)
 }
