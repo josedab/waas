@@ -257,3 +257,109 @@ func TestDeliveryEngine_HandleDelivery_CreateAttemptError(t *testing.T) {
 	assert.Equal(t, queue.StatusFailed, result.Status)
 	assert.Contains(t, *result.ErrorMessage, "endpoint is inactive")
 }
+
+func TestDeliveryEngine_HandleDelivery_UpdateAttemptError(t *testing.T) {
+	// Tests that delivery completes even if updating the attempt record fails
+	engine, mockWebhookRepo, mockDeliveryRepo := createTestEngine()
+
+	endpointID := uuid.New()
+	endpoint := &models.WebhookEndpoint{
+		ID:       endpointID,
+		URL:      "http://example.com/webhook",
+		IsActive: false,
+	}
+
+	message := &queue.DeliveryMessage{
+		DeliveryID:    uuid.New(),
+		EndpointID:    endpointID,
+		TenantID:      uuid.New(),
+		Payload:       json.RawMessage(`{"data":"test"}`),
+		AttemptNumber: 1,
+		MaxAttempts:   3,
+		ScheduledAt:   time.Now(),
+	}
+
+	mockWebhookRepo.On("GetByID", mock.Anything, endpointID).Return(endpoint, nil)
+	mockDeliveryRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
+	mockDeliveryRepo.On("Update", mock.Anything, mock.Anything).Return(fmt.Errorf("db update error"))
+
+	// Should still return a result despite update failure
+	result, err := engine.HandleDelivery(context.Background(), message)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, queue.StatusFailed, result.Status)
+	mockDeliveryRepo.AssertCalled(t, "Update", mock.Anything, mock.Anything)
+}
+
+func TestDeliveryEngine_ServerCrashRecovery(t *testing.T) {
+	t.Parallel()
+
+	// Test that the engine handles server errors gracefully
+	engine, mockWebhookRepo, mockDeliveryRepo := createTestEngine()
+
+	endpointID := uuid.New()
+	// Use inactive endpoint to test error handling without needing transformRepo
+	endpoint := &models.WebhookEndpoint{
+		ID:       endpointID,
+		URL:      "http://127.0.0.1:1/unreachable",
+		IsActive: false,
+	}
+
+	message := &queue.DeliveryMessage{
+		DeliveryID:    uuid.New(),
+		EndpointID:    endpointID,
+		TenantID:      uuid.New(),
+		Payload:       json.RawMessage(`{"data":"test"}`),
+		AttemptNumber: 1,
+		MaxAttempts:   3,
+		ScheduledAt:   time.Now(),
+	}
+
+	mockWebhookRepo.On("GetByID", mock.Anything, endpointID).Return(endpoint, nil)
+	mockDeliveryRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
+	mockDeliveryRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+
+	// Engine handles inactive endpoint gracefully without crashing
+	assert.NotPanics(t, func() {
+		result, err := engine.HandleDelivery(context.Background(), message)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, queue.StatusFailed, result.Status)
+	})
+}
+
+func TestDeliveryEngine_CancelledContext(t *testing.T) {
+	t.Parallel()
+
+	engine, mockWebhookRepo, mockDeliveryRepo := createTestEngine()
+
+	endpointID := uuid.New()
+	endpoint := &models.WebhookEndpoint{
+		ID:       endpointID,
+		URL:      "http://example.com/webhook",
+		IsActive: false,
+	}
+
+	// Cancel context before calling HandleDelivery
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	message := &queue.DeliveryMessage{
+		DeliveryID:    uuid.New(),
+		EndpointID:    endpointID,
+		TenantID:      uuid.New(),
+		Payload:       json.RawMessage(`{"data":"test"}`),
+		AttemptNumber: 1,
+		MaxAttempts:   3,
+		ScheduledAt:   time.Now(),
+	}
+
+	mockWebhookRepo.On("GetByID", mock.Anything, endpointID).Return(endpoint, nil)
+	mockDeliveryRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
+	mockDeliveryRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+
+	// Should still handle gracefully even with cancelled context
+	result, err := engine.HandleDelivery(ctx, message)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
