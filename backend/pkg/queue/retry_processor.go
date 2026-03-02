@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/josedab/waas/pkg/database"
@@ -73,7 +74,7 @@ func (rp *RetryProcessor) processReadyMessages(ctx context.Context) error {
 	// scheduled retry time is at or before the current second.
 	messages, err := rp.redis.Client.ZRangeByScoreWithScores(ctx, RetryQueue, &redis.ZRangeBy{
 		Min:   "-inf",
-		Max:   string(rune(int(now))),
+		Max:   strconv.FormatFloat(now, 'f', 0, 64),
 		Count: 100, // Cap per-poll batch to avoid long-running sweeps
 	}).Result()
 
@@ -120,7 +121,7 @@ func (rp *RetryProcessor) processReadyMessages(ctx context.Context) error {
 // GetReadyCount returns the number of messages ready for retry
 func (rp *RetryProcessor) GetReadyCount(ctx context.Context) (int64, error) {
 	now := float64(time.Now().Unix())
-	return rp.redis.Client.ZCount(ctx, RetryQueue, "-inf", string(rune(int(now)))).Result()
+	return rp.redis.Client.ZCount(ctx, RetryQueue, "-inf", strconv.FormatFloat(now, 'f', 0, 64)).Result()
 }
 
 // GetPendingRetries returns information about pending retries

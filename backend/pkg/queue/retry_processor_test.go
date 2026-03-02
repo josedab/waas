@@ -87,14 +87,11 @@ func TestRetryProcessor_ProcessReadyMessages(t *testing.T) {
 	pastScore := float64(time.Now().Add(-10 * time.Second).Unix())
 	addRetryMessage(t, mr, msg, pastScore)
 
-	// processReadyMessages uses string(rune(int(now))) internally which may
-	// produce invalid float strings for ZRangeByScore in miniredis
+	// processReadyMessages now uses strconv.FormatFloat for proper ZSET queries
 	err := rp.processReadyMessages(ctx)
-	if err != nil {
-		t.Skipf("processReadyMessages has known timestamp encoding issue with miniredis: %v", err)
-	}
+	require.NoError(t, err)
 
-	// If it worked, verify message was moved
+	// Verify message was moved
 	items, err := mr.List(DeliveryQueue)
 	require.NoError(t, err)
 	assert.Len(t, items, 1)
@@ -113,10 +110,10 @@ func TestRetryProcessor_NoReadyMessages(t *testing.T) {
 	futureScore := float64(time.Now().Add(1 * time.Hour).Unix())
 	addRetryMessage(t, mr, msg, futureScore)
 
-	// processReadyMessages may error due to internal rune-encoded timestamp;
-	// the key behavior is no panic and future messages stay in retry queue
+	// processReadyMessages should not panic and future messages stay in retry queue
 	assert.NotPanics(t, func() {
-		rp.processReadyMessages(ctx)
+		err := rp.processReadyMessages(ctx)
+		require.NoError(t, err)
 	})
 
 	// Retry queue should still have the message regardless
@@ -133,10 +130,10 @@ func TestRetryProcessor_InvalidMessageInQueue(t *testing.T) {
 	pastScore := float64(time.Now().Add(-10 * time.Second).Unix())
 	mr.ZAdd(RetryQueue, pastScore, "invalid-json-data")
 
-	// processReadyMessages may error due to rune-encoded timestamp in Max parameter;
-	// the key behavior is it does not panic
+	// processReadyMessages should not panic; invalid JSON is handled gracefully
 	assert.NotPanics(t, func() {
-		rp.processReadyMessages(ctx)
+		err := rp.processReadyMessages(ctx)
+		require.NoError(t, err)
 	})
 }
 
@@ -146,13 +143,9 @@ func TestRetryProcessor_GetReadyCount(t *testing.T) {
 	ctx := context.Background()
 
 	// Empty queue
-	// GetReadyCount uses string(rune(int(now))) internally which may produce
-	// invalid float strings; test basic behavior
+	// GetReadyCount now uses strconv.FormatFloat — works correctly with miniredis
 	count, err := rp.GetReadyCount(ctx)
-	if err != nil {
-		// Expected in miniredis due to rune encoding of timestamp
-		t.Skipf("GetReadyCount has known timestamp encoding issue: %v", err)
-	}
+	require.NoError(t, err)
 	assert.Equal(t, int64(0), count)
 
 	// Add past messages (ready)
@@ -161,9 +154,8 @@ func TestRetryProcessor_GetReadyCount(t *testing.T) {
 	addRetryMessage(t, mr, newTestMessage(), pastScore-1)
 
 	count, err = rp.GetReadyCount(ctx)
-	if err == nil {
-		assert.Equal(t, int64(2), count)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), count)
 }
 
 func TestRetryProcessor_GetPendingRetries_Empty(t *testing.T) {
@@ -238,9 +230,7 @@ func TestRetryProcessor_MultipleReadyMessages(t *testing.T) {
 	}
 
 	err := rp.processReadyMessages(ctx)
-	if err != nil {
-		t.Skipf("processReadyMessages has known timestamp encoding issue with miniredis: %v", err)
-	}
+	require.NoError(t, err)
 
 	items, _ := mr.List(DeliveryQueue)
 	assert.Len(t, items, 3)
@@ -289,4 +279,58 @@ func TestRetryProcessor_InvalidJSON_NoCrash(t *testing.T) {
 	assert.NotPanics(t, func() {
 		rp.processReadyMessages(context.Background())
 	})
+}
+
+func TestRetryProcessor_ExactBoundaryTimestamp(t *testing.T) {
+	t.Parallel()
+	rp, _, mr := setupTestRetryProcessor(t)
+	ctx := context.Background()
+
+	// Add a message with score equal to "now" — should be included (Max uses <=)
+	now := float64(time.Now().Unix())
+	msg := newTestMessage()
+	addRetryMessage(t, mr, msg, now)
+
+	err := rp.processReadyMessages(ctx)
+	require.NoError(t, err)
+
+	items, err := mr.List(DeliveryQueue)
+	require.NoError(t, err)
+	assert.Len(t, items, 1, "message at exact boundary should be processed")
+
+	members, _ := mr.ZMembers(RetryQueue)
+	assert.Empty(t, members)
+}
+
+func TestRetryProcessor_FloatTimestampScores(t *testing.T) {
+	t.Parallel()
+	rp, _, mr := setupTestRetryProcessor(t)
+	ctx := context.Background()
+
+	// Use fractional scores — strconv.FormatFloat truncates to integer
+	pastScore := float64(time.Now().Add(-5*time.Second).Unix()) + 0.999
+	addRetryMessage(t, mr, newTestMessage(), pastScore)
+
+	err := rp.processReadyMessages(ctx)
+	require.NoError(t, err)
+
+	items, err := mr.List(DeliveryQueue)
+	require.NoError(t, err)
+	assert.Len(t, items, 1, "message with fractional score in the past should be processed")
+}
+
+func TestRetryProcessor_GetReadyCount_WithBoundary(t *testing.T) {
+	t.Parallel()
+	rp, _, mr := setupTestRetryProcessor(t)
+	ctx := context.Background()
+
+	now := float64(time.Now().Unix())
+	// One message at boundary, one in the past, one in the future
+	addRetryMessage(t, mr, newTestMessage(), now)
+	addRetryMessage(t, mr, newTestMessage(), now-10)
+	addRetryMessage(t, mr, newTestMessage(), now+3600)
+
+	count, err := rp.GetReadyCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), count, "boundary + past messages should be ready, future should not")
 }
