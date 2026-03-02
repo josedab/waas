@@ -77,8 +77,18 @@ import (
 	"github.com/josedab/waas/pkg/routingpolicy"
 	"github.com/josedab/waas/pkg/schemachangelog"
 	"github.com/josedab/waas/pkg/mobileinspector"
+	"github.com/josedab/waas/pkg/aibuilder"
+	"github.com/josedab/waas/pkg/capacityplanner"
+	"github.com/josedab/waas/pkg/edgenetwork"
+	"github.com/josedab/waas/pkg/endpointmesh"
+	"github.com/josedab/waas/pkg/faas"
+	"github.com/josedab/waas/pkg/migrationwizard"
+	"github.com/josedab/waas/pkg/mobileapp"
 	"github.com/josedab/waas/pkg/piidetection"
+	"github.com/josedab/waas/pkg/pluginecosystem"
 	"github.com/josedab/waas/pkg/policyengine"
+	"github.com/josedab/waas/pkg/progressive"
+	"github.com/josedab/waas/pkg/securityintel"
 	"github.com/josedab/waas/pkg/standardwebhooks"
 	"github.com/josedab/waas/pkg/topologysim"
 	"github.com/josedab/waas/pkg/prediction"
@@ -226,6 +236,17 @@ type Server struct {
 	sdkgenService           *sdkgen.Service
 	dataplaneService        *dataplane.Service
 	onboardingWizardService *onboarding.Service
+	// Next-gen features v11
+	aibuilderService        *aibuilder.Service
+	edgenetworkService      *edgenetwork.Service
+	migrationwizardService  *migrationwizard.Service
+	securityintelService    *securityintel.Service
+	pluginecosystemService  *pluginecosystem.Service
+	faasService             *faas.Service
+	progressiveService      *progressive.Service
+	endpointmeshService     *endpointmesh.Service
+	mobileappService        *mobileapp.Service
+	capacityplannerService  *capacityplanner.Service
 }
 
 // NewServer constructs and wires the entire API server. Initialization
@@ -543,6 +564,37 @@ func NewServer() (*Server, error) {
 	// Interactive Onboarding Wizard
 	onboardingWizardService := onboarding.NewService(nil)
 
+	// ── Phase 10b: Next-gen features v11 ───────────────────────────────
+	// AI Conversational Webhook Builder
+	aibuilderService := aibuilder.NewService(nil, nil)
+
+	// Global Edge Delivery Network
+	edgenetworkService := edgenetwork.NewService(nil, nil)
+
+	// Zero-Downtime Platform Migration Wizard
+	migrationwizardService := migrationwizard.NewService(nil, nil)
+
+	// Webhook Security Intelligence Suite
+	securityintelService := securityintel.NewService(nil, nil)
+
+	// Developer Marketplace & Plugin Ecosystem
+	pluginecosystemService := pluginecosystem.NewService(nil, nil)
+
+	// Serverless Transform Runtime (FaaS)
+	faasService := faas.NewService(nil, nil)
+
+	// Webhook A/B Testing & Progressive Delivery
+	progressiveService := progressive.NewService(nil, nil)
+
+	// Self-Healing Endpoint Mesh
+	endpointmeshService := endpointmesh.NewService(nil, nil)
+
+	// Mobile Webhook Inspector
+	mobileappService := mobileapp.NewService(nil, nil)
+
+	// Webhook Infrastructure Capacity Planner
+	capacityplannerService := capacityplanner.NewService(nil, nil)
+
 	// ── Phase 9: HTTP layer (Gin router + middleware) ───────────────────
 	// Setup Gin with monitoring middleware
 	router := gin.New()
@@ -688,6 +740,16 @@ func NewServer() (*Server, error) {
 		sdkgenService:           sdkgenService,
 		dataplaneService:        dataplaneService,
 		onboardingWizardService: onboardingWizardService,
+		aibuilderService:        aibuilderService,
+		edgenetworkService:      edgenetworkService,
+		migrationwizardService:  migrationwizardService,
+		securityintelService:    securityintelService,
+		pluginecosystemService:  pluginecosystemService,
+		faasService:             faasService,
+		progressiveService:      progressiveService,
+		endpointmeshService:     endpointmeshService,
+		mobileappService:        mobileappService,
+		capacityplannerService:  capacityplannerService,
 	}
 
 	server.setupRoutes()

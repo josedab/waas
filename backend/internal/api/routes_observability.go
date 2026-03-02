@@ -1,12 +1,14 @@
 package api
 
 import (
+	"github.com/josedab/waas/pkg/aibuilder"
 	"github.com/josedab/waas/pkg/analyticsembed"
 	"github.com/josedab/waas/pkg/autoremediation"
 	"github.com/josedab/waas/pkg/blockchain"
 	"github.com/josedab/waas/pkg/callback"
 	"github.com/josedab/waas/pkg/canary"
 	"github.com/josedab/waas/pkg/catalog"
+	"github.com/josedab/waas/pkg/capacityplanner"
 	"github.com/josedab/waas/pkg/cloudmanaged"
 	"github.com/josedab/waas/pkg/collabdebug"
 	"github.com/josedab/waas/pkg/compliancecenter"
@@ -30,9 +32,11 @@ import (
 	"github.com/josedab/waas/pkg/openapigen"
 	"github.com/josedab/waas/pkg/pipeline"
 	"github.com/josedab/waas/pkg/playground"
+	"github.com/josedab/waas/pkg/pluginecosystem"
 	"github.com/josedab/waas/pkg/pluginmarket"
 	"github.com/josedab/waas/pkg/portalsdk"
 	"github.com/josedab/waas/pkg/prediction"
+	"github.com/josedab/waas/pkg/progressive"
 	"github.com/josedab/waas/pkg/protocolgw"
 	"github.com/josedab/waas/pkg/receiverdash"
 	"github.com/josedab/waas/pkg/nlbuilder"
@@ -40,14 +44,20 @@ import (
 	"github.com/josedab/waas/pkg/deliveryreceipt"
 	"github.com/josedab/waas/pkg/depgraph"
 	"github.com/josedab/waas/pkg/e2ee"
+	"github.com/josedab/waas/pkg/edgenetwork"
+	"github.com/josedab/waas/pkg/endpointmesh"
 	"github.com/josedab/waas/pkg/eventcorrelation"
 	"github.com/josedab/waas/pkg/eventlineage"
 	"github.com/josedab/waas/pkg/experiment"
+	"github.com/josedab/waas/pkg/faas"
 	"github.com/josedab/waas/pkg/selfhealing"
 	"github.com/josedab/waas/pkg/loadtest"
+	"github.com/josedab/waas/pkg/migrationwizard"
+	"github.com/josedab/waas/pkg/mobileapp"
 	"github.com/josedab/waas/pkg/routingpolicy"
 	"github.com/josedab/waas/pkg/schemachangelog"
 	"github.com/josedab/waas/pkg/sdkgen"
+	"github.com/josedab/waas/pkg/securityintel"
 	"github.com/josedab/waas/pkg/mobileinspector"
 	"github.com/josedab/waas/pkg/piidetection"
 	"github.com/josedab/waas/pkg/policyengine"
@@ -320,4 +330,46 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Interactive Onboarding Wizard
 	onboardingHandler := onboarding.NewHandler(s.onboardingWizardService)
 	onboardingHandler.RegisterRoutes(protected)
+
+	// ── Next-gen features v11 ──────────────────────────────────────
+
+	// AI Conversational Webhook Builder
+	aibuilderHandler := aibuilder.NewHandler(s.aibuilderService)
+	aibuilderHandler.RegisterRoutes(protected)
+
+	// Global Edge Delivery Network
+	edgenetworkHandler := edgenetwork.NewHandler(s.edgenetworkService)
+	edgenetworkHandler.RegisterRoutes(protected)
+
+	// Zero-Downtime Platform Migration Wizard
+	migrationwizardHandler := migrationwizard.NewHandler(s.migrationwizardService)
+	migrationwizardHandler.RegisterRoutes(protected)
+
+	// Webhook Security Intelligence Suite
+	securityintelHandler := securityintel.NewHandler(s.securityintelService)
+	securityintelHandler.RegisterRoutes(protected)
+
+	// Developer Marketplace & Plugin Ecosystem
+	pluginecosystemHandler := pluginecosystem.NewHandler(s.pluginecosystemService)
+	pluginecosystemHandler.RegisterRoutes(protected)
+
+	// Serverless Transform Runtime (FaaS)
+	faasHandler := faas.NewHandler(s.faasService)
+	faasHandler.RegisterRoutes(protected)
+
+	// Webhook A/B Testing & Progressive Delivery
+	progressiveHandler := progressive.NewHandler(s.progressiveService)
+	progressiveHandler.RegisterRoutes(protected)
+
+	// Self-Healing Endpoint Mesh
+	endpointmeshHandler := endpointmesh.NewHandler(s.endpointmeshService)
+	endpointmeshHandler.RegisterRoutes(protected)
+
+	// Mobile Webhook Inspector
+	mobileappHandler := mobileapp.NewHandler(s.mobileappService)
+	mobileappHandler.RegisterRoutes(protected)
+
+	// Webhook Infrastructure Capacity Planner
+	capacityplannerHandler := capacityplanner.NewHandler(s.capacityplannerService)
+	capacityplannerHandler.RegisterRoutes(protected)
 }
