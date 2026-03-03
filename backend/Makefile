@@ -521,6 +521,7 @@ quickstart: dev-setup ## One-command demo: setup, start API, wait for health, se
 	@echo ""
 	@echo "Starting API service in background..."
 	@go run ./cmd/api-service &>/dev/null & API_PID=$$!; \
+	echo "$$API_PID" > .api.pid; \
 	echo "  API PID: $$API_PID"; \
 	echo "Waiting for API to be ready..."; \
 	READY=0; \
@@ -550,13 +551,27 @@ quickstart: dev-setup ## One-command demo: setup, start API, wait for health, se
 	echo "  Health:       http://localhost:8080/health"; \
 	echo ""; \
 	echo "  API is running in background (PID $$API_PID)."; \
-	echo "  Stop with: kill $$API_PID"; \
+	echo "  Stop with: make stop"; \
 	echo ""; \
 	echo "  Next steps:"; \
 	echo "    make run-dashboard   Start React UI (port 5173)"; \
 	echo "    make smoke-test      Verify API endpoints"; \
 	echo "    make test            Run test suite"; \
 	echo "=============================================="
+
+stop: ## Stop background API started by quickstart
+	@if [ -f .api.pid ]; then \
+		PID=$$(cat .api.pid); \
+		if kill -0 $$PID 2>/dev/null; then \
+			kill $$PID; \
+			echo "Stopped API service (PID $$PID)."; \
+		else \
+			echo "API process (PID $$PID) is not running."; \
+		fi; \
+		rm -f .api.pid; \
+	else \
+		echo "No PID file found. Is the API running via 'make quickstart'?"; \
+	fi
 
 # Environment validation
 validate-setup: ## Check that all prerequisites are installed

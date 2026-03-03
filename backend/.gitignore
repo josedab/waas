@@ -47,6 +47,10 @@ redis_data/
 
 # Air hot-reload
 tmp/
+# PID files
+.api.pid
+# Test failure log
+.test-failures
 # Compiled service binaries
 /analytics-service
 /delivery-engine
