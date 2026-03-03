@@ -599,6 +599,10 @@ validate-setup: ## Check that all prerequisites are installed
 	@printf "  %-20s" "Port 8082 (Analytics):" ; \
 		(lsof -i :8082 >/dev/null 2>&1 && echo "IN USE") || echo "Available"
 	@echo ""
+	@printf "  %-20s" "go.work:" ; \
+		if [ -f ../go.work ]; then echo "OK"; \
+		elif [ -f ../go.work.example ]; then echo "MISSING — copy go.work.example to go.work: cp ../go.work.example ../go.work"; \
+		else echo "MISSING"; fi
 
 doctor: ## Full environment diagnostics (prerequisites + env + Docker + ports)
 	@echo "🩺 WaaS Doctor — Environment Diagnostics"
