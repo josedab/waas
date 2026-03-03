@@ -194,7 +194,11 @@ func (h *Handler) CaptureRequest(c *gin.Context) {
 		return
 	}
 
-	headersJSON, _ := json.Marshal(req.Headers)
+	headersJSON, err := json.Marshal(req.Headers)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid headers format"})
+		return
+	}
 	capture := &RequestCapture{
 		TenantID:  tid,
 		SessionID: &sessionID,
