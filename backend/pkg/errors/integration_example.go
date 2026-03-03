@@ -1,8 +1,9 @@
 package errors
 
 import (
-	"net/http"
+	"context"
 	"github.com/josedab/waas/pkg/utils"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -31,13 +32,13 @@ func (h *ExampleHandler) ExampleEndpoint(c *gin.Context) {
 		Email string `json:"email" binding:"required,email"`
 		Name  string `json:"name" binding:"required"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&request); err != nil {
 		// Use helper function for validation errors
 		AbortWithValidationError(c, "request", err.Error())
 		return
 	}
-	
+
 	// Example 2: Database operation with error handling
 	if err := h.performDatabaseOperation(request.Email); err != nil {
 		// For this example, we'll use the error directly since it's already a WebhookError
@@ -52,13 +53,13 @@ func (h *ExampleHandler) ExampleEndpoint(c *gin.Context) {
 			return
 		}
 	}
-	
+
 	// Example 3: Business logic error
 	if request.Email == "forbidden@example.com" {
 		AbortWithForbidden(c)
 		return
 	}
-	
+
 	// Example 4: External API call with error handling
 	if err := h.callExternalAPI(request.Email); err != nil {
 		// For this example, we'll use the error directly since it's already a WebhookError
@@ -73,7 +74,7 @@ func (h *ExampleHandler) ExampleEndpoint(c *gin.Context) {
 			return
 		}
 	}
-	
+
 	// Success response
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Operation completed successfully",
@@ -116,26 +117,26 @@ func SetupErrorHandlingMiddleware(router *gin.Engine, logger *utils.Logger) *Err
 		Enabled:            true,
 		MaxAlertsPerMinute: 10,
 		MaxAlertsPerHour:   100,
-		SlackWebhookURL:    "", // Configure in production
+		SlackWebhookURL:    "",         // Configure in production
 		EmailRecipients:    []string{}, // Configure in production
 	}
-	alerter := NewAlerter(alerterConfig, logger)
-	
+	alerter := NewAlerter(context.Background(), alerterConfig, logger)
+
 	// Create error handler
 	errorHandler := NewErrorHandler(logger, alerter)
-	
+
 	// Add middleware in the correct order
 	router.Use(RequestIDMiddleware())
 	router.Use(TraceIDMiddleware())
 	router.Use(errorHandler.Middleware()) // This should be one of the last middleware
-	
+
 	return errorHandler
 }
 
 // ExampleErrorHandlingInService demonstrates error handling in service layer
 func ExampleErrorHandlingInService() {
 	// Example of creating and using structured errors in service layer
-	
+
 	// Create a validation error with context
 	validationErr := NewValidationError("email", "invalid format").
 		WithRequestID("req_123").
@@ -144,14 +145,14 @@ func ExampleErrorHandlingInService() {
 			"Ensure email follows the format: user@domain.com",
 			"Check for typos in the email address",
 		)
-	
+
 	// Create a database error with cause
 	dbErr := FromDatabaseError(NewWebhookError("CONNECTION_FAILED", "Database connection failed", CategoryDatabase, http.StatusInternalServerError, SeverityHigh)).
 		WithDetails(map[string]interface{}{
 			"database": "postgres",
 			"host":     "db.example.com",
 		})
-	
+
 	// Create a delivery error with full context
 	deliveryErr := NewDeliveryError("endpoint_123", "delivery_456", 500, "Internal Server Error").
 		WithRequestID("req_789").
@@ -159,7 +160,7 @@ func ExampleErrorHandlingInService() {
 			"Check if the webhook endpoint is responding correctly",
 			"Verify the endpoint can handle the payload format",
 		)
-	
+
 	// Log errors with context (in real code, you'd use these errors appropriately)
 	_ = validationErr
 	_ = dbErr
@@ -180,7 +181,7 @@ func ExampleCustomErrorDefinition() {
 		"Ensure all prerequisites are met",
 		"Contact support if the error persists",
 	).WithDocumentation("https://docs.webhook-platform.com/business-rules")
-	
+
 	// Use the custom error
 	_ = ErrCustomBusinessLogic
 }
@@ -189,19 +190,19 @@ func ExampleCustomErrorDefinition() {
 func ExampleErrorHandlingInMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Example: Rate limiting middleware with structured errors
-		
+
 		// Simulate rate limit check
 		if c.GetHeader("X-Test-Rate-Limit") == "exceeded" {
 			AbortWithRateLimit(c, 60) // Retry after 60 seconds
 			return
 		}
-		
+
 		// Simulate quota check
 		if c.GetHeader("X-Test-Quota") == "exceeded" {
 			AbortWithQuotaExceeded(c, 1500, 1000) // Current usage: 1500, Limit: 1000
 			return
 		}
-		
+
 		// Continue to next handler
 		c.Next()
 	}
@@ -226,7 +227,7 @@ func (r *ExampleRepository) GetUser(id string) (*User, error) {
 		).WithDetails(map[string]interface{}{
 			"user_id": id,
 		})
-		
+
 	case "db_error":
 		// Return a database error that will be categorized correctly
 		return nil, FromDatabaseError(NewWebhookError(
@@ -236,7 +237,7 @@ func (r *ExampleRepository) GetUser(id string) (*User, error) {
 			http.StatusInternalServerError,
 			SeverityHigh,
 		))
-		
+
 	default:
 		// Return success case
 		return &User{ID: id, Email: "user@example.com"}, nil
@@ -254,28 +255,28 @@ func ExampleErrorHandlingInDeliveryEngine(endpointURL string, payload []byte) er
 	// Simulate HTTP client call
 	statusCode := 500
 	responseBody := "Internal Server Error"
-	
+
 	// Handle HTTP errors with structured error response
 	if statusCode >= 400 {
 		return HandleHTTPError(statusCode, responseBody, endpointURL)
 	}
-	
+
 	return nil
 }
 
 // ExampleErrorAggregation demonstrates how to collect and report multiple errors
 func ExampleErrorAggregation() []error {
 	var errors []error
-	
+
 	// Collect multiple validation errors
 	if true { // Some validation condition
 		errors = append(errors, NewValidationError("email", "required"))
 	}
-	
+
 	if true { // Another validation condition
 		errors = append(errors, NewValidationError("name", "too short"))
 	}
-	
+
 	// In a real handler, you might want to return all validation errors at once
 	return errors
 }
@@ -289,12 +290,12 @@ func ExampleErrorMetrics(err error) {
 		//     "severity": string(webhookErr.Severity),
 		//     "code":     webhookErr.Code,
 		// })
-		
+
 		// Log for monitoring
 		if webhookErr.ShouldAlert() {
 			// This error should trigger monitoring alerts
 		}
-		
+
 		// Track retryable vs non-retryable errors
 		if webhookErr.IsRetryable() {
 			// metrics.IncrementCounter("retryable_errors_total")

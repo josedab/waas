@@ -3,9 +3,9 @@ package errors
 import (
 	"context"
 	"fmt"
+	"github.com/josedab/waas/pkg/utils"
 	"sync"
 	"time"
-	"github.com/josedab/waas/pkg/utils"
 )
 
 // AlerterConfig holds configuration for the alerter
@@ -52,8 +52,9 @@ type Alerter struct {
 	recentAlertsLock sync.RWMutex
 }
 
-// NewAlerter creates a new alerter instance
-func NewAlerter(config *AlerterConfig, logger *utils.Logger) *Alerter {
+// NewAlerter creates a new alerter instance. The provided context controls the
+// lifetime of the background cleanup goroutine; cancelling it will stop cleanup.
+func NewAlerter(ctx context.Context, config *AlerterConfig, logger *utils.Logger) *Alerter {
 	if config == nil {
 		config = DefaultAlerterConfig()
 	}
@@ -67,7 +68,7 @@ func NewAlerter(config *AlerterConfig, logger *utils.Logger) *Alerter {
 	}
 
 	// Start cleanup goroutine
-	go alerter.cleanupRoutine()
+	go alerter.cleanupRoutine(ctx)
 
 	return alerter
 }
@@ -307,13 +308,18 @@ func (a *Alerter) logAlert(alert *AlertMessage) {
 	})
 }
 
-// cleanupRoutine periodically cleans up old rate limiting data
-func (a *Alerter) cleanupRoutine() {
+// cleanupRoutine periodically cleans up old rate limiting data until ctx is cancelled.
+func (a *Alerter) cleanupRoutine(ctx context.Context) {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		a.cleanup()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			a.cleanup()
+		}
 	}
 }
 

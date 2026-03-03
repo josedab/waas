@@ -44,7 +44,7 @@ import (
 func main() {
     // Set up error handling
     logger := utils.NewLogger("webhook-api")
-    alerter := errors.NewAlerter(errors.DefaultAlerterConfig(), logger)
+    alerter := errors.NewAlerter(context.Background(), errors.DefaultAlerterConfig(), logger)
     errorHandler := errors.NewErrorHandler(logger, alerter)
     
     // Set up Gin router with error handling middleware
@@ -186,7 +186,7 @@ alerterConfig := &errors.AlerterConfig{
     HighAlertThreshold:     5 * time.Minute,
 }
 
-alerter := errors.NewAlerter(alerterConfig, logger)
+alerter := errors.NewAlerter(context.Background(), alerterConfig, logger)
 ```
 
 ## Predefined Errors

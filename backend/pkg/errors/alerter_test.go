@@ -2,16 +2,16 @@ package errors
 
 import (
 	"context"
+	"github.com/josedab/waas/pkg/utils"
 	"testing"
 	"time"
-	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultAlerterConfig(t *testing.T) {
 	config := DefaultAlerterConfig()
-	
+
 	assert.NotNil(t, config)
 	assert.Equal(t, 10, config.MaxAlertsPerMinute)
 	assert.Equal(t, 100, config.MaxAlertsPerHour)
@@ -22,7 +22,7 @@ func TestDefaultAlerterConfig(t *testing.T) {
 
 func TestNewAlerter(t *testing.T) {
 	logger := utils.NewLogger("test")
-	
+
 	tests := []struct {
 		name   string
 		config *AlerterConfig
@@ -39,14 +39,14 @@ func TestNewAlerter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			alerter := NewAlerter(tt.config, logger)
-			
+			alerter := NewAlerter(context.Background(), tt.config, logger)
+
 			assert.NotNil(t, alerter)
 			assert.Equal(t, logger, alerter.logger)
 			assert.NotNil(t, alerter.config)
 			assert.NotNil(t, alerter.alertCounts)
 			assert.NotNil(t, alerter.recentAlerts)
-			
+
 			if tt.config == nil {
 				assert.True(t, alerter.config.Enabled)
 			} else {
@@ -58,7 +58,7 @@ func TestNewAlerter(t *testing.T) {
 
 func TestAlerter_shouldSendAlert(t *testing.T) {
 	logger := utils.NewLogger("test")
-	
+
 	tests := []struct {
 		name     string
 		config   *AlerterConfig
@@ -117,7 +117,7 @@ func TestAlerter_shouldSendAlert(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			alerter := NewAlerter(tt.config, logger)
+			alerter := NewAlerter(context.Background(), tt.config, logger)
 			result := alerter.shouldSendAlert(tt.err)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -131,18 +131,18 @@ func TestAlerter_checkRateLimit(t *testing.T) {
 		MaxAlertsPerMinute: 2,
 		MaxAlertsPerHour:   5,
 	}
-	
-	alerter := NewAlerter(config, logger)
+
+	alerter := NewAlerter(context.Background(), config, logger)
 	err := ErrInternalServer
-	
+
 	// First alert should pass
 	assert.True(t, alerter.checkRateLimit(err))
 	alerter.updateAlertCounts(err)
-	
+
 	// Second alert should pass
 	assert.True(t, alerter.checkRateLimit(err))
 	alerter.updateAlertCounts(err)
-	
+
 	// Third alert should fail (exceeds per-minute limit)
 	assert.False(t, alerter.checkRateLimit(err))
 }
@@ -154,19 +154,19 @@ func TestAlerter_isDuplicateAlert(t *testing.T) {
 		CriticalAlertThreshold: 1 * time.Minute,
 		HighAlertThreshold:     5 * time.Minute,
 	}
-	
-	alerter := NewAlerter(config, logger)
-	
+
+	alerter := NewAlerter(context.Background(), config, logger)
+
 	// First alert should not be duplicate
 	err := ErrInternalServer
 	assert.False(t, alerter.isDuplicateAlert(err))
-	
+
 	// Update recent alerts
 	alerter.updateAlertCounts(err)
-	
+
 	// Same error immediately should be duplicate
 	assert.True(t, alerter.isDuplicateAlert(err))
-	
+
 	// Different error should not be duplicate
 	differentErr := ErrDatabaseError
 	assert.False(t, alerter.isDuplicateAlert(differentErr))
@@ -181,10 +181,10 @@ func TestAlerter_SendAlert(t *testing.T) {
 		CriticalAlertThreshold: 1 * time.Minute,
 		HighAlertThreshold:     5 * time.Minute,
 	}
-	
-	alerter := NewAlerter(config, logger)
+
+	alerter := NewAlerter(context.Background(), config, logger)
 	ctx := context.Background()
-	
+
 	tests := []struct {
 		name        string
 		err         *WebhookError
@@ -211,7 +211,7 @@ func TestAlerter_SendAlert(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := alerter.SendAlert(ctx, tt.err)
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
 			} else {
@@ -226,10 +226,10 @@ func TestAlerter_SendAlert_Disabled(t *testing.T) {
 	config := &AlerterConfig{
 		Enabled: false,
 	}
-	
-	alerter := NewAlerter(config, logger)
+
+	alerter := NewAlerter(context.Background(), config, logger)
 	ctx := context.Background()
-	
+
 	err := alerter.SendAlert(ctx, ErrInternalServer)
 	assert.NoError(t, err) // Should not error when disabled
 }
@@ -237,8 +237,8 @@ func TestAlerter_SendAlert_Disabled(t *testing.T) {
 func TestAlerter_createAlertMessage(t *testing.T) {
 	logger := utils.NewLogger("test")
 	config := DefaultAlerterConfig()
-	alerter := NewAlerter(config, logger)
-	
+	alerter := NewAlerter(context.Background(), config, logger)
+
 	err := &WebhookError{
 		Code:      "TEST_ERROR",
 		Message:   "Test error message",
@@ -251,9 +251,9 @@ func TestAlerter_createAlertMessage(t *testing.T) {
 			"field": "value",
 		},
 	}
-	
+
 	alert := alerter.createAlertMessage(err)
-	
+
 	assert.Equal(t, "Webhook Platform Alert: TEST_ERROR", alert.Title)
 	assert.Equal(t, "Test error message", alert.Message)
 	assert.Equal(t, SeverityHigh, alert.Severity)
@@ -269,21 +269,21 @@ func TestAlerter_createAlertMessage(t *testing.T) {
 func TestAlerter_updateAlertCounts(t *testing.T) {
 	logger := utils.NewLogger("test")
 	config := DefaultAlerterConfig()
-	alerter := NewAlerter(config, logger)
-	
+	alerter := NewAlerter(context.Background(), config, logger)
+
 	err := ErrInternalServer
-	
+
 	// Initially no counts
 	assert.Empty(t, alerter.alertCounts)
 	assert.Empty(t, alerter.recentAlerts)
-	
+
 	// Update counts
 	alerter.updateAlertCounts(err)
-	
+
 	// Should have counts now
 	assert.NotEmpty(t, alerter.alertCounts)
 	assert.NotEmpty(t, alerter.recentAlerts)
-	
+
 	// Check that recent alerts contains the error key
 	alertKey := "INTERNAL_SERVER_ERROR_INTERNAL"
 	_, exists := alerter.recentAlerts[alertKey]
@@ -293,8 +293,8 @@ func TestAlerter_updateAlertCounts(t *testing.T) {
 func TestAlerter_getSeverityColor(t *testing.T) {
 	logger := utils.NewLogger("test")
 	config := DefaultAlerterConfig()
-	alerter := NewAlerter(config, logger)
-	
+	alerter := NewAlerter(context.Background(), config, logger)
+
 	tests := []struct {
 		severity ErrorSeverity
 		expected string
@@ -318,7 +318,7 @@ func TestNoOpAlerter(t *testing.T) {
 	alerter := &NoOpAlerter{}
 	ctx := context.Background()
 	err := ErrInternalServer
-	
+
 	result := alerter.SendAlert(ctx, err)
 	assert.NoError(t, result)
 }
@@ -326,15 +326,15 @@ func TestNoOpAlerter(t *testing.T) {
 func TestAlerter_cleanup(t *testing.T) {
 	logger := utils.NewLogger("test")
 	config := DefaultAlerterConfig()
-	alerter := NewAlerter(config, logger)
-	
+	alerter := NewAlerter(context.Background(), config, logger)
+
 	// Add some test data
 	alerter.alertCounts["old_key"] = 5
 	alerter.recentAlerts["old_alert"] = time.Now().Add(-10 * time.Minute)
-	
+
 	// Run cleanup
 	alerter.cleanup()
-	
+
 	// This test mainly ensures cleanup doesn't panic
 	// In a real implementation, you'd verify that old data is actually removed
 	assert.NotNil(t, alerter.alertCounts)
@@ -354,7 +354,7 @@ func TestAlertMessage(t *testing.T) {
 		Details:     map[string]interface{}{"key": "value"},
 		Environment: "test",
 	}
-	
+
 	assert.Equal(t, "Test Alert", alert.Title)
 	assert.Equal(t, "Test message", alert.Message)
 	assert.Equal(t, SeverityHigh, alert.Severity)
@@ -375,18 +375,18 @@ func TestAlerter_RateLimitingIntegration(t *testing.T) {
 		CriticalAlertThreshold: 1 * time.Minute,
 		HighAlertThreshold:     5 * time.Minute,
 	}
-	
-	alerter := NewAlerter(config, logger)
+
+	alerter := NewAlerter(context.Background(), config, logger)
 	ctx := context.Background()
 	err := ErrInternalServer
-	
+
 	// First two alerts should succeed
 	assert.NoError(t, alerter.SendAlert(ctx, err))
 	assert.NoError(t, alerter.SendAlert(ctx, err))
-	
+
 	// Third alert should be rate limited (no error, but won't send)
 	assert.NoError(t, alerter.SendAlert(ctx, err))
-	
+
 	// Verify rate limiting is working by checking internal state
 	assert.False(t, alerter.shouldSendAlert(err))
 }
@@ -400,17 +400,17 @@ func TestAlerter_DeduplicationIntegration(t *testing.T) {
 		CriticalAlertThreshold: 1 * time.Minute,
 		HighAlertThreshold:     5 * time.Minute,
 	}
-	
-	alerter := NewAlerter(config, logger)
+
+	alerter := NewAlerter(context.Background(), config, logger)
 	ctx := context.Background()
 	err := ErrInternalServer
-	
+
 	// First alert should succeed
 	assert.NoError(t, alerter.SendAlert(ctx, err))
-	
+
 	// Immediate duplicate should be deduplicated
 	assert.False(t, alerter.shouldSendAlert(err))
-	
+
 	// Different error should not be deduplicated
 	differentErr := ErrDatabaseError
 	assert.True(t, alerter.shouldSendAlert(differentErr))
