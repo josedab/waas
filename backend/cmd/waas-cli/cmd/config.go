@@ -120,7 +120,10 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	// Show config file path
 	configFile := viper.ConfigFileUsed()
 	if configFile == "" {
-		home, _ := os.UserHomeDir()
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to determine home directory: %w", err)
+		}
 		configFile = filepath.Join(home, ".waas.yaml") + " (not found)"
 	}
 

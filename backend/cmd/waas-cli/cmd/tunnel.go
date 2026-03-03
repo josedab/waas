@@ -91,7 +91,10 @@ func runTunnel(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse endpoint response: %w", err)
 	}
 
-	endpointID, _ := endpoint["id"].(string)
+	endpointID, ok := endpoint["id"].(string)
+	if !ok {
+		return fmt.Errorf("endpoint response missing 'id' field")
+	}
 	endpointURL, _ := endpoint["url"].(string)
 	if endpointURL == "" {
 		endpointURL = fmt.Sprintf("%s/test/%s", getAPIURL(), endpointID)

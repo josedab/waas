@@ -71,8 +71,12 @@ func runMock(cmd *cobra.Command, args []string) error {
 	count := 0
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
+		if err != nil {
+			http.Error(w, "failed to read request body", http.StatusBadRequest)
+			return
+		}
 
 		mu.Lock()
 		count++
@@ -148,9 +152,11 @@ func runMock(cmd *cobra.Command, args []string) error {
 		<-cmd.Context().Done()
 		if mockRecordFile != "" {
 			mu.Lock()
-			data, _ := json.MarshalIndent(received, "", "  ")
+			data, err := json.MarshalIndent(received, "", "  ")
 			mu.Unlock()
-			if err := os.WriteFile(mockRecordFile, data, 0644); err != nil {
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to marshal recorded requests: %v\n", err)
+			} else if err := os.WriteFile(mockRecordFile, data, 0644); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to save recorded requests: %v\n", err)
 			} else {
 				fmt.Printf("\n✓ Saved %d requests to %s\n", len(received), mockRecordFile)

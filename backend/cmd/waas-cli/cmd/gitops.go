@@ -283,8 +283,14 @@ func runDrift(cmd *cobra.Command, args []string) error {
 		return out.PrintJSON(result)
 	}
 
-	drifted, _ := result["drifted_count"].(float64)
-	total, _ := result["resource_count"].(float64)
+	drifted, ok := result["drifted_count"].(float64)
+	if !ok {
+		drifted = 0
+	}
+	total, ok := result["resource_count"].(float64)
+	if !ok {
+		total = 0
+	}
 
 	if drifted == 0 {
 		out.PrintSuccess(fmt.Sprintf("No drift detected (%d resources in sync)", int(total)))

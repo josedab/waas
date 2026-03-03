@@ -131,7 +131,10 @@ func runTenantRegenerateKey(cmd *cobra.Command, args []string) error {
 
 	// Update local config with new key
 	viper.Set("api_key", result.APIKey)
-	home, _ := os.UserHomeDir()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to determine home directory: %w", err)
+	}
 	configPath := home + "/.waas.yaml"
 	if err := viper.WriteConfigAs(configPath); err != nil {
 		return fmt.Errorf("failed to write config to %s: %w", configPath, err)

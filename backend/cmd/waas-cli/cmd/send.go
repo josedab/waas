@@ -68,7 +68,10 @@ func runSend(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		// Check if there's data on stdin
-		stat, _ := os.Stdin.Stat()
+		stat, err := os.Stdin.Stat()
+		if err != nil {
+			return fmt.Errorf("failed to stat stdin: %w", err)
+		}
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
 			payload, err = io.ReadAll(os.Stdin)
 			if err != nil {
