@@ -67,6 +67,19 @@ if command -v golangci-lint >/dev/null 2>&1; then
     fi
 fi
 
+# Optional: run short tests on staged packages (non-blocking)
+# Set WAAS_PRE_COMMIT_TEST=1 to enable, e.g.: export WAAS_PRE_COMMIT_TEST=1
+if [ "${WAAS_PRE_COMMIT_TEST:-0}" = "1" ]; then
+    TEST_PACKAGES=$(echo "$STAGED_GO_FILES" | xargs -n1 dirname | sort -u | sed 's|^|./|')
+    echo "pre-commit: running go test -short on staged packages..."
+    if ! go test -short -count=1 $TEST_PACKAGES 2>&1; then
+        echo ""
+        echo "pre-commit: ⚠️  tests failed (non-blocking)."
+        echo "  Fix before pushing, or CI will fail."
+        echo "  Disable with: unset WAAS_PRE_COMMIT_TEST"
+    fi
+fi
+
 # Validate .env.example completeness (advisory, non-blocking)
 if [ -f .env.example ]; then
     ENV_VARS_IN_CODE=$(grep -roh 'os\.Getenv("[^"]*")' --include='*.go' . 2>/dev/null \
