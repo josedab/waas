@@ -2,7 +2,7 @@
        docker-up docker-down docker-build \
        migrate-up migrate-down migrate-core migrate-status migrate-reset migrate-rollback dev-setup dev-setup-full ensure-env deps \
        docs docs-generate docs-serve docs-test open-docs \
-       lint lint-fast fmt fmt-fix fix vet profile help validate-setup ci-local \
+       lint lint-fast lint-handlers fmt fmt-fix fix vet profile help validate-setup ci-local \
        smoke-test run-all run-dashboard logs \
        install-hooks uninstall-hooks \
        test-coverage test-status test-stubs test-single new-pkg audit-deps validate-env \
@@ -250,6 +250,9 @@ test-integration: ## Run integration tests in Docker (isolated from dev environm
 # Code quality
 lint: _ensure-golangci-lint ## Run golangci-lint
 	golangci-lint run ./...
+
+lint-handlers: _ensure-golangci-lint ## Run errcheck specifically on handler files (no exclusions)
+	golangci-lint run --enable errcheck --disable-all -e '.*_test\.go' ./internal/api/handlers/
 
 lint-fast: _ensure-golangci-lint ## Run golangci-lint --fast on changed packages only
 	@CHANGED=$$(git diff --name-only --diff-filter=ACM HEAD | grep '\.go$$' | xargs -n1 dirname 2>/dev/null | sort -u | sed 's|^|./|'); \
