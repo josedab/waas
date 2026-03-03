@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"hash"
 	"net/http"
-	"os"
+
 	"sort"
 	"strconv"
 	"strings"
@@ -159,27 +159,15 @@ func (m *CertificateManager) ValidateCertificate(cert *x509.Certificate) error {
 
 // BuildTLSConfig creates a TLS configuration for an endpoint
 func (m *CertificateManager) BuildTLSConfig(profile *SecurityProfile, clientCert *Certificate, pinnedCerts []*Certificate) (*tls.Config, error) {
-	skipVerify := false
 	if !profile.VerifyServerCert {
-		if os.Getenv("ALLOW_INSECURE_TLS") == "true" {
-			m.logger.Info("TLS server cert verification disabled (ALLOW_INSECURE_TLS=true)", map[string]interface{}{"endpoint_id": profile.EndpointID})
-			skipVerify = true
-		} else {
-			m.logger.Warn("VerifyServerCert=false requested but ALLOW_INSECURE_TLS is not set — ignoring, verification remains enabled", map[string]interface{}{"endpoint_id": profile.EndpointID})
-		}
+		m.logger.Warn("VerifyServerCert=false requested but insecure TLS is not permitted — verification remains enabled", map[string]interface{}{"endpoint_id": profile.EndpointID})
 	}
 	config := &tls.Config{
-		InsecureSkipVerify: skipVerify,
+		InsecureSkipVerify: false,
 	}
 
-	// Set minimum TLS version
+	// Set minimum TLS version (only TLS 1.2+ allowed)
 	switch profile.MinTLSVersion {
-	case "1.0":
-		config.MinVersion = tls.VersionTLS10
-	case "1.1":
-		config.MinVersion = tls.VersionTLS11
-	case "1.2":
-		config.MinVersion = tls.VersionTLS12
 	case "1.3":
 		config.MinVersion = tls.VersionTLS13
 	default:
