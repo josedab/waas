@@ -423,7 +423,7 @@ validate-env: ## Validate .env file for required variables and insecure defaults
 	else echo "  ✅ .env looks good."; fi
 
 # Development setup
-dev-setup: ensure-env install-hooks docker-up ## One-command dev setup: creates .env, installs hooks, starts containers, runs core migrations
+_wait-for-services:
 	@echo "Waiting for PostgreSQL to be ready..."
 	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
 		docker-compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1 && break; \
@@ -438,6 +438,8 @@ dev-setup: ensure-env install-hooks docker-up ## One-command dev setup: creates 
 		sleep 1; \
 	done
 	@echo "Redis is ready."
+
+dev-setup: ensure-env install-hooks docker-up _wait-for-services ## One-command dev setup: creates .env, installs hooks, starts containers, runs core migrations
 	$(MAKE) migrate-core
 	@echo ""
 	@echo "Development environment is ready! (core migrations only — run 'make dev-setup-full' for all migrations)"
@@ -450,21 +452,7 @@ dev-setup: ensure-env install-hooks docker-up ## One-command dev setup: creates 
 	@echo "  Smoke test:        make smoke-test"
 	@echo "  API docs:          http://localhost:8080/docs/"
 
-dev-setup-full: ensure-env install-hooks docker-up ## Full dev setup with all migrations (not just core)
-	@echo "Waiting for PostgreSQL to be ready..."
-	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
-		docker-compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1 && break; \
-		echo "  Attempt $$i/30 - PostgreSQL not ready, retrying in 2s..."; \
-		sleep 2; \
-	done
-	@docker-compose exec -T postgres pg_isready -U postgres >/dev/null 2>&1 || { echo "PostgreSQL failed to start after 60s"; exit 1; }
-	@echo "PostgreSQL is ready."
-	@echo "Waiting for Redis to be ready..."
-	@for i in 1 2 3 4 5 6 7 8 9 10; do \
-		docker-compose exec -T redis redis-cli ping >/dev/null 2>&1 && break; \
-		sleep 1; \
-	done
-	@echo "Redis is ready."
+dev-setup-full: ensure-env install-hooks docker-up _wait-for-services ## Full dev setup with all migrations (not just core)
 	$(MAKE) migrate-up
 	@echo ""
 	@echo "Development environment is ready! (all migrations applied)"
