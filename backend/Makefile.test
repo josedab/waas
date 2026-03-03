@@ -18,6 +18,11 @@ TEST_REDIS_URL ?= redis://localhost:6379/10
 COVERAGE_FILE ?= coverage.out
 COVERAGE_HTML ?= coverage.html
 
+# Migration command for test database (uses local migrate CLI or Docker fallback)
+TEST_MIGRATE_CMD = $(shell command -v migrate >/dev/null 2>&1 \
+	&& echo 'migrate -path migrations -database "$(TEST_DATABASE_URL)"' \
+	|| echo 'docker run --rm -v $(CURDIR)/migrations:/migrations --network host migrate/migrate -path=/migrations -database "$(TEST_DATABASE_URL)"')
+
 # Test execution
 test: test-unit ## Run unit tests (default)
 
@@ -82,14 +87,13 @@ test-deps: ## Check and install test dependencies
 	@go mod download
 	@go mod tidy
 
-test-setup: ## Set up test environment (databases, etc.)
+test-setup: ## Set up test environment (databases, migrations)
 	@echo "Setting up test environment..."
 	@docker-compose -f docker-compose.test.yml up -d postgres redis
 	@echo "Waiting for services to be ready..."
 	@sleep 10
 	@echo "Running database migrations..."
-	@echo "TODO: Create cmd/migrate/main.go or use 'migrate' CLI directly"
-	@echo "Skipping migration — cmd/migrate/main.go does not exist yet."
+	$(TEST_MIGRATE_CMD) up
 	@echo "Test environment ready."
 
 test-cleanup: ## Clean up test environment
@@ -128,10 +132,9 @@ ci-test-full: test-deps ## Run full test suite for CI (including performance)
 	@$(MAKE) test-performance
 
 # Test data and fixtures
-test-fixtures: ## Generate test fixtures and mock data
-	@echo "Generating test fixtures..."
-	@echo "TODO: Create test/fixtures/generator.go to generate test fixture data"
-	@echo "Skipping — test/fixtures/generator.go does not exist yet."
+test-fixtures: ## Generate test fixtures and mock data (planned)
+	@echo "Test fixture generation is planned but not yet implemented."
+	@echo "See: test/fixtures/ for manual fixture files."
 
 # Linting and code quality (test-related)
 test-lint: ## Run linters on test code
@@ -189,10 +192,10 @@ test-db-redis: ## Run tests specifically for Redis
 	@TEST_REDIS_URL=$(TEST_REDIS_URL) go test -v ./pkg/queue/... ./pkg/cache/...
 
 # Load testing with external tools
-test-load-external: ## Run load tests with external tools (k6, artillery, etc.)
-	@echo "Running external load tests..."
-	@echo "TODO: Create test/load/k6-script.js for k6 load testing"
-	@command -v k6 >/dev/null 2>&1 && echo "k6 found but test/load/k6-script.js does not exist yet — skipping" || echo "k6 not found, skipping"
+test-load-external: ## Run load tests with external tools (k6, artillery, etc.) (planned)
+	@echo "External load testing is planned but not yet implemented."
+	@echo "Install k6 and create test/load/k6-script.js to enable."
+	@command -v k6 >/dev/null 2>&1 && echo "k6 is installed and ready" || echo "k6 not found — install from https://k6.io"
 
 # Test environment validation
 test-env-check: ## Validate test environment setup
