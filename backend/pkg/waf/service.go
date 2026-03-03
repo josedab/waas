@@ -32,11 +32,11 @@ var xssPatterns = []*regexp.Regexp{
 
 // Common SQL injection patterns
 var sqlInjectionPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)(\b(union|select|insert|update|delete|drop|alter|create|exec)\b.*\b(from|into|table|database|where)\b)`),
+	regexp.MustCompile(`(?i)(\b(union|select|insert|update|delete|drop|alter|create|exec)\b.*?\b(from|into|table|database|where)\b)`),
 	regexp.MustCompile(`(?i)(\bor\b\s+\d+\s*=\s*\d+)`),
 	regexp.MustCompile(`(?i)(--\s|;\s*drop\s|;\s*delete\s)`),
 	regexp.MustCompile(`(?i)('\s*(or|and)\s+')`),
-	regexp.MustCompile(`(?i)(\/\*.*\*\/)`),
+	regexp.MustCompile(`(?i)(\/\*.*?\*\/)`),
 }
 
 // Common path traversal patterns
