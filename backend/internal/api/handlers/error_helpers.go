@@ -2,13 +2,27 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	webhookerrors "github.com/josedab/waas/pkg/errors"
 	"github.com/josedab/waas/pkg/utils"
 )
 
 var errorLogger = utils.NewLogger("api-handlers")
+
+// ErrorResponse represents a lightweight error response with a code and message.
+type ErrorResponse struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// RespondWithError writes a structured error response using a WebhookError.
+// It derives the HTTP status from the error and renders the standard shape.
+func RespondWithError(c *gin.Context, err *webhookerrors.WebhookError) {
+	c.JSON(err.GetHTTPStatus(), err)
+}
 
 // InternalError logs the full error server-side and returns a generic error
 // message with a correlation ID to the client. This prevents leaking internal
@@ -52,4 +66,20 @@ func InternalErrorGeneric(c *gin.Context, err error) {
 	c.JSON(http.StatusInternalServerError, gin.H{
 		"error": "An internal error occurred. Correlation ID: " + correlationID,
 	})
+}
+
+// ParseQueryInt parses an integer query parameter. If the raw value cannot be
+// parsed, it logs a debug warning and returns defaultVal.
+func ParseQueryInt(c *gin.Context, param string, defaultVal int) int {
+	raw := c.DefaultQuery(param, strconv.Itoa(defaultVal))
+	val, err := strconv.Atoi(raw)
+	if err != nil {
+		errorLogger.Debug("Invalid query parameter, using default", map[string]interface{}{
+			"param":   param,
+			"value":   raw,
+			"default": defaultVal,
+		})
+		return defaultVal
+	}
+	return val
 }
