@@ -6,7 +6,8 @@
        smoke-test run-all run-dashboard logs \
        install-hooks uninstall-hooks \
        test-coverage test-status test-stubs test-single new-pkg audit-deps validate-env \
-       dev dev-all dev-logs check seed quickstart _ensure-air _ensure-golangci-lint doctor
+       dev dev-all dev-logs check seed quickstart stop _ensure-air _ensure-golangci-lint _ensure-entr _wait-for-services doctor \
+       test-failed
 
 # Configuration — DATABASE_URL must be set in the environment or .env file.
 # Run "make ensure-env" to create .env from template.
@@ -80,6 +81,23 @@ _ensure-air:
 		case "$$ans" in [yY]*) go install github.com/air-verse/air@$(AIR_VERSION) ;; *) echo "Aborted."; exit 1 ;; esac; \
 	}
 
+_ensure-entr:
+	@command -v entr >/dev/null 2>&1 || { \
+		echo "entr is not installed. It watches files and re-runs commands on changes."; \
+		if command -v brew >/dev/null 2>&1; then \
+			printf "Install via 'brew install entr'? [y/N] "; \
+			read ans; \
+			case "$$ans" in [yY]*) brew install entr ;; *) echo "Aborted."; exit 1 ;; esac; \
+		elif command -v apt-get >/dev/null 2>&1; then \
+			printf "Install via 'sudo apt-get install entr'? [y/N] "; \
+			read ans; \
+			case "$$ans" in [yY]*) sudo apt-get install -y entr ;; *) echo "Aborted."; exit 1 ;; esac; \
+		else \
+			echo "Install entr manually: https://github.com/eradman/entr"; \
+			exit 1; \
+		fi; \
+	}
+
 dev: _ensure-air ## Run API service with hot-reload (requires Air)
 	air
 
@@ -112,22 +130,9 @@ test-quick: ## Fast inner-loop tests: no coverage, parallel, -short (for TDD)
 test-all: ## Run all tests including enterprise packages
 	go test -v -timeout=15m ./...
 
-test-watch: ## Watch for changes and re-run tests (requires entr or fswatch)
-	@if command -v entr >/dev/null 2>&1; then \
-		echo "Watching for changes (entr)... Ctrl+C to stop"; \
-		find . -name "*.go" | entr -c go test -short -race ./...; \
-	elif command -v fswatch >/dev/null 2>&1; then \
-		echo "Watching for changes (fswatch)... Ctrl+C to stop"; \
-		fswatch -o --include='\.go$$' -r . | while read; do \
-			echo "--- Change detected, running tests ---"; \
-			go test -short -race ./...; \
-		done; \
-	else \
-		echo "Install 'entr' or 'fswatch' for file watching:"; \
-		echo "  macOS:  brew install entr    # or: brew install fswatch"; \
-		echo "  Linux:  apt install entr     # or: apt install fswatch"; \
-		exit 1; \
-	fi
+test-watch: _ensure-entr ## Watch for changes and re-run tests (auto-installs entr if needed)
+	@echo "Watching for changes (entr)... Ctrl+C to stop"
+	@find . -name "*.go" | entr -c go test -short -race ./...
 
 test-single: ## Run a single test (usage: make test-single TEST=TestName PKG=./pkg/auth)
 	@if [ -z "$(TEST)" ]; then \
@@ -136,6 +141,20 @@ test-single: ## Run a single test (usage: make test-single TEST=TestName PKG=./p
 		exit 1; \
 	fi
 	go test -v -run $(TEST) $(or $(PKG),./...)
+
+test-failed: ## Re-run only tests that failed in the last test run
+	@if [ ! -f .test-failures ]; then \
+		echo "No previous failure log found. Running tests to capture failures..."; \
+		go test -short ./internal/... ./pkg/... 2>&1 | tee /dev/stderr | grep '^\-\-\- FAIL:' | awk '{print $$3}' > .test-failures; \
+	fi
+	@if [ ! -s .test-failures ]; then \
+		echo "No test failures to re-run. ✅"; \
+		rm -f .test-failures; \
+	else \
+		FAILED=$$(paste -sd '|' .test-failures); \
+		echo "Re-running failed tests: $$FAILED"; \
+		go test -v -run "$$FAILED" ./... && rm -f .test-failures; \
+	fi
 
 test-coverage: ## Run tests with per-package coverage breakdown
 	@echo "Running tests with per-package coverage..."
