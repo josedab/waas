@@ -1,0 +1,29 @@
+{
+  "cost_model": {
+    "id": "model-1",
+    "tenant_id": "tenant-1",
+    "name": "default",
+    "compute_cost_per_delivery": 0.001,
+    "bandwidth_cost_per_kb": 0.0005,
+    "retry_cost_multiplier": 1.5,
+    "storage_cost_per_gb_day": 0.023,
+    "currency": "USD",
+    "is_active": true
+  },
+  "delivery_cost_requests": {
+    "standard": {
+      "delivery_id": "del-1",
+      "endpoint_id": "ep-1",
+      "event_type": "order.created",
+      "payload_size_bytes": 2048,
+      "retry_count": 2
+    },
+    "zero_payload": {
+      "delivery_id": "del-2",
+      "endpoint_id": "ep-1",
+      "event_type": "order.created",
+      "payload_size_bytes": 0,
+      "retry_count": 1
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "valid_callback_request": {
+    "callback_url": "https://example.com/callback",
+    "payload": {"key": "value"},
+    "headers": {"Content-Type": "application/json"},
+    "timeout_ms": 5000
+  },
+  "invalid_callback_request": {
+    "webhook_id": "not-a-uuid",
+    "callback_url": "https://example.com/callback",
+    "payload": {}
+  },
+  "valid_callback_response": {
+    "status_code": 200,
+    "body": {"result": "ok"},
+    "headers": {"X-Custom": "header"}
+  },
+  "valid_pattern": {
+    "name": "test-pattern",
+    "url_pattern": "/callback/{id}",
+    "method": "POST",
+    "timeout_ms": 10000
+  },
+  "valid_long_poll_request": {
+    "timeout_ms": 30000
+  }
+}

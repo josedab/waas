@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -118,6 +119,16 @@ func (m *MockRepository) GetCallbackMetrics(ctx context.Context, tenantID uuid.U
 }
 
 // helpers
+
+// loadFixtures reads the testdata/fixtures.json file and returns the parsed map.
+func loadFixtures(t *testing.T) map[string]json.RawMessage {
+	t.Helper()
+	data, err := os.ReadFile("testdata/fixtures.json")
+	require.NoError(t, err, "failed to read testdata/fixtures.json")
+	var fixtures map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(data, &fixtures), "failed to parse testdata/fixtures.json")
+	return fixtures
+}
 
 func newTestService(repo *MockRepository) *Service {
 	return NewService(repo)

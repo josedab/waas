@@ -1,0 +1,10 @@
+{
+  "payloads": {
+    "basic": {"key": "value"},
+    "order_created": {"event_type": "order.created", "status": "active"},
+    "status_active": {"status": "active"},
+    "numeric": {"amount": 150, "count": 5},
+    "multi_field": {"status": "active", "region": "us-east"},
+    "nested": {"metadata": {"region": "us-east", "tier": "premium"}}
+  }
+}

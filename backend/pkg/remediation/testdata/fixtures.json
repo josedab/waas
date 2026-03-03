@@ -1,0 +1,25 @@
+{
+  "endpoint_state": {
+    "basic": {
+      "url": "https://old.example.com"
+    },
+    "with_timeout": {
+      "url": "https://old.example.com",
+      "timeout_ms": 5000
+    }
+  },
+  "action_request": {
+    "change_url": {
+      "action_type": "change_url",
+      "parameters": {
+        "new_url": "https://new.example.com"
+      }
+    },
+    "increase_timeout": {
+      "action_type": "increase_timeout",
+      "parameters": {
+        "new_timeout_ms": 10000
+      }
+    }
+  }
+}
