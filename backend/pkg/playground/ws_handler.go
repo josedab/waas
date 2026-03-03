@@ -1,6 +1,7 @@
 package playground
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -44,12 +45,52 @@ type WSEventPayload struct {
 type WebSocketHub struct {
 	mu          sync.RWMutex
 	connections map[string]map[*websocket.Conn]bool // sessionID -> set of connections
+	ctx         context.Context
+	cancel      context.CancelFunc
 }
 
-// NewWebSocketHub creates a new WebSocket hub
+// NewWebSocketHub creates a new WebSocket hub bound to the given context.
+// When ctx is cancelled, all connections are drained via Close.
 func NewWebSocketHub() *WebSocketHub {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &WebSocketHub{
 		connections: make(map[string]map[*websocket.Conn]bool),
+		ctx:         ctx,
+		cancel:      cancel,
+	}
+}
+
+// NewWebSocketHubWithContext creates a new WebSocket hub that shuts down when
+// the provided context is cancelled.
+func NewWebSocketHubWithContext(ctx context.Context) *WebSocketHub {
+	childCtx, cancel := context.WithCancel(ctx)
+	hub := &WebSocketHub{
+		connections: make(map[string]map[*websocket.Conn]bool),
+		ctx:         childCtx,
+		cancel:      cancel,
+	}
+	go hub.watchShutdown()
+	return hub
+}
+
+// watchShutdown waits for the context to be cancelled, then drains connections.
+func (hub *WebSocketHub) watchShutdown() {
+	<-hub.ctx.Done()
+	hub.Close()
+}
+
+// Close sends a close message to all connections and removes them.
+func (hub *WebSocketHub) Close() {
+	hub.cancel()
+	hub.mu.Lock()
+	defer hub.mu.Unlock()
+	for sessionID, conns := range hub.connections {
+		for conn := range conns {
+			conn.WriteMessage(websocket.CloseMessage,
+				websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"))
+			conn.Close()
+		}
+		delete(hub.connections, sessionID)
 	}
 }
 
@@ -100,9 +141,6 @@ func (hub *WebSocketHub) ConnectionCount(sessionID string) int {
 	defer hub.mu.RUnlock()
 	return len(hub.connections[sessionID])
 }
-
-// Default hub instance (kept for backward compatibility; prefer Handler.hub)
-var defaultHub = NewWebSocketHub()
 
 // RegisterWSRoutes registers WebSocket routes for real-time playground communication
 func (h *Handler) RegisterWSRoutes(r *gin.RouterGroup) {
