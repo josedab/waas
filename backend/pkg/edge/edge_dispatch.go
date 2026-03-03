@@ -321,20 +321,18 @@ func (s *Service) selectNode(strategy string, receiverLat, receiverLon float64, 
 			})
 		}
 	case DispatchStrategyLoadBalance:
-		// Round-robin by selecting the node with fewest deliveries
+		// Snapshot delivery counts under a single lock to avoid nested locking.
+		s.dispatch.mu.RLock()
+		deliveryCounts := make(map[string]int64, len(nodes))
+		for _, n := range nodes {
+			if m := s.dispatch.metrics[n.nodeID]; m != nil {
+				deliveryCounts[n.nodeID] = m.TotalDeliveries
+			}
+		}
+		s.dispatch.mu.RUnlock()
+
 		sort.Slice(nodes, func(i, j int) bool {
-			s.dispatch.mu.RLock()
-			defer s.dispatch.mu.RUnlock()
-			mi := s.dispatch.metrics[nodes[i].nodeID]
-			mj := s.dispatch.metrics[nodes[j].nodeID]
-			var ci, cj int64
-			if mi != nil {
-				ci = mi.TotalDeliveries
-			}
-			if mj != nil {
-				cj = mj.TotalDeliveries
-			}
-			return ci < cj
+			return deliveryCounts[nodes[i].nodeID] < deliveryCounts[nodes[j].nodeID]
 		})
 	default:
 		// Lowest latency: sort by base latency
