@@ -178,8 +178,16 @@ func (s *ComplianceService) ScanForPII(ctx context.Context, tenantID uuid.UUID, 
 		}
 	}
 
+	const maxRegexLen = 1024
+	const maxMatches = 1000
+
 	for _, pattern := range patterns {
 		if pattern.PatternType != "regex" {
+			continue
+		}
+
+		if len(pattern.PatternValue) > maxRegexLen {
+			s.logger.Warn("Regex pattern exceeds max length, skipping", map[string]interface{}{"pattern_id": pattern.ID, "length": len(pattern.PatternValue), "max": maxRegexLen})
 			continue
 		}
 
@@ -189,7 +197,7 @@ func (s *ComplianceService) ScanForPII(ctx context.Context, tenantID uuid.UUID, 
 			continue
 		}
 
-		matches := re.FindAllStringIndex(req.Content, -1)
+		matches := re.FindAllStringIndex(req.Content, maxMatches)
 		for _, match := range matches {
 			detection := &models.PIIDetection{
 				TenantID:         tenantID,
