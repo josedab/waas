@@ -1,6 +1,10 @@
 # Production Docker Compose Configuration
-# This file is for reference and local production testing only
-# Use Kubernetes manifests for actual production deployment
+#
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+#
+# Production-grade setup with secrets, resource limits, health checks,
+# and security hardening. For reference and local production testing only.
+# Use Kubernetes manifests (k8s/) for actual production deployment.
 
 services:
   postgres:
