@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/josedab/waas/pkg/cloud"
 	"github.com/josedab/waas/pkg/utils"
@@ -261,7 +260,7 @@ func (h *CloudHandler) ListUsageHistory(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "12"))
+	limit := ParseQueryInt(c, "limit", 12)
 
 	history, err := h.repo.ListUsage(c.Request.Context(), tenantID, limit)
 	if err != nil {
@@ -286,7 +285,7 @@ func (h *CloudHandler) ListInvoices(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "24"))
+	limit := ParseQueryInt(c, "limit", 24)
 
 	invoices, err := h.repo.ListInvoices(c.Request.Context(), tenantID, limit)
 	if err != nil {
@@ -544,7 +543,11 @@ func (h *CloudHandler) UpdateMember(c *gin.Context) {
 		return
 	}
 
-	member, _ := h.repo.GetTeamMember(c.Request.Context(), id)
+	member, err := h.repo.GetTeamMember(c.Request.Context(), id)
+	if err != nil {
+		InternalErrorGeneric(c, err)
+		return
+	}
 	c.JSON(http.StatusOK, member)
 }
 
@@ -582,8 +585,8 @@ func (h *CloudHandler) ListAuditLogs(c *gin.Context) {
 		return
 	}
 
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
+	page := ParseQueryInt(c, "page", 1)
+	pageSize := ParseQueryInt(c, "page_size", 50)
 
 	logs, err := h.auditService.ListLogs(c.Request.Context(), tenantID, page, pageSize)
 	if err != nil {

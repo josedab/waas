@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/josedab/waas/pkg/gateway"
 	"github.com/josedab/waas/pkg/utils"
@@ -163,7 +162,11 @@ func (h *GatewayHandler) UpdateProvider(c *gin.Context) {
 		provider.Description = req.Description
 	}
 	if req.SignatureConfig != nil {
-		configJSON, _ := json.Marshal(req.SignatureConfig)
+		configJSON, err := json.Marshal(req.SignatureConfig)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid signature config format"})
+			return
+		}
 		provider.SignatureConfig = configJSON
 	}
 	if req.IsActive != nil {
@@ -334,8 +337,8 @@ func (h *GatewayHandler) ListInboundWebhooks(c *gin.Context) {
 	}
 
 	providerID := c.Query("provider_id")
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit := ParseQueryInt(c, "limit", 50)
+	offset := ParseQueryInt(c, "offset", 0)
 
 	webhooks, _, err := h.service.ListInboundWebhooks(c.Request.Context(), tenantID, providerID, limit, offset)
 	if err != nil {

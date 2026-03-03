@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/josedab/waas/pkg/anomaly"
 	"github.com/josedab/waas/pkg/utils"
@@ -80,8 +79,8 @@ func (h *AnomalyHandler) ListAnomalies(c *gin.Context) {
 		}
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit := ParseQueryInt(c, "limit", 50)
+	offset := ParseQueryInt(c, "offset", 0)
 
 	anomalies, err := h.service.ListAnomalies(c.Request.Context(), tenantID, status, severity, endpointID, limit, offset)
 	if err != nil {
@@ -330,7 +329,11 @@ func (h *AnomalyHandler) CreateAlertConfig(c *gin.Context) {
 	}
 
 	// Convert config map to JSON string
-	configJSON, _ := json.Marshal(req.Config)
+	configJSON, err := json.Marshal(req.Config)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid config format"})
+		return
+	}
 
 	alertReq := &anomaly.CreateAlertConfigRequest{
 		Name:        req.Name,
@@ -380,8 +383,8 @@ func (h *AnomalyHandler) ListAlerts(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit := ParseQueryInt(c, "limit", 50)
+	offset := ParseQueryInt(c, "offset", 0)
 
 	alerts, err := h.service.ListAlerts(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {

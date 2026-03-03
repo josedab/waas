@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/josedab/waas/pkg/playground"
 	"github.com/josedab/waas/pkg/utils"
@@ -192,7 +191,7 @@ func (h *PlaygroundHandler) GetExecutionHistory(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	limit := ParseQueryInt(c, "limit", 50)
 
 	history, err := h.service.GetExecutionHistory(c.Request.Context(), id, limit)
 	if err != nil {
@@ -224,8 +223,16 @@ func (h *PlaygroundHandler) CaptureRequest(c *gin.Context) {
 		return
 	}
 
-	headersJSON, _ := json.Marshal(req.Headers)
-	queryParamsJSON, _ := json.Marshal(req.QueryParams)
+	headersJSON, err := json.Marshal(req.Headers)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "invalid headers format"})
+		return
+	}
+	queryParamsJSON, err := json.Marshal(req.QueryParams)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "invalid query params format"})
+		return
+	}
 
 	capture := &playground.RequestCapture{
 		TenantID:    tenantID,
@@ -268,7 +275,7 @@ func (h *PlaygroundHandler) ListCaptures(c *gin.Context) {
 		}
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	limit := ParseQueryInt(c, "limit", 50)
 
 	captures, err := h.service.ListCaptures(c.Request.Context(), tenantID, sessionID, limit)
 	if err != nil {

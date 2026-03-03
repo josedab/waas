@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -276,7 +277,11 @@ func (h *ConnectorsHandler) TestConnector(c *gin.Context) {
 		return
 	}
 
-	payloadBytes, _ := json.Marshal(payload)
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload format"})
+		return
+	}
 	result, err := h.service.ExecuteConnector(c.Request.Context(), tenantID, id, "test", payloadBytes)
 	if err != nil {
 		InternalErrorGeneric(c, err)
@@ -284,7 +289,10 @@ func (h *ConnectorsHandler) TestConnector(c *gin.Context) {
 	}
 
 	var resultMap map[string]interface{}
-	json.Unmarshal(result, &resultMap)
+	if err := json.Unmarshal(result, &resultMap); err != nil {
+		InternalErrorGeneric(c, fmt.Errorf("failed to parse connector result: %w", err))
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

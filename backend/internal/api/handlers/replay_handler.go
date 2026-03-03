@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/josedab/waas/pkg/replay"
@@ -282,8 +281,8 @@ func (h *ReplayHandler) ListSnapshots(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit := ParseQueryInt(c, "limit", 50)
+	offset := ParseQueryInt(c, "offset", 0)
 
 	snapshots, _, err := h.service.ListSnapshots(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {

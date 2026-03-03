@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/repository"
@@ -12,12 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
-
-// ErrorResponse represents an error response
-type ErrorResponse struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
 
 // TransformationHandler handles transformation API requests
 type TransformationHandler struct {
@@ -195,8 +188,8 @@ func (h *TransformationHandler) ListTransformations(c *gin.Context) {
 		return
 	}
 
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "20"))
+	page := ParseQueryInt(c, "page", 1)
+	perPage := ParseQueryInt(c, "per_page", 20)
 	if page < 1 {
 		page = 1
 	}
@@ -439,7 +432,7 @@ func (h *TransformationHandler) GetTransformationLogs(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	limit := ParseQueryInt(c, "limit", 50)
 	if limit < 1 || limit > 200 {
 		limit = 50
 	}

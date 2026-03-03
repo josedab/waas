@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -145,8 +144,8 @@ func (h *CollaborationHandler) InviteMember(c *gin.Context) {
 	}
 
 	// Check if member already exists
-	existing, _ := h.repo.GetTeamMemberByEmail(c.Request.Context(), teamID, req.Email)
-	if existing != nil {
+	existing, err := h.repo.GetTeamMemberByEmail(c.Request.Context(), teamID, req.Email)
+	if err == nil && existing != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "member already exists"})
 		return
 	}
@@ -300,7 +299,11 @@ func (h *CollaborationHandler) ReviewChangeRequest(c *gin.Context) {
 		return
 	}
 
-	teamID, _ := uuid.Parse(c.Param("team_id"))
+	teamID, err := uuid.Parse(c.Param("team_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid team_id"})
+		return
+	}
 
 	var req models.ReviewChangeRequestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -323,8 +326,10 @@ func (h *CollaborationHandler) ReviewChangeRequest(c *gin.Context) {
 
 	// Update CR status if approved
 	if req.Status == models.ReviewApproved {
-		cr, _ := h.repo.GetChangeRequest(c.Request.Context(), crID)
-		if cr != nil {
+		cr, crErr := h.repo.GetChangeRequest(c.Request.Context(), crID)
+		if crErr != nil {
+			h.logger.Error("Failed to fetch change request for status update", map[string]interface{}{"error": crErr.Error()})
+		} else if cr != nil {
 			cr.Status = models.ChangeRequestApproved
 			h.repo.UpdateChangeRequest(c.Request.Context(), cr)
 		}
@@ -353,7 +358,11 @@ func (h *CollaborationHandler) MergeChangeRequest(c *gin.Context) {
 		return
 	}
 
-	teamID, _ := uuid.Parse(c.Param("team_id"))
+	teamID, err := uuid.Parse(c.Param("team_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid team_id"})
+		return
+	}
 
 	cr, err := h.repo.GetChangeRequest(c.Request.Context(), crID)
 	if err != nil {
@@ -421,8 +430,8 @@ func (h *CollaborationHandler) GetActivityFeed(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit := ParseQueryInt(c, "limit", 50)
+	offset := ParseQueryInt(c, "offset", 0)
 
 	activities, err := h.repo.GetTeamActivity(c.Request.Context(), teamID, limit, offset)
 	if err != nil {

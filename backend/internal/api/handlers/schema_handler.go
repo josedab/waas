@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/josedab/waas/pkg/schema"
 	"github.com/josedab/waas/pkg/utils"
@@ -81,7 +80,11 @@ func (h *SchemaHandler) CreateSchema(c *gin.Context) {
 		return
 	}
 
-	schemaJSON, _ := json.Marshal(req.JSONSchema)
+	schemaJSON, err := json.Marshal(req.JSONSchema)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON schema format"})
+		return
+	}
 	createReq := &schema.CreateSchemaRequest{
 		Name:        req.Name,
 		Version:     req.Version,
@@ -135,8 +138,8 @@ func (h *SchemaHandler) ListSchemas(c *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	limit := ParseQueryInt(c, "limit", 50)
+	offset := ParseQueryInt(c, "offset", 0)
 
 	schemas, _, err := h.service.ListSchemas(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
@@ -222,7 +225,11 @@ func (h *SchemaHandler) CreateSchemaVersion(c *gin.Context) {
 		return
 	}
 
-	schemaJSON, _ := json.Marshal(req.JSONSchema)
+	schemaJSON, err := json.Marshal(req.JSONSchema)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON schema format"})
+		return
+	}
 	createReq := &schema.CreateVersionRequest{
 		Version:    req.Version,
 		JSONSchema: schemaJSON,
@@ -327,7 +334,11 @@ func (h *SchemaHandler) ValidatePayload(c *gin.Context) {
 		return
 	}
 
-	payloadBytes, _ := json.Marshal(req.Payload)
+	payloadBytes, err := json.Marshal(req.Payload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload format"})
+		return
+	}
 	result, err := h.service.ValidatePayloadDirect(c.Request.Context(), tenantID, id, payloadBytes)
 	if err != nil {
 		InternalErrorGeneric(c, err)
@@ -356,7 +367,11 @@ func (h *SchemaHandler) ValidateForEndpoint(c *gin.Context) {
 		return
 	}
 
-	payloadBytes, _ := json.Marshal(req.Payload)
+	payloadBytes, err := json.Marshal(req.Payload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload format"})
+		return
+	}
 	result, err := h.service.ValidatePayload(c.Request.Context(), tenantID, endpointID, payloadBytes)
 	if err != nil {
 		InternalErrorGeneric(c, err)

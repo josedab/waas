@@ -292,7 +292,7 @@ func (h *MultiRegionHandler) TriggerFailover(c *gin.Context) {
 // @Success 200 {array} multiregion.FailoverEvent
 // @Router /failover/events [get]
 func (h *MultiRegionHandler) ListFailoverEvents(c *gin.Context) {
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	limit := ParseQueryInt(c, "limit", 50)
 
 	events, err := h.repo.ListFailoverEvents(c.Request.Context(), limit)
 	if err != nil {
