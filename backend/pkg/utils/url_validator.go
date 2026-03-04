@@ -120,9 +120,7 @@ func (v *URLValidator) checkForPrivateAddresses(host string) error {
 	// Resolve the hostname to check for private IP ranges
 	ips, err := net.LookupIP(hostname)
 	if err != nil {
-		// If we can't resolve the hostname, we'll allow it and let the accessibility check handle it
-		// This prevents DNS resolution issues from blocking valid URLs
-		return nil
+		return fmt.Errorf("failed to resolve hostname %q: %w", hostname, err)
 	}
 
 	// Check each resolved IP
