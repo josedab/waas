@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Handler provides HTTP endpoints for progressive delivery.
@@ -53,7 +54,7 @@ func (h *Handler) ListRollouts(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	rollouts, err := h.service.ListRollouts(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"rollouts": rollouts})

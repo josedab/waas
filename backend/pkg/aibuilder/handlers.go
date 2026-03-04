@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Handler provides HTTP endpoints for the AI conversational webhook builder.
@@ -77,7 +78,7 @@ func (h *Handler) ListConversations(c *gin.Context) {
 
 	convs, err := h.service.ListConversations(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

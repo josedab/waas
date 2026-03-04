@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Handler provides HTTP endpoints for the plugin ecosystem.
@@ -61,7 +62,7 @@ func (h *Handler) SearchPlugins(c *gin.Context) {
 	}
 	plugins, err := h.service.SearchPlugins(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"plugins": plugins})
@@ -111,7 +112,7 @@ func (h *Handler) ListInstallations(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	installations, err := h.service.ListInstallations(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"installations": installations})
@@ -139,7 +140,7 @@ func (h *Handler) ListReviews(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	reviews, err := h.service.ListReviews(c.Request.Context(), c.Param("id"), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"reviews": reviews})

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Handler provides HTTP endpoints for the migration wizard.
@@ -49,7 +50,7 @@ func (h *Handler) ListMigrations(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	migrations, err := h.service.ListMigrations(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"migrations": migrations})

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Handler provides HTTP endpoints for the edge delivery network.
@@ -55,7 +56,7 @@ func (h *Handler) ListNodes(c *gin.Context) {
 	}
 	nodes, err := h.service.ListNodes(c.Request.Context(), region)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"nodes": nodes})
@@ -99,7 +100,7 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 func (h *Handler) GetTopology(c *gin.Context) {
 	topology, err := h.service.GetTopology(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, topology)
@@ -108,7 +109,7 @@ func (h *Handler) GetTopology(c *gin.Context) {
 func (h *Handler) GetNetworkMetrics(c *gin.Context) {
 	metrics, err := h.service.GetMetrics(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, metrics)
@@ -133,7 +134,7 @@ func (h *Handler) ListRoutingRules(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	rules, err := h.service.ListRoutingRules(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"rules": rules})

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Handler provides HTTP endpoints for the security intelligence suite.
@@ -51,7 +52,7 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	dashboard, err := h.service.GetDashboard(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, dashboard)
@@ -66,7 +67,7 @@ func (h *Handler) ListEvents(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	events, err := h.service.ListEvents(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"events": events})
@@ -85,7 +86,7 @@ func (h *Handler) DetectAnomalies(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	anomalies, err := h.service.DetectAnomalies(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"anomalies": anomalies})
@@ -110,7 +111,7 @@ func (h *Handler) ListPolicies(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	policies, err := h.service.ListPolicies(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"policies": policies})
