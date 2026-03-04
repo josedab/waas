@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	apperrors "github.com/josedab/waas/pkg/errors"
+	"github.com/josedab/waas/pkg/httputil"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
 	"github.com/josedab/waas/pkg/repository"
@@ -487,10 +488,8 @@ func (h *TestingHandler) performWebhookTest(ctx context.Context, req *TestWebhoo
 		TestedAt:  startTime,
 	}
 
-	// Create HTTP client with timeout
-	client := &http.Client{
-		Timeout: time.Duration(req.Timeout) * time.Second,
-	}
+	// Create SSRF-safe HTTP client with timeout
+	client := httputil.NewSSRFSafeClient(time.Duration(req.Timeout) * time.Second)
 
 	// Create HTTP request
 	httpReq, err := http.NewRequestWithContext(ctx, req.Method, req.URL, strings.NewReader(string(req.Payload)))
