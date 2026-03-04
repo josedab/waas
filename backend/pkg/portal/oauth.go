@@ -3,6 +3,7 @@ package portal
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -23,14 +24,14 @@ var (
 
 // OAuthClient represents a registered OAuth 2.0 client
 type OAuthClient struct {
-	ID           string   `json:"id"`
-	TenantID     string   `json:"tenant_id"`
-	Name         string   `json:"name"`
-	ClientID     string   `json:"client_id"`
-	ClientSecret string   `json:"client_secret,omitempty"` // Only returned on creation
-	RedirectURIs []string `json:"redirect_uris"`
-	Scopes       []string `json:"scopes"`
-	GrantTypes   []string `json:"grant_types"` // authorization_code, client_credentials
+	ID           string    `json:"id"`
+	TenantID     string    `json:"tenant_id"`
+	Name         string    `json:"name"`
+	ClientID     string    `json:"client_id"`
+	ClientSecret string    `json:"client_secret,omitempty"` // Only returned on creation
+	RedirectURIs []string  `json:"redirect_uris"`
+	Scopes       []string  `json:"scopes"`
+	GrantTypes   []string  `json:"grant_types"` // authorization_code, client_credentials
 	CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -59,15 +60,15 @@ type OAuthToken struct {
 
 // CustomDomain represents a custom domain for the portal
 type CustomDomain struct {
-	ID           string    `json:"id"`
-	TenantID     string    `json:"tenant_id"`
-	PortalID     string    `json:"portal_id"`
-	Domain       string    `json:"domain"`
-	Status       string    `json:"status"` // pending, active, error
-	SSLStatus    string    `json:"ssl_status"` // pending, active, error
-	VerifyTXT    string    `json:"verify_txt"`
-	Verified     bool      `json:"verified"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID        string    `json:"id"`
+	TenantID  string    `json:"tenant_id"`
+	PortalID  string    `json:"portal_id"`
+	Domain    string    `json:"domain"`
+	Status    string    `json:"status"`     // pending, active, error
+	SSLStatus string    `json:"ssl_status"` // pending, active, error
+	VerifyTXT string    `json:"verify_txt"`
+	Verified  bool      `json:"verified"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // ThemeConfig represents the portal's visual theme
@@ -90,13 +91,13 @@ type ThemeConfig struct {
 
 // OAuthProvider manages OAuth 2.0 for embedded portals
 type OAuthProvider struct {
-	mu             sync.RWMutex
-	clients        map[string]*OAuthClient        // clientID -> client
-	authCodes      map[string]*AuthorizationCode   // code -> auth
-	tokens         map[string]*OAuthToken          // accessToken -> token
-	refreshTokens  map[string]*OAuthToken          // refreshToken -> token
-	customDomains  map[string]*CustomDomain         // domain -> config
-	themes         map[string]*ThemeConfig          // portalID -> theme
+	mu            sync.RWMutex
+	clients       map[string]*OAuthClient       // clientID -> client
+	authCodes     map[string]*AuthorizationCode // code -> auth
+	tokens        map[string]*OAuthToken        // accessToken -> token
+	refreshTokens map[string]*OAuthToken        // refreshToken -> token
+	customDomains map[string]*CustomDomain      // domain -> config
+	themes        map[string]*ThemeConfig       // portalID -> theme
 }
 
 // NewOAuthProvider creates a new OAuth provider
@@ -199,7 +200,7 @@ func (p *OAuthProvider) ExchangeCode(_ context.Context, code, clientID, clientSe
 	}
 
 	client, ok := p.clients[clientID]
-	if !ok || client.ClientSecret != clientSecret {
+	if !ok || subtle.ConstantTimeCompare([]byte(client.ClientSecret), []byte(clientSecret)) != 1 {
 		return nil, ErrOAuthClientNotFound
 	}
 

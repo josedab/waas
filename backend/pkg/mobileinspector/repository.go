@@ -1,6 +1,7 @@
 package mobileinspector
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"time"
 )
@@ -61,7 +62,7 @@ func (r *MemoryRepository) GetSession(id string) (*MobileSession, error) {
 
 func (r *MemoryRepository) GetSessionByToken(token string) (*MobileSession, error) {
 	for _, s := range r.sessions {
-		if s.Token == token {
+		if subtle.ConstantTimeCompare([]byte(s.Token), []byte(token)) == 1 {
 			return s, nil
 		}
 	}

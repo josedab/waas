@@ -2,6 +2,7 @@ package playground
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,18 +14,18 @@ import (
 
 // PlaygroundSession represents an interactive real-time webhook playground environment.
 type PlaygroundSession struct {
-	ID               uuid.UUID  `json:"id"`
-	TenantID         uuid.UUID  `json:"tenant_id"`
-	Name             string     `json:"name"`
-	InboundURL       string     `json:"inbound_url"`
-	Status           string     `json:"status"` // "active", "paused", "expired"
-	WebhooksSent     int        `json:"webhooks_sent"`
-	WebhooksReceived int        `json:"webhooks_received"`
-	ShareURL         string     `json:"share_url,omitempty"`
-	ShareToken       string     `json:"share_token,omitempty"`
-	ExpiresAt        time.Time  `json:"expires_at"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	ID               uuid.UUID `json:"id"`
+	TenantID         uuid.UUID `json:"tenant_id"`
+	Name             string    `json:"name"`
+	InboundURL       string    `json:"inbound_url"`
+	Status           string    `json:"status"` // "active", "paused", "expired"
+	WebhooksSent     int       `json:"webhooks_sent"`
+	WebhooksReceived int       `json:"webhooks_received"`
+	ShareURL         string    `json:"share_url,omitempty"`
+	ShareToken       string    `json:"share_token,omitempty"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // SessionMessage represents a single message exchanged in a playground session,
@@ -44,7 +45,7 @@ type SessionMessage struct {
 // FailureSimulation configures how the playground should simulate failures
 // for incoming webhooks.
 type FailureSimulation struct {
-	Type          string  `json:"type"`           // "timeout", "server_error", "rate_limit", "network_error", "slow_response"
+	Type          string  `json:"type"` // "timeout", "server_error", "rate_limit", "network_error", "slow_response"
 	Enabled       bool    `json:"enabled"`
 	StatusCode    int     `json:"status_code,omitempty"`
 	DelayMs       int64   `json:"delay_ms,omitempty"`
@@ -198,7 +199,7 @@ func PredefinedScenarioTemplates() []ScenarioTemplate {
 			Provider:    "Stripe",
 			EventType:   "payment_intent.succeeded",
 			Headers: map[string]string{
-				"Content-Type":    "application/json",
+				"Content-Type":     "application/json",
 				"Stripe-Signature": "t=1234567890,v1=signature_placeholder",
 			},
 			Payload: json.RawMessage(`{"id":"evt_1ABC","object":"event","type":"payment_intent.succeeded","data":{"object":{"id":"pi_1DEF","amount":2000,"currency":"usd","status":"succeeded","payment_method":"pm_card_visa"}}}`),
@@ -223,10 +224,10 @@ func PredefinedScenarioTemplates() []ScenarioTemplate {
 			Provider:    "Shopify",
 			EventType:   "orders/create",
 			Headers: map[string]string{
-				"Content-Type":              "application/json",
-				"X-Shopify-Topic":           "orders/create",
-				"X-Shopify-Shop-Domain":     "example.myshopify.com",
-				"X-Shopify-Hmac-SHA256":     "hmac_placeholder",
+				"Content-Type":          "application/json",
+				"X-Shopify-Topic":       "orders/create",
+				"X-Shopify-Shop-Domain": "example.myshopify.com",
+				"X-Shopify-Hmac-SHA256": "hmac_placeholder",
 			},
 			Payload: json.RawMessage(`{"id":820982911946154508,"email":"jon@example.com","total_price":"199.00","currency":"USD","financial_status":"paid","line_items":[{"title":"Widget","quantity":1,"price":"199.00"}],"shipping_address":{"city":"Ottawa","country":"Canada"}}`),
 		},
@@ -248,9 +249,9 @@ func PredefinedScenarioTemplates() []ScenarioTemplate {
 			Provider:    "Slack",
 			EventType:   "event_callback",
 			Headers: map[string]string{
-				"Content-Type":       "application/json",
+				"Content-Type":              "application/json",
 				"X-Slack-Request-Timestamp": "1234567890",
-				"X-Slack-Signature":  "v0=signature_placeholder",
+				"X-Slack-Signature":         "v0=signature_placeholder",
 			},
 			Payload: json.RawMessage(`{"token":"verification_token","team_id":"T0001","event":{"type":"message","channel":"C2147483705","user":"U2147483697","text":"Hello world","ts":"1355517523.000005"},"type":"event_callback","event_id":"Ev0001","event_time":1355517523}`),
 		},
@@ -261,8 +262,8 @@ func PredefinedScenarioTemplates() []ScenarioTemplate {
 			Provider:    "SendGrid",
 			EventType:   "delivered",
 			Headers: map[string]string{
-				"Content-Type":    "application/json",
-				"User-Agent":     "SendGrid Event API",
+				"Content-Type": "application/json",
+				"User-Agent":   "SendGrid Event API",
 			},
 			Payload: json.RawMessage(`[{"email":"test@example.com","timestamp":1234567890,"event":"delivered","sg_event_id":"evt_123","sg_message_id":"msg_123.filter0001.12345.abc-1","response":"250 OK","attempt":"1"}]`),
 		},
@@ -348,7 +349,7 @@ func (sm *SessionManager) GetSessionByToken(token string) (*PlaygroundSession, e
 	defer sm.mu.RUnlock()
 
 	for _, session := range sm.sessions {
-		if session.ShareToken == token {
+		if subtle.ConstantTimeCompare([]byte(session.ShareToken), []byte(token)) == 1 {
 			return session, nil
 		}
 	}

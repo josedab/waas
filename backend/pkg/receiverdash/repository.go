@@ -1,6 +1,7 @@
 package receiverdash
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"time"
 )
@@ -59,7 +60,7 @@ func (r *MemoryRepository) GetToken(tokenID string) (*ReceiverToken, error) {
 
 func (r *MemoryRepository) GetTokenByValue(token string) (*ReceiverToken, error) {
 	for _, t := range r.tokens {
-		if t.Token == token && t.RevokedAt == nil {
+		if subtle.ConstantTimeCompare([]byte(t.Token), []byte(token)) == 1 && t.RevokedAt == nil {
 			return t, nil
 		}
 	}
