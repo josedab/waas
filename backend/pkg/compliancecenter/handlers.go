@@ -3,6 +3,7 @@ package compliancecenter
 import (
 	"github.com/josedab/waas/pkg/httputil"
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -840,11 +841,13 @@ func (h *Handler) RecordAuditEvent(tenantID string, eventType AuditEventType, ac
 	sourceIP := c.ClientIP()
 	userAgent := c.GetHeader("User-Agent")
 
-	// Fire and forget — don't block the request
+	// Fire and forget — don't block the request, but log failures
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = h.auditTrail.RecordEvent(ctx, tenantID, eventType, actor, resource, action, outcome, payload, nil, sourceIP, userAgent)
+		if err := h.auditTrail.RecordEvent(ctx, tenantID, eventType, actor, resource, action, outcome, payload, nil, sourceIP, userAgent); err != nil {
+			log.Printf("ERROR: failed to record audit trail event: %v (tenant=%s, event=%s, action=%s)", err, tenantID, eventType, action)
+		}
 	}()
 }
 

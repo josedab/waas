@@ -323,9 +323,11 @@ func (r *PostgresRepository) GetInboundStats(ctx context.Context, sourceID strin
 	}
 
 	// Compute DLQ count
-	_ = r.db.QueryRowContext(ctx,
+	if err := r.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM inbound_dlq WHERE source_id = $1 AND replayed = false`, sourceID).
-		Scan(&stats.DLQCount)
+		Scan(&stats.DLQCount); err != nil {
+		return nil, fmt.Errorf("failed to query DLQ count: %w", err)
+	}
 
 	if stats.TotalEvents > 0 {
 		stats.SuccessRate = float64(stats.RoutedCount) / float64(stats.TotalEvents) * 100

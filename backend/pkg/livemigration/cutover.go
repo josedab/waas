@@ -496,7 +496,9 @@ func (cs *CutoverService) Rollback(ctx context.Context, jobID string) (*CutoverP
 			}
 			ep.Status = epSnap.Status
 			ep.DestinationID = epSnap.DestinationID
-			_ = cs.repo.UpdateEndpoint(ctx, ep)
+			if updateErr := cs.repo.UpdateEndpoint(ctx, ep); updateErr != nil {
+				return nil, fmt.Errorf("failed to restore endpoint %s during rollback: %w", epSnap.EndpointID, updateErr)
+			}
 		}
 	}
 

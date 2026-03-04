@@ -175,7 +175,9 @@ func (m *ConsumerGroupManager) JoinGroup(ctx context.Context, tenantID, groupID,
 	m.rebalancePartitions(group)
 	group.Status = ConsumerGroupStatusActive
 	group.UpdatedAt = now
-	_ = m.repo.UpdateConsumerGroup(ctx, group)
+	if err := m.repo.UpdateConsumerGroup(ctx, group); err != nil {
+		return nil, fmt.Errorf("failed to update consumer group after rebalance: %w", err)
+	}
 
 	return member, nil
 }
