@@ -232,6 +232,9 @@ func (h *CatalogHandler) SearchEventTypes(c *gin.Context) {
 	if limit := c.Query("limit"); limit != "" {
 		var l int
 		fmt.Sscanf(limit, "%d", &l)
+		if l > 100 {
+			l = 100
+		}
 		params.Limit = l
 	}
 

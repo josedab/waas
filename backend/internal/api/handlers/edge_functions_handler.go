@@ -283,6 +283,9 @@ func (h *EdgeFunctionsHandler) GetInvocations(c *gin.Context) {
 			limit = parsed
 		}
 	}
+	if limit > 100 {
+		limit = 100
+	}
 
 	invocations, err := h.service.GetInvocations(c.Request.Context(), tenantID, functionID, limit)
 	if err != nil {
