@@ -3,10 +3,11 @@ package errors
 import (
 	"bytes"
 	"encoding/json"
+	stderrors "errors"
+	"github.com/josedab/waas/pkg/utils"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -15,21 +16,21 @@ import (
 
 func TestErrorHandlingSystemIntegration(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	// Set up the complete error handling system
 	logger := utils.NewLogger("test")
 	alerter := &NoOpAlerter{} // Use no-op alerter for testing
 	errorHandler := NewErrorHandler(logger, alerter)
-	
+
 	// Create router with error handling middleware
 	router := gin.New()
 	router.Use(RequestIDMiddleware())
 	router.Use(TraceIDMiddleware())
 	router.Use(errorHandler.Middleware())
-	
+
 	// Create example handler
 	exampleHandler := NewExampleHandler(logger, errorHandler)
-	
+
 	// Set up routes
 	router.POST("/example", exampleHandler.ExampleEndpoint)
 	router.GET("/panic", func(c *gin.Context) {
@@ -44,7 +45,7 @@ func TestErrorHandlingSystemIntegration(t *testing.T) {
 	router.GET("/quota-exceeded", func(c *gin.Context) {
 		AbortWithQuotaExceeded(c, 1500, 1000)
 	})
-	
+
 	tests := []struct {
 		name           string
 		method         string
@@ -160,7 +161,7 @@ func TestErrorHandlingSystemIntegration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var req *http.Request
-			
+
 			if tt.body != nil {
 				bodyBytes, err := json.Marshal(tt.body)
 				require.NoError(t, err)
@@ -169,22 +170,22 @@ func TestErrorHandlingSystemIntegration(t *testing.T) {
 			} else {
 				req = httptest.NewRequest(tt.method, tt.path, nil)
 			}
-			
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			
+
 			// Check that request ID and trace ID headers are set
 			assert.NotEmpty(t, w.Header().Get("X-Request-ID"))
 			assert.NotEmpty(t, w.Header().Get("X-Trace-ID"))
-			
+
 			if tt.expectedCode != "" {
 				// Parse error response
 				var response ErrorResponse
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				require.NoError(t, err)
-				
+
 				assert.Equal(t, tt.expectedCode, response.Error.Code)
 				assert.NotEmpty(t, response.Error.Message)
 				assert.NotEmpty(t, response.Error.Category)
@@ -192,12 +193,12 @@ func TestErrorHandlingSystemIntegration(t *testing.T) {
 				assert.NotEmpty(t, response.Error.RequestID)
 				assert.NotEmpty(t, response.Error.TraceID)
 				assert.NotZero(t, response.Error.Timestamp)
-				
+
 				// Check debugging hints are present
 				if len(response.Error.DebuggingHints) > 0 {
 					assert.NotEmpty(t, response.Error.DebuggingHints[0])
 				}
-				
+
 				// Check specific error details
 				switch tt.expectedCode {
 				case "INVALID_REQUEST":
@@ -228,12 +229,12 @@ func TestErrorHandlingSystemIntegration(t *testing.T) {
 
 func TestErrorHandlingMiddlewareOrder(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	logger := utils.NewLogger("test")
 	errorHandler := NewErrorHandler(logger, &NoOpAlerter{})
-	
+
 	router := gin.New()
-	
+
 	// Test that middleware sets up context correctly
 	router.Use(RequestIDMiddleware())
 	router.Use(TraceIDMiddleware())
@@ -242,23 +243,23 @@ func TestErrorHandlingMiddlewareOrder(t *testing.T) {
 		requestID, exists := c.Get("request_id")
 		assert.True(t, exists)
 		assert.NotEmpty(t, requestID)
-		
+
 		traceID, exists := c.Get("trace_id")
 		assert.True(t, exists)
 		assert.NotEmpty(t, traceID)
-		
+
 		c.Next()
 	})
 	router.Use(errorHandler.Middleware())
-	
+
 	router.GET("/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "success"})
 	})
-	
+
 	req := httptest.NewRequest("GET", "/test", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.NotEmpty(t, w.Header().Get("X-Request-ID"))
 	assert.NotEmpty(t, w.Header().Get("X-Trace-ID"))
@@ -266,35 +267,35 @@ func TestErrorHandlingMiddlewareOrder(t *testing.T) {
 
 func TestErrorHandlingWithCustomHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	logger := utils.NewLogger("test")
 	errorHandler := NewErrorHandler(logger, &NoOpAlerter{})
-	
+
 	router := gin.New()
 	router.Use(RequestIDMiddleware())
 	router.Use(TraceIDMiddleware())
 	router.Use(errorHandler.Middleware())
-	
+
 	router.GET("/test", func(c *gin.Context) {
 		AbortWithValidationError(c, "test_field", "test error")
 	})
-	
+
 	// Test with custom request ID and trace ID headers
 	req := httptest.NewRequest("GET", "/test", nil)
 	req.Header.Set("X-Request-ID", "custom_req_123")
 	req.Header.Set("X-Trace-ID", "custom_trace_456")
-	
+
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Equal(t, "custom_req_123", w.Header().Get("X-Request-ID"))
 	assert.Equal(t, "custom_trace_456", w.Header().Get("X-Trace-ID"))
-	
+
 	var response ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, "custom_req_123", response.Error.RequestID)
 	assert.Equal(t, "custom_trace_456", response.Error.TraceID)
 }
@@ -302,13 +303,13 @@ func TestErrorHandlingWithCustomHeaders(t *testing.T) {
 func TestErrorHandlingProductionMode(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 	defer gin.SetMode(gin.TestMode)
-	
+
 	logger := utils.NewLogger("test")
 	errorHandler := NewErrorHandler(logger, &NoOpAlerter{})
-	
+
 	router := gin.New()
 	router.Use(errorHandler.Middleware())
-	
+
 	router.GET("/internal-error", func(c *gin.Context) {
 		err := &WebhookError{
 			Code:     "INTERNAL_ERROR",
@@ -322,17 +323,17 @@ func TestErrorHandlingProductionMode(t *testing.T) {
 		}
 		AbortWithError(c, err)
 	})
-	
+
 	req := httptest.NewRequest("GET", "/internal-error", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	
+
 	var response ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	
+
 	// In production mode, internal errors should be sanitized
 	assert.Equal(t, "An internal server error occurred", response.Error.Message)
 	assert.Nil(t, response.Error.Details) // Sensitive details should be removed
@@ -340,7 +341,7 @@ func TestErrorHandlingProductionMode(t *testing.T) {
 
 func TestErrorHandlingHelperFunctions(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	tests := []struct {
 		name           string
 		setupHandler   func() gin.HandlerFunc
@@ -393,17 +394,17 @@ func TestErrorHandlingHelperFunctions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			router := gin.New()
 			router.GET("/test", tt.setupHandler())
-			
+
 			req := httptest.NewRequest("GET", "/test", nil)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			
+
 			var response ErrorResponse
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
-			
+
 			assert.Equal(t, tt.expectedCode, response.Error.Code)
 		})
 	}
@@ -412,7 +413,7 @@ func TestErrorHandlingHelperFunctions(t *testing.T) {
 func TestErrorHandlingRepositoryIntegration(t *testing.T) {
 	logger := utils.NewLogger("test")
 	repo := &ExampleRepository{logger: logger}
-	
+
 	tests := []struct {
 		name           string
 		userID         string
@@ -444,11 +445,12 @@ func TestErrorHandlingRepositoryIntegration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			user, err := repo.GetUser(tt.userID)
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
-				
-				if webhookErr, ok := err.(*WebhookError); ok {
+
+				var webhookErr *WebhookError
+				if stderrors.As(err, &webhookErr) {
 					assert.Equal(t, tt.expectedCode, webhookErr.Code)
 					assert.Equal(t, tt.expectedStatus, webhookErr.GetHTTPStatus())
 				}
@@ -484,11 +486,12 @@ func TestErrorHandlingDeliveryEngineIntegration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ExampleErrorHandlingInDeliveryEngine(tt.endpointURL, []byte("test payload"))
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
-				
-				if webhookErr, ok := err.(*WebhookError); ok {
+
+				var webhookErr *WebhookError
+				if stderrors.As(err, &webhookErr) {
 					assert.Equal(t, tt.expectedCode, webhookErr.Code)
 					assert.Contains(t, webhookErr.Details, "endpoint_url")
 					assert.Contains(t, webhookErr.Details, "http_status")

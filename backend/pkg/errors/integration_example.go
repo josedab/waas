@@ -2,6 +2,7 @@ package errors
 
 import (
 	"context"
+	stderrors "errors"
 	"github.com/josedab/waas/pkg/utils"
 	"net/http"
 
@@ -42,12 +43,13 @@ func (h *ExampleHandler) ExampleEndpoint(c *gin.Context) {
 	// Example 2: Database operation with error handling
 	if err := h.performDatabaseOperation(request.Email); err != nil {
 		// For this example, we'll use the error directly since it's already a WebhookError
-		if webhookErr, ok := err.(*WebhookError); ok {
+		var webhookErr *WebhookError
+		if stderrors.As(err, &webhookErr) {
 			AbortWithError(c, webhookErr)
 			return
 		}
 		// Convert repository error to structured error for other cases
-		webhookErr := HandleRepositoryError(err)
+		webhookErr = HandleRepositoryError(err)
 		if webhookErr != nil {
 			AbortWithError(c, webhookErr)
 			return
@@ -63,12 +65,13 @@ func (h *ExampleHandler) ExampleEndpoint(c *gin.Context) {
 	// Example 4: External API call with error handling
 	if err := h.callExternalAPI(request.Email); err != nil {
 		// For this example, we'll use the error directly since it's already a WebhookError
-		if webhookErr, ok := err.(*WebhookError); ok {
+		var webhookErr *WebhookError
+		if stderrors.As(err, &webhookErr) {
 			AbortWithError(c, webhookErr)
 			return
 		}
 		// Handle network/HTTP errors for other cases
-		webhookErr := HandleNetworkError(err, "https://external-api.com")
+		webhookErr = HandleNetworkError(err, "https://external-api.com")
 		if webhookErr != nil {
 			AbortWithError(c, webhookErr)
 			return
@@ -283,7 +286,8 @@ func ExampleErrorAggregation() []error {
 
 // ExampleErrorMetrics demonstrates how errors can be used for metrics collection
 func ExampleErrorMetrics(err error) {
-	if webhookErr, ok := err.(*WebhookError); ok {
+	var webhookErr *WebhookError
+	if stderrors.As(err, &webhookErr) {
 		// Collect metrics based on error properties
 		// metrics.IncrementCounter("errors_total", map[string]string{
 		//     "category": string(webhookErr.Category),

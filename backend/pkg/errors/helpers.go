@@ -2,6 +2,7 @@ package errors
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -342,7 +343,8 @@ func HandleNetworkError(err error, endpointURL string) *WebhookError {
 
 // IsRetryableError checks if an error is retryable
 func IsRetryableError(err error) bool {
-	if webhookErr, ok := err.(*WebhookError); ok {
+	var webhookErr *WebhookError
+	if stderrors.As(err, &webhookErr) {
 		return webhookErr.IsRetryable()
 	}
 
@@ -368,7 +370,8 @@ func IsRetryableError(err error) bool {
 
 // GetErrorSeverity extracts the severity from an error
 func GetErrorSeverity(err error) ErrorSeverity {
-	if webhookErr, ok := err.(*WebhookError); ok {
+	var webhookErr *WebhookError
+	if stderrors.As(err, &webhookErr) {
 		return webhookErr.Severity
 	}
 	return SeverityMedium // Default severity for unknown errors
@@ -376,7 +379,8 @@ func GetErrorSeverity(err error) ErrorSeverity {
 
 // GetErrorCategory extracts the category from an error
 func GetErrorCategory(err error) ErrorCategory {
-	if webhookErr, ok := err.(*WebhookError); ok {
+	var webhookErr *WebhookError
+	if stderrors.As(err, &webhookErr) {
 		return webhookErr.Category
 	}
 	return CategoryInternal // Default category for unknown errors
@@ -412,7 +416,8 @@ func LogError(logger interface{}, err error, context map[string]interface{}) {
 		context = make(map[string]interface{})
 	}
 
-	if webhookErr, ok := err.(*WebhookError); ok {
+	var webhookErr *WebhookError
+	if stderrors.As(err, &webhookErr) {
 		context["error_code"] = webhookErr.Code
 		context["error_category"] = webhookErr.Category
 		context["error_severity"] = webhookErr.Severity
@@ -423,7 +428,7 @@ func LogError(logger interface{}, err error, context map[string]interface{}) {
 	context["error_message"] = err.Error()
 
 	// Log based on severity if available
-	if webhookErr, ok := err.(*WebhookError); ok {
+	if webhookErr != nil {
 		switch webhookErr.Severity {
 		case SeverityLow:
 			// logger.Info("Error occurred", context)

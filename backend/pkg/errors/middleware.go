@@ -2,6 +2,7 @@ package errors
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"github.com/josedab/waas/pkg/utils"
 	"net/http"
@@ -91,8 +92,8 @@ func (h *ErrorHandler) HandleError(c *gin.Context, err error) {
 	var webhookErr *WebhookError
 
 	// Convert error to WebhookError if it isn't already
-	if we, ok := err.(*WebhookError); ok {
-		webhookErr = we
+	if stderrors.As(err, &webhookErr) {
+		// webhookErr is already set
 	} else {
 		// Try to categorize the error based on its message or type
 		webhookErr = h.categorizeError(err)
