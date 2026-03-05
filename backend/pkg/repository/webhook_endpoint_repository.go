@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -86,7 +87,7 @@ func (r *webhookEndpointRepository) GetByID(ctx context.Context, id uuid.UUID) (
 	)
 
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("webhook endpoint: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get webhook endpoint: %w", err)

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -504,7 +505,7 @@ func (r *PostgresEdgeFunctionsRepository) GetActiveDeployment(ctx context.Contex
 		&d.HealthCheckURL, &d.LastHealthCheck, &d.HealthStatus, &d.ErrorMessage,
 		&d.DeployedAt, &d.CreatedAt, &d.UpdatedAt,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	return d, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -28,15 +29,15 @@ func (s *PostgresStore) Get(ctx context.Context, tenantID, key string) (*Key, er
 		FROM idempotency_keys
 		WHERE tenant_id = $1 AND key = $2 AND expires_at > NOW()
 	`
-	
+
 	err := s.db.GetContext(ctx, &record, query, tenantID, key)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &record, nil
 }
 
@@ -47,9 +48,9 @@ func (s *PostgresStore) Create(ctx context.Context, key *Key) error {
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (tenant_id, key) DO NOTHING
 	`
-	
-	_, err := s.db.ExecContext(ctx, query, 
-		key.Key, key.TenantID, key.RequestHash, 
+
+	_, err := s.db.ExecContext(ctx, query,
+		key.Key, key.TenantID, key.RequestHash,
 		key.CreatedAt, key.ExpiresAt, key.IsProcessing)
 	return err
 }
@@ -61,8 +62,8 @@ func (s *PostgresStore) Update(ctx context.Context, key *Key) error {
 		SET response = $1, status_code = $2, is_processing = $3
 		WHERE tenant_id = $4 AND key = $5
 	`
-	
-	_, err := s.db.ExecContext(ctx, query, 
+
+	_, err := s.db.ExecContext(ctx, query,
 		key.Response, key.StatusCode, key.IsProcessing,
 		key.TenantID, key.Key)
 	return err
@@ -125,12 +126,12 @@ func (s *RedisStore) Get(ctx context.Context, tenantID, key string) (*Key, error
 	if data == "" {
 		return nil, nil
 	}
-	
+
 	var record Key
 	if err := json.Unmarshal([]byte(data), &record); err != nil {
 		return nil, err
 	}
-	
+
 	return &record, nil
 }
 
@@ -141,12 +142,12 @@ func (s *RedisStore) Create(ctx context.Context, key *Key) error {
 	if err != nil {
 		return err
 	}
-	
+
 	ttl := time.Until(key.ExpiresAt)
 	if ttl <= 0 {
 		ttl = 24 * time.Hour
 	}
-	
+
 	_, err = s.client.SetNX(ctx, redisKey, data, ttl)
 	return err
 }
@@ -158,12 +159,12 @@ func (s *RedisStore) Update(ctx context.Context, key *Key) error {
 	if err != nil {
 		return err
 	}
-	
+
 	ttl := time.Until(key.ExpiresAt)
 	if ttl <= 0 {
 		ttl = 24 * time.Hour
 	}
-	
+
 	return s.client.Set(ctx, redisKey, data, ttl)
 }
 

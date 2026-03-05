@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -72,7 +73,7 @@ func (r *transformationRepository) GetByID(ctx context.Context, id uuid.UUID) (*
 		&t.Config.TimeoutMs, &t.Config.MaxMemoryMB, &t.Config.AllowHTTP, &t.Config.EnableLogging,
 		&t.CreatedAt, &t.UpdatedAt,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("transformation: %w", apperrors.ErrNotFound)
 	}
 	return t, err

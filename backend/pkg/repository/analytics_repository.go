@@ -3,10 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/josedab/waas/pkg/models"
 	"strings"
 	"time"
-	"github.com/josedab/waas/pkg/models"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,7 +27,7 @@ func (r *AnalyticsRepository) RecordDeliveryMetric(ctx context.Context, metric *
 		INSERT INTO delivery_metrics (tenant_id, endpoint_id, delivery_id, status, http_status, latency_ms, attempt_number, error_message)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, created_at`
-	
+
 	err := r.db.QueryRow(ctx, query,
 		metric.TenantID,
 		metric.EndpointID,
@@ -37,7 +38,7 @@ func (r *AnalyticsRepository) RecordDeliveryMetric(ctx context.Context, metric *
 		metric.AttemptNumber,
 		metric.ErrorMessage,
 	).Scan(&metric.ID, &metric.CreatedAt)
-	
+
 	return err
 }
 
@@ -300,7 +301,7 @@ func (r *AnalyticsRepository) GetRealtimeMetrics(ctx context.Context, tenantID u
 // GetDashboardMetrics retrieves summary metrics for the dashboard
 func (r *AnalyticsRepository) GetDashboardMetrics(ctx context.Context, tenantID uuid.UUID, timeWindow time.Duration) (*models.DashboardMetrics, error) {
 	since := time.Now().Add(-timeWindow)
-	
+
 	// Get delivery rate (deliveries per minute)
 	var deliveryRate float64
 	err := r.db.QueryRow(ctx, `
@@ -309,7 +310,7 @@ func (r *AnalyticsRepository) GetDashboardMetrics(ctx context.Context, tenantID 
 		WHERE tenant_id = $1 AND created_at >= $2`,
 		tenantID, since,
 	).Scan(&deliveryRate)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
@@ -324,7 +325,7 @@ func (r *AnalyticsRepository) GetDashboardMetrics(ctx context.Context, tenantID 
 		WHERE tenant_id = $1 AND created_at >= $2`,
 		tenantID, since,
 	).Scan(&successRate)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
@@ -336,7 +337,7 @@ func (r *AnalyticsRepository) GetDashboardMetrics(ctx context.Context, tenantID 
 		WHERE tenant_id = $1 AND created_at >= $2 AND status = 'success'`,
 		tenantID, since,
 	).Scan(&avgLatency)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
@@ -348,7 +349,7 @@ func (r *AnalyticsRepository) GetDashboardMetrics(ctx context.Context, tenantID 
 		WHERE tenant_id = $1 AND created_at >= $2`,
 		tenantID, since,
 	).Scan(&activeEndpoints)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
@@ -425,7 +426,7 @@ func (r *AnalyticsRepository) GetMetricsSummary(ctx context.Context, query *mode
 // CleanupOldMetrics removes old metrics data to manage storage
 func (r *AnalyticsRepository) CleanupOldMetrics(ctx context.Context, retentionDays int) error {
 	cutoffDate := time.Now().AddDate(0, 0, -retentionDays)
-	
+
 	// Clean up old delivery metrics (keep raw data for shorter period)
 	_, err := r.db.Exec(ctx, `
 		DELETE FROM delivery_metrics 
@@ -441,6 +442,6 @@ func (r *AnalyticsRepository) CleanupOldMetrics(ctx context.Context, retentionDa
 		DELETE FROM realtime_metrics 
 		WHERE timestamp < NOW() - INTERVAL '24 hours'`,
 	)
-	
+
 	return err
 }

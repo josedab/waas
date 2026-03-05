@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -79,7 +80,7 @@ func (r *deliveryAttemptRepository) GetByID(ctx context.Context, id uuid.UUID) (
 	)
 
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("delivery attempt: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get delivery attempt: %w", err)
@@ -223,7 +224,7 @@ func (r *deliveryAttemptRepository) GetDeliveryHistoryWithFilters(ctx context.Co
 		FROM delivery_attempts da
 		JOIN webhook_endpoints we ON da.endpoint_id = we.id
 		WHERE we.tenant_id = $1`
-	
+
 	args := []interface{}{tenantID}
 	argIndex := 2
 
@@ -265,7 +266,7 @@ func (r *deliveryAttemptRepository) GetDeliveryHistoryWithFilters(ctx context.Co
 		SELECT da.id, da.endpoint_id, da.payload_hash, da.payload_size, da.status, da.http_status, 
 		       da.response_body, da.error_message, da.attempt_number, da.scheduled_at, da.delivered_at, da.created_at
 		` + baseQuery + fmt.Sprintf(" ORDER BY da.created_at DESC LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
-	
+
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Pool.Query(ctx, selectQuery, args...)

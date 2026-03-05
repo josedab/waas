@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -104,7 +105,7 @@ func (c *Consumer) processNextMessage(ctx context.Context, workerID int) error {
 	// This atomically moves message from delivery queue to processing queue
 	result, err := c.redis.Client.BRPopLPush(ctx, DeliveryQueue, ProcessingQueue, 1*time.Second).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			// No message available, this is normal
 			return nil
 		}

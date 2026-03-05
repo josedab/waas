@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -71,7 +72,7 @@ func (r *tenantRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.T
 	)
 
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("tenant: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get tenant: %w", err)
@@ -98,7 +99,7 @@ func (r *tenantRepository) GetByAPIKeyHash(ctx context.Context, apiKeyHash strin
 	)
 
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("tenant: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get tenant by API key: %w", err)

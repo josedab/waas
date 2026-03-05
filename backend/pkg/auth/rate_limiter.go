@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/josedab/waas/pkg/models"
 	"net/http"
@@ -158,7 +159,7 @@ func (rl *RateLimiter) GetRateLimitStatus(ctx context.Context, tenant *models.Te
 	// Get current count without incrementing
 	currentCount, err := rl.redisClient.Get(ctx, key).Int()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			currentCount = 0
 		} else {
 			return nil, fmt.Errorf("failed to get rate limit count: %w", err)

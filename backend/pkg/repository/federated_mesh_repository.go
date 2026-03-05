@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -825,7 +826,7 @@ func (r *PostgresFederatedMeshRepository) GetConfigSync(ctx context.Context, con
 		&sync.Version, &sync.SyncStatus, &sync.LastSyncedAt, &sync.ConfigHash,
 		&sync.CreatedAt, &sync.UpdatedAt,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	return sync, err

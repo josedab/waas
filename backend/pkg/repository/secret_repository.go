@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -92,7 +93,7 @@ func (r *secretRepository) GetSecretByVersion(ctx context.Context, tenantID uuid
 	var secret SecretVersion
 	err := r.db.GetContext(ctx, &secret, query, tenantID, secretID, version)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("secret version not found")
 		}
 		return nil, fmt.Errorf("failed to get secret by version: %w", err)
