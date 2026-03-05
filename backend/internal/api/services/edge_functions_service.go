@@ -427,7 +427,7 @@ func (s *EdgeFunctionsService) executeJavaScript(fn *models.EdgeFunction, input 
 		// Run the code
 		_, err := vm.RunString(fn.Code)
 		if err != nil {
-			done <- fmt.Errorf("execution error: %v", err)
+			done <- fmt.Errorf("execution error: %w", err)
 			return
 		}
 
@@ -448,7 +448,7 @@ func (s *EdgeFunctionsService) executeJavaScript(fn *models.EdgeFunction, input 
 		inputValue := vm.ToValue(input)
 		returnValue, err := callable(goja.Undefined(), inputValue)
 		if err != nil {
-			done <- fmt.Errorf("handler error: %v", err)
+			done <- fmt.Errorf("handler error: %w", err)
 			return
 		}
 

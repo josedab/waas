@@ -93,7 +93,7 @@ func (e *Engine) Transform(ctx context.Context, script string, payload interface
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				done <- fmt.Errorf("%s: %v", ErrExecution, r)
+				done <- fmt.Errorf("%w: %v", ErrExecution, r)
 			}
 		}()
 
@@ -132,7 +132,7 @@ func (e *Engine) Transform(ctx context.Context, script string, payload interface
 
 		val, err := vm.RunString(wrappedScript)
 		if err != nil {
-			done <- fmt.Errorf("%s: %w", ErrExecution, err)
+			done <- fmt.Errorf("%w: %w", ErrExecution, err)
 			return
 		}
 
@@ -332,7 +332,7 @@ func (e *Engine) ValidateScript(script string) error {
 
 	_, err := vm.RunString(wrappedScript)
 	if err != nil {
-		return fmt.Errorf("%s: %w", ErrInvalidScript, err)
+		return fmt.Errorf("%w: %w", ErrInvalidScript, err)
 	}
 	return nil
 }

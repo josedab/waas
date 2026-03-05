@@ -102,7 +102,7 @@ func (s *Service) CreateFunction(ctx context.Context, tenantID string, req *Crea
 
 	// Validate code
 	if err := provider.ValidateCode(ctx, req.Code); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInvalidCode, err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalidCode, err)
 	}
 
 	// Set defaults
