@@ -86,6 +86,9 @@ func (h *Handler) ListWorkflows(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if pageSize > 100 {
+		pageSize = 100
+	}
 	status := WorkflowStatus(c.Query("status"))
 
 	workflows, total, err := h.service.ListWorkflows(c.Request.Context(), tenantID, status, page, pageSize)
@@ -157,6 +160,9 @@ func (h *Handler) ListExecutions(c *gin.Context) {
 	workflowID := c.Param("id")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if pageSize > 100 {
+		pageSize = 100
+	}
 
 	execs, total, err := h.service.ListExecutions(c.Request.Context(), workflowID, page, pageSize)
 	if err != nil {
@@ -191,6 +197,9 @@ func (h *Handler) ListTemplates(c *gin.Context) {
 	category := c.Query("category")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if pageSize > 100 {
+		pageSize = 100
+	}
 
 	templates, total, err := h.service.ListTemplates(c.Request.Context(), category, page, pageSize)
 	if err != nil {

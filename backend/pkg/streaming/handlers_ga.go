@@ -339,6 +339,9 @@ func (h *GAHandler) ListDeadLetterEvents(c *gin.Context) {
 	if pageSize, err := strconv.Atoi(c.Query("page_size")); err == nil && pageSize > 0 {
 		filters.PageSize = pageSize
 	}
+	if filters.PageSize > 100 {
+		filters.PageSize = 100
+	}
 
 	events, total, err := h.dlq.ListDeadLetterEvents(c.Request.Context(), tenantID, bridgeID, filters)
 	if err != nil {

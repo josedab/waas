@@ -62,6 +62,9 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 func (h *Handler) SearchPlugins(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if pageSize > 100 {
+		pageSize = 100
+	}
 	verified := c.Query("verified")
 	featured := c.Query("featured")
 
@@ -213,6 +216,9 @@ func (h *Handler) GetReviews(c *gin.Context) {
 	id := c.Param("id")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if pageSize > 100 {
+		pageSize = 100
+	}
 
 	reviews, total, err := h.service.GetReviews(c.Request.Context(), id, page, pageSize)
 	if err != nil {

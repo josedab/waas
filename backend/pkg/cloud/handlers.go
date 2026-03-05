@@ -453,6 +453,9 @@ func (h *Handler) ListAuditLogs(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
+	if pageSize > 100 {
+		pageSize = 100
+	}
 
 	if h.audit == nil {
 		c.JSON(http.StatusOK, gin.H{"logs": []AuditLog{}, "page": page})

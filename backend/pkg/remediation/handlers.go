@@ -142,6 +142,9 @@ func (h *Handler) ListActions(c *gin.Context) {
 	if pageSize, err := strconv.Atoi(c.Query("page_size")); err == nil && pageSize > 0 {
 		filters.PageSize = pageSize
 	}
+	if filters.PageSize > 100 {
+		filters.PageSize = 100
+	}
 
 	response, err := h.service.ListActions(c.Request.Context(), tenantID, filters)
 	if err != nil {
