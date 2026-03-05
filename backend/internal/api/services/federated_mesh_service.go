@@ -89,7 +89,10 @@ func (s *FederatedMeshService) SetupTenantRegion(ctx context.Context, tenantID u
 	}
 
 	// Check if tenant already has region config
-	existing, _ := s.repo.GetTenantRegion(ctx, tenantID)
+	existing, err := s.repo.GetTenantRegion(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to check existing tenant region", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	if existing != nil {
 		tr.ID = existing.ID
 		if err := s.repo.UpdateTenantRegion(ctx, tr); err != nil {
@@ -116,7 +119,10 @@ func (s *FederatedMeshService) GetTenantRegion(ctx context.Context, tenantID uui
 
 	// Enrich with primary region details
 	if tr.PrimaryRegionID != uuid.Nil {
-		region, _ := s.repo.GetRegion(ctx, tr.PrimaryRegionID)
+		region, err := s.repo.GetRegion(ctx, tr.PrimaryRegionID)
+		if err != nil {
+			s.logger.Error("Failed to get primary region details", map[string]interface{}{"region_id": tr.PrimaryRegionID, "error": err.Error()})
+		}
 		tr.PrimaryRegion = region
 	}
 
@@ -269,7 +275,10 @@ func (s *FederatedMeshService) evaluateRule(ctx context.Context, rule *models.Ge
 // evaluateLatencyRule finds lowest latency region
 func (s *FederatedMeshService) evaluateLatencyRule(ctx context.Context, rule *models.GeoRoutingRule, sourceRegionID uuid.UUID, tenantRegion *models.MeshTenantRegion) (uuid.UUID, string, bool) {
 	// Get active regions
-	regions, _ := s.repo.GetActiveRegions(ctx)
+	regions, err := s.repo.GetActiveRegions(ctx)
+	if err != nil {
+		s.logger.Error("Failed to get active regions for latency rule", map[string]interface{}{"error": err.Error()})
+	}
 	if len(regions) == 0 {
 		return uuid.Nil, "", false
 	}
@@ -284,7 +293,10 @@ func (s *FederatedMeshService) evaluateLatencyRule(ctx context.Context, rule *mo
 	var bestRegion *models.Region
 	var bestLatency float64 = math.MaxFloat64
 
-	sourceRegion, _ := s.repo.GetRegion(ctx, sourceRegionID)
+	sourceRegion, err := s.repo.GetRegion(ctx, sourceRegionID)
+	if err != nil {
+		s.logger.Error("Failed to get source region for latency calculation", map[string]interface{}{"region_id": sourceRegionID, "error": err.Error()})
+	}
 
 	for _, region := range regions {
 		if tenantRegion.DataResidencyPolicy == models.DataResidencyStrict && !allowedMap[region.ID] {
@@ -345,7 +357,10 @@ func (s *FederatedMeshService) evaluateGeofenceRule(ctx context.Context, rule *m
 
 // evaluateLoadBalanceRule distributes load across regions
 func (s *FederatedMeshService) evaluateLoadBalanceRule(ctx context.Context, rule *models.GeoRoutingRule, tenantRegion *models.MeshTenantRegion) (uuid.UUID, string, bool) {
-	regions, _ := s.repo.GetActiveRegions(ctx)
+	regions, err := s.repo.GetActiveRegions(ctx)
+	if err != nil {
+		s.logger.Error("Failed to get active regions for load balance rule", map[string]interface{}{"error": err.Error()})
+	}
 	if len(regions) == 0 {
 		return uuid.Nil, "", false
 	}
@@ -380,13 +395,19 @@ func (s *FederatedMeshService) evaluateLoadBalanceRule(ctx context.Context, rule
 // evaluateFailoverRule checks for failover conditions
 func (s *FederatedMeshService) evaluateFailoverRule(ctx context.Context, rule *models.GeoRoutingRule, sourceRegionID uuid.UUID, tenantRegion *models.MeshTenantRegion) (uuid.UUID, string, bool) {
 	// Check if source region is unhealthy
-	sourceRegion, _ := s.repo.GetRegion(ctx, sourceRegionID)
+	sourceRegion, err := s.repo.GetRegion(ctx, sourceRegionID)
+	if err != nil {
+		s.logger.Error("Failed to get source region for failover check", map[string]interface{}{"region_id": sourceRegionID, "error": err.Error()})
+	}
 	if sourceRegion != nil && sourceRegion.HealthStatus != models.RegionHealthUnhealthy {
 		return uuid.Nil, "", false // No failover needed
 	}
 
 	// Find healthy region
-	regions, _ := s.repo.GetActiveRegions(ctx)
+	regions, err := s.repo.GetActiveRegions(ctx)
+	if err != nil {
+		s.logger.Error("Failed to get active regions for failover", map[string]interface{}{"error": err.Error()})
+	}
 	for _, region := range regions {
 		if region.ID != sourceRegionID && region.HealthStatus == models.RegionHealthHealthy {
 			return region.ID, fmt.Sprintf("failover_from_%s", sourceRegion.Code), true
@@ -530,7 +551,9 @@ func (s *FederatedMeshService) CheckDataResidencyCompliance(ctx context.Context,
 		audit.ComplianceStatus = models.ComplianceCompliant
 	}
 
-	s.repo.CreateResidencyAudit(ctx, audit)
+	if err := s.repo.CreateResidencyAudit(ctx, audit); err != nil {
+		s.logger.Error("Failed to create residency audit", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 
 	return audit, nil
 }
@@ -542,7 +565,10 @@ func (s *FederatedMeshService) GetMeshDashboard(ctx context.Context, tenantID uu
 	}
 
 	// Get all regions
-	allRegions, _ := s.repo.GetAllRegions(ctx)
+	allRegions, err := s.repo.GetAllRegions(ctx)
+	if err != nil {
+		s.logger.Error("Failed to get all regions for dashboard", map[string]interface{}{"error": err.Error()})
+	}
 	dashboard.TotalRegions = len(allRegions)
 
 	activeCount := 0
@@ -559,19 +585,31 @@ func (s *FederatedMeshService) GetMeshDashboard(ctx context.Context, tenantID uu
 	dashboard.HealthyRegions = healthyCount
 
 	// Get tenant region config
-	tenantRegion, _ := s.repo.GetTenantRegion(ctx, tenantID)
+	tenantRegion, err := s.repo.GetTenantRegion(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to get tenant region for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	dashboard.TenantRegion = tenantRegion
 
 	// Get replication streams
-	streams, _ := s.repo.GetReplicationStreamsByTenant(ctx, tenantID)
+	streams, err := s.repo.GetReplicationStreamsByTenant(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to get replication streams for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	dashboard.ReplicationStreams = streams
 
 	// Count active routing rules
-	rules, _ := s.repo.GetEnabledRoutingRules(ctx, tenantID)
+	rules, err := s.repo.GetEnabledRoutingRules(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to get routing rules for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	dashboard.ActiveRoutingRules = len(rules)
 
 	// Get recent failovers
-	failovers, _ := s.repo.GetRecentFailovers(ctx, 5)
+	failovers, err := s.repo.GetRecentFailovers(ctx, 5)
+	if err != nil {
+		s.logger.Error("Failed to get recent failovers for dashboard", map[string]interface{}{"error": err.Error()})
+	}
 	dashboard.RecentFailovers = failovers
 
 	// Determine compliance status
@@ -598,7 +636,10 @@ func (s *FederatedMeshService) GetMeshDashboard(ctx context.Context, tenantID uu
 
 // determineComplianceStatus determines overall compliance status
 func (s *FederatedMeshService) determineComplianceStatus(ctx context.Context, tenantID uuid.UUID, tenantRegion *models.MeshTenantRegion) string {
-	audits, _ := s.repo.GetResidencyAudits(ctx, tenantID, 100)
+	audits, err := s.repo.GetResidencyAudits(ctx, tenantID, 100)
+	if err != nil {
+		s.logger.Error("Failed to get residency audits for compliance status", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 
 	recentViolations := 0
 	since := time.Now().Add(-24 * time.Hour)
@@ -640,7 +681,10 @@ func (s *FederatedMeshService) GetRegionsWithMetrics(ctx context.Context) ([]*mo
 			Region: region,
 		}
 
-		metrics, _ := s.repo.GetLatestHealthMetrics(ctx, region.ID)
+		metrics, err := s.repo.GetLatestHealthMetrics(ctx, region.ID)
+		if err != nil {
+			s.logger.Error("Failed to get health metrics for region", map[string]interface{}{"region_id": region.ID, "error": err.Error()})
+		}
 		for _, m := range metrics {
 			switch m.MetricType {
 			case "latency":
