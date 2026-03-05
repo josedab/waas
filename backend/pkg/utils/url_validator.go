@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -78,7 +79,8 @@ func (v *URLValidator) CheckURLAccessibility(ctx context.Context, webhookURL str
 	resp, err := v.client.Do(req)
 	if err != nil {
 		// Check if it's a network error
-		if netErr, ok := err.(net.Error); ok {
+		var netErr net.Error
+		if errors.As(err, &netErr) {
 			if netErr.Timeout() {
 				return fmt.Errorf("webhook URL is not accessible: connection timeout")
 			}
@@ -140,7 +142,7 @@ func (v *URLValidator) isPrivateIP(ip net.IP) bool {
 	// 172.16.0.0/12
 	// 192.168.0.0/16
 	// 127.0.0.0/8 (loopback)
-	
+
 	// Private IPv6 ranges:
 	// ::1/128 (loopback)
 	// fc00::/7 (unique local)

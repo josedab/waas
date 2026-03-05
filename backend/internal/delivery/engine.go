@@ -570,7 +570,8 @@ func isRetryableError(err error) bool {
 	}
 
 	// Network errors are generally retryable
-	if netErr, ok := err.(net.Error); ok {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
 		return netErr.Timeout() || netErr.Temporary()
 	}
 
@@ -580,12 +581,14 @@ func isRetryableError(err error) bool {
 	}
 
 	// DNS errors are retryable
-	if errors.Is(err, apperrors.ErrNoSuchHost) || strings.Contains(err.Error(), "no such host") {
+	var dnsErr *net.DNSError
+	if errors.Is(err, apperrors.ErrNoSuchHost) || errors.As(err, &dnsErr) {
 		return true
 	}
 
 	// Connection refused is retryable
-	if errors.Is(err, apperrors.ErrConnectionRefused) || strings.Contains(err.Error(), "connection refused") {
+	var opErr *net.OpError
+	if errors.Is(err, apperrors.ErrConnectionRefused) || errors.As(err, &opErr) {
 		return true
 	}
 
