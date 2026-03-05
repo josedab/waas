@@ -14,17 +14,17 @@ import (
 
 // Service provides blockchain monitoring operations
 type Service struct {
-	repo           Repository
-	clients        map[string]ChainClient // key: chain-network
-	decoder        ABIDecoder
-	webhookSender  WebhookSender
-	processor      EventProcessor
-	chainConfigs   map[ChainType]ChainConfig
-	mu             sync.RWMutex
-	monitors       map[string]*monitorWorker
-	shutdownCh     chan struct{}
-	config         *ServiceConfig
-	logger         *utils.Logger
+	repo          Repository
+	clients       map[string]ChainClient // key: chain-network
+	decoder       ABIDecoder
+	webhookSender WebhookSender
+	processor     EventProcessor
+	chainConfigs  map[ChainType]ChainConfig
+	mu            sync.RWMutex
+	monitors      map[string]*monitorWorker
+	shutdownCh    chan struct{}
+	config        *ServiceConfig
+	logger        *utils.Logger
 }
 
 // ServiceConfig holds service configuration
@@ -51,14 +51,14 @@ func DefaultServiceConfig() *ServiceConfig {
 
 // monitorWorker manages a single monitor's event processing
 type monitorWorker struct {
-	monitor    *ContractMonitor
-	client     ChainClient
-	stopCh     chan struct{}
-	ctx        context.Context
-	cancel     context.CancelFunc
-	running    bool
-	lastBlock  uint64
-	mu         sync.Mutex
+	monitor   *ContractMonitor
+	client    ChainClient
+	stopCh    chan struct{}
+	ctx       context.Context
+	cancel    context.CancelFunc
+	running   bool
+	lastBlock uint64
+	mu        sync.Mutex
 }
 
 // NewService creates a new blockchain service
@@ -179,7 +179,7 @@ func (s *Service) CreateMonitor(ctx context.Context, tenantID string, req *Creat
 	// Parse and save ABI if provided
 	if req.ABI != "" && s.decoder != nil {
 		if err := s.decoder.ParseABI(req.ABI); err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrInvalidABI, err)
+			return nil, fmt.Errorf("%w: %w", ErrInvalidABI, err)
 		}
 
 		contractABI := &ContractABI{
@@ -348,7 +348,9 @@ func (s *Service) startMonitorWorker(monitor *ContractMonitor) {
 	if err != nil {
 		monitor.Status = MonitorStatusError
 		monitor.ErrorMessage = err.Error()
-		if err := s.repo.UpdateMonitor(context.Background(), monitor); err != nil {
+		updateCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := s.repo.UpdateMonitor(updateCtx, monitor); err != nil {
 			s.logger.Error("failed to update monitor status to error", map[string]interface{}{"error": err.Error()})
 		}
 		return

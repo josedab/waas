@@ -166,7 +166,9 @@ func (s *ReplayService) processReplayJob(ctx context.Context, job *models.Replay
 	for {
 		select {
 		case <-ctx.Done():
-			s.repo.UpdateReplayJobStatus(context.Background(), job.ID, models.ReplayStatusCancelled, "Job cancelled")
+			cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			s.repo.UpdateReplayJobStatus(cleanupCtx, job.ID, models.ReplayStatusCancelled, "Job cancelled")
 			return
 		default:
 		}
@@ -180,7 +182,9 @@ func (s *ReplayService) processReplayJob(ctx context.Context, job *models.Replay
 
 		if len(events) == 0 {
 			// All events processed
-			s.repo.UpdateReplayJobStatus(context.Background(), job.ID, models.ReplayStatusCompleted, "")
+			completeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			s.repo.UpdateReplayJobStatus(completeCtx, job.ID, models.ReplayStatusCompleted, "")
 			return
 		}
 

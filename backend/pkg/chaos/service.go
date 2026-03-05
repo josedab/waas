@@ -3,6 +3,7 @@ package chaos
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"sync"
 	"time"
@@ -158,7 +159,9 @@ func (s *Service) StartExperiment(ctx context.Context, tenantID, expID string) (
 	// Run experiment in background
 	go func() {
 		agent.Run(s.ctx)
-		s.completeExperiment(context.Background(), exp.TenantID, exp.ID)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		s.completeExperiment(ctx, exp.TenantID, exp.ID)
 	}()
 
 	return exp, nil
@@ -375,7 +378,9 @@ func (s *Service) completeExperiment(ctx context.Context, tenantID, expID string
 	events, _ := s.repo.GetEvents(ctx, tenantID, expID, 10000)
 	exp.Results = calculateResults(events)
 
-	s.repo.SaveExperiment(ctx, exp)
+	if err := s.repo.SaveExperiment(ctx, exp); err != nil {
+		log.Printf("ERROR: failed to save completed experiment: %v (exp=%s)", err, expID)
+	}
 	s.agents.Delete(expID)
 }
 
@@ -609,7 +614,9 @@ func (a *Agent) getFaultInjection(endpointID, deliveryID string) *FaultInjection
 		InjectedFault: string(a.exp.Type),
 		Timestamp:     time.Now(),
 	}
-	a.repo.SaveEvent(context.Background(), event)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	a.repo.SaveEvent(ctx, event)
 
 	return injection
 }

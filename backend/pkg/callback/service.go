@@ -199,7 +199,9 @@ func (s *Service) WaitForCallback(ctx context.Context, correlationID string, tim
 				s.logger.Warn("Failed to update callback status on timeout", map[string]interface{}{"error": err.Error(), "request_id": correlation.RequestID})
 			}
 			correlation.Status = CallbackStatusTimeout
-			if err := s.repo.UpdateCorrelation(context.Background(), correlation); err != nil {
+			updateCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := s.repo.UpdateCorrelation(updateCtx, correlation); err != nil {
 				s.logger.Warn("Failed to update correlation on timeout", map[string]interface{}{"error": err.Error(), "correlation_id": correlationID})
 			}
 			return nil, fmt.Errorf("timeout waiting for callback response (correlation: %s)", correlationID)

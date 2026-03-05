@@ -101,7 +101,11 @@ func (m *MeteringService) RecordUsageEvent(ctx context.Context, event *UsageMete
 	}
 
 	// Check alerts asynchronously
-	go m.checkAlerts(context.Background(), event.TenantID)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		m.checkAlerts(ctx, event.TenantID)
+	}()
 
 	return nil
 }
