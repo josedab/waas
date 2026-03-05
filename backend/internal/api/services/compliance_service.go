@@ -305,7 +305,9 @@ func (s *ComplianceService) GenerateReport(ctx context.Context, tenantID uuid.UU
 
 // generateReportAsync generates a report asynchronously
 func (s *ComplianceService) generateReportAsync(ctx context.Context, report *models.ComplianceReport) {
-	s.repo.UpdateReportStatus(ctx, report.ID, models.ReportStatusGenerating, nil, "")
+	if err := s.repo.UpdateReportStatus(ctx, report.ID, models.ReportStatusGenerating, nil, ""); err != nil {
+		s.logger.Error("Failed to update report status to generating", map[string]interface{}{"report_id": report.ID, "error": err.Error()})
+	}
 
 	reportData := make(map[string]interface{})
 
@@ -336,11 +338,15 @@ func (s *ComplianceService) generateReportAsync(ctx context.Context, report *mod
 			if rec, ok := f["recommendation"].(string); ok {
 				finding.Recommendation = rec
 			}
-			s.repo.CreateFinding(ctx, finding)
+			if err := s.repo.CreateFinding(ctx, finding); err != nil {
+				s.logger.Error("Failed to create compliance finding", map[string]interface{}{"report_id": report.ID, "title": finding.Title, "error": err.Error()})
+			}
 		}
 	}
 
-	s.repo.UpdateReportStatus(ctx, report.ID, models.ReportStatusCompleted, reportData, "")
+	if err := s.repo.UpdateReportStatus(ctx, report.ID, models.ReportStatusCompleted, reportData, ""); err != nil {
+		s.logger.Error("Failed to update report status to completed", map[string]interface{}{"report_id": report.ID, "error": err.Error()})
+	}
 	s.logger.Info("Report generation completed", map[string]interface{}{"report_id": report.ID})
 }
 
@@ -348,10 +354,13 @@ func (s *ComplianceService) generateSOC2Report(ctx context.Context, tenantID uui
 	findings := []map[string]interface{}{}
 
 	// Check for audit logging
-	logs, _ := s.repo.QueryAuditLogs(ctx, &models.AuditLogQuery{
+	logs, err := s.repo.QueryAuditLogs(ctx, &models.AuditLogQuery{
 		TenantID: tenantID,
 		Limit:    1,
 	})
+	if err != nil {
+		s.logger.Error("Failed to query audit logs for SOC2 report", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 
 	if len(logs) == 0 {
 		findings = append(findings, map[string]interface{}{
@@ -364,7 +373,10 @@ func (s *ComplianceService) generateSOC2Report(ctx context.Context, tenantID uui
 	}
 
 	// Check retention policies
-	policies, _ := s.repo.GetRetentionPoliciesByTenant(ctx, tenantID)
+	policies, err := s.repo.GetRetentionPoliciesByTenant(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to get retention policies for SOC2 report", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	if len(policies) == 0 {
 		findings = append(findings, map[string]interface{}{
 			"severity":       "medium",
@@ -390,7 +402,10 @@ func (s *ComplianceService) generateHIPAAReport(ctx context.Context, tenantID uu
 	findings := []map[string]interface{}{}
 
 	// Check PII detection
-	piiCount, _ := s.repo.CountPIIDetectionsToday(ctx, tenantID)
+	piiCount, err := s.repo.CountPIIDetectionsToday(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to count PII detections for HIPAA report", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	if piiCount > 0 {
 		findings = append(findings, map[string]interface{}{
 			"severity":       "info",
@@ -415,7 +430,10 @@ func (s *ComplianceService) generateGDPRDPIA(ctx context.Context, tenantID uuid.
 	findings := []map[string]interface{}{}
 
 	// Check for pending DSRs
-	pendingDSRs, _ := s.repo.CountPendingDSRs(ctx, tenantID)
+	pendingDSRs, err := s.repo.CountPendingDSRs(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to count pending DSRs for GDPR report", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	if pendingDSRs > 0 {
 		findings = append(findings, map[string]interface{}{
 			"severity":       "high",
@@ -604,12 +622,30 @@ func (s *ComplianceService) ProcessDSR(ctx context.Context, tenantID, dsrID uuid
 
 // GetDashboard retrieves compliance dashboard data
 func (s *ComplianceService) GetDashboard(ctx context.Context, tenantID uuid.UUID) (*models.ComplianceDashboard, error) {
-	profiles, _ := s.repo.GetProfilesByTenant(ctx, tenantID)
-	openFindings, _ := s.repo.GetOpenFindingsByTenant(ctx, tenantID)
-	pendingDSRs, _ := s.repo.CountPendingDSRs(ctx, tenantID)
-	piiToday, _ := s.repo.CountPIIDetectionsToday(ctx, tenantID)
-	reports, _ := s.repo.GetReportsByTenant(ctx, tenantID, 5)
-	severityCounts, _ := s.repo.CountFindingsBySeverity(ctx, tenantID)
+	profiles, err := s.repo.GetProfilesByTenant(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to get profiles for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	openFindings, err := s.repo.GetOpenFindingsByTenant(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to get open findings for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	pendingDSRs, err := s.repo.CountPendingDSRs(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to count pending DSRs for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	piiToday, err := s.repo.CountPIIDetectionsToday(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to count PII detections for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	reports, err := s.repo.GetReportsByTenant(ctx, tenantID, 5)
+	if err != nil {
+		s.logger.Error("Failed to get reports for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	severityCounts, err := s.repo.CountFindingsBySeverity(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to count findings by severity for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 
 	activeProfiles := 0
 	for _, p := range profiles {
