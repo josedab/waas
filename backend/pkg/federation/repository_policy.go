@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -64,7 +65,7 @@ func (r *PostgresRepository) GetPolicy(ctx context.Context, tenantID string) (*F
 		&allowedJSON, &blockedJSON, &p.RequireEncryption, &p.AllowRelay,
 		&p.MaxSubscriptions, &p.RateLimitPerMember, &p.CreatedAt, &p.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("policy not found")
 	}
 	if err != nil {
@@ -115,7 +116,7 @@ func (r *PostgresRepository) GetKeys(ctx context.Context, memberID string) (*Cry
 		&k.MemberID, &k.PublicKey, &k.Algorithm, &k.KeyID,
 		&k.CreatedAt, &expiresAt, &k.Revoked)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("keys not found")
 	}
 	if err != nil {
@@ -143,7 +144,7 @@ func (r *PostgresRepository) GetKeyByID(ctx context.Context, keyID string) (*Cry
 		&k.MemberID, &k.PublicKey, &k.Algorithm, &k.KeyID,
 		&k.CreatedAt, &expiresAt, &k.Revoked)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("key not found")
 	}
 	if err != nil {

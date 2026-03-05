@@ -3,6 +3,7 @@ package eventsourcing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -192,7 +193,7 @@ func (r *Repository) GetCheckpoint(ctx context.Context, tenantID, consumerGroup 
 		&cp.LastSequenceID, &cp.LastProcessedAt, &metadataJSON,
 		&cp.CreatedAt, &cp.UpdatedAt,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrCheckpointNotFound
 	}
 	if err != nil {
@@ -236,7 +237,7 @@ func (r *Repository) GetSnapshot(ctx context.Context, tenantID, streamID string)
 	err := r.db.Pool.QueryRow(ctx, query, tenantID, streamID).Scan(
 		&s.ID, &s.TenantID, &s.StreamID, &s.StreamType, &s.Version, &s.State, &s.CreatedAt,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -288,7 +289,7 @@ func (r *Repository) GetReplayJob(ctx context.Context, id string) (*ReplayJob, e
 		&job.Status, &job.CurrentSequenceID, &job.EventsProcessed, &job.EventsTotal,
 		&job.ErrorMessage, &job.StartedAt, &job.CompletedAt, &job.CreatedAt,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

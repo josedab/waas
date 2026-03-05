@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -65,7 +66,7 @@ func (r *PostgresRepository) GetDelivery(ctx context.Context, deliveryID string)
 		&lastAttemptAt, &nextRetryAt, &errStr, &responseCode, &responseBody,
 		&d.Latency, &deliveredAt, &d.CreatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("delivery not found")
 	}
 	if err != nil {

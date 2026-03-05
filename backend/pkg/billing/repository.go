@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -98,7 +99,7 @@ func (r *PostgresRepository) GetUsageSummary(ctx context.Context, tenantID, peri
 	err := r.db.QueryRowContext(ctx, query, tenantID, period).Scan(
 		&summary.TotalRequests, &summary.TotalDelivered, &summary.TotalFailed,
 		&summary.TotalBytes, &summary.TotalCost)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
@@ -197,7 +198,7 @@ func (r *PostgresRepository) GetSpendTracker(ctx context.Context, tenantID strin
 		&tracker.Currency, &tracker.Period, &tracker.PeriodStart, &tracker.PeriodEnd,
 		&breakdownJSON, &alertsJSON, &tracker.Status, &tracker.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("spend tracker not found")
 	}
 	if err != nil {
@@ -295,7 +296,7 @@ func (r *PostgresRepository) GetBudget(ctx context.Context, tenantID, budgetID s
 		&budget.Period, &resourceType, &webhookID, &alertsJSON, &budget.AutoPause,
 		&budget.Enabled, &budget.CreatedAt, &budget.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("budget not found")
 	}
 	if err != nil {
@@ -407,7 +408,7 @@ func (r *PostgresRepository) GetAlert(ctx context.Context, alertID string) (*Bil
 		&alert.Message, &dataJSON, &alert.Status, &channelsJSON,
 		&sentAt, &ackedAt, &ackedBy, &alert.CreatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("alert not found")
 	}
 	if err != nil {
@@ -622,7 +623,7 @@ func (r *PostgresRepository) GetInvoice(ctx context.Context, tenantID, invoiceID
 		&invoice.Total, &invoice.Currency, &lineItemsJSON, &invoice.DueDate,
 		&paidAt, &invoice.CreatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("invoice not found")
 	}
 	if err != nil {
@@ -718,7 +719,7 @@ func (r *PostgresRepository) GetAlertConfig(ctx context.Context, tenantID string
 		&config.ID, &config.TenantID, &config.Enabled, &channelsJSON,
 		&recipientsJSON, &scheduleJSON, &config.CreatedAt, &config.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("alert config not found")
 	}
 	if err != nil {

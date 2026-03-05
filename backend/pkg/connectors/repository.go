@@ -3,6 +3,7 @@ package connectors
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -57,7 +58,7 @@ func (r *PostgresRepository) GetInstalledConnector(ctx context.Context, tenantID
 	var installed InstalledConnector
 	query := `SELECT * FROM installed_connectors WHERE tenant_id = $1 AND id = $2`
 	err := r.db.GetContext(ctx, &installed, query, tenantID, id)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &installed, err

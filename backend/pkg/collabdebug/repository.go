@@ -3,6 +3,7 @@ package collabdebug
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -74,7 +75,7 @@ func (r *PostgresRepository) GetSession(ctx context.Context, tenantID, sessionID
 	var session DebugSession
 	err := r.db.GetContext(ctx, &session,
 		`SELECT * FROM collab_sessions WHERE id = $1 AND tenant_id = $2`, sessionID, tenantID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
 	}
 	return &session, err
@@ -208,7 +209,7 @@ func (r *PostgresRepository) GetRecording(ctx context.Context, sessionID string)
 	var recording SessionRecording
 	err := r.db.GetContext(ctx, &recording,
 		`SELECT * FROM collab_recordings WHERE session_id = $1`, sessionID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &recording, err

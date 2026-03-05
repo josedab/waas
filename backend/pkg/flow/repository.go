@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,7 +62,7 @@ func (r *PostgresRepository) GetFlow(ctx context.Context, tenantID, flowID strin
 		&flow.IsActive, &flow.Version, &flow.CreatedAt, &flow.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -183,7 +184,7 @@ func (r *PostgresRepository) GetExecution(ctx context.Context, tenantID, executi
 		&execution.StartedAt, &completedAt, &execution.DurationMs,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

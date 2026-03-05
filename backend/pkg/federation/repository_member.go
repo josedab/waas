@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -63,7 +64,7 @@ func (r *PostgresRepository) GetMember(ctx context.Context, memberID string) (*F
 		&m.PublicKey, &endpointsJSON, &capsJSON, &m.TrustLevel, &metaJSON,
 		&m.JoinedAt, &m.LastSeenAt, &m.CreatedAt, &m.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("member not found")
 	}
 	if err != nil {
@@ -88,7 +89,7 @@ func (r *PostgresRepository) GetMemberByDomain(ctx context.Context, domain strin
 	query := `SELECT id FROM federation_members WHERE domain = $1`
 	var memberID string
 	err := r.db.QueryRowContext(ctx, query, domain).Scan(&memberID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("member not found")
 	}
 	if err != nil {

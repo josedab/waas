@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -86,7 +87,7 @@ func (r *PostgresRepository) GetAnalysis(ctx context.Context, tenantID, analysis
 		&analysis.CreatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -128,7 +129,7 @@ func (r *PostgresRepository) GetAnalysisByDelivery(ctx context.Context, tenantID
 		&analysis.CreatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -306,7 +307,7 @@ func (r *PostgresRepository) GetDeliveryContext(ctx context.Context, tenantID, d
 		&dc.Timestamp,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

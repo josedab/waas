@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -83,7 +84,7 @@ func (r *PostgresRepository) GetCloudTenant(ctx context.Context, tenantID string
 		&tenant.Status, &tenant.Region, &tenant.WebhooksUsed, &tenant.WebhooksLimit,
 		&tenant.StorageUsed, &tenant.StorageLimit, &tenant.CreatedAt, &tenant.TrialEndsAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("cloud tenant not found")
 	}
 	if err != nil {
@@ -262,7 +263,7 @@ func (r *PostgresRepository) GetBillingInfo(ctx context.Context, tenantID string
 		&info.TenantID, &info.StripeCustomerID, &info.StripePlanID,
 		&info.PaymentMethod, &info.BillingEmail, &info.NextBillingDate, &info.AmountDue)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("billing info not found")
 	}
 	if err != nil {
@@ -303,7 +304,7 @@ func (r *PostgresRepository) GetOnboardingProgress(ctx context.Context, tenantID
 	err := r.db.QueryRowContext(ctx, query, tenantID).Scan(
 		&progress.TenantID, &stepsJSON, &progress.CompletionPct, &progress.AllCompleted)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("onboarding progress not found")
 	}
 	if err != nil {
@@ -327,7 +328,7 @@ func (r *PostgresRepository) GetSLAMetrics(ctx context.Context, tenantID string)
 		&sla.TenantID, &sla.UptimeTargetPct, &sla.LatencyTargetMs, &sla.DeliveryTargetPct,
 		&sla.CurrentUptimePct, &sla.CurrentLatencyMs, &sla.CurrentDeliveryPct, &sla.InViolation)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("sla metrics not found")
 	}
 	if err != nil {

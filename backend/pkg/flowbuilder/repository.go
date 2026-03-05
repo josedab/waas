@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -72,7 +73,7 @@ func (r *PostgresRepository) CreateWorkflow(ctx context.Context, w *Workflow) er
 func (r *PostgresRepository) GetWorkflow(ctx context.Context, id string) (*Workflow, error) {
 	var w Workflow
 	err := r.db.GetContext(ctx, &w, `SELECT * FROM flow_workflows WHERE id = $1`, id)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("workflow not found: %s", id)
 	}
 	if err != nil {
@@ -235,7 +236,7 @@ func (r *PostgresRepository) UpdateExecution(ctx context.Context, exec *Workflow
 func (r *PostgresRepository) GetExecution(ctx context.Context, id string) (*WorkflowExecution, error) {
 	var exec WorkflowExecution
 	err := r.db.GetContext(ctx, &exec, `SELECT * FROM flow_executions WHERE id = $1`, id)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("execution not found: %s", id)
 	}
 	return &exec, err
@@ -316,7 +317,7 @@ func (r *PostgresRepository) ListTemplates(ctx context.Context, category string,
 func (r *PostgresRepository) GetTemplate(ctx context.Context, id string) (*WorkflowTemplate, error) {
 	var t WorkflowTemplate
 	err := r.db.GetContext(ctx, &t, `SELECT * FROM flow_templates WHERE id = $1`, id)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("template not found: %s", id)
 	}
 	return &t, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -106,7 +107,7 @@ func (r *PostgresRepository) scanToken(ctx context.Context, query string, args .
 		&token.IsActive, &token.CreatedAt, &token.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -308,7 +309,7 @@ func (r *PostgresRepository) GetDeliveryStats(ctx context.Context, tenantID stri
 		&stats.AvgLatencyMs,
 	)
 
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		// Return empty stats if table doesn't exist or error
 		return stats, nil
 	}

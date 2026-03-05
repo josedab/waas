@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -50,7 +51,7 @@ func (r *PostgresRepository) GetTrustRelationship(ctx context.Context, trustID s
 		&t.ID, &t.TenantID, &t.SourceMemberID, &t.TargetMemberID, &t.Status,
 		&t.TrustLevel, &permsJSON, &expiresAt, &t.CreatedAt, &t.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("trust relationship not found")
 	}
 	if err != nil {
@@ -75,7 +76,7 @@ func (r *PostgresRepository) GetTrustBetween(ctx context.Context, sourceID, targ
 
 	var trustID string
 	err := r.db.QueryRowContext(ctx, query, sourceID, targetID).Scan(&trustID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("trust relationship not found")
 	}
 	if err != nil {
@@ -169,7 +170,7 @@ func (r *PostgresRepository) GetTrustRequest(ctx context.Context, reqID string) 
 		&req.RequestedLevel, &permsJSON, &req.Message, &req.Status,
 		&expiresAt, &respondedAt, &response, &req.CreatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("trust request not found")
 	}
 	if err != nil {

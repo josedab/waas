@@ -3,6 +3,7 @@ package autoretry
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -104,7 +105,7 @@ func (r *Repository) GetEndpointStats(ctx context.Context, endpointID string) (*
 		&stats.ErrorRate1h,
 		&stats.AvgResponseTimeMs,
 	)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
 
@@ -115,7 +116,7 @@ func (r *Repository) GetEndpointStats(ctx context.Context, endpointID string) (*
 		WHERE endpoint_id = $1 AND created_at > NOW() - INTERVAL '24 hours'`
 
 	err = r.db.Pool.QueryRow(ctx, query24h, endpointID).Scan(&stats.SuccessRate24h)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
 
@@ -126,7 +127,7 @@ func (r *Repository) GetEndpointStats(ctx context.Context, endpointID string) (*
 		WHERE endpoint_id = $1 AND was_successful = true`
 
 	err = r.db.Pool.QueryRow(ctx, queryLastSuccess, endpointID).Scan(&stats.LastSuccessMinutes)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
 
@@ -154,7 +155,7 @@ func (r *Repository) GetEndpointStats(ctx context.Context, endpointID string) (*
 		)`
 
 	err = r.db.Pool.QueryRow(ctx, queryConsecFailures, endpointID).Scan(&stats.ConsecutiveFailures)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
 

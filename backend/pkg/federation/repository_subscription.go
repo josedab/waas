@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -49,7 +50,7 @@ func (r *PostgresRepository) GetCatalog(ctx context.Context, catalogID string) (
 		&c.ID, &c.TenantID, &c.MemberID, &c.Name, &c.Description,
 		&eventsJSON, &c.Version, &c.Public, &c.CreatedAt, &c.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("catalog not found")
 	}
 	if err != nil {
@@ -189,7 +190,7 @@ func (r *PostgresRepository) GetSubscription(ctx context.Context, subID string) 
 		&s.ID, &s.TenantID, &s.SourceMemberID, &s.TargetMemberID, &s.CatalogID,
 		&eventsJSON, &filterJSON, &s.Status, &deliveryJSON, &s.CreatedAt, &s.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("subscription not found")
 	}
 	if err != nil {

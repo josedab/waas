@@ -3,6 +3,7 @@ package docgen
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -87,7 +88,7 @@ func (r *PostgresRepository) GetDoc(ctx context.Context, id uuid.UUID) (*Webhook
 		(*database.StringArray)(&eventTypes), &doc.BaseURL, &doc.AuthMethod,
 		&doc.CreatedAt, &doc.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("doc not found")
 	}
 	if err != nil {
@@ -206,7 +207,7 @@ func (r *PostgresRepository) GetEventType(ctx context.Context, id uuid.UUID) (*E
 		&et.PayloadSchema, &et.ExamplePayload, &et.Deprecated,
 		&et.DeprecationNotice, &et.Version, &et.CreatedAt,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("event type not found")
 	}
 	if err != nil {
@@ -309,7 +310,7 @@ func (r *PostgresRepository) GetCodeSample(ctx context.Context, eventTypeID uuid
 		&sample.ID, &sample.EventTypeID, &sample.Language,
 		&sample.Code, &sample.Framework, &sample.Description,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -355,7 +356,7 @@ func (r *PostgresRepository) GetWidget(ctx context.Context, id uuid.UUID) (*DocW
 		(*database.StringArray)(&allowedDomains), &widget.EmbedKey,
 		&widget.ViewCount, &widget.CreatedAt,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("widget not found")
 	}
 	if err != nil {
@@ -396,7 +397,7 @@ func (r *PostgresRepository) GetDocAnalytics(ctx context.Context, docID uuid.UUI
 		&analytics.UniqueVisitors,
 		&analytics.AvgTimeOnPage,
 	)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return analytics, nil
 	}
 

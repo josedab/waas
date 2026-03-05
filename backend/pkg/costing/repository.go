@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -76,7 +77,7 @@ func (r *PostgresRepository) GetUsageSummary(ctx context.Context, tenantID strin
 		&summary.Deliveries, &summary.Bytes, &summary.Retries, &summary.Transformations,
 	)
 
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
@@ -191,7 +192,7 @@ func (r *PostgresRepository) GetCostAllocation(ctx context.Context, tenantID, pe
 		&allocation.CreatedAt, &allocation.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -311,7 +312,7 @@ func (r *PostgresRepository) GetBudget(ctx context.Context, tenantID, budgetID s
 		&budget.CreatedAt, &budget.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
