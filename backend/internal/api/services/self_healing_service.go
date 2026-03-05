@@ -352,13 +352,19 @@ func (s *SelfHealingService) GetEndpointHealthAnalysis(ctx context.Context, tena
 	}
 
 	// Get circuit breaker state
-	cb, _ := s.repo.GetOrCreateCircuitBreaker(ctx, tenantID, endpointID)
+	cb, err := s.repo.GetOrCreateCircuitBreaker(ctx, tenantID, endpointID)
+	if err != nil {
+		s.logger.Error("Failed to get circuit breaker state", map[string]interface{}{"endpoint_id": endpointID, "error": err.Error()})
+	}
 	if cb != nil {
 		analysis.CircuitBreakerState = cb.State
 	}
 
 	// Get recent predictions
-	predictions, _ := s.repo.GetPredictionsByEndpoint(ctx, endpointID, 5)
+	predictions, err := s.repo.GetPredictionsByEndpoint(ctx, endpointID, 5)
+	if err != nil {
+		s.logger.Error("Failed to get predictions for endpoint", map[string]interface{}{"endpoint_id": endpointID, "error": err.Error()})
+	}
 	analysis.RecentPredictions = predictions
 
 	if len(predictions) > 0 {
@@ -366,7 +372,10 @@ func (s *SelfHealingService) GetEndpointHealthAnalysis(ctx context.Context, tena
 	}
 
 	// Get pending suggestions
-	suggestions, _ := s.repo.GetSuggestionsByEndpoint(ctx, endpointID)
+	suggestions, err := s.repo.GetSuggestionsByEndpoint(ctx, endpointID)
+	if err != nil {
+		s.logger.Error("Failed to get suggestions for endpoint", map[string]interface{}{"endpoint_id": endpointID, "error": err.Error()})
+	}
 	var pending []*models.EndpointOptimizationSuggestion
 	for _, s := range suggestions {
 		if s.Status == models.SuggestionStatusPending {
@@ -376,7 +385,10 @@ func (s *SelfHealingService) GetEndpointHealthAnalysis(ctx context.Context, tena
 	analysis.PendingSuggestions = pending
 
 	// Get recent actions
-	actions, _ := s.repo.GetRemediationActionsByEndpoint(ctx, endpointID, 5)
+	actions, err := s.repo.GetRemediationActionsByEndpoint(ctx, endpointID, 5)
+	if err != nil {
+		s.logger.Error("Failed to get remediation actions for endpoint", map[string]interface{}{"endpoint_id": endpointID, "error": err.Error()})
+	}
 	analysis.RecentActions = actions
 
 	// Calculate health score
@@ -507,11 +519,23 @@ func (s *SelfHealingService) GetDashboard(ctx context.Context, tenantID uuid.UUI
 	dashboard := &models.SelfHealingDashboard{}
 
 	// Get counts
-	openCBs, _ := s.repo.CountOpenCircuitBreakers(ctx, tenantID)
-	actionsToday, _ := s.repo.CountActionsToday(ctx, tenantID)
-	pendingSuggestions, _ := s.repo.CountPendingSuggestions(ctx, tenantID)
+	openCBs, err := s.repo.CountOpenCircuitBreakers(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to count open circuit breakers", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	actionsToday, err := s.repo.CountActionsToday(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to count actions today", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	pendingSuggestions, err := s.repo.CountPendingSuggestions(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to count pending suggestions", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 
-	rules, _ := s.repo.GetActiveRemediationRules(ctx, tenantID)
+	rules, err := s.repo.GetActiveRemediationRules(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to get active remediation rules", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 
 	dashboard.CircuitBreakersOpen = openCBs
 	dashboard.ActionsToday = actionsToday
@@ -519,8 +543,14 @@ func (s *SelfHealingService) GetDashboard(ctx context.Context, tenantID uuid.UUI
 	dashboard.ActiveRules = len(rules)
 
 	// Get recent data
-	predictions, _ := s.repo.GetRecentPredictions(ctx, tenantID, 10)
-	actions, _ := s.repo.GetRecentRemediationActions(ctx, tenantID, 10)
+	predictions, err := s.repo.GetRecentPredictions(ctx, tenantID, 10)
+	if err != nil {
+		s.logger.Error("Failed to get recent predictions", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	actions, err := s.repo.GetRecentRemediationActions(ctx, tenantID, 10)
+	if err != nil {
+		s.logger.Error("Failed to get recent remediation actions", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 
 	dashboard.RecentPredictions = predictions
 	dashboard.RecentActions = actions
