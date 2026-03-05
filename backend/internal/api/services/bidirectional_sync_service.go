@@ -480,7 +480,10 @@ func (s *BidirectionalSyncService) ProcessTimeouts(ctx context.Context) error {
 func (s *BidirectionalSyncService) GetDashboard(ctx context.Context, tenantID uuid.UUID) (*models.SyncDashboard, error) {
 	dashboard := &models.SyncDashboard{}
 
-	configs, _ := s.repo.GetConfigsByTenant(ctx, tenantID)
+	configs, err := s.repo.GetConfigsByTenant(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to get sync configs for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	activeConfigs := 0
 	for _, c := range configs {
 		if c.Enabled {
@@ -489,22 +492,40 @@ func (s *BidirectionalSyncService) GetDashboard(ctx context.Context, tenantID uu
 	}
 	dashboard.ActiveConfigs = activeConfigs
 
-	pendingTx, _ := s.repo.GetPendingTransactions(ctx, tenantID)
+	pendingTx, err := s.repo.GetPendingTransactions(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to get pending transactions for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	dashboard.PendingTransactions = len(pendingTx)
 	dashboard.RecentTransactions = pendingTx
 
-	completedToday, _ := s.repo.CountTransactionsToday(ctx, tenantID, models.SyncStatesCompleted)
-	timeoutsToday, _ := s.repo.CountTransactionsToday(ctx, tenantID, models.SyncStatesTimeout)
+	completedToday, err := s.repo.CountTransactionsToday(ctx, tenantID, models.SyncStatesCompleted)
+	if err != nil {
+		s.logger.Error("Failed to count completed transactions today", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
+	timeoutsToday, err := s.repo.CountTransactionsToday(ctx, tenantID, models.SyncStatesTimeout)
+	if err != nil {
+		s.logger.Error("Failed to count timeout transactions today", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	dashboard.CompletedToday = completedToday
 	dashboard.TimeoutsToday = timeoutsToday
 
-	activeConflicts, _ := s.repo.CountActiveConflicts(ctx, tenantID)
+	activeConflicts, err := s.repo.CountActiveConflicts(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to count active conflicts for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	dashboard.ActiveConflicts = activeConflicts
 
-	pendingAcks, _ := s.repo.CountPendingAcks(ctx, tenantID)
+	pendingAcks, err := s.repo.CountPendingAcks(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to count pending acks for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	dashboard.PendingAcks = pendingAcks
 
-	conflicts, _ := s.repo.GetConflictedRecords(ctx, tenantID)
+	conflicts, err := s.repo.GetConflictedRecords(ctx, tenantID)
+	if err != nil {
+		s.logger.Error("Failed to get conflicted records for dashboard", map[string]interface{}{"tenant_id": tenantID, "error": err.Error()})
+	}
 	dashboard.RecentConflicts = conflicts
 
 	return dashboard, nil
