@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -170,7 +171,9 @@ func (e *RealTimeSubscriptionEngine) Subscribe(ctx context.Context, tenantID, su
 	e.subscribers[tenantID][subID] = ch
 	e.mu.Unlock()
 
-	_ = e.repo.SaveSubscription(ctx, info, tenantID)
+	if err := e.repo.SaveSubscription(ctx, info, tenantID); err != nil {
+		log.Printf("ERROR: failed to save subscription: %v (tenant=%s, sub=%s)", err, tenantID, subID)
+	}
 
 	return info, ch, nil
 }
@@ -202,7 +205,9 @@ func (e *RealTimeSubscriptionEngine) Publish(ctx context.Context, tenantID strin
 	for subID, ch := range subs {
 		select {
 		case ch <- event:
-			_ = e.repo.IncrementEventCount(ctx, subID)
+			if err := e.repo.IncrementEventCount(ctx, subID); err != nil {
+				log.Printf("ERROR: failed to increment event count: %v (sub=%s)", err, subID)
+			}
 		default:
 			// Channel full, skip
 		}

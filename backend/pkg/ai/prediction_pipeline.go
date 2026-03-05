@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"time"
 
@@ -578,7 +579,9 @@ func (p *PredictionPipeline) ExecuteRemediation(ctx context.Context, actionID st
 
 	action.Status = "executing"
 	action.ExecutedAt = &now
-	_ = p.repo.UpdateRemediationStatus(ctx, actionID, "executing", "")
+	if err := p.repo.UpdateRemediationStatus(ctx, actionID, "executing", ""); err != nil {
+		log.Printf("ERROR: failed to update remediation status: %v (action=%s)", err, actionID)
+	}
 
 	// Execute based on action type (in real implementation, this calls other services)
 	result := fmt.Sprintf("Executed %s action at %s", action.ActionType, now.Format(time.RFC3339))

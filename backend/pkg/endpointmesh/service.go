@@ -323,6 +323,8 @@ func (s *Service) evaluateCircuit(node *MeshNode) {
 		node.CircuitState.SuccessCount = 0
 		node.CircuitState.LastEvaluatedAt = now
 		node.Status = StatusRecovering
-		_ = s.repo.UpdateNode(node)
+		if err := s.repo.UpdateNode(node); err != nil {
+			s.logger.Error("failed to update node circuit state", map[string]interface{}{"error": err.Error(), "node_id": node.ID})
+		}
 	}
 }
