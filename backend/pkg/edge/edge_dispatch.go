@@ -13,10 +13,10 @@ import (
 
 // Dispatch strategy constants
 const (
-	DispatchStrategyLatency   = "lowest_latency"
-	DispatchStrategyGeo       = "geo_nearest"
+	DispatchStrategyLatency     = "lowest_latency"
+	DispatchStrategyGeo         = "geo_nearest"
 	DispatchStrategyLoadBalance = "load_balance"
-	DispatchStrategyFailover  = "failover"
+	DispatchStrategyFailover    = "failover"
 )
 
 // Node status constants
@@ -29,56 +29,56 @@ const (
 
 // EdgeDispatchConfig configures the edge delivery behavior for a tenant.
 type EdgeDispatchConfig struct {
-	ID              string   `json:"id"`
-	TenantID        string   `json:"tenant_id"`
-	Strategy        string   `json:"strategy"`
-	PreferredRegions []string `json:"preferred_regions,omitempty"`
-	MaxLatencyMs    int      `json:"max_latency_ms"`
-	EnableFailover  bool     `json:"enable_failover"`
-	FailoverRegions []string `json:"failover_regions,omitempty"`
-	Enabled         bool     `json:"enabled"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID               string    `json:"id"`
+	TenantID         string    `json:"tenant_id"`
+	Strategy         string    `json:"strategy"`
+	PreferredRegions []string  `json:"preferred_regions,omitempty"`
+	MaxLatencyMs     int       `json:"max_latency_ms"`
+	EnableFailover   bool      `json:"enable_failover"`
+	FailoverRegions  []string  `json:"failover_regions,omitempty"`
+	Enabled          bool      `json:"enabled"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // EdgeDeliveryMetrics tracks delivery metrics per edge node.
 type EdgeDeliveryMetrics struct {
-	NodeID           string    `json:"node_id"`
-	Region           string    `json:"region"`
-	TotalDeliveries  int64     `json:"total_deliveries"`
-	SuccessCount     int64     `json:"success_count"`
-	FailureCount     int64     `json:"failure_count"`
-	AvgLatencyMs     float64   `json:"avg_latency_ms"`
-	P50LatencyMs     float64   `json:"p50_latency_ms"`
-	P99LatencyMs     float64   `json:"p99_latency_ms"`
-	ActiveConnections int      `json:"active_connections"`
-	LastDeliveryAt   *time.Time `json:"last_delivery_at,omitempty"`
+	NodeID            string     `json:"node_id"`
+	Region            string     `json:"region"`
+	TotalDeliveries   int64      `json:"total_deliveries"`
+	SuccessCount      int64      `json:"success_count"`
+	FailureCount      int64      `json:"failure_count"`
+	AvgLatencyMs      float64    `json:"avg_latency_ms"`
+	P50LatencyMs      float64    `json:"p50_latency_ms"`
+	P99LatencyMs      float64    `json:"p99_latency_ms"`
+	ActiveConnections int        `json:"active_connections"`
+	LastDeliveryAt    *time.Time `json:"last_delivery_at,omitempty"`
 }
 
 // EdgeDispatchResult captures the result of dispatching via the edge network.
 type EdgeDispatchResult struct {
-	ID             string    `json:"id"`
-	WebhookID      string    `json:"webhook_id"`
-	NodeID         string    `json:"node_id"`
-	Region         string    `json:"region"`
-	Strategy       string    `json:"strategy"`
-	LatencyMs      int       `json:"latency_ms"`
-	StatusCode     int       `json:"status_code"`
-	Success        bool      `json:"success"`
-	FailoverUsed   bool      `json:"failover_used"`
-	OriginalNode   string    `json:"original_node,omitempty"`
-	Timestamp      time.Time `json:"timestamp"`
+	ID           string    `json:"id"`
+	WebhookID    string    `json:"webhook_id"`
+	NodeID       string    `json:"node_id"`
+	Region       string    `json:"region"`
+	Strategy     string    `json:"strategy"`
+	LatencyMs    int       `json:"latency_ms"`
+	StatusCode   int       `json:"status_code"`
+	Success      bool      `json:"success"`
+	FailoverUsed bool      `json:"failover_used"`
+	OriginalNode string    `json:"original_node,omitempty"`
+	Timestamp    time.Time `json:"timestamp"`
 }
 
 // EdgeNetworkOverview provides a dashboard view of the edge network.
 type EdgeNetworkOverview struct {
-	TotalNodes       int                   `json:"total_nodes"`
-	ActiveNodes      int                   `json:"active_nodes"`
-	Regions          []string              `json:"regions"`
-	TotalDeliveries  int64                 `json:"total_deliveries"`
-	AvgLatencyMs     float64               `json:"avg_latency_ms"`
-	NodeMetricsList  []EdgeDeliveryMetrics `json:"node_metrics"`
-	HealthScore      float64               `json:"health_score"`
+	TotalNodes      int                   `json:"total_nodes"`
+	ActiveNodes     int                   `json:"active_nodes"`
+	Regions         []string              `json:"regions"`
+	TotalDeliveries int64                 `json:"total_deliveries"`
+	AvgLatencyMs    float64               `json:"avg_latency_ms"`
+	NodeMetricsList []EdgeDeliveryMetrics `json:"node_metrics"`
+	HealthScore     float64               `json:"health_score"`
 }
 
 // Request DTOs
@@ -92,11 +92,11 @@ type CreateEdgeDispatchConfigRequest struct {
 }
 
 type DispatchWebhookRequest struct {
-	WebhookID    string  `json:"webhook_id" binding:"required"`
-	EndpointURL  string  `json:"endpoint_url" binding:"required"`
-	ReceiverLat  float64 `json:"receiver_lat,omitempty"`
-	ReceiverLon  float64 `json:"receiver_lon,omitempty"`
-	PayloadSize  int64   `json:"payload_size,omitempty"`
+	WebhookID   string  `json:"webhook_id" binding:"required"`
+	EndpointURL string  `json:"endpoint_url" binding:"required"`
+	ReceiverLat float64 `json:"receiver_lat,omitempty"`
+	ReceiverLon float64 `json:"receiver_lon,omitempty"`
+	PayloadSize int64   `json:"payload_size,omitempty"`
 }
 
 type RecordEdgeDeliveryRequest struct {
@@ -109,15 +109,10 @@ type RecordEdgeDeliveryRequest struct {
 
 // In-memory state for edge dispatch
 type edgeDispatchState struct {
-	mu       sync.RWMutex
-	configs  map[string]*EdgeDispatchConfig
-	metrics  map[string]*EdgeDeliveryMetrics
-	results  []EdgeDispatchResult
-}
-
-var globalEdgeDispatchState = &edgeDispatchState{
-	configs: make(map[string]*EdgeDispatchConfig),
-	metrics: make(map[string]*EdgeDeliveryMetrics),
+	mu      sync.RWMutex
+	configs map[string]*EdgeDispatchConfig
+	metrics map[string]*EdgeDeliveryMetrics
+	results []EdgeDispatchResult
 }
 
 // newEdgeDispatchState creates a fresh edgeDispatchState instance.
@@ -299,8 +294,8 @@ func (s *Service) GetEdgeNetworkOverview(ctx context.Context, tenantID string) (
 // Internal types for node selection
 
 type selectedNode struct {
-	nodeID            string
-	region            string
+	nodeID             string
+	region             string
 	estimatedLatencyMs int
 }
 
@@ -363,12 +358,12 @@ func (s *Service) selectNode(strategy string, receiverLat, receiverLon float64, 
 }
 
 type edgeNodeInfo struct {
-	nodeID       string
-	region       string
-	lat          float64
-	lon          float64
+	nodeID        string
+	region        string
+	lat           float64
+	lon           float64
 	baseLatencyMs int
-	status       string
+	status        string
 }
 
 func defaultEdgeNodeList() []edgeNodeInfo {

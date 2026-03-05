@@ -20,74 +20,74 @@ const (
 
 // AdaptiveStrategy constants
 const (
-	StrategyAIMD    = "aimd"     // Additive Increase Multiplicative Decrease
-	StrategyToken   = "token"    // Token bucket with dynamic refill
-	StrategyLeaky   = "leaky"    // Leaky bucket with health-based drain
+	StrategyAIMD       = "aimd"       // Additive Increase Multiplicative Decrease
+	StrategyToken      = "token"      // Token bucket with dynamic refill
+	StrategyLeaky      = "leaky"      // Leaky bucket with health-based drain
 	StrategyCongestion = "congestion" // TCP-like congestion control
 )
 
 // ReceiverHealth tracks the health of a webhook receiver endpoint.
 type ReceiverHealth struct {
-	EndpointID        string    `json:"endpoint_id"`
-	TenantID          string    `json:"tenant_id"`
-	Status            string    `json:"status"`
-	AvgResponseTimeMs float64   `json:"avg_response_time_ms"`
-	P95ResponseTimeMs float64   `json:"p95_response_time_ms"`
-	SuccessRate       float64   `json:"success_rate"`
-	ErrorRate         float64   `json:"error_rate"`
-	RateLimitHits     int64     `json:"rate_limit_hits"`
-	ConsecutiveErrors int       `json:"consecutive_errors"`
-	LastCheckedAt     time.Time `json:"last_checked_at"`
+	EndpointID        string     `json:"endpoint_id"`
+	TenantID          string     `json:"tenant_id"`
+	Status            string     `json:"status"`
+	AvgResponseTimeMs float64    `json:"avg_response_time_ms"`
+	P95ResponseTimeMs float64    `json:"p95_response_time_ms"`
+	SuccessRate       float64    `json:"success_rate"`
+	ErrorRate         float64    `json:"error_rate"`
+	RateLimitHits     int64      `json:"rate_limit_hits"`
+	ConsecutiveErrors int        `json:"consecutive_errors"`
+	LastCheckedAt     time.Time  `json:"last_checked_at"`
 	LastSuccessAt     *time.Time `json:"last_success_at,omitempty"`
-	WindowDuration    string    `json:"window_duration"`
+	WindowDuration    string     `json:"window_duration"`
 }
 
 // AdaptiveRateConfig holds the adaptive rate limit configuration for an endpoint.
 type RecvAdaptiveConfig struct {
-	ID                string  `json:"id"`
-	TenantID          string  `json:"tenant_id"`
-	EndpointID        string  `json:"endpoint_id"`
-	Strategy          string  `json:"strategy"`
-	BaseRatePerSecond float64 `json:"base_rate_per_second"`
-	CurrentRate       float64 `json:"current_rate"`
-	MinRate           float64 `json:"min_rate"`
-	MaxRate           float64 `json:"max_rate"`
-	IncreaseStep      float64 `json:"increase_step"`
-	DecreaseMultiplier float64 `json:"decrease_multiplier"`
-	HealthThreshold   float64 `json:"health_threshold"`
-	Enabled           bool    `json:"enabled"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID                 string    `json:"id"`
+	TenantID           string    `json:"tenant_id"`
+	EndpointID         string    `json:"endpoint_id"`
+	Strategy           string    `json:"strategy"`
+	BaseRatePerSecond  float64   `json:"base_rate_per_second"`
+	CurrentRate        float64   `json:"current_rate"`
+	MinRate            float64   `json:"min_rate"`
+	MaxRate            float64   `json:"max_rate"`
+	IncreaseStep       float64   `json:"increase_step"`
+	DecreaseMultiplier float64   `json:"decrease_multiplier"`
+	HealthThreshold    float64   `json:"health_threshold"`
+	Enabled            bool      `json:"enabled"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // RateAdjustment records a rate limit adjustment event.
 type RecvRateAdjustment struct {
-	ID          string    `json:"id"`
-	EndpointID  string    `json:"endpoint_id"`
-	TenantID    string    `json:"tenant_id"`
-	PreviousRate float64  `json:"previous_rate"`
-	NewRate     float64   `json:"new_rate"`
-	Reason      string    `json:"reason"`
-	HealthScore float64   `json:"health_score"`
-	Timestamp   time.Time `json:"timestamp"`
+	ID           string    `json:"id"`
+	EndpointID   string    `json:"endpoint_id"`
+	TenantID     string    `json:"tenant_id"`
+	PreviousRate float64   `json:"previous_rate"`
+	NewRate      float64   `json:"new_rate"`
+	Reason       string    `json:"reason"`
+	HealthScore  float64   `json:"health_score"`
+	Timestamp    time.Time `json:"timestamp"`
 }
 
 // AdaptiveStats provides statistics about adaptive rate limiting.
 type RecvAdaptiveStats struct {
-	EndpointID       string           `json:"endpoint_id"`
-	CurrentRate      float64          `json:"current_rate"`
-	BaseRate         float64          `json:"base_rate"`
-	HealthScore      float64          `json:"health_score"`
-	AdjustmentCount  int              `json:"adjustment_count"`
+	EndpointID        string               `json:"endpoint_id"`
+	CurrentRate       float64              `json:"current_rate"`
+	BaseRate          float64              `json:"base_rate"`
+	HealthScore       float64              `json:"health_score"`
+	AdjustmentCount   int                  `json:"adjustment_count"`
 	RecentAdjustments []RecvRateAdjustment `json:"recent_adjustments"`
 }
 
 // CapacitySignal represents a signal about receiver capacity.
 type CapacitySignal struct {
-	EndpointID   string  `json:"endpoint_id"`
-	SignalType   string  `json:"signal_type"`
-	Value        float64 `json:"value"`
-	Timestamp    time.Time `json:"timestamp"`
+	EndpointID string    `json:"endpoint_id"`
+	SignalType string    `json:"signal_type"`
+	Value      float64   `json:"value"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
 // Request DTOs
@@ -101,18 +101,18 @@ type CreateRecvAdaptiveConfigRequest struct {
 }
 
 type RecvDeliveryResultRequest struct {
-	EndpointID   string `json:"endpoint_id" binding:"required"`
-	StatusCode   int    `json:"status_code" binding:"required"`
-	ResponseTimeMs int  `json:"response_time_ms" binding:"required"`
-	Success      bool   `json:"success"`
+	EndpointID     string `json:"endpoint_id" binding:"required"`
+	StatusCode     int    `json:"status_code" binding:"required"`
+	ResponseTimeMs int    `json:"response_time_ms" binding:"required"`
+	Success        bool   `json:"success"`
 }
 
 // adaptiveState stores in-memory state for adaptive rate limiting
 type adaptiveState struct {
-	mu           sync.RWMutex
-	configs      map[string]*RecvAdaptiveConfig
-	health       map[string]*ReceiverHealth
-	adjustments  map[string][]RecvRateAdjustment
+	mu             sync.RWMutex
+	configs        map[string]*RecvAdaptiveConfig
+	health         map[string]*ReceiverHealth
+	adjustments    map[string][]RecvRateAdjustment
 	deliveryWindow map[string]*deliveryWindow
 }
 
@@ -123,13 +123,6 @@ type deliveryWindow struct {
 	count      int
 	maxMs      int64
 	p95Samples []int
-}
-
-var globalAdaptiveState = &adaptiveState{
-	configs:        make(map[string]*RecvAdaptiveConfig),
-	health:         make(map[string]*ReceiverHealth),
-	adjustments:    make(map[string][]RecvRateAdjustment),
-	deliveryWindow: make(map[string]*deliveryWindow),
 }
 
 // newAdaptiveState creates a fresh adaptiveState instance.
@@ -294,9 +287,9 @@ func (s *Service) GetAdaptiveStats(ctx context.Context, tenantID, endpointID str
 
 func (s *Service) computeHealth(endpointID, tenantID string, window *deliveryWindow) *ReceiverHealth {
 	health := &ReceiverHealth{
-		EndpointID:    endpointID,
-		TenantID:      tenantID,
-		LastCheckedAt: time.Now(),
+		EndpointID:     endpointID,
+		TenantID:       tenantID,
+		LastCheckedAt:  time.Now(),
 		WindowDuration: "5m",
 	}
 

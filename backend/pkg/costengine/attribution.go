@@ -22,36 +22,36 @@ const (
 
 // CostAttribution represents attributed cost for a specific dimension.
 type CostAttributionEntry struct {
-	ID              string    `json:"id"`
-	TenantID        string    `json:"tenant_id"`
-	EndpointID      string    `json:"endpoint_id,omitempty"`
-	EventType       string    `json:"event_type,omitempty"`
-	Period          string    `json:"period"`
-	PeriodStart     time.Time `json:"period_start"`
-	PeriodEnd       time.Time `json:"period_end"`
-	DeliveryCount   int64     `json:"delivery_count"`
-	SuccessCount    int64     `json:"success_count"`
-	FailedCount     int64     `json:"failed_count"`
-	RetryCount      int64     `json:"retry_count"`
-	TotalCost       float64   `json:"total_cost"`
-	DeliveryCost    float64   `json:"delivery_cost"`
-	BandwidthCost   float64   `json:"bandwidth_cost"`
-	ComputeCost     float64   `json:"compute_cost"`
-	StorageCost     float64   `json:"storage_cost"`
-	TotalBytesOut   int64     `json:"total_bytes_out"`
+	ID            string    `json:"id"`
+	TenantID      string    `json:"tenant_id"`
+	EndpointID    string    `json:"endpoint_id,omitempty"`
+	EventType     string    `json:"event_type,omitempty"`
+	Period        string    `json:"period"`
+	PeriodStart   time.Time `json:"period_start"`
+	PeriodEnd     time.Time `json:"period_end"`
+	DeliveryCount int64     `json:"delivery_count"`
+	SuccessCount  int64     `json:"success_count"`
+	FailedCount   int64     `json:"failed_count"`
+	RetryCount    int64     `json:"retry_count"`
+	TotalCost     float64   `json:"total_cost"`
+	DeliveryCost  float64   `json:"delivery_cost"`
+	BandwidthCost float64   `json:"bandwidth_cost"`
+	ComputeCost   float64   `json:"compute_cost"`
+	StorageCost   float64   `json:"storage_cost"`
+	TotalBytesOut int64     `json:"total_bytes_out"`
 }
 
 // TenantCostSummary provides a tenant-level cost overview.
 type TenantCostSummary struct {
-	TenantID           string                    `json:"tenant_id"`
-	Period             string                    `json:"period"`
-	TotalCost          float64                   `json:"total_cost"`
-	DeliveryCount      int64                     `json:"delivery_count"`
-	CostPerDelivery    float64                   `json:"cost_per_delivery"`
-	TopEndpoints       []EndpointCostSummary     `json:"top_endpoints"`
-	TopEventTypes      []EventTypeCostSummary    `json:"top_event_types"`
-	CostTrend          []CostDataPoint           `json:"cost_trend"`
-	ProjectedMonthlyCost float64                 `json:"projected_monthly_cost"`
+	TenantID             string                 `json:"tenant_id"`
+	Period               string                 `json:"period"`
+	TotalCost            float64                `json:"total_cost"`
+	DeliveryCount        int64                  `json:"delivery_count"`
+	CostPerDelivery      float64                `json:"cost_per_delivery"`
+	TopEndpoints         []EndpointCostSummary  `json:"top_endpoints"`
+	TopEventTypes        []EventTypeCostSummary `json:"top_event_types"`
+	CostTrend            []CostDataPoint        `json:"cost_trend"`
+	ProjectedMonthlyCost float64                `json:"projected_monthly_cost"`
 }
 
 // EndpointCostSummary summarizes costs per endpoint.
@@ -72,29 +72,29 @@ type EventTypeCostSummary struct {
 
 // CostDataPoint is a time-series cost data point.
 type CostDataPoint struct {
-	Timestamp time.Time `json:"timestamp"`
-	Cost      float64   `json:"cost"`
-	Deliveries int64    `json:"deliveries"`
+	Timestamp  time.Time `json:"timestamp"`
+	Cost       float64   `json:"cost"`
+	Deliveries int64     `json:"deliveries"`
 }
 
 // ChargebackReport generates chargeback data for billing integration.
 type ChargebackReport struct {
-	ID           string                `json:"id"`
-	TenantID     string                `json:"tenant_id"`
-	PeriodStart  time.Time             `json:"period_start"`
-	PeriodEnd    time.Time             `json:"period_end"`
-	TotalCost    float64               `json:"total_cost"`
-	LineItems    []ChargebackLineItem  `json:"line_items"`
-	GeneratedAt  time.Time             `json:"generated_at"`
+	ID          string               `json:"id"`
+	TenantID    string               `json:"tenant_id"`
+	PeriodStart time.Time            `json:"period_start"`
+	PeriodEnd   time.Time            `json:"period_end"`
+	TotalCost   float64              `json:"total_cost"`
+	LineItems   []ChargebackLineItem `json:"line_items"`
+	GeneratedAt time.Time            `json:"generated_at"`
 }
 
 // ChargebackLineItem is a single line in a chargeback report.
 type ChargebackLineItem struct {
-	Description   string  `json:"description"`
-	Category      string  `json:"category"`
-	Quantity      int64   `json:"quantity"`
-	UnitCost      float64 `json:"unit_cost"`
-	TotalCost     float64 `json:"total_cost"`
+	Description string  `json:"description"`
+	Category    string  `json:"category"`
+	Quantity    int64   `json:"quantity"`
+	UnitCost    float64 `json:"unit_cost"`
+	TotalCost   float64 `json:"total_cost"`
 }
 
 // CostForecast predicts future costs.
@@ -109,11 +109,11 @@ type CostForecastResult struct {
 // Request DTOs
 
 type RecordCostEventRequest struct {
-	EndpointID  string  `json:"endpoint_id" binding:"required"`
-	EventType   string  `json:"event_type" binding:"required"`
-	BytesOut    int64   `json:"bytes_out"`
-	Success     bool    `json:"success"`
-	IsRetry     bool    `json:"is_retry"`
+	EndpointID string `json:"endpoint_id" binding:"required"`
+	EventType  string `json:"event_type" binding:"required"`
+	BytesOut   int64  `json:"bytes_out"`
+	Success    bool   `json:"success"`
+	IsRetry    bool   `json:"is_retry"`
 }
 
 type GetCostSummaryRequest struct {
@@ -133,10 +133,6 @@ type GetCostForecastRequest struct {
 type costTracker struct {
 	mu           sync.RWMutex
 	attributions map[string]map[string]*CostAttributionEntry // tenantID -> key -> attribution
-}
-
-var globalCostTracker = &costTracker{
-	attributions: make(map[string]map[string]*CostAttributionEntry),
 }
 
 // newCostTracker creates a fresh costTracker instance.
@@ -185,9 +181,9 @@ func (s *Service) RecordCostEvent(ctx context.Context, tenantID string, req *Rec
 			TenantID:    tenantID,
 			EndpointID:  req.EndpointID,
 			EventType:   req.EventType,
-			Period:       GranularityDaily,
-			PeriodStart:  time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()),
-			PeriodEnd:    time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location()),
+			Period:      GranularityDaily,
+			PeriodStart: time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()),
+			PeriodEnd:   time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location()),
 		}
 		tenantMap[key] = attr
 	}
