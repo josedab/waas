@@ -3,6 +3,7 @@ package intelligence
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -81,7 +82,7 @@ func (r *PostgresRepository) GetPredictions(ctx context.Context, tenantID string
 func (r *PostgresRepository) GetPrediction(ctx context.Context, id string) (*FailurePrediction, error) {
 	var p FailurePrediction
 	err := r.db.GetContext(ctx, &p, `SELECT * FROM intel_predictions WHERE id = $1`, id)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("prediction not found: %s", id)
 	}
 	return &p, err
@@ -223,7 +224,7 @@ func (r *PostgresRepository) GetHealthScore(ctx context.Context, tenantID, endpo
 	var score EndpointHealthScore
 	err := r.db.GetContext(ctx, &score,
 		`SELECT * FROM intel_health_scores WHERE tenant_id = $1 AND endpoint_id = $2`, tenantID, endpointID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &score, err

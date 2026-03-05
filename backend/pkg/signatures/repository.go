@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -17,7 +18,7 @@ type Repository interface {
 	GetScheme(ctx context.Context, tenantID, schemeID string) (*SignatureScheme, error)
 	ListSchemes(ctx context.Context, tenantID string) ([]SignatureScheme, error)
 	DeleteScheme(ctx context.Context, tenantID, schemeID string) error
-	
+
 	// Keys
 	SaveKey(ctx context.Context, key *SigningKey) error
 	GetKey(ctx context.Context, keyID string) (*SigningKey, error)
@@ -25,13 +26,13 @@ type Repository interface {
 	ListKeys(ctx context.Context, schemeID string) ([]SigningKey, error)
 	UpdateKeyStatus(ctx context.Context, keyID string, status KeyStatus) error
 	UpdateKeyUsage(ctx context.Context, keyID string) error
-	
+
 	// Rotations
 	SaveRotation(ctx context.Context, rotation *KeyRotation) error
 	GetRotation(ctx context.Context, rotationID string) (*KeyRotation, error)
 	ListRotations(ctx context.Context, schemeID string) ([]KeyRotation, error)
 	GetPendingRotations(ctx context.Context) ([]KeyRotation, error)
-	
+
 	// Stats
 	GetSchemeStats(ctx context.Context, schemeID string) (*SchemeStats, error)
 	IncrementSignCount(ctx context.Context, schemeID string) error
@@ -91,7 +92,7 @@ func (r *PostgresRepository) GetScheme(ctx context.Context, tenantID, schemeID s
 		&scheme.Type, &scheme.Algorithm, &configJSON, &keyConfigJSON,
 		&scheme.Status, &scheme.CreatedAt, &scheme.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("signature scheme not found")
 	}
 	if err != nil {
@@ -196,7 +197,7 @@ func (r *PostgresRepository) GetKey(ctx context.Context, keyID string) (*Signing
 		&secretKey, &secretHash, &publicKey, &privateKey, &key.Fingerprint,
 		&key.CreatedAt, &expiresAt, &revokedAt, &lastUsedAt, &key.UsageCount)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("signing key not found")
 	}
 	if err != nil {
@@ -248,7 +249,7 @@ func (r *PostgresRepository) GetPrimaryKey(ctx context.Context, schemeID string)
 		&secretKey, &secretHash, &publicKey, &privateKey, &key.Fingerprint,
 		&key.CreatedAt, &expiresAt, &revokedAt, &lastUsedAt, &key.UsageCount)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("no active signing key found")
 	}
 	if err != nil {
@@ -384,7 +385,7 @@ func (r *PostgresRepository) GetRotation(ctx context.Context, rotationID string)
 		&rotation.OldKeyID, &rotation.NewKeyID, &rotation.Status,
 		&reason, &rotation.ScheduledAt, &startedAt, &completedAt, &overlapUntil, &errMsg)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("rotation not found")
 	}
 	if err != nil {
@@ -531,7 +532,7 @@ func (r *PostgresRepository) GetSchemeStats(ctx context.Context, schemeID string
 	err := r.db.QueryRowContext(ctx, query, schemeID).Scan(
 		&stats.TotalSigned, &stats.TotalVerified, &stats.TotalFailed,
 		&lastSigned, &lastVerified)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 

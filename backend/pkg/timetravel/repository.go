@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -105,7 +106,7 @@ func (r *PostgresRepository) GetEvent(ctx context.Context, tenantID, eventID str
 	var event EventRecord
 	query := `SELECT * FROM timetravel_events WHERE tenant_id = $1 AND id = $2`
 	err := r.db.GetContext(ctx, &event, query, tenantID, eventID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &event, err
@@ -132,7 +133,7 @@ func (r *PostgresRepository) GetReplayJob(ctx context.Context, tenantID, jobID s
 	var job ReplayJob
 	query := `SELECT * FROM timetravel_replay_jobs WHERE tenant_id = $1 AND id = $2`
 	err := r.db.GetContext(ctx, &job, query, tenantID, jobID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -221,7 +222,7 @@ func (r *PostgresRepository) GetSnapshot(ctx context.Context, tenantID, snapshot
 	var snapshot PointInTimeSnapshot
 	query := `SELECT * FROM timetravel_snapshots WHERE tenant_id = $1 AND id = $2`
 	err := r.db.GetContext(ctx, &snapshot, query, tenantID, snapshotID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &snapshot, err

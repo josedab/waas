@@ -3,6 +3,7 @@ package whitelabel
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -87,7 +88,7 @@ func (r *PostgresRepository) GetConfig(ctx context.Context, tenantID string) (*W
 		&accentColor, &customCSS, &config.DomainVerified, &config.SSLStatus,
 		&config.CreatedAt, &config.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("whitelabel config not found")
 	}
 	if err != nil {
@@ -229,7 +230,7 @@ func (r *PostgresRepository) GetSubTenant(ctx context.Context, parentTenantID, s
 		&customDomain, &subTenant.Plan, &subTenant.Status,
 		&subTenant.WebhooksUsed, &subTenant.WebhooksLimit, &subTenant.CreatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("sub-tenant not found")
 	}
 	if err != nil {
@@ -319,7 +320,7 @@ func (r *PostgresRepository) GetPartner(ctx context.Context, tenantID, partnerID
 		&partner.RevenueSharePct, &partner.TotalSubTenants, &partner.TotalRevenue,
 		&partner.Status, &partner.CreatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("partner not found")
 	}
 	if err != nil {
@@ -428,7 +429,7 @@ func (r *PostgresRepository) GetAnalytics(ctx context.Context, configID, tenantI
 
 	err := r.db.QueryRowContext(ctx, countQuery, tenantID).Scan(
 		&analytics.TotalSubTenants, &analytics.ActiveSubTenants)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
@@ -439,7 +440,7 @@ func (r *PostgresRepository) GetAnalytics(ctx context.Context, configID, tenantI
 		WHERE parent_tenant_id = $1`
 
 	err = r.db.QueryRowContext(ctx, webhookQuery, tenantID).Scan(&analytics.TotalWebhooks)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
@@ -452,7 +453,7 @@ func (r *PostgresRepository) GetAnalytics(ctx context.Context, configID, tenantI
 		WHERE p.tenant_id = $1 AND pr.period = $2`
 
 	err = r.db.QueryRowContext(ctx, revenueQuery, tenantID, period).Scan(&analytics.MonthlyRevenue)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 

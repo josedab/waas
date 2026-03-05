@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -85,7 +86,7 @@ func (r *PostgresRepository) GetSubscription(ctx context.Context, tenantID, subI
 		&sub.CreatedAt, &sub.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -268,7 +269,7 @@ func (r *PostgresRepository) GetEvent(ctx context.Context, tenantID, eventID str
 		&dataJSON, &metadataJSON, &event.OccurredAt, &deliveredAt, &event.CreatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

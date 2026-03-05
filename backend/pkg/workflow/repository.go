@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -169,7 +170,7 @@ func (r *PostgresRepository) GetWorkflow(ctx context.Context, tenantID, workflow
 		&triggerJSON, &nodesJSON, &edgesJSON, &variablesJSON, &settingsJSON, &canvasJSON,
 		&createdBy, &wf.CreatedAt, &wf.UpdatedAt, &publishedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("workflow not found")
 	}
 	if err != nil {
@@ -318,7 +319,7 @@ func (r *PostgresRepository) GetWorkflowVersion(ctx context.Context, tenantID, w
 
 	err = r.db.QueryRowContext(ctx, query, workflowID, version).Scan(
 		&triggerJSON, &nodesJSON, &edgesJSON, &variablesJSON, &settingsJSON, &createdAt)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("version not found")
 	}
 	if err != nil {
@@ -425,7 +426,7 @@ func (r *PostgresRepository) GetExecution(ctx context.Context, tenantID, execID 
 		&variablesJSON, &nodeStatesJSON, &errorJSON,
 		&exec.StartedAt, &completedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("execution not found")
 	}
 	if err != nil {
@@ -637,7 +638,7 @@ func (r *PostgresRepository) GetTemplate(ctx context.Context, templateID string)
 
 	err := r.db.QueryRowContext(ctx, query, templateID).Scan(
 		&t.ID, &t.Name, &t.Description, &t.Category, &tagsJSON, &thumbnail, &workflowJSON, &t.UsageCount)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("template not found")
 	}
 	if err != nil {

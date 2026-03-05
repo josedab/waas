@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -58,7 +59,7 @@ func (r *PostgresRepository) GetNotification(ctx context.Context, notifID string
 		&notif.Payload, &responseJSON, &notif.Attempts,
 		&lastAttempt, &deliveredAt, &openedAt, &errMsg, &notif.CreatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("notification not found")
 	}
 	if err != nil {

@@ -3,6 +3,7 @@ package marketplace
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -72,7 +73,7 @@ func (r *Repository) GetListing(ctx context.Context, id string) (*Listing, error
 		&l.PublishedAt, &l.CreatedAt, &l.UpdatedAt,
 		&l.AverageRating, &l.TotalReviews,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrListingNotFound
 	}
 	if err != nil {
@@ -109,7 +110,7 @@ func (r *Repository) GetListingBySlug(ctx context.Context, slug string) (*Listin
 		&l.PublishedAt, &l.CreatedAt, &l.UpdatedAt,
 		&l.AverageRating, &l.TotalReviews,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrListingNotFound
 	}
 	if err != nil {
@@ -305,7 +306,7 @@ func (r *Repository) GetInstallation(ctx context.Context, tenantID, listingID st
 		&i.ID, &i.TenantID, &i.ListingID, &i.VersionID, &i.InstalledVersion, &configJSON,
 		&i.Status, &i.LastUsedAt, &i.UsageCount, &i.InstalledAt, &i.UpdatedAt,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

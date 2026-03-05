@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -88,7 +89,7 @@ func (r *PostgresRepository) scanDevice(row *sql.Row) (*PushDevice, error) {
 		&deviceInfoJSON, &device.Status, &prefsJSON, &tagsJSON, &metadataJSON,
 		&lastActiveAt, &device.RegisteredAt, &device.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("device not found")
 	}
 	if err != nil {

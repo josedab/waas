@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -102,7 +103,7 @@ func (r *PostgresRepository) GetEndpointRouting(ctx context.Context, tenantID, e
 		&routing.CreatedAt, &routing.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -190,7 +191,7 @@ func (r *PostgresRepository) GetRegionConfig(ctx context.Context, regionID strin
 		&config.CreatedAt, &config.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -278,7 +279,7 @@ func (r *PostgresRepository) GetRegionHealth(ctx context.Context, regionID strin
 		&health.ErrorRate, &health.LastError, &lastErrorAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -370,7 +371,7 @@ func (r *PostgresRepository) GetGeoRegion(ctx context.Context, name string) (*Ge
 		&region.Latitude, &region.Longitude, &region.Status,
 		&region.Capacity, &region.CurrentLoad, &region.AvgLatency, &region.CreatedAt,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -450,7 +451,7 @@ func (r *PostgresRepository) GetGeoRoutingPolicy(ctx context.Context, tenantID u
 		&policy.ID, &policy.TenantID, &policy.Name, &policy.Strategy,
 		&dataRes, &pref, &fo, &w, &policy.Active, &policy.CreatedAt,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -475,7 +476,7 @@ func (r *PostgresRepository) GetGeoRoutingPolicyByID(ctx context.Context, id uui
 		&policy.ID, &policy.TenantID, &policy.Name, &policy.Strategy,
 		&dataRes, &pref, &fo, &w, &policy.Active, &policy.CreatedAt,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -548,7 +549,7 @@ func (r *PostgresRepository) GetEndpointRegionConfig(ctx context.Context, endpoi
 	err := r.db.QueryRowContext(ctx, query, endpointID).Scan(
 		&config.EndpointID, &config.PrimaryRegion, &foRegions, &config.DataResidencyRq,
 	)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

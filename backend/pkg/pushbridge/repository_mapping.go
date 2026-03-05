@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -58,7 +59,7 @@ func (r *PostgresRepository) GetMapping(ctx context.Context, tenantID, mappingID
 		&configJSON, &templateJSON, &targetingJSON,
 		&mapping.CreatedAt, &mapping.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("mapping not found")
 	}
 	if err != nil {

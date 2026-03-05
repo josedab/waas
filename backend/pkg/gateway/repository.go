@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -65,7 +66,7 @@ func (r *PostgresRepository) GetProvider(ctx context.Context, tenantID, provider
 	var provider Provider
 	query := `SELECT * FROM gateway_providers WHERE tenant_id = $1 AND id = $2`
 	err := r.db.GetContext(ctx, &provider, query, tenantID, providerID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &provider, err
@@ -134,7 +135,7 @@ func (r *PostgresRepository) GetRoutingRule(ctx context.Context, tenantID, ruleI
 	var rule RoutingRule
 	query := `SELECT * FROM gateway_routing_rules WHERE tenant_id = $1 AND id = $2`
 	err := r.db.GetContext(ctx, &rule, query, tenantID, ruleID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &rule, err
@@ -196,7 +197,7 @@ func (r *PostgresRepository) GetInboundWebhook(ctx context.Context, tenantID, we
 	var webhook InboundWebhook
 	query := `SELECT * FROM inbound_webhooks WHERE tenant_id = $1 AND id = $2`
 	err := r.db.GetContext(ctx, &webhook, query, tenantID, webhookID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err == nil && webhook.HeadersJSON != nil {

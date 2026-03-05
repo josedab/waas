@@ -3,6 +3,7 @@ package pushbridge
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -38,7 +39,7 @@ func (r *PostgresRepository) GetProvider(ctx context.Context, tenantID string, p
 		&provider.Enabled, &provider.Config, &provider.Credentials,
 		&provider.CreatedAt, &provider.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("provider not found")
 	}
 	return &provider, err

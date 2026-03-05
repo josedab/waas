@@ -3,6 +3,7 @@ package schema
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -65,7 +66,7 @@ func (r *PostgresRepository) GetSchema(ctx context.Context, tenantID, schemaID s
 	var schema Schema
 	query := `SELECT * FROM schemas WHERE tenant_id = $1 AND id = $2`
 	err := r.db.GetContext(ctx, &schema, query, tenantID, schemaID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &schema, err
@@ -76,7 +77,7 @@ func (r *PostgresRepository) GetSchemaByName(ctx context.Context, tenantID, name
 	var schema Schema
 	query := `SELECT * FROM schemas WHERE tenant_id = $1 AND name = $2`
 	err := r.db.GetContext(ctx, &schema, query, tenantID, name)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &schema, err
@@ -135,13 +136,13 @@ func (r *PostgresRepository) CreateVersion(ctx context.Context, version *SchemaV
 	_, err := r.db.ExecContext(ctx, query,
 		version.ID, version.SchemaID, version.Version, version.JSONSchema,
 		version.Changelog, version.CreatedAt, version.CreatedBy)
-	
+
 	if err == nil {
 		// Update the main schema version
 		updateQuery := `UPDATE schemas SET version = $1, json_schema = $2, updated_at = $3 WHERE id = $4`
 		_, err = r.db.ExecContext(ctx, updateQuery, version.Version, version.JSONSchema, time.Now(), version.SchemaID)
 	}
-	
+
 	return err
 }
 
@@ -150,7 +151,7 @@ func (r *PostgresRepository) GetVersion(ctx context.Context, schemaID, version s
 	var v SchemaVersion
 	query := `SELECT * FROM schema_versions WHERE schema_id = $1 AND version = $2`
 	err := r.db.GetContext(ctx, &v, query, schemaID, version)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &v, err
@@ -161,7 +162,7 @@ func (r *PostgresRepository) GetLatestVersion(ctx context.Context, schemaID stri
 	var v SchemaVersion
 	query := `SELECT * FROM schema_versions WHERE schema_id = $1 ORDER BY created_at DESC LIMIT 1`
 	err := r.db.GetContext(ctx, &v, query, schemaID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &v, err
@@ -197,7 +198,7 @@ func (r *PostgresRepository) GetEndpointSchema(ctx context.Context, endpointID s
 	var assignment EndpointSchema
 	query := `SELECT * FROM endpoint_schemas WHERE endpoint_id = $1`
 	err := r.db.GetContext(ctx, &assignment, query, endpointID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &assignment, err

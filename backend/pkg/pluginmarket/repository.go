@@ -3,6 +3,7 @@ package pluginmarket
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -74,7 +75,7 @@ func (r *PostgresRepository) GetPlugin(ctx context.Context, id string) (*Plugin,
 	var plugin Plugin
 	err := r.db.GetContext(ctx, &plugin,
 		`SELECT * FROM marketplace_plugins WHERE id = $1`, id)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("plugin not found: %s", id)
 	}
 	return &plugin, err
@@ -84,7 +85,7 @@ func (r *PostgresRepository) GetPluginBySlug(ctx context.Context, slug string) (
 	var plugin Plugin
 	err := r.db.GetContext(ctx, &plugin,
 		`SELECT * FROM marketplace_plugins WHERE slug = $1`, slug)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("plugin not found: %s", slug)
 	}
 	return &plugin, err
@@ -140,14 +141,16 @@ func (r *PostgresRepository) SearchPlugins(ctx context.Context, params *PluginSe
 
 	whereClause := strings.Join(where, " AND ")
 
-	orderBy := "installs DESC"
-	switch params.SortBy {
-	case "rating":
-		orderBy = "avg_rating DESC"
-	case "newest":
-		orderBy = "created_at DESC"
-	case "name":
-		orderBy = "name ASC"
+	// Strict allowlist for ORDER BY to prevent SQL injection
+	allowedSortColumns := map[string]string{
+		"rating":   "avg_rating DESC",
+		"newest":   "created_at DESC",
+		"name":     "name ASC",
+		"installs": "installs DESC",
+	}
+	orderBy, ok := allowedSortColumns[params.SortBy]
+	if !ok {
+		orderBy = allowedSortColumns["installs"]
 	}
 
 	var total int
@@ -216,7 +219,7 @@ func (r *PostgresRepository) GetLatestVersion(ctx context.Context, pluginID stri
 	var version PluginVersion
 	err := r.db.GetContext(ctx, &version,
 		`SELECT * FROM marketplace_plugin_versions WHERE plugin_id = $1 AND is_latest = true`, pluginID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("no versions found for plugin: %s", pluginID)
 	}
 	return &version, err
@@ -257,7 +260,7 @@ func (r *PostgresRepository) GetInstallation(ctx context.Context, tenantID, plug
 	err := r.db.GetContext(ctx, &install,
 		`SELECT * FROM marketplace_installations WHERE tenant_id = $1 AND plugin_id = $2 AND status = 'active'`,
 		tenantID, pluginID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &install, err

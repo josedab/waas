@@ -3,6 +3,7 @@ package pushbridge
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -37,7 +38,7 @@ func (r *PostgresRepository) GetSegment(ctx context.Context, tenantID, segmentID
 		&segment.ID, &segment.TenantID, &segment.Name, &description,
 		&segment.Query, &segment.DeviceCount, &segment.CreatedAt, &segment.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("segment not found")
 	}
 	if description.Valid {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -118,7 +119,7 @@ func (r *PostgresRepository) GetVersion(ctx context.Context, tenantID, versionID
 		&policyJSON, &replacement, &compatibleJSON, &transformsJSON,
 		&v.CreatedAt, &v.UpdatedAt, &publishedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("version not found")
 	}
 	if err != nil {
@@ -156,7 +157,7 @@ func (r *PostgresRepository) GetVersionByLabel(ctx context.Context, tenantID, we
 
 	var versionID string
 	err := r.db.QueryRowContext(ctx, query, tenantID, webhookID, label).Scan(&versionID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("version not found")
 	}
 	if err != nil {
@@ -235,7 +236,7 @@ func (r *PostgresRepository) GetLatestVersion(ctx context.Context, tenantID, web
 
 	var versionID string
 	err := r.db.QueryRowContext(ctx, query, tenantID, webhookID).Scan(&versionID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("no published version found")
 	}
 	if err != nil {
@@ -293,7 +294,7 @@ func (r *PostgresRepository) GetSchema(ctx context.Context, tenantID, schemaID s
 		&s.ID, &s.TenantID, &s.Name, &s.Description, &s.Format,
 		&definitionJSON, &examplesJSON, &s.CreatedAt, &s.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("schema not found")
 	}
 	if err != nil {
@@ -375,7 +376,7 @@ func (r *PostgresRepository) GetSubscription(ctx context.Context, tenantID, subI
 		&s.ID, &s.TenantID, &s.EndpointID, &s.VersionID, &s.WebhookID,
 		&s.Status, &s.Pinned, &s.CreatedAt, &s.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("subscription not found")
 	}
 	if err != nil {
@@ -427,7 +428,7 @@ func (r *PostgresRepository) GetEndpointSubscription(ctx context.Context, tenant
 		&s.ID, &s.TenantID, &s.EndpointID, &s.VersionID, &s.WebhookID,
 		&s.Status, &s.Pinned, &s.CreatedAt, &s.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("subscription not found")
 	}
 	if err != nil {
@@ -477,7 +478,7 @@ func (r *PostgresRepository) GetMigration(ctx context.Context, migID string) (*M
 		&m.ID, &m.TenantID, &m.WebhookID, &m.FromVersion, &m.ToVersion,
 		&m.Status, &m.Strategy, &progressJSON, &m.StartedAt, &completedAt, &errMsg)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("migration not found")
 	}
 	if err != nil {
@@ -669,7 +670,7 @@ func (r *PostgresRepository) GetPolicy(ctx context.Context, tenantID string) (*V
 		&p.AllowDeprecated, &p.AutoUpgrade, &p.DeprecationDays, &p.SunsetDays,
 		&channelsJSON, &p.CreatedAt, &p.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("policy not found")
 	}
 	if err != nil {
@@ -709,7 +710,7 @@ func (r *PostgresRepository) GetVersionMetrics(ctx context.Context, tenantID, ve
 
 	err := r.db.QueryRowContext(ctx, query, tenantID, versionID).Scan(
 		&metrics.TotalRequests, &metrics.UniqueEndpoints, &metrics.LastUsedAt)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 

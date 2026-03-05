@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -117,7 +118,7 @@ func (r *Repository) GetByID(ctx context.Context, tenantID, configID string) (*D
 
 	var row configRow
 	err := r.db.GetContext(ctx, &row, query, configID, tenantID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

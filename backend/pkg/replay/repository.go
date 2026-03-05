@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -47,7 +48,7 @@ func (r *PostgresRepository) GetDeliveryArchive(ctx context.Context, tenantID, d
 		WHERE da.tenant_id = $1 AND da.id = $2
 	`
 	err := r.db.GetContext(ctx, &archive, query, tenantID, deliveryID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		// Fallback to live deliveries table
 		return r.getFromLiveDeliveries(ctx, tenantID, deliveryID)
 	}
@@ -74,7 +75,7 @@ func (r *PostgresRepository) getFromLiveDeliveries(ctx context.Context, tenantID
 		WHERE dr.tenant_id = $1 AND dr.id = $2
 	`
 	err := r.db.GetContext(ctx, &archive, query, tenantID, deliveryID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -223,7 +224,7 @@ func (r *PostgresRepository) GetSnapshot(ctx context.Context, tenantID, snapshot
 	var snapshot Snapshot
 	query := `SELECT * FROM replay_snapshots WHERE tenant_id = $1 AND id = $2`
 	err := r.db.GetContext(ctx, &snapshot, query, tenantID, snapshotID)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &snapshot, err

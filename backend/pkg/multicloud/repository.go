@@ -3,6 +3,7 @@ package multicloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/josedab/waas/pkg/database"
@@ -54,7 +55,7 @@ func (r *Repository) GetConnector(ctx context.Context, id string) (*Connector, e
 		&c.Status, &c.LastHealthCheck, &c.HealthStatus, &c.ErrorMessage, &tagsJSON,
 		&c.CreatedAt, &c.UpdatedAt,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrConnectorNotFound
 	}
 	if err != nil {
@@ -158,7 +159,7 @@ func (r *Repository) GetRoute(ctx context.Context, id string) (*Route, error) {
 		&route.IsActive, &route.BatchEnabled, &route.BatchSize, &route.BatchWindowSec,
 		&route.CreatedAt, &route.UpdatedAt,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {

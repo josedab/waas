@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -14,9 +15,9 @@ func (r *PostgresRepository) SaveCredentials(ctx context.Context, creds *Provide
 	if creds.ID == "" {
 		creds.ID = uuid.New().String()
 	}
-	
+
 	credsJSON, _ := json.Marshal(creds.Credentials)
-	
+
 	query := `
 		INSERT INTO push_provider_credentials (
 			id, tenant_id, provider, name, credentials, environment,
@@ -47,7 +48,7 @@ func (r *PostgresRepository) GetCredentials(ctx context.Context, tenantID, credI
 		&creds.Environment, &creds.IsDefault, &creds.Status, &lastUsedAt,
 		&creds.CreatedAt, &creds.UpdatedAt)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("credentials not found")
 	}
 	if err != nil {

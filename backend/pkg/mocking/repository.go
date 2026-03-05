@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -92,7 +93,7 @@ func (r *PostgresRepository) GetMockEndpoint(ctx context.Context, tenantID, endp
 		&metadataJSON, &endpoint.IsActive, &endpoint.CreatedAt, &endpoint.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -324,7 +325,7 @@ func (r *PostgresRepository) GetTemplate(ctx context.Context, tenantID, template
 		&template.IsPublic, &template.CreatedAt, &template.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
