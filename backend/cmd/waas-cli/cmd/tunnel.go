@@ -21,9 +21,10 @@ import (
 )
 
 var (
-	tunnelPort    int
-	tunnelPath    string
-	tunnelVerbose bool
+	tunnelPort       int
+	tunnelPath       string
+	tunnelVerbose    bool
+	tunnelHTTPClient = &http.Client{Timeout: 30 * time.Second}
 )
 
 var tunnelCmd = &cobra.Command{
@@ -72,7 +73,7 @@ func runTunnel(cmd *cobra.Command, args []string) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-API-Key", apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := tunnelHTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to create tunnel endpoint: %w", err)
 	}
@@ -210,7 +211,7 @@ func tunnelStreamWS(endpointID, localTarget string, delivered, failed *uint64) {
 			localReq.Header.Set("Content-Type", "application/json")
 			localReq.Header.Set("X-WaaS-Delivery-ID", event.DeliveryID)
 
-			localResp, localErr := http.DefaultClient.Do(localReq)
+			localResp, localErr := tunnelHTTPClient.Do(localReq)
 			if localErr != nil {
 				atomic.AddUint64(failed, 1)
 				fmt.Printf("   [%s] \033[31m✗\033[0m %s → localhost failed: %v\n", ts, out.Truncate(event.DeliveryID, 12), localErr)
@@ -237,7 +238,7 @@ func tunnelForwardWebhooks(endpointID, localTarget string, delivered, failed *ui
 	}
 	req.Header.Set("X-API-Key", apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := tunnelHTTPClient.Do(req)
 	if err != nil {
 		return
 	}
@@ -277,7 +278,7 @@ func tunnelForwardWebhooks(endpointID, localTarget string, delivered, failed *ui
 		localReq.Header.Set("X-WaaS-Forwarded", "true")
 
 		ts := time.Now().Format("15:04:05")
-		localResp, err := http.DefaultClient.Do(localReq)
+		localResp, err := tunnelHTTPClient.Do(localReq)
 		if err != nil {
 			atomic.AddUint64(failed, 1)
 			fmt.Printf("   [%s] \033[31m✗\033[0m %s %s → failed: %v\n",

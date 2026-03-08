@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -36,7 +37,7 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	}
 	req.Header.Set("X-API-Key", apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to inspect delivery: %w", err)
 	}
