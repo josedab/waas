@@ -261,7 +261,7 @@ import (
 
 func TestVerifyWebhookSignature_Invalid(t *testing.T) {
 	err := VerifyWebhookSignature("secret", "invalid", []byte("body"), 5*time.Minute)
-	if err != ErrInvalidSignature { t.Fatal("expected ErrInvalidSignature") }
+	if !errors.Is(err, ErrInvalidSignature) { t.Fatal("expected ErrInvalidSignature") }
 }
 `
 

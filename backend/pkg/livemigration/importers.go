@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -33,13 +34,13 @@ type ImportConfig struct {
 
 // ImportResult captures the outcome of an import operation
 type ImportResult struct {
-	ImportedCount int               `json:"imported_count"`
-	SkippedCount  int               `json:"skipped_count"`
-	FailedCount   int               `json:"failed_count"`
-	Errors        []string          `json:"errors,omitempty"`
+	ImportedCount int                `json:"imported_count"`
+	SkippedCount  int                `json:"skipped_count"`
+	FailedCount   int                `json:"failed_count"`
+	Errors        []string           `json:"errors,omitempty"`
 	Endpoints     []ImportedEndpoint `json:"endpoints,omitempty"`
-	Events        []ImportedEvent   `json:"events,omitempty"`
-	Duration      time.Duration     `json:"duration"`
+	Events        []ImportedEvent    `json:"events,omitempty"`
+	Duration      time.Duration      `json:"duration"`
 }
 
 // ImportedEndpoint is the standardized endpoint representation after import
@@ -244,11 +245,11 @@ type HookdeckImporter struct{}
 
 // HookdeckConnection represents a Hookdeck connection
 type HookdeckConnection struct {
-	ID            string              `json:"id"`
-	Source        HookdeckSource      `json:"source"`
-	Destination   HookdeckDestination `json:"destination"`
-	FullName      string              `json:"full_name"`
-	PausedAt      *time.Time          `json:"paused_at,omitempty"`
+	ID          string              `json:"id"`
+	Source      HookdeckSource      `json:"source"`
+	Destination HookdeckDestination `json:"destination"`
+	FullName    string              `json:"full_name"`
+	PausedAt    *time.Time          `json:"paused_at,omitempty"`
 }
 
 // HookdeckSource represents a Hookdeck source
@@ -260,11 +261,11 @@ type HookdeckSource struct {
 
 // HookdeckDestination represents a Hookdeck destination
 type HookdeckDestination struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	URL         string `json:"url"`
-	HTTPMethod  string `json:"http_method"`
-	RateLimit   *int   `json:"rate_limit,omitempty"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	URL        string `json:"url"`
+	HTTPMethod string `json:"http_method"`
+	RateLimit  *int   `json:"rate_limit,omitempty"`
 }
 
 // NewHookdeckImporter creates a new Hookdeck importer
@@ -369,7 +370,7 @@ func (gi *GenericCSVImporter) Import(ctx context.Context, config *ImportConfig) 
 
 	for {
 		record, err := reader.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

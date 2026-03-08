@@ -234,7 +234,7 @@ func (t *UsageTracker) CheckLimit(ctx context.Context, tenantID string, limits *
 	period := time.Now().Format("2006-01")
 	usage, err := t.repo.GetUsage(ctx, tenantID, period)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil // No usage yet
 		}
 		return err

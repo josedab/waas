@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/josedab/waas/pkg/cloud"
@@ -105,7 +106,7 @@ func (h *OnboardingHandler) StartOnboarding(c *gin.Context) {
 			"error": err.Error(),
 		})
 
-		if err == cloud.ErrInvalidEmail {
+		if errors.Is(err, cloud.ErrInvalidEmail) {
 			c.JSON(http.StatusBadRequest, ErrorResponse{
 				Code:    "INVALID_EMAIL",
 				Message: "Invalid email address format",
@@ -167,14 +168,14 @@ func (h *OnboardingHandler) VerifyEmail(c *gin.Context) {
 
 	session, err := h.service.VerifyEmail(c.Request.Context(), sessionID, req.Token)
 	if err != nil {
-		if err == cloud.ErrInvalidVerification {
+		if errors.Is(err, cloud.ErrInvalidVerification) {
 			c.JSON(http.StatusBadRequest, ErrorResponse{
 				Code:    "INVALID_TOKEN",
 				Message: "Invalid or expired verification token",
 			})
 			return
 		}
-		if err == cloud.ErrOnboardingNotFound {
+		if errors.Is(err, cloud.ErrOnboardingNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{
 				Code:    "SESSION_NOT_FOUND",
 				Message: "Onboarding session not found",
@@ -223,7 +224,7 @@ func (h *OnboardingHandler) SetupOrganization(c *gin.Context) {
 
 	session, org, err := h.service.SetupOrganization(c.Request.Context(), sessionID, req.Name)
 	if err != nil {
-		if err == cloud.ErrStepNotComplete {
+		if errors.Is(err, cloud.ErrStepNotComplete) {
 			c.JSON(http.StatusBadRequest, ErrorResponse{
 				Code:    "STEP_INCOMPLETE",
 				Message: "Please complete email verification first",
@@ -281,7 +282,7 @@ func (h *OnboardingHandler) SelectPlan(c *gin.Context) {
 
 	session, err := h.service.SelectPlan(c.Request.Context(), sessionID, req.PlanID)
 	if err != nil {
-		if err == cloud.ErrStepNotComplete {
+		if errors.Is(err, cloud.ErrStepNotComplete) {
 			c.JSON(http.StatusBadRequest, ErrorResponse{
 				Code:    "STEP_INCOMPLETE",
 				Message: "Please complete organization setup first",
@@ -330,7 +331,7 @@ func (h *OnboardingHandler) CompletePayment(c *gin.Context) {
 
 	session, err := h.service.CompletePayment(c.Request.Context(), sessionID, req.PaymentMethodID)
 	if err != nil {
-		if err == cloud.ErrStepNotComplete {
+		if errors.Is(err, cloud.ErrStepNotComplete) {
 			c.JSON(http.StatusBadRequest, ErrorResponse{
 				Code:    "STEP_INCOMPLETE",
 				Message: "Please complete plan selection first",

@@ -3,6 +3,7 @@ package remediation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -432,7 +433,7 @@ func (s *Service) GetPendingActions(ctx context.Context, tenantID string) ([]Rem
 // GetPolicy retrieves the remediation policy
 func (s *Service) GetPolicy(ctx context.Context, tenantID string) (*RemediationPolicy, error) {
 	policy, err := s.repo.GetPolicy(ctx, tenantID)
-	if err == ErrPolicyNotFound {
+	if errors.Is(err, ErrPolicyNotFound) {
 		return DefaultRemediationPolicy(tenantID), nil
 	}
 	return policy, err
