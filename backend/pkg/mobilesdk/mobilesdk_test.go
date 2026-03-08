@@ -2,6 +2,7 @@ package mobilesdk
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -37,7 +38,7 @@ func TestRegisterAppInvalidPlatform(t *testing.T) {
 		BundleID: "com.test",
 		Platform: "windows",
 	})
-	if err != ErrInvalidPlatform {
+	if !errors.Is(err, ErrInvalidPlatform) {
 		t.Errorf("expected ErrInvalidPlatform, got %v", err)
 	}
 }
@@ -56,7 +57,7 @@ func TestRegisterAppDuplicate(t *testing.T) {
 		BundleID: "com.dup",
 		Platform: PlatformAndroid,
 	})
-	if err != ErrAppAlreadyExists {
+	if !errors.Is(err, ErrAppAlreadyExists) {
 		t.Errorf("expected ErrAppAlreadyExists, got %v", err)
 	}
 }
@@ -92,7 +93,7 @@ func TestRegisterDeviceInvalidPlatform(t *testing.T) {
 		Platform:  "invalid",
 		PushToken: "token",
 	})
-	if err != ErrInvalidPlatform {
+	if !errors.Is(err, ErrInvalidPlatform) {
 		t.Errorf("expected ErrInvalidPlatform, got %v", err)
 	}
 }
@@ -105,7 +106,7 @@ func TestRegisterDeviceInvalidToken(t *testing.T) {
 		Platform:  PlatformAndroid,
 		PushToken: "",
 	})
-	if err != ErrInvalidToken {
+	if !errors.Is(err, ErrInvalidToken) {
 		t.Errorf("expected ErrInvalidToken, got %v", err)
 	}
 }
@@ -159,7 +160,7 @@ func TestUnregisterDevice(t *testing.T) {
 func TestUnregisterDeviceNotFound(t *testing.T) {
 	svc := NewService()
 	err := svc.UnregisterDevice(context.Background(), "nonexistent")
-	if err != ErrDeviceNotFound {
+	if !errors.Is(err, ErrDeviceNotFound) {
 		t.Errorf("expected ErrDeviceNotFound, got %v", err)
 	}
 }
@@ -196,7 +197,7 @@ func TestGetSDKConfig(t *testing.T) {
 func TestGetSDKConfigNotFound(t *testing.T) {
 	svc := NewService()
 	_, err := svc.GetSDKConfig(context.Background(), "nonexistent", "http://localhost")
-	if err != ErrSDKConfigNotFound {
+	if !errors.Is(err, ErrSDKConfigNotFound) {
 		t.Errorf("expected ErrSDKConfigNotFound, got %v", err)
 	}
 }

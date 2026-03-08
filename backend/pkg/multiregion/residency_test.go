@@ -2,6 +2,7 @@ package multiregion
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -62,11 +63,11 @@ func TestCheckDataFlow(t *testing.T) {
 	})
 
 	tests := []struct {
-		name     string
-		tenant   string
-		source   string
-		target   string
-		allowed  bool
+		name    string
+		tenant  string
+		source  string
+		target  string
+		allowed bool
 	}{
 		{"same region", "tenant-gdpr", "eu-west-1", "eu-west-1", true},
 		{"EU to EU allowed", "tenant-gdpr", "eu-west-1", "eu-west-1", true},
@@ -117,7 +118,7 @@ func TestInvalidRegion(t *testing.T) {
 		TenantID:      "tenant-invalid",
 		PrimaryRegion: "invalid-region",
 	})
-	if err != ErrInvalidResidencyRegion {
+	if !errors.Is(err, ErrInvalidResidencyRegion) {
 		t.Errorf("expected ErrInvalidResidencyRegion, got %v", err)
 	}
 }
@@ -146,7 +147,7 @@ func TestGetRegionCompliance(t *testing.T) {
 	}
 
 	_, err = svc.GetRegionCompliance("nonexistent")
-	if err != ErrRegionNotFound {
+	if !errors.Is(err, ErrRegionNotFound) {
 		t.Error("expected region not found error")
 	}
 }

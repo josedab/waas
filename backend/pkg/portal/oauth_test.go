@@ -2,6 +2,7 @@ package portal
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -97,7 +98,7 @@ func TestOAuthFullFlow(t *testing.T) {
 
 	// Old token should be invalid
 	_, err = provider.ValidateToken(ctx, token.AccessToken)
-	if err != ErrTokenExpired {
+	if !errors.Is(err, ErrTokenExpired) {
 		t.Error("expected old token to be invalid")
 	}
 }
@@ -107,7 +108,7 @@ func TestOAuthInvalidClient(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := provider.Authorize(ctx, "nonexistent", "https://example.com/cb", nil)
-	if err != ErrOAuthClientNotFound {
+	if !errors.Is(err, ErrOAuthClientNotFound) {
 		t.Errorf("expected ErrOAuthClientNotFound, got %v", err)
 	}
 }
@@ -146,7 +147,7 @@ func TestCustomDomainInUse(t *testing.T) {
 
 	_, _ = provider.SetCustomDomain(ctx, "tenant-1", "portal-1", "shared.example.com")
 	_, err := provider.SetCustomDomain(ctx, "tenant-2", "portal-2", "shared.example.com")
-	if err != ErrCustomDomainInUse {
+	if !errors.Is(err, ErrCustomDomainInUse) {
 		t.Errorf("expected ErrCustomDomainInUse, got %v", err)
 	}
 }

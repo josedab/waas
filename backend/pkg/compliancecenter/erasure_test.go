@@ -2,6 +2,7 @@ package compliancecenter
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -48,7 +49,7 @@ func TestDuplicateErasureRequest(t *testing.T) {
 		Reason:           "test duplicate",
 	})
 
-	if err != ErrErasureAlreadyPending {
+	if !errors.Is(err, ErrErasureAlreadyPending) {
 		t.Errorf("expected ErrErasureAlreadyPending, got %v", err)
 	}
 }
@@ -112,7 +113,7 @@ func TestExecuteCompletedErasure(t *testing.T) {
 	_, _ = svc.ExecuteErasure(ctx, req.ID)
 
 	_, err := svc.ExecuteErasure(ctx, req.ID)
-	if err != ErrErasureCompleted {
+	if !errors.Is(err, ErrErasureCompleted) {
 		t.Errorf("expected ErrErasureCompleted, got %v", err)
 	}
 }
