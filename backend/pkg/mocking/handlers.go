@@ -1,8 +1,8 @@
 package mocking
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -213,7 +213,7 @@ func (h *Handler) DeleteEndpoint(c *gin.Context) {
 
 	endpointID := c.Param("id")
 	if err := h.service.DeleteMockEndpoint(c.Request.Context(), tenantID, endpointID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -436,7 +436,7 @@ func (h *Handler) DeleteTemplate(c *gin.Context) {
 
 	templateID := c.Param("id")
 	if err := h.service.DeleteTemplate(c.Request.Context(), tenantID, templateID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -469,7 +469,7 @@ func (h *Handler) PreviewPayload(c *gin.Context) {
 
 	previews, err := h.service.GeneratePreview(&template, count)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

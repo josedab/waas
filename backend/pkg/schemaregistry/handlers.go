@@ -107,7 +107,7 @@ func (h *Handler) GetSchemaBySubject(c *gin.Context) {
 
 	schema, err := h.service.GetSchemaBySubject(c.Request.Context(), tenantID, subject)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -145,7 +145,7 @@ func (h *Handler) GetSchema(c *gin.Context) {
 
 	schema, err := h.service.GetSchema(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

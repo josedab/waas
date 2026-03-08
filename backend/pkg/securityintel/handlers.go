@@ -76,7 +76,7 @@ func (h *Handler) ListEvents(c *gin.Context) {
 func (h *Handler) ResolveEvent(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if err := h.service.ResolveEvent(c.Request.Context(), tenantID, c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "resolved"})
@@ -120,7 +120,7 @@ func (h *Handler) ListPolicies(c *gin.Context) {
 func (h *Handler) DeletePolicy(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if err := h.service.DeletePolicy(c.Request.Context(), tenantID, c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

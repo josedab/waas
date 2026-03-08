@@ -94,7 +94,7 @@ func (h *Handler) GetCertificate(c *gin.Context) {
 
 	cert, err := h.service.GetCertificate(c.Request.Context(), tenantID, certID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -207,7 +207,7 @@ func (h *Handler) GetTLSPolicy(c *gin.Context) {
 
 	policy, err := h.service.GetTLSPolicy(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

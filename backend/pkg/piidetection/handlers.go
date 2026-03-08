@@ -64,7 +64,7 @@ func (h *Handler) GetPolicy(c *gin.Context) {
 
 	policy, err := h.service.GetPolicy(c.Request.Context(), tenantID, policyID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -137,7 +137,7 @@ func (h *Handler) GetScanResult(c *gin.Context) {
 
 	result, err := h.service.GetScanResult(c.Request.Context(), tenantID, resultID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

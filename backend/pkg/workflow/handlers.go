@@ -129,7 +129,7 @@ func (h *Handlers) GetWorkflow(c *gin.Context) {
 
 	workflow, err := h.service.GetWorkflow(c.Request.Context(), tenantID, workflowID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -265,7 +265,7 @@ func (h *Handlers) ValidateWorkflow(c *gin.Context) {
 
 	workflow, err := h.service.GetWorkflow(c.Request.Context(), tenantID, workflowID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -308,7 +308,7 @@ func (h *Handlers) GetWorkflowVersion(c *gin.Context) {
 
 	workflow, err := h.service.GetWorkflowVersion(c.Request.Context(), tenantID, workflowID, version)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -391,7 +391,7 @@ func (h *Handlers) GetExecution(c *gin.Context) {
 
 	execution, err := h.service.GetExecution(c.Request.Context(), tenantID, execID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -480,7 +480,7 @@ func (h *Handlers) GetTemplate(c *gin.Context) {
 
 	template, err := h.service.GetTemplate(c.Request.Context(), templateID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

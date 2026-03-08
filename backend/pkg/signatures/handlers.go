@@ -98,7 +98,7 @@ func (h *Handlers) GetScheme(c *gin.Context) {
 
 	scheme, err := h.service.GetScheme(c.Request.Context(), tenantID, schemeID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

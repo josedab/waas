@@ -86,7 +86,7 @@ func (h *Handler) ListTestRuns(c *gin.Context) {
 func (h *Handler) GetTestRun(c *gin.Context) {
 	run, err := h.service.GetTestRun(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, run)
@@ -100,7 +100,7 @@ func (h *Handler) GetTestRun(c *gin.Context) {
 // @Router /loadtest/runs/{id}/cancel [post]
 func (h *Handler) CancelTestRun(c *gin.Context) {
 	if err := h.service.CancelTestRun(c.Param("id")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "cancelled"})

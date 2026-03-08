@@ -1,8 +1,8 @@
 package obscodepipeline
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -61,7 +61,7 @@ func (h *Handler) GetPipeline(c *gin.Context) {
 
 	pipeline, err := h.service.GetPipeline(c.Request.Context(), tenantID, pipelineID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -117,7 +117,7 @@ func (h *Handler) ActivatePipeline(c *gin.Context) {
 
 	pipeline, err := h.service.ActivatePipeline(c.Request.Context(), tenantID, pipelineID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -130,7 +130,7 @@ func (h *Handler) PausePipeline(c *gin.Context) {
 
 	pipeline, err := h.service.PausePipeline(c.Request.Context(), tenantID, pipelineID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

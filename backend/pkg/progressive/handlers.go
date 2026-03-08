@@ -64,7 +64,7 @@ func (h *Handler) GetRollout(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	rollout, err := h.service.GetRollout(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, rollout)
@@ -74,7 +74,7 @@ func (h *Handler) StartRollout(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	rollout, err := h.service.StartRollout(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, rollout)
@@ -84,7 +84,7 @@ func (h *Handler) PauseRollout(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	rollout, err := h.service.PauseRollout(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, rollout)
@@ -94,7 +94,7 @@ func (h *Handler) ResumeRollout(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	rollout, err := h.service.ResumeRollout(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, rollout)
@@ -119,7 +119,7 @@ func (h *Handler) CompleteRollout(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	rollout, err := h.service.CompleteRollout(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, rollout)
@@ -129,7 +129,7 @@ func (h *Handler) RollbackRollout(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	rollout, err := h.service.RollbackRollout(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, rollout)
@@ -139,7 +139,7 @@ func (h *Handler) EvaluateRollout(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	result, err := h.service.EvaluateRollout(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, result)
@@ -148,7 +148,7 @@ func (h *Handler) EvaluateRollout(c *gin.Context) {
 func (h *Handler) DeleteRollout(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if err := h.service.DeleteRollout(c.Request.Context(), tenantID, c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

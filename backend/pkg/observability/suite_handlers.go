@@ -67,7 +67,7 @@ func (h *SuiteHandler) GetDeliveryTrace(c *gin.Context) {
 
 	trace, err := h.suite.GetDeliveryTrace(c.Request.Context(), tenantID, deliveryID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "TRACE_NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "TRACE_NOT_FOUND", err)
 		return
 	}
 

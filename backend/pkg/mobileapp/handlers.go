@@ -89,7 +89,7 @@ func (h *Handler) ListDevices(c *gin.Context) {
 // @Router /mobile/devices/{id} [delete]
 func (h *Handler) UnregisterDevice(c *gin.Context) {
 	if err := h.service.UnregisterDevice(c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
@@ -202,7 +202,7 @@ func (h *Handler) ListNotifications(c *gin.Context) {
 // @Router /mobile/notifications/{id}/read [post]
 func (h *Handler) MarkNotificationRead(c *gin.Context) {
 	if err := h.service.MarkNotificationRead(c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "read"})

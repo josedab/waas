@@ -126,7 +126,7 @@ func (h *Handler) GetPlan(c *gin.Context) {
 
 	plan, err := h.service.GetPlan(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -238,7 +238,7 @@ func (h *Handler) GetCustomer(c *gin.Context) {
 
 	customer, err := h.service.GetCustomer(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -260,7 +260,7 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 
 	dashboard, err := h.service.GetUsageDashboard(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -319,7 +319,7 @@ func (h *Handler) CancelSubscription(c *gin.Context) {
 	immediately, _ := strconv.ParseBool(c.Query("immediately"))
 
 	if err := h.service.CancelSubscription(c.Request.Context(), tenantID, c.Param("id"), immediately); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -413,13 +413,13 @@ func (h *Handler) RevokeAPIKey(c *gin.Context) {
 func (h *Handler) GetUsage(c *gin.Context) {
 	sub, err := h.service.repo.GetSubscription(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
 	usage, err := h.service.repo.GetUsageRecord(c.Request.Context(), sub.ID, sub.CurrentPeriodStart)
 	if err != nil {
-		c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

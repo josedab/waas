@@ -104,7 +104,7 @@ func (h *Handler) GetTemplate(c *gin.Context) {
 
 	template, err := h.service.GetTemplate(c.Request.Context(), templateID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

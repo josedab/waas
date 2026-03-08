@@ -122,7 +122,7 @@ func (h *FederationHandler) ListClusters(c *gin.Context) {
 func (h *FederationHandler) GetCluster(c *gin.Context) {
 	cluster, err := h.service.GetCluster(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -252,7 +252,7 @@ func (h *FederationHandler) ListRoutes(c *gin.Context) {
 func (h *FederationHandler) GetRoute(c *gin.Context) {
 	route, err := h.service.GetFederationRoute(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, FederationErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

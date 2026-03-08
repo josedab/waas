@@ -1,8 +1,8 @@
 package sandbox
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -97,7 +97,7 @@ func (h *Handler) GetSandbox(c *gin.Context) {
 
 	sandbox, err := h.service.GetSandbox(c.Request.Context(), tenantID, sandboxID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -378,7 +378,7 @@ func (h *Handler) GetScenarioResults(c *gin.Context) {
 
 	result, err := h.service.GetScenarioResults(c.Request.Context(), scenarioID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "RESULTS_NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "RESULTS_NOT_FOUND", err)
 		return
 	}
 

@@ -1,8 +1,8 @@
 package replay
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -157,7 +157,7 @@ func (h *Handler) GetSnapshot(c *gin.Context) {
 
 	snapshot, err := h.service.GetSnapshot(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -182,7 +182,7 @@ func (h *Handler) ReplayFromSnapshot(c *gin.Context) {
 		Limit:      limit,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -198,7 +198,7 @@ func (h *Handler) DeleteSnapshot(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteSnapshot(c.Request.Context(), tenantID, c.Param("id")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -215,7 +215,7 @@ func (h *Handler) GetDeliveryArchive(c *gin.Context) {
 
 	archive, err := h.service.GetDeliveryForReplay(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

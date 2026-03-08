@@ -71,7 +71,7 @@ func (h *Handler) SearchPlugins(c *gin.Context) {
 func (h *Handler) GetPlugin(c *gin.Context) {
 	plugin, err := h.service.GetPlugin(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, plugin)
@@ -79,7 +79,7 @@ func (h *Handler) GetPlugin(c *gin.Context) {
 
 func (h *Handler) ApprovePlugin(c *gin.Context) {
 	if err := h.service.ApprovePlugin(c.Request.Context(), c.Param("id")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "approved"})
@@ -102,7 +102,7 @@ func (h *Handler) InstallPlugin(c *gin.Context) {
 func (h *Handler) UninstallPlugin(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if err := h.service.UninstallPlugin(c.Request.Context(), tenantID, c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

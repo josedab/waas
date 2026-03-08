@@ -110,7 +110,7 @@ func (h *Handler) GetPortal(c *gin.Context) {
 
 	config, err := h.service.GetPortal(c.Request.Context(), tenantID, portalID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -274,7 +274,7 @@ func (h *Handler) GetPortalConfig(c *gin.Context) {
 
 	config, err := h.service.GetPortalConfig(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -398,7 +398,7 @@ func (h *Handler) RetryDelivery(c *gin.Context) {
 	deliveryID := c.Param("id")
 
 	if err := h.service.RetryPortalDelivery(c.Request.Context(), tenantID, deliveryID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "RETRY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "RETRY_FAILED", err)
 		return
 	}
 

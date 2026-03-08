@@ -1,8 +1,8 @@
 package schema
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -27,15 +27,15 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 		schemas.GET("/:id", h.GetSchema)
 		schemas.PUT("/:id", h.UpdateSchema)
 		schemas.DELETE("/:id", h.DeleteSchema)
-		
+
 		// Versions
 		schemas.POST("/:id/versions", h.CreateVersion)
 		schemas.GET("/:id/versions", h.ListVersions)
-		
+
 		// Validation
 		schemas.POST("/:id/validate", h.ValidatePayload)
 		schemas.POST("/validate", h.ValidatePayloadDirect)
-		
+
 		// Compatibility
 		schemas.POST("/:id/compatibility", h.CheckCompatibility)
 	}
@@ -213,7 +213,7 @@ func (h *Handler) DeleteSchema(c *gin.Context) {
 
 	schemaID := c.Param("id")
 	if err := h.service.DeleteSchema(c.Request.Context(), tenantID, schemaID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -280,7 +280,7 @@ func (h *Handler) ListVersions(c *gin.Context) {
 	schemaID := c.Param("id")
 	versions, err := h.service.ListVersions(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -308,7 +308,7 @@ func (h *Handler) ValidatePayload(c *gin.Context) {
 	}
 
 	schemaID := c.Param("id")
-	
+
 	payload, err := c.GetRawData()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read payload"})
@@ -317,7 +317,7 @@ func (h *Handler) ValidatePayload(c *gin.Context) {
 
 	result, err := h.service.ValidatePayloadDirect(c.Request.Context(), tenantID, schemaID, payload)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -350,10 +350,10 @@ func (h *Handler) ValidatePayloadDirect(c *gin.Context) {
 
 	// This is a direct validation without storage
 	validator := NewValidator(nil)
-	
+
 	schemaBytes, _ := c.GetRawData()
 	payloadBytes, _ := c.GetRawData()
-	
+
 	result := validator.ValidatePayloadDirect(payloadBytes, schemaBytes)
 	c.JSON(http.StatusOK, result)
 }
@@ -379,7 +379,7 @@ func (h *Handler) CheckCompatibility(c *gin.Context) {
 	}
 
 	schemaID := c.Param("id")
-	
+
 	newSchema, err := c.GetRawData()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read schema"})
@@ -396,7 +396,7 @@ func (h *Handler) CheckCompatibility(c *gin.Context) {
 	validator := NewValidator(nil)
 	result, err := validator.CheckCompatibility(schema.JSONSchema, newSchema)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -489,7 +489,7 @@ func (h *Handler) RemoveSchema(c *gin.Context) {
 
 	endpointID := c.Param("id")
 	if err := h.service.RemoveSchemaFromEndpoint(c.Request.Context(), endpointID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

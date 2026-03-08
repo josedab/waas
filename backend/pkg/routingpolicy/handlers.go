@@ -91,7 +91,7 @@ func (h *Handler) ListPolicies(c *gin.Context) {
 func (h *Handler) GetPolicy(c *gin.Context) {
 	policy, err := h.service.GetPolicy(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, policy)
@@ -128,7 +128,7 @@ func (h *Handler) UpdatePolicy(c *gin.Context) {
 // @Router /routing-policies/{id} [delete]
 func (h *Handler) DeletePolicy(c *gin.Context) {
 	if err := h.service.DeletePolicy(c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

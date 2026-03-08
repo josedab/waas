@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 const (
@@ -40,7 +41,7 @@ func (h *Handler) PortalTokenMiddleware() gin.HandlerFunc {
 
 		token, err := h.service.ValidatePortalToken(c.Request.Context(), tokenValue)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": err.Error()}})
+			httputil.InternalError(c, "UNAUTHORIZED", err)
 			c.Abort()
 			return
 		}

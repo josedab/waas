@@ -43,7 +43,7 @@ func (h *Handler) StartConversation(c *gin.Context) {
 
 	conv, err := h.service.StartConversation(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, conv)
@@ -79,7 +79,7 @@ func (h *Handler) ListConversations(c *gin.Context) {
 func (h *Handler) GetConversation(c *gin.Context) {
 	conv, err := h.service.GetConversation(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, conv)
@@ -123,7 +123,7 @@ func (h *Handler) Chat(c *gin.Context) {
 func (h *Handler) ApplyConfig(c *gin.Context) {
 	config, err := h.service.ApplyConfig(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, config)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	pkgerrors "github.com/josedab/waas/pkg/errors"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Handler implements HTTP handlers for the plugin marketplace
@@ -362,7 +363,7 @@ func (h *Handler) GetConnectorTemplate(c *gin.Context) {
 	id := c.Param("id")
 	connector, err := GetConnector(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, connector)

@@ -98,7 +98,7 @@ func (h *Handler) GetChangelogs(c *gin.Context) {
 func (h *Handler) GetChangelog(c *gin.Context) {
 	entry, err := h.service.GetChangelog(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, entry)
@@ -182,7 +182,7 @@ func (h *Handler) GetMigrationStatus(c *gin.Context) {
 func (h *Handler) AcknowledgeMigration(c *gin.Context) {
 	m, err := h.service.AcknowledgeMigration(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, m)
@@ -197,7 +197,7 @@ func (h *Handler) AcknowledgeMigration(c *gin.Context) {
 func (h *Handler) CompleteMigration(c *gin.Context) {
 	m, err := h.service.CompleteMigration(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, m)

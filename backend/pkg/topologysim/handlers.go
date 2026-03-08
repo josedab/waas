@@ -88,7 +88,7 @@ func (h *Handler) ListTopologies(c *gin.Context) {
 func (h *Handler) GetTopology(c *gin.Context) {
 	topology, err := h.service.GetTopology(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, topology)
@@ -102,7 +102,7 @@ func (h *Handler) GetTopology(c *gin.Context) {
 // @Router /topology-sim/topologies/{id} [delete]
 func (h *Handler) DeleteTopology(c *gin.Context) {
 	if err := h.service.repo.DeleteTopology(c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -140,7 +140,7 @@ func (h *Handler) RunSimulation(c *gin.Context) {
 func (h *Handler) GetResult(c *gin.Context) {
 	result, err := h.service.GetResult(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, result)

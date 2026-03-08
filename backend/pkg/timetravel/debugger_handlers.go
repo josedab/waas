@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // CreateDebugSession handles creation of a new debug session.
@@ -31,7 +32,7 @@ func (h *Handler) InspectEvent(c *gin.Context) {
 
 	inspection, err := h.service.InspectEvent(c.Request.Context(), tenantID, eventID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *Handler) CompareEvents(c *gin.Context) {
 
 	diff, err := h.service.CompareEvents(c.Request.Context(), tenantID, eventID1, eventID2)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

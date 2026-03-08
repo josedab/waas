@@ -32,7 +32,7 @@ func (h *Handler) GetAdaptiveConfig(c *gin.Context) {
 
 	config, err := h.service.GetAdaptiveConfig(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

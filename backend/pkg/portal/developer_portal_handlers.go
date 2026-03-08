@@ -98,7 +98,7 @@ func (h *Handler) CompleteOnboardingStep(c *gin.Context) {
 
 	updated, err := h.service.CompleteOnboardingStep(c.Request.Context(), tenantID, wizard, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "STEP_ERROR", "message": err.Error()}})
+		httputil.InternalError(c, "STEP_ERROR", err)
 		return
 	}
 

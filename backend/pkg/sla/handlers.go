@@ -97,7 +97,7 @@ func (h *Handler) GetTarget(c *gin.Context) {
 
 	target, err := h.service.GetTarget(c.Request.Context(), tenantID, targetID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -160,7 +160,7 @@ func (h *Handler) GetTargetCompliance(c *gin.Context) {
 
 	target, err := h.service.GetTarget(c.Request.Context(), tenantID, targetID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -257,7 +257,7 @@ func (h *Handler) GetAlertConfig(c *gin.Context) {
 
 	config, err := h.service.GetAlertConfig(c.Request.Context(), tenantID, targetID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

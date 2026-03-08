@@ -51,7 +51,7 @@ func (h *Handler) receiverTokenAuth() gin.HandlerFunc {
 		}
 		token, err := h.service.ValidateToken(tokenValue)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			httputil.InternalErrorGeneric(c, err)
 			c.Abort()
 			return
 		}
@@ -126,7 +126,7 @@ func (h *Handler) ListTokens(c *gin.Context) {
 func (h *Handler) GetToken(c *gin.Context) {
 	token, err := h.service.GetToken(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, token)
@@ -140,7 +140,7 @@ func (h *Handler) GetToken(c *gin.Context) {
 // @Router /receiver-dashboard/admin/tokens/{id} [delete]
 func (h *Handler) RevokeToken(c *gin.Context) {
 	if err := h.service.RevokeToken(c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -194,7 +194,7 @@ func (h *Handler) InspectPayload(c *gin.Context) {
 
 	payload, err := h.service.InspectPayload(token, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, payload)
@@ -217,7 +217,7 @@ func (h *Handler) GetRetryStatus(c *gin.Context) {
 	activeOnly := c.Query("active_only") == "true"
 	retries, err := h.service.GetRetryStatus(token, activeOnly)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, retries)
@@ -240,7 +240,7 @@ func (h *Handler) GetHealthSummary(c *gin.Context) {
 	period := c.DefaultQuery("period", "24h")
 	summary, err := h.service.GetHealthSummary(token, period)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, summary)
@@ -264,7 +264,7 @@ func (h *Handler) GetEndpointHealth(c *gin.Context) {
 	period := c.DefaultQuery("period", "24h")
 	health, err := h.service.GetEndpointHealth(token, c.Param("endpoint_id"), period)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, health)

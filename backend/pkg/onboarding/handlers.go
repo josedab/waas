@@ -51,7 +51,7 @@ func (h *Handler) GetProgress(c *gin.Context) {
 
 	progress, err := h.service.GetProgress(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

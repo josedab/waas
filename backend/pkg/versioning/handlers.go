@@ -115,7 +115,7 @@ func (h *Handler) GetVersion(c *gin.Context) {
 
 	version, err := h.service.GetVersion(c.Request.Context(), tenantID, versionID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *Handler) PublishVersion(c *gin.Context) {
 
 	version, err := h.service.PublishVersion(c.Request.Context(), tenantID, versionID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -184,7 +184,7 @@ func (h *Handler) SunsetVersion(c *gin.Context) {
 
 	version, err := h.service.SunsetVersion(c.Request.Context(), tenantID, versionID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -308,7 +308,7 @@ func (h *Handler) GetMigration(c *gin.Context) {
 
 	migration, err := h.service.GetMigration(c.Request.Context(), migID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -396,7 +396,7 @@ func (h *Handler) GetSchema(c *gin.Context) {
 
 	schema, err := h.service.GetSchema(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -415,7 +415,7 @@ func (h *Handler) GetPolicy(c *gin.Context) {
 
 	policy, err := h.service.GetPolicy(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -474,7 +474,7 @@ func (h *Handler) NegotiateVersion(c *gin.Context) {
 
 	version, err := h.service.NegotiateVersion(c.Request.Context(), tenantID, webhookID, acceptHeader)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

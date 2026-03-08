@@ -127,7 +127,7 @@ func (h *Handler) DiscoverNewURL(c *gin.Context) {
 func (h *Handler) ValidateAndApply(c *gin.Context) {
 	discovery, err := h.service.ValidateAndApply(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, discovery)

@@ -85,7 +85,7 @@ func (h *Handler) GetRoute(c *gin.Context) {
 
 	route, err := h.service.GetRoute(c.Request.Context(), tenantID, routeID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *Handler) GetRouteStats(c *gin.Context) {
 
 	stats, err := h.service.GetRouteStats(c.Request.Context(), tenantID, routeID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

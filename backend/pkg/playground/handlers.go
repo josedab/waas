@@ -1,8 +1,8 @@
 package playground
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -210,7 +210,7 @@ func (h *Handler) CaptureRequest(c *gin.Context) {
 	}
 
 	if err := h.service.CaptureRequest(c.Request.Context(), capture); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, capture)
@@ -263,7 +263,7 @@ func (h *Handler) ReplayCapture(c *gin.Context) {
 
 	capture, err := h.service.ReplayRequest(c.Request.Context(), captureID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, capture)
@@ -439,7 +439,7 @@ func (h *Handler) ListTestSuites(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	suites, err := h.service.ListTestSuites(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"suites": suites})
@@ -500,7 +500,7 @@ func (h *Handler) RunTestSuite(c *gin.Context) {
 	suiteID := c.Param("suiteId")
 	results, err := h.service.RunTestSuite(c.Request.Context(), suiteID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"suite_id": suiteID, "results": results})

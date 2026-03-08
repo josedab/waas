@@ -64,7 +64,7 @@ func (h *Handler) GetConfig(c *gin.Context) {
 
 	config, err := h.service.GetConfig(c.Request.Context(), tenantID, configID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, config)

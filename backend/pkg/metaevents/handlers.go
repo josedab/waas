@@ -1,8 +1,8 @@
 package metaevents
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -208,7 +208,7 @@ func (h *Handler) DeleteSubscription(c *gin.Context) {
 
 	subID := c.Param("id")
 	if err := h.service.DeleteSubscription(c.Request.Context(), tenantID, subID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -236,7 +236,7 @@ func (h *Handler) RotateSecret(c *gin.Context) {
 	subID := c.Param("id")
 	_, newSecret, err := h.service.RotateSecret(c.Request.Context(), tenantID, subID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -267,7 +267,7 @@ func (h *Handler) GetSecret(c *gin.Context) {
 	subID := c.Param("id")
 	secret, err := h.service.GetSecret(c.Request.Context(), tenantID, subID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -294,7 +294,7 @@ func (h *Handler) TestSubscription(c *gin.Context) {
 
 	subID := c.Param("id")
 	if err := h.service.TestSubscription(c.Request.Context(), tenantID, subID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -51,7 +51,7 @@ func (h *Handler) mobileAuth() gin.HandlerFunc {
 		}
 		session, err := h.service.ValidateSession(token)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			httputil.InternalErrorGeneric(c, err)
 			c.Abort()
 			return
 		}
@@ -201,7 +201,7 @@ func (h *Handler) GetAlerts(c *gin.Context) {
 // @Router /mobile/alerts/{id}/acknowledge [post]
 func (h *Handler) AcknowledgeAlert(c *gin.Context) {
 	if err := h.service.AcknowledgeAlert(c.Param("id")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "acknowledged"})

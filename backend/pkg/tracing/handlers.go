@@ -80,7 +80,7 @@ func (h *Handler) GetTrace(c *gin.Context) {
 
 	trace, err := h.service.GetTrace(c.Request.Context(), tenantID, traceID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *Handler) GetSpanWaterfall(c *gin.Context) {
 
 	waterfall, err := h.service.GetSpanWaterfall(c.Request.Context(), tenantID, traceID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "WATERFALL_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "WATERFALL_FAILED", err)
 		return
 	}
 

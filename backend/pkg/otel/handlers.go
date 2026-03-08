@@ -1,8 +1,8 @@
 package otel
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -201,7 +201,7 @@ func (h *Handler) DeleteConfig(c *gin.Context) {
 
 	configID := c.Param("id")
 	if err := h.service.DeleteConfig(c.Request.Context(), tenantID, configID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -276,7 +276,7 @@ func (h *Handler) EnableConfig(c *gin.Context) {
 		Enabled: &enabled,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -310,7 +310,7 @@ func (h *Handler) DisableConfig(c *gin.Context) {
 		Enabled: &enabled,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

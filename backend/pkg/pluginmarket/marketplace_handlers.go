@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // RegisterMarketplaceRoutes registers marketplace, SDK, and monetization routes
@@ -52,7 +53,7 @@ func (h *Handler) GetListing(c *gin.Context) {
 
 	listing, err := svc.GetListing(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, listing)
@@ -73,7 +74,7 @@ func (h *Handler) InstallFromMarketplace(c *gin.Context) {
 	svc := NewMarketplaceService()
 	installation, err := svc.Install(c.Request.Context(), tenantID, listingID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, installation)
@@ -85,7 +86,7 @@ func (h *Handler) UninstallFromMarketplace(c *gin.Context) {
 
 	svc := NewMarketplaceService()
 	if err := svc.Uninstall(c.Request.Context(), tenantID, listingID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -138,12 +139,12 @@ func (h *Handler) ExecuteSandbox(c *gin.Context) {
 	}
 
 	sandbox := NewPluginSandbox(SandboxConfig{
-		TimeoutMs:     timeout,
+		TimeoutMs:   timeout,
 		MaxMemoryKB: 10 * 1024,
 	})
 	result, err := sandbox.Execute(c.Request.Context(), req.Code, req.Input)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"error": err.Error(), "success": false})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": result, "success": true})
@@ -161,7 +162,7 @@ func (h *Handler) TestPlugin(c *gin.Context) {
 	}
 
 	runner := NewPluginTestRunner(&req.Manifest, SandboxConfig{
-		TimeoutMs:     5000,
+		TimeoutMs:   5000,
 		MaxMemoryKB: 10 * 1024,
 	})
 	event := &MockWebhookEvent{
@@ -170,7 +171,7 @@ func (h *Handler) TestPlugin(c *gin.Context) {
 	}
 	result, err := runner.RunHook(c.Request.Context(), PluginHookTypeV2(req.Hook), req.Source, event)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"error": err.Error(), "success": false})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": result, "success": true})
@@ -178,9 +179,9 @@ func (h *Handler) TestPlugin(c *gin.Context) {
 
 func (h *Handler) RegisterDeveloper(c *gin.Context) {
 	var req struct {
-		DeveloperID    string `json:"developer_id" binding:"required"`
-		Email          string `json:"email" binding:"required"`
-		DisplayName    string `json:"display_name" binding:"required"`
+		DeveloperID     string `json:"developer_id" binding:"required"`
+		Email           string `json:"email" binding:"required"`
+		DisplayName     string `json:"display_name" binding:"required"`
 		StripeConnectID string `json:"stripe_connect_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -203,7 +204,7 @@ func (h *Handler) GetDeveloperEarnings(c *gin.Context) {
 	svc := NewMonetizationService()
 	earnings, err := svc.GetEarnings(nil, devID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, earnings)
@@ -215,7 +216,7 @@ func (h *Handler) ProcessPayout(c *gin.Context) {
 	svc := NewMonetizationService()
 	payout, err := svc.ProcessPayout(nil, devID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, payout)
@@ -242,7 +243,7 @@ func (h *Handler) RecordPurchase(c *gin.Context) {
 	svc := NewMonetizationService()
 	tx, err := svc.RecordPurchase(nil, req.ListingID, req.BuyerTenantID, req.DeveloperID, req.Amount, currency)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, tx)

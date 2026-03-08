@@ -134,7 +134,7 @@ func (h *Handlers) GetDevice(c *gin.Context) {
 
 	device, err := h.service.GetDevice(c.Request.Context(), tenantID, deviceID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -262,7 +262,7 @@ func (h *Handlers) GetMapping(c *gin.Context) {
 
 	mapping, err := h.service.GetMapping(c.Request.Context(), tenantID, mappingID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -400,7 +400,7 @@ func (h *Handlers) GetNotification(c *gin.Context) {
 
 	notification, err := h.service.GetNotification(c.Request.Context(), tenantID, notifID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
