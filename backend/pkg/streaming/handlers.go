@@ -1,8 +1,9 @@
 package streaming
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
+	"errors"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -61,12 +62,12 @@ func (h *Handler) CreateBridge(c *gin.Context) {
 
 	bridge, err := h.service.CreateBridge(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		if err == ErrBridgeAlreadyExists {
+		if errors.Is(err, ErrBridgeAlreadyExists) {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
 		}
-		if err == ErrInvalidConfig {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, ErrInvalidConfig) {
+			httputil.InternalErrorGeneric(c, err)
 			return
 		}
 		httputil.InternalErrorGeneric(c, err)
@@ -96,7 +97,7 @@ func (h *Handler) GetBridge(c *gin.Context) {
 	bridgeID := c.Param("id")
 	bridge, err := h.service.GetBridge(c.Request.Context(), tenantID, bridgeID)
 	if err != nil {
-		if err == ErrBridgeNotFound {
+		if errors.Is(err, ErrBridgeNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "bridge not found"})
 			return
 		}
@@ -137,7 +138,7 @@ func (h *Handler) UpdateBridge(c *gin.Context) {
 
 	bridge, err := h.service.UpdateBridge(c.Request.Context(), tenantID, bridgeID, &req)
 	if err != nil {
-		if err == ErrBridgeNotFound {
+		if errors.Is(err, ErrBridgeNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "bridge not found"})
 			return
 		}
@@ -167,7 +168,7 @@ func (h *Handler) DeleteBridge(c *gin.Context) {
 	bridgeID := c.Param("id")
 	err := h.service.DeleteBridge(c.Request.Context(), tenantID, bridgeID)
 	if err != nil {
-		if err == ErrBridgeNotFound {
+		if errors.Is(err, ErrBridgeNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "bridge not found"})
 			return
 		}

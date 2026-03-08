@@ -10,14 +10,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 var (
-	ErrDeviceNotFound     = errors.New("device not found")
-	ErrInvalidPlatform    = errors.New("invalid platform: must be ios or android")
-	ErrInvalidToken       = errors.New("invalid push token")
-	ErrSDKConfigNotFound  = errors.New("SDK config not found")
-	ErrAppAlreadyExists   = errors.New("app already registered")
+	ErrDeviceNotFound    = errors.New("device not found")
+	ErrInvalidPlatform   = errors.New("invalid platform: must be ios or android")
+	ErrInvalidToken      = errors.New("invalid push token")
+	ErrSDKConfigNotFound = errors.New("SDK config not found")
+	ErrAppAlreadyExists  = errors.New("app already registered")
 )
 
 // Platform represents the mobile platform
@@ -30,38 +31,38 @@ const (
 
 // MobileApp represents a registered mobile application
 type MobileApp struct {
-	ID             string            `json:"id"`
-	TenantID       string            `json:"tenant_id"`
-	Name           string            `json:"name"`
-	BundleID       string            `json:"bundle_id"`       // iOS bundle ID or Android package name
-	Platform       Platform          `json:"platform"`
-	APNsKeyID      string            `json:"apns_key_id,omitempty"`      // iOS APNs key
-	APNsTeamID     string            `json:"apns_team_id,omitempty"`     // iOS APNs team
-	FCMProjectID   string            `json:"fcm_project_id,omitempty"`   // Android FCM project
-	PushEnabled    bool              `json:"push_enabled"`
-	WebhookTopics  []string          `json:"webhook_topics"`             // Which event types to push
-	SDKVersion     string            `json:"sdk_version,omitempty"`
-	Environment    string            `json:"environment"`                // sandbox or production
-	Config         map[string]string `json:"config,omitempty"`
-	CreatedAt      time.Time         `json:"created_at"`
+	ID            string            `json:"id"`
+	TenantID      string            `json:"tenant_id"`
+	Name          string            `json:"name"`
+	BundleID      string            `json:"bundle_id"` // iOS bundle ID or Android package name
+	Platform      Platform          `json:"platform"`
+	APNsKeyID     string            `json:"apns_key_id,omitempty"`    // iOS APNs key
+	APNsTeamID    string            `json:"apns_team_id,omitempty"`   // iOS APNs team
+	FCMProjectID  string            `json:"fcm_project_id,omitempty"` // Android FCM project
+	PushEnabled   bool              `json:"push_enabled"`
+	WebhookTopics []string          `json:"webhook_topics"` // Which event types to push
+	SDKVersion    string            `json:"sdk_version,omitempty"`
+	Environment   string            `json:"environment"` // sandbox or production
+	Config        map[string]string `json:"config,omitempty"`
+	CreatedAt     time.Time         `json:"created_at"`
 }
 
 // DeviceRegistration represents a registered mobile device
 type DeviceRegistration struct {
-	ID           string    `json:"id"`
-	TenantID     string    `json:"tenant_id"`
-	AppID        string    `json:"app_id"`
-	Platform     Platform  `json:"platform"`
-	PushToken    string    `json:"push_token"`
-	DeviceModel  string    `json:"device_model,omitempty"`
-	OSVersion    string    `json:"os_version,omitempty"`
-	SDKVersion   string    `json:"sdk_version,omitempty"`
-	Locale       string    `json:"locale,omitempty"`
-	Timezone     string    `json:"timezone,omitempty"`
-	Topics       []string  `json:"topics"` // Subscribed webhook event topics
-	IsActive     bool      `json:"is_active"`
-	LastSeenAt   time.Time `json:"last_seen_at"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID          string    `json:"id"`
+	TenantID    string    `json:"tenant_id"`
+	AppID       string    `json:"app_id"`
+	Platform    Platform  `json:"platform"`
+	PushToken   string    `json:"push_token"`
+	DeviceModel string    `json:"device_model,omitempty"`
+	OSVersion   string    `json:"os_version,omitempty"`
+	SDKVersion  string    `json:"sdk_version,omitempty"`
+	Locale      string    `json:"locale,omitempty"`
+	Timezone    string    `json:"timezone,omitempty"`
+	Topics      []string  `json:"topics"` // Subscribed webhook event topics
+	IsActive    bool      `json:"is_active"`
+	LastSeenAt  time.Time `json:"last_seen_at"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // PushDeliveryLog records a push notification delivery attempt
@@ -78,21 +79,21 @@ type PushDeliveryLog struct {
 
 // SDKConfig represents the configuration payload sent to mobile SDKs on init
 type SDKConfig struct {
-	AppID          string            `json:"app_id"`
-	APIEndpoint    string            `json:"api_endpoint"`
-	WebSocketURL   string            `json:"websocket_url"`
-	PushEnabled    bool              `json:"push_enabled"`
-	Topics         []string          `json:"topics"`
-	RetryPolicy    RetryPolicy       `json:"retry_policy"`
-	OfflineQueue   OfflineQueueConfig `json:"offline_queue"`
-	BatteryOptimize bool             `json:"battery_optimize"`
+	AppID           string             `json:"app_id"`
+	APIEndpoint     string             `json:"api_endpoint"`
+	WebSocketURL    string             `json:"websocket_url"`
+	PushEnabled     bool               `json:"push_enabled"`
+	Topics          []string           `json:"topics"`
+	RetryPolicy     RetryPolicy        `json:"retry_policy"`
+	OfflineQueue    OfflineQueueConfig `json:"offline_queue"`
+	BatteryOptimize bool               `json:"battery_optimize"`
 }
 
 // RetryPolicy configures retry behavior for the mobile SDK
 type RetryPolicy struct {
-	MaxRetries       int `json:"max_retries"`
-	InitialDelayMs   int `json:"initial_delay_ms"`
-	MaxDelayMs       int `json:"max_delay_ms"`
+	MaxRetries        int     `json:"max_retries"`
+	InitialDelayMs    int     `json:"initial_delay_ms"`
+	MaxDelayMs        int     `json:"max_delay_ms"`
 	BackoffMultiplier float64 `json:"backoff_multiplier"`
 }
 
@@ -106,8 +107,8 @@ type OfflineQueueConfig struct {
 
 // Service manages mobile SDK operations
 type Service struct {
-	apps    map[string]*MobileApp           // appID -> app
-	devices map[string]*DeviceRegistration   // deviceID -> device
+	apps    map[string]*MobileApp          // appID -> app
+	devices map[string]*DeviceRegistration // deviceID -> device
 	counter int64
 }
 
@@ -224,15 +225,15 @@ func (s *Service) GetSDKConfig(_ context.Context, appID, apiEndpoint string) (*S
 	wsURL += "/ws"
 
 	return &SDKConfig{
-		AppID:       app.ID,
-		APIEndpoint: apiEndpoint,
+		AppID:        app.ID,
+		APIEndpoint:  apiEndpoint,
 		WebSocketURL: wsURL,
-		PushEnabled: app.PushEnabled,
-		Topics:      app.WebhookTopics,
+		PushEnabled:  app.PushEnabled,
+		Topics:       app.WebhookTopics,
 		RetryPolicy: RetryPolicy{
-			MaxRetries:       5,
-			InitialDelayMs:   1000,
-			MaxDelayMs:       60000,
+			MaxRetries:        5,
+			InitialDelayMs:    1000,
+			MaxDelayMs:        60000,
 			BackoffMultiplier: 2.0,
 		},
 		OfflineQueue: OfflineQueueConfig{
@@ -295,7 +296,7 @@ func (h *Handler) RegisterApp(c *gin.Context) {
 	result, err := h.service.RegisterApp(c.Request.Context(), tenantID, &app)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
-		if err == ErrInvalidPlatform || err == ErrAppAlreadyExists {
+		if errors.Is(err, ErrInvalidPlatform) || errors.Is(err, ErrAppAlreadyExists) {
 			statusCode = http.StatusBadRequest
 		}
 		c.JSON(statusCode, gin.H{"error": err.Error()})
@@ -315,7 +316,7 @@ func (h *Handler) ListApps(c *gin.Context) {
 func (h *Handler) GetApp(c *gin.Context) {
 	app, err := h.service.GetApp(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, app)
@@ -325,7 +326,7 @@ func (h *Handler) GetApp(c *gin.Context) {
 func (h *Handler) GetSDKConfig(c *gin.Context) {
 	config, err := h.service.GetSDKConfig(c.Request.Context(), c.Param("id"), c.Request.Host)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, config)
@@ -358,7 +359,7 @@ func (h *Handler) ListDevices(c *gin.Context) {
 // UnregisterDevice handles device unregistration
 func (h *Handler) UnregisterDevice(c *gin.Context) {
 	if err := h.service.UnregisterDevice(c.Request.Context(), c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

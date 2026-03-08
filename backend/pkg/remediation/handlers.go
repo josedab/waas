@@ -1,6 +1,8 @@
 package remediation
 
 import (
+	"errors"
+
 	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
@@ -92,7 +94,7 @@ func (h *Handler) GetAction(c *gin.Context) {
 	actionID := c.Param("id")
 	action, err := h.service.GetAction(c.Request.Context(), tenantID, actionID)
 	if err != nil {
-		if err == ErrActionNotFound {
+		if errors.Is(err, ErrActionNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "action not found"})
 			return
 		}
@@ -206,12 +208,12 @@ func (h *Handler) ApproveAction(c *gin.Context) {
 
 	action, err := h.service.ApproveAction(c.Request.Context(), tenantID, actionID, userID)
 	if err != nil {
-		if err == ErrActionNotFound {
+		if errors.Is(err, ErrActionNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "action not found"})
 			return
 		}
-		if err == ErrInvalidTransition || err == ErrActionExpired {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, ErrInvalidTransition) || errors.Is(err, ErrActionExpired) {
+			httputil.InternalErrorGeneric(c, err)
 			return
 		}
 		httputil.InternalErrorGeneric(c, err)
@@ -257,11 +259,11 @@ func (h *Handler) RejectAction(c *gin.Context) {
 
 	action, err := h.service.RejectAction(c.Request.Context(), tenantID, actionID, userID, req.Reason)
 	if err != nil {
-		if err == ErrActionNotFound {
+		if errors.Is(err, ErrActionNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "action not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -294,7 +296,7 @@ func (h *Handler) RollbackAction(c *gin.Context) {
 
 	action, err := h.service.RollbackAction(c.Request.Context(), tenantID, actionID, userID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

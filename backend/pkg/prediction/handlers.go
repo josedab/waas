@@ -1,6 +1,8 @@
 package prediction
 
 import (
+	"errors"
+
 	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
@@ -118,7 +120,7 @@ func (h *Handler) GetEndpointHealth(c *gin.Context) {
 
 	health, err := h.service.GetEndpointHealth(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		if err == ErrEndpointNotFound {
+		if errors.Is(err, ErrEndpointNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "endpoint not found"})
 			return
 		}
@@ -145,7 +147,7 @@ func (h *Handler) CalculateHealth(c *gin.Context) {
 
 	health, err := h.service.CalculateEndpointHealth(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -175,11 +177,11 @@ func (h *Handler) Predict(c *gin.Context) {
 
 	predictions, err := h.service.Predict(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		if err == ErrInsufficientData {
+		if errors.Is(err, ErrInsufficientData) {
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "insufficient data for prediction"})
 			return
 		}
-		if err == ErrModelNotReady {
+		if errors.Is(err, ErrModelNotReady) {
 			c.JSON(http.StatusServiceUnavailable, ErrorResponse{Error: "prediction model not ready"})
 			return
 		}
@@ -257,7 +259,7 @@ func (h *Handler) GetPrediction(c *gin.Context) {
 
 	prediction, err := h.service.GetPrediction(c.Request.Context(), tenantID, predictionID)
 	if err != nil {
-		if err == ErrPredictionNotFound {
+		if errors.Is(err, ErrPredictionNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "prediction not found"})
 			return
 		}
@@ -371,7 +373,7 @@ func (h *Handler) GetAlert(c *gin.Context) {
 
 	alert, err := h.service.GetAlert(c.Request.Context(), tenantID, alertID)
 	if err != nil {
-		if err == ErrAlertNotFound {
+		if errors.Is(err, ErrAlertNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "alert not found"})
 			return
 		}
@@ -486,7 +488,7 @@ func (h *Handler) GetAlertRule(c *gin.Context) {
 
 	rule, err := h.service.GetAlertRule(c.Request.Context(), tenantID, ruleID)
 	if err != nil {
-		if err == ErrAlertRuleNotFound {
+		if errors.Is(err, ErrAlertRuleNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "rule not found"})
 			return
 		}
@@ -525,7 +527,7 @@ func (h *Handler) UpdateAlertRule(c *gin.Context) {
 
 	err := h.service.UpdateAlertRule(c.Request.Context(), tenantID, &rule)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

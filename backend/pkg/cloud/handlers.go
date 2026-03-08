@@ -1,12 +1,13 @@
 package cloud
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Handler provides HTTP endpoints for the WaaS Cloud managed service
@@ -122,12 +123,11 @@ func (h *Handler) CreateSubscription(c *gin.Context) {
 
 	sub, err := h.billing.CreateSubscription(c.Request.Context(), tenantID, req.PlanID, req.BillingCycle)
 	if err != nil {
-		switch err {
-		case ErrPlanNotFound:
+		if errors.Is(err, ErrPlanNotFound) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "plan not found"})
-		case ErrPaymentRequired:
+		} else if errors.Is(err, ErrPaymentRequired) {
 			c.JSON(http.StatusPaymentRequired, gin.H{"error": "payment required"})
-		default:
+		} else {
 			httputil.InternalErrorGeneric(c, err)
 		}
 		return
@@ -189,18 +189,17 @@ func (h *Handler) ChangePlan(c *gin.Context) {
 
 	sub, err := h.billing.ChangePlan(c.Request.Context(), tenantID, req.PlanID)
 	if err != nil {
-		switch err {
-		case ErrPlanNotFound:
+		if errors.Is(err, ErrPlanNotFound) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "plan not found"})
-		case ErrSubscriptionNotFound:
+		} else if errors.Is(err, ErrSubscriptionNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "subscription not found"})
-		case ErrUsageLimitExceeded:
+		} else if errors.Is(err, ErrUsageLimitExceeded) {
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "usage limit exceeded"})
-		case ErrInvalidPlanUpgrade:
+		} else if errors.Is(err, ErrInvalidPlanUpgrade) {
 			c.JSON(http.StatusConflict, gin.H{"error": "invalid plan upgrade"})
-		case ErrPaymentRequired:
+		} else if errors.Is(err, ErrPaymentRequired) {
 			c.JSON(http.StatusPaymentRequired, gin.H{"error": "payment required"})
-		default:
+		} else {
 			httputil.InternalErrorGeneric(c, err)
 		}
 		return
@@ -235,18 +234,17 @@ func (h *Handler) CancelSubscription(c *gin.Context) {
 
 	sub, err := h.billing.CancelSubscription(c.Request.Context(), tenantID, req.Immediate)
 	if err != nil {
-		switch err {
-		case ErrPlanNotFound:
+		if errors.Is(err, ErrPlanNotFound) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "plan not found"})
-		case ErrSubscriptionNotFound:
+		} else if errors.Is(err, ErrSubscriptionNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "subscription not found"})
-		case ErrUsageLimitExceeded:
+		} else if errors.Is(err, ErrUsageLimitExceeded) {
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "usage limit exceeded"})
-		case ErrInvalidPlanUpgrade:
+		} else if errors.Is(err, ErrInvalidPlanUpgrade) {
 			c.JSON(http.StatusConflict, gin.H{"error": "invalid plan upgrade"})
-		case ErrPaymentRequired:
+		} else if errors.Is(err, ErrPaymentRequired) {
 			c.JSON(http.StatusPaymentRequired, gin.H{"error": "payment required"})
-		default:
+		} else {
 			httputil.InternalErrorGeneric(c, err)
 		}
 		return
@@ -564,7 +562,7 @@ func (h *Handler) SubmitOnboardingStep(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -595,19 +593,16 @@ func (h *Handler) GetOnboardingStatus(c *gin.Context) {
 
 // status maps a cloud service error to an HTTP status code.
 func status(err error) int {
-	switch err {
-	case ErrPlanNotFound:
+	if errors.Is(err, ErrPlanNotFound) {
 		return http.StatusBadRequest
-	case ErrSubscriptionNotFound:
+	} else if errors.Is(err, ErrSubscriptionNotFound) {
 		return http.StatusNotFound
-	case ErrUsageLimitExceeded:
+	} else if errors.Is(err, ErrUsageLimitExceeded) {
 		return http.StatusTooManyRequests
-	case ErrInvalidPlanUpgrade:
+	} else if errors.Is(err, ErrInvalidPlanUpgrade) {
 		return http.StatusConflict
-	case ErrPaymentRequired:
+	} else if errors.Is(err, ErrPaymentRequired) {
 		return http.StatusPaymentRequired
-	default:
-		return http.StatusInternalServerError
 	}
+	return http.StatusInternalServerError
 }
-

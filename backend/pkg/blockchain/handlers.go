@@ -1,9 +1,11 @@
 package blockchain
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
+	"errors"
 	"net/http"
 	"strconv"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -94,7 +96,7 @@ func (h *Handler) GetMonitor(c *gin.Context) {
 
 	monitor, err := h.service.GetMonitor(c.Request.Context(), tenantID, monitorID)
 	if err != nil {
-		if err == ErrMonitorNotFound {
+		if errors.Is(err, ErrMonitorNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "monitor not found"})
 			return
 		}
@@ -130,11 +132,11 @@ func (h *Handler) UpdateMonitor(c *gin.Context) {
 
 	monitor, err := h.service.UpdateMonitor(c.Request.Context(), tenantID, monitorID, &req)
 	if err != nil {
-		if err == ErrMonitorNotFound {
+		if errors.Is(err, ErrMonitorNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "monitor not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -157,7 +159,7 @@ func (h *Handler) DeleteMonitor(c *gin.Context) {
 
 	err := h.service.DeleteMonitor(c.Request.Context(), tenantID, monitorID)
 	if err != nil {
-		if err == ErrMonitorNotFound {
+		if errors.Is(err, ErrMonitorNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "monitor not found"})
 			return
 		}
@@ -236,11 +238,11 @@ func (h *Handler) PauseMonitor(c *gin.Context) {
 		Status: &status,
 	})
 	if err != nil {
-		if err == ErrMonitorNotFound {
+		if errors.Is(err, ErrMonitorNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "monitor not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -265,11 +267,11 @@ func (h *Handler) ResumeMonitor(c *gin.Context) {
 		Status: &status,
 	})
 	if err != nil {
-		if err == ErrMonitorNotFound {
+		if errors.Is(err, ErrMonitorNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "monitor not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -382,7 +384,7 @@ func (h *Handler) GetMonitorStats(c *gin.Context) {
 
 	stats, err := h.service.GetMonitorStats(c.Request.Context(), tenantID, monitorID)
 	if err != nil {
-		if err == ErrMonitorNotFound {
+		if errors.Is(err, ErrMonitorNotFound) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "monitor not found"})
 			return
 		}
