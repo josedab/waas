@@ -133,7 +133,7 @@ func (h *Handler) GetSource(c *gin.Context) {
 
 	source, err := h.service.GetSource(c.Request.Context(), tenantID, sourceID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -184,7 +184,7 @@ func (h *Handler) DeleteSource(c *gin.Context) {
 	sourceID := c.Param("id")
 
 	if err := h.service.DeleteSource(c.Request.Context(), tenantID, sourceID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "DELETE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "DELETE_FAILED", err)
 		return
 	}
 
@@ -250,7 +250,7 @@ func (h *Handler) ReplayEvent(c *gin.Context) {
 
 	event, err := h.service.ReplayInboundEvent(c.Request.Context(), tenantID, eventID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "REPLAY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REPLAY_FAILED", err)
 		return
 	}
 
@@ -329,7 +329,7 @@ func (h *Handler) ReplayDLQEntry(c *gin.Context) {
 
 	event, err := h.service.ReplayDLQEntry(c.Request.Context(), tenantID, entryID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 	c.JSON(http.StatusOK, event)
@@ -342,7 +342,7 @@ func (h *Handler) GetProviderHealth(c *gin.Context) {
 
 	health, err := h.service.GetProviderHealth(c.Request.Context(), tenantID, sourceID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 	c.JSON(http.StatusOK, health)
@@ -355,7 +355,7 @@ func (h *Handler) GetRateLimitConfig(c *gin.Context) {
 
 	config, err := h.service.GetRateLimitConfig(c.Request.Context(), tenantID, sourceID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 	c.JSON(http.StatusOK, config)
@@ -368,7 +368,7 @@ func (h *Handler) GetInboundStats(c *gin.Context) {
 
 	stats, err := h.service.GetInboundStats(c.Request.Context(), tenantID, sourceID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 	c.JSON(http.StatusOK, stats)

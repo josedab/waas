@@ -51,7 +51,7 @@ func (h *Handler) GetPlane(c *gin.Context) {
 
 	plane, err := h.service.GetPlane(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -91,7 +91,7 @@ func (h *Handler) GetHealth(c *gin.Context) {
 
 	health, err := h.service.GetHealth(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

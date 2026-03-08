@@ -65,7 +65,7 @@ func (h *Handler) GetFunction(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	fn, err := h.service.GetFunction(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, fn)
@@ -89,7 +89,7 @@ func (h *Handler) UpdateFunction(c *gin.Context) {
 func (h *Handler) DeleteFunction(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if err := h.service.DeleteFunction(c.Request.Context(), tenantID, c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -114,7 +114,7 @@ func (h *Handler) GetMetrics(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	metrics, err := h.service.GetMetrics(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, metrics)
@@ -125,7 +125,7 @@ func (h *Handler) ListExecutions(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	// Verify tenant owns function
 	if _, err := h.service.GetFunction(c.Request.Context(), tenantID, c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	execs, _ := h.service.repo.ListExecutions(c.Request.Context(), c.Param("id"), limit)

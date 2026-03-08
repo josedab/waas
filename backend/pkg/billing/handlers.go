@@ -1,9 +1,9 @@
 package billing
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"io"
 	"net/http"
 	"strconv"
@@ -234,7 +234,7 @@ func (h *Handler) GetBudget(c *gin.Context) {
 
 	budget, err := h.service.GetBudget(c.Request.Context(), tenantID, budgetID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -346,7 +346,7 @@ func (h *Handler) GetAlertConfig(c *gin.Context) {
 
 	config, err := h.service.GetAlertConfig(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -489,7 +489,7 @@ func (h *Handler) GetInvoice(c *gin.Context) {
 
 	invoice, err := h.service.GetInvoice(c.Request.Context(), tenantID, invoiceID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -640,7 +640,7 @@ func (h *Handler) GetSubscription(c *gin.Context) {
 
 	sub, err := h.service.GetSubscriptionForTenant(c.Request.Context(), tid)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, sub)

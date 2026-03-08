@@ -74,7 +74,7 @@ func (h *Handler) GetTrace(c *gin.Context) {
 
 	trace, err := h.service.GetTrace(c.Request.Context(), tenantID, deliveryID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -201,7 +201,7 @@ func (h *Handler) GetDebugSession(c *gin.Context) {
 
 	session, err := h.service.GetDebugSession(c.Request.Context(), tenantID, sessionID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

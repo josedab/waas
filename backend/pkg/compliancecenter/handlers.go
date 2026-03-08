@@ -1,8 +1,8 @@
 package compliancecenter
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"context"
+	"github.com/josedab/waas/pkg/httputil"
 	"log"
 	"net/http"
 	"strconv"
@@ -175,7 +175,7 @@ func (h *Handler) DisableFramework(c *gin.Context) {
 
 	err := h.service.DisableFramework(c.Request.Context(), tenantID, framework)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -493,7 +493,7 @@ func (h *Handler) CreatePolicy(c *gin.Context) {
 
 	err := h.service.repo.CreatePolicy(c.Request.Context(), tenantID, policy)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

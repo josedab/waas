@@ -1,8 +1,8 @@
 package compliancevault
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 
@@ -73,7 +73,7 @@ func (h *Handler) GetEntry(c *gin.Context) {
 
 	entry, err := h.service.GetEntry(c.Request.Context(), tenantID, entryID, actorID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

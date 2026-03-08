@@ -65,7 +65,7 @@ func (h *Handler) ListNodes(c *gin.Context) {
 func (h *Handler) GetNode(c *gin.Context) {
 	node, err := h.service.GetNode(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, node)
@@ -73,7 +73,7 @@ func (h *Handler) GetNode(c *gin.Context) {
 
 func (h *Handler) RemoveNode(c *gin.Context) {
 	if err := h.service.RemoveNode(c.Request.Context(), c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -143,7 +143,7 @@ func (h *Handler) ListRoutingRules(c *gin.Context) {
 func (h *Handler) DeleteRoutingRule(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if err := h.service.DeleteRoutingRule(c.Request.Context(), tenantID, c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

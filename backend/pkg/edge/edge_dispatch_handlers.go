@@ -31,7 +31,7 @@ func (h *Handler) GetEdgeDispatchConfig(c *gin.Context) {
 
 	config, err := h.service.GetEdgeDispatchConfig(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

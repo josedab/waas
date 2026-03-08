@@ -93,7 +93,7 @@ func (h *Handler) GetWidget(c *gin.Context) {
 
 	widget, err := h.service.GetWidget(c.Request.Context(), tenantID, widgetID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *Handler) GetWidgetData(c *gin.Context) {
 
 	data, err := h.service.GetWidgetData(c.Request.Context(), tenantID, widgetID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -175,7 +175,7 @@ func (h *Handler) GetEmbedSnippet(c *gin.Context) {
 
 	snippet, err := h.service.GetEmbedSnippet(c.Request.Context(), tenantID, widgetID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

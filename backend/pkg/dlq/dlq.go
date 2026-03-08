@@ -1,11 +1,11 @@
 package dlq
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -550,7 +550,7 @@ func (h *Handler) GetEntry(c *gin.Context) {
 
 	entry, err := h.service.GetEntry(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -567,7 +567,7 @@ func (h *Handler) ReplayEntry(c *gin.Context) {
 
 	entry, err := h.service.ReplayEntry(c.Request.Context(), tenantID, c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "REPLAY_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "REPLAY_FAILED", err)
 		return
 	}
 

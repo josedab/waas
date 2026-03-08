@@ -107,7 +107,7 @@ func (h *Handlers) GetConnector(c *gin.Context) {
 
 	connector, err := h.service.GetConnector(c.Request.Context(), tenantID, connID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

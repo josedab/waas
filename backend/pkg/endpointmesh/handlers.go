@@ -54,7 +54,7 @@ func (h *Handler) AddNode(c *gin.Context) {
 func (h *Handler) GetNode(c *gin.Context) {
 	node, err := h.service.GetNode(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *Handler) ListNodes(c *gin.Context) {
 
 func (h *Handler) DeleteNode(c *gin.Context) {
 	if err := h.service.RemoveNode(c.Param("id")); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -154,7 +154,7 @@ func (h *Handler) ListRerouteEvents(c *gin.Context) {
 func (h *Handler) RecoverNode(c *gin.Context) {
 	node, err := h.service.RecoverNode(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

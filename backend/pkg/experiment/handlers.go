@@ -54,7 +54,7 @@ func (h *Handler) GetExperiment(c *gin.Context) {
 
 	exp, err := h.service.GetExperiment(c.Request.Context(), tenantID, expID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -79,7 +79,7 @@ func (h *Handler) StartExperiment(c *gin.Context) {
 
 	exp, err := h.service.StartExperiment(c.Request.Context(), tenantID, expID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -92,7 +92,7 @@ func (h *Handler) StopExperiment(c *gin.Context) {
 
 	exp, err := h.service.StopExperiment(c.Request.Context(), tenantID, expID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

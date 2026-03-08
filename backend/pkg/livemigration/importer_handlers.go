@@ -63,10 +63,10 @@ func runImport(c *gin.Context, platform string) {
 }
 
 func (h *Handler) ImportSvixV2(c *gin.Context)     { runImport(c, "svix") }
-func (h *Handler) ImportConvoyV2(c *gin.Context)    { runImport(c, "convoy") }
-func (h *Handler) ImportHookdeckV2(c *gin.Context)  { runImport(c, "hookdeck") }
-func (h *Handler) ImportCSVV2(c *gin.Context)       { runImport(c, "csv") }
-func (h *Handler) ImportJSONV2(c *gin.Context)      { runImport(c, "json") }
+func (h *Handler) ImportConvoyV2(c *gin.Context)   { runImport(c, "convoy") }
+func (h *Handler) ImportHookdeckV2(c *gin.Context) { runImport(c, "hookdeck") }
+func (h *Handler) ImportCSVV2(c *gin.Context)      { runImport(c, "csv") }
+func (h *Handler) ImportJSONV2(c *gin.Context)     { runImport(c, "json") }
 
 func (h *Handler) StartCutoverV2(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
@@ -93,7 +93,7 @@ func (h *Handler) GetCutoverStatusV2(c *gin.Context) {
 	svc := NewCutoverService(h.service.repo)
 	status, err := svc.GetStatus(c.Request.Context(), jobID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, status)
@@ -123,7 +123,7 @@ func (h *Handler) RollbackCutoverV2(c *gin.Context) {
 	svc := NewCutoverService(h.service.repo)
 	plan, err := svc.Rollback(c.Request.Context(), jobID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, plan)

@@ -108,7 +108,7 @@ func (h *Handler) GetTopic(c *gin.Context) {
 
 	topic, err := h.service.GetTopic(c.Request.Context(), tid, topicID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -194,7 +194,7 @@ func (h *Handler) Subscribe(c *gin.Context) {
 
 	sub, err := h.service.Subscribe(c.Request.Context(), tid, topicID, endpointID, req.FilterExpression)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "SUBSCRIBE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "SUBSCRIBE_FAILED", err)
 		return
 	}
 
@@ -411,7 +411,7 @@ func (h *Handler) GetRoutingRule(c *gin.Context) {
 
 	rule, err := h.service.GetRoutingRule(c.Request.Context(), tid, ruleID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

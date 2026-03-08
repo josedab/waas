@@ -58,7 +58,7 @@ func (h *Handler) GetTemplates(c *gin.Context) {
 // @Router /chaos/experiments [get]
 func (h *Handler) ListExperiments(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
-	
+
 	var status *ExperimentStatus
 	if s := c.Query("status"); s != "" {
 		st := ExperimentStatus(s)
@@ -175,7 +175,7 @@ func (h *Handler) StartExperiment(c *gin.Context) {
 
 	exp, err := h.service.StartExperiment(c.Request.Context(), tenantID, expID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -196,7 +196,7 @@ func (h *Handler) StopExperiment(c *gin.Context) {
 
 	exp, err := h.service.StopExperiment(c.Request.Context(), tenantID, expID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -102,7 +102,7 @@ func (h *Handler) GetTenant(c *gin.Context) {
 
 	tenant, err := h.service.GetTenant(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -234,7 +234,7 @@ func (h *Handler) GetScalingConfig(c *gin.Context) {
 
 	config, err := h.service.GetScalingConfig(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

@@ -99,7 +99,7 @@ func (h *Handler) GetConversation(c *gin.Context) {
 
 	conv, err := h.service.GetConversation(c.Request.Context(), tenantID, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -124,7 +124,7 @@ func (h *Handler) GetMessages(c *gin.Context) {
 
 	msgs, err := h.service.GetMessages(c.Request.Context(), tenantID, convID, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *Handler) DeleteConversation(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.service.DeleteConversation(c.Request.Context(), tenantID, id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

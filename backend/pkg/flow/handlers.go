@@ -1,8 +1,8 @@
 package flow
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -215,7 +215,7 @@ func (h *Handler) DeleteFlow(c *gin.Context) {
 
 	flowID := c.Param("id")
 	if err := h.service.DeleteFlow(c.Request.Context(), tenantID, flowID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -473,7 +473,7 @@ func (h *Handler) RemoveFlow(c *gin.Context) {
 	flowID := c.Param("flowId")
 
 	if err := h.service.RemoveFlowFromEndpoint(c.Request.Context(), endpointID, flowID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

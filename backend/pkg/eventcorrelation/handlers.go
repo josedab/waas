@@ -56,7 +56,7 @@ func (h *Handler) GetRule(c *gin.Context) {
 
 	rule, err := h.service.GetRule(c.Request.Context(), tenantID, ruleID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

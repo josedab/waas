@@ -59,7 +59,7 @@ func (h *Handler) InferSchema(c *gin.Context) {
 
 	inference, err := h.service.InferSchema(c.Request.Context(), tenantID, eventType)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -83,7 +83,7 @@ func (h *Handler) PromoteDiscovery(c *gin.Context) {
 
 	et, err := h.service.PromoteDiscovery(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -96,7 +96,7 @@ func (h *Handler) IgnoreDiscovery(c *gin.Context) {
 	discoveryID := c.Param("id")
 
 	if err := h.service.IgnoreDiscovery(c.Request.Context(), tenantID, discoveryID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -1,9 +1,9 @@
 package edge
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/josedab/waas/pkg/httputil"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -143,7 +143,7 @@ func (h *Handler) UpdateFunction(c *gin.Context) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Error: "function not found"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -239,7 +239,7 @@ func (h *Handler) DeployFunction(c *gin.Context) {
 
 	deployment, err := h.service.DeployFunction(c.Request.Context(), tenantID, functionID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

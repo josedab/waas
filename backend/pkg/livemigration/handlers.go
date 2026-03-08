@@ -107,7 +107,7 @@ func (h *Handler) GetMigration(c *gin.Context) {
 
 	job, err := h.service.GetMigration(c.Request.Context(), tenantID, jobID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -386,7 +386,7 @@ func (h *Handler) GetCheckpoint(c *gin.Context) {
 
 	checkpoint, err := h.service.GetCheckpoint(c.Request.Context(), jobID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "CHECKPOINT_NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "CHECKPOINT_NOT_FOUND", err)
 		return
 	}
 

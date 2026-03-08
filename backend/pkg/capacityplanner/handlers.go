@@ -69,7 +69,7 @@ func (h *Handler) GetReport(c *gin.Context) {
 
 	report, err := h.service.GetReport(c.Request.Context(), reportID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -176,7 +176,7 @@ func (h *Handler) AcknowledgeAlert(c *gin.Context) {
 	alertID := c.Param("id")
 
 	if err := h.service.AcknowledgeAlert(c.Request.Context(), alertID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

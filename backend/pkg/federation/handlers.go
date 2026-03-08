@@ -130,7 +130,7 @@ func (h *Handler) GetMember(c *gin.Context) {
 
 	member, err := h.service.GetMember(c.Request.Context(), memberID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -382,7 +382,7 @@ func (h *Handler) GetCatalog(c *gin.Context) {
 
 	catalog, err := h.service.GetCatalog(c.Request.Context(), catalogID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -472,7 +472,7 @@ func (h *Handler) GetSubscription(c *gin.Context) {
 
 	sub, err := h.service.GetSubscription(c.Request.Context(), subID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -551,7 +551,7 @@ func (h *Handler) GetPolicy(c *gin.Context) {
 
 	policy, err := h.service.GetPolicy(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

@@ -1,8 +1,8 @@
 package gateway
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"io"
 	"net/http"
 
@@ -150,7 +150,7 @@ func (h *Handler) DeleteProvider(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteProvider(c.Request.Context(), tenantID, c.Param("id")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -278,7 +278,7 @@ func (h *Handler) DeleteRoutingRule(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteRoutingRule(c.Request.Context(), tenantID, c.Param("id")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -338,7 +338,7 @@ func (h *Handler) IngestWebhook(c *gin.Context) {
 
 	result, err := h.service.ProcessInboundWebhook(c.Request.Context(), tenantID, providerID, body, headers)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

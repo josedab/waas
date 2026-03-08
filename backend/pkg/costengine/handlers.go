@@ -107,7 +107,7 @@ func (h *Handler) GetCostModel(c *gin.Context) {
 
 	model, err := h.service.GetCostModel(c.Request.Context(), tenantID, modelID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -242,7 +242,7 @@ func (h *Handler) GetBudget(c *gin.Context) {
 
 	budget, err := h.service.GetBudget(c.Request.Context(), tenantID, budgetID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

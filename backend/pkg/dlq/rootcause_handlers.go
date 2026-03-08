@@ -13,7 +13,7 @@ func (h *Handler) AnalyzeRootCause(c *gin.Context) {
 
 	analysis, err := h.service.AnalyzeRootCause(c.Request.Context(), entryID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -26,7 +26,7 @@ func (h *Handler) GetSmartRetryRecommendation(c *gin.Context) {
 
 	rec, err := h.service.GetSmartRetryRecommendation(c.Request.Context(), entryID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

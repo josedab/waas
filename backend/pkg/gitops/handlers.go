@@ -122,7 +122,7 @@ func (h *Handler) GetManifest(c *gin.Context) {
 
 	manifest, err := h.service.GetManifest(c.Request.Context(), tenantID, manifestID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -254,7 +254,7 @@ func (h *Handler) GetDriftReport(c *gin.Context) {
 
 	report, err := h.service.GetDriftReport(c.Request.Context(), tenantID, reportID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

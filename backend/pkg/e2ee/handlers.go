@@ -70,7 +70,7 @@ func (h *Handler) GenerateKeyPair(c *gin.Context) {
 func (h *Handler) GetPublicKey(c *gin.Context) {
 	pubKey, version, err := h.service.GetPublicKey(c.Param("endpoint_id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"public_key": pubKey, "version": version, "algorithm": "x25519"})

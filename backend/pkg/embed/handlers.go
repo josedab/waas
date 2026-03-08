@@ -1,8 +1,8 @@
 package embed
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -246,7 +246,7 @@ func (h *Handler) DeleteToken(c *gin.Context) {
 
 	tokenID := c.Param("id")
 	if err := h.service.DeleteToken(c.Request.Context(), tenantID, tokenID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -274,7 +274,7 @@ func (h *Handler) RotateToken(c *gin.Context) {
 	tokenID := c.Param("id")
 	token, newValue, err := h.service.RotateToken(c.Request.Context(), tenantID, tokenID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

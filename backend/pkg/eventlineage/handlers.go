@@ -52,7 +52,7 @@ func (h *Handler) GetLineageGraph(c *gin.Context) {
 
 	graph, err := h.service.GetLineageGraph(c.Request.Context(), tenantID, eventID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

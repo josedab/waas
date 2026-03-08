@@ -1,8 +1,8 @@
 package costing
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"fmt"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"time"
 
@@ -63,7 +63,7 @@ func (h *Handler) GetCostReport(c *gin.Context) {
 
 	report, err := h.service.GetCostReport(c.Request.Context(), tenantID, period)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 
@@ -369,7 +369,7 @@ func (h *Handler) DeleteBudget(c *gin.Context) {
 
 	budgetID := c.Param("id")
 	if err := h.service.DeleteBudget(c.Request.Context(), tenantID, budgetID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

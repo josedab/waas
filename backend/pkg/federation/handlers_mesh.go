@@ -112,7 +112,7 @@ func (h *MeshHandler) VerifyAttestation(c *gin.Context) {
 
 	verified, err := h.mesh.VerifyAttestation(c.Request.Context(), event)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "verified": false})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

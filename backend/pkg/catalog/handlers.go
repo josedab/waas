@@ -1,8 +1,8 @@
 package catalog
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"encoding/json"
+	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -378,7 +378,7 @@ func (h *Handler) GenerateSDKTypes(c *gin.Context) {
 	language := c.Param("language")
 	code, err := h.service.GenerateSDKTypes(c.Request.Context(), id, language)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "GENERATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "GENERATE_FAILED", err)
 		return
 	}
 
@@ -423,7 +423,7 @@ func (h *Handler) GetChangelog(c *gin.Context) {
 	}
 	changelog, err := h.service.GenerateChangelog(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 	c.JSON(http.StatusOK, changelog)
@@ -437,7 +437,7 @@ func (h *Handler) GetDocPortal(c *gin.Context) {
 	}
 	portal, err := h.service.GenerateDocPortal(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 	c.JSON(http.StatusOK, portal)

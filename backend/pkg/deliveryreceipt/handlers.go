@@ -53,7 +53,7 @@ func (h *Handler) GetReceipt(c *gin.Context) {
 
 	receipt, err := h.service.GetReceipt(c.Request.Context(), tenantID, receiptID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 

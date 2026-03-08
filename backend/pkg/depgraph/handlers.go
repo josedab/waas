@@ -58,7 +58,7 @@ func (h *Handler) GetGraph(c *gin.Context) {
 func (h *Handler) AnalyzeImpact(c *gin.Context) {
 	analysis, err := h.service.AnalyzeImpact(c.Param("endpoint_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, analysis)

@@ -73,7 +73,7 @@ func (h *Handler) GetPattern(c *gin.Context) {
 
 	pattern, err := h.service.GetPattern(c.Request.Context(), tenantID, patternID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 

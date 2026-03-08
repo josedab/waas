@@ -68,7 +68,7 @@ func (mh *MeshHandler) JoinMesh(c *gin.Context) {
 func (mh *MeshHandler) RemoveNode(c *gin.Context) {
 	nodeID := c.Param("id")
 	if err := mh.manager.RemoveNode(c.Request.Context(), nodeID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -82,7 +82,7 @@ func (mh *MeshHandler) GetTopology(c *gin.Context) {
 func (mh *MeshHandler) Heartbeat(c *gin.Context) {
 	nodeID := c.Param("id")
 	if err := mh.manager.Heartbeat(c.Request.Context(), nodeID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		httputil.InternalErrorGeneric(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"acknowledged": true})
@@ -141,12 +141,30 @@ func (mh *MeshHandler) GetFailoverEvents(c *gin.Context) {
 }
 
 // Stub handlers on the main Handler for backwards compatibility
-func (h *Handler) JoinMesh(c *gin.Context)          { c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"}) }
-func (h *Handler) RemoveNode(c *gin.Context)         { c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"}) }
-func (h *Handler) GetTopology(c *gin.Context)        { c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"}) }
-func (h *Handler) Heartbeat(c *gin.Context)          { c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"}) }
-func (h *Handler) RouteMeshEvent(c *gin.Context)     { c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"}) }
-func (h *Handler) DetectFailures(c *gin.Context)     { c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"}) }
-func (h *Handler) ResolveSplitBrain(c *gin.Context)  { c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"}) }
-func (h *Handler) GetReplicationState(c *gin.Context) { c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"}) }
-func (h *Handler) GetFailoverEvents(c *gin.Context)  { c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"}) }
+func (h *Handler) JoinMesh(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"})
+}
+func (h *Handler) RemoveNode(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"})
+}
+func (h *Handler) GetTopology(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"})
+}
+func (h *Handler) Heartbeat(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"})
+}
+func (h *Handler) RouteMeshEvent(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"})
+}
+func (h *Handler) DetectFailures(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"})
+}
+func (h *Handler) ResolveSplitBrain(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"})
+}
+func (h *Handler) GetReplicationState(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"})
+}
+func (h *Handler) GetFailoverEvents(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "mesh manager not configured"})
+}

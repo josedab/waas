@@ -119,7 +119,7 @@ func (h *Handler) GetDeployment(c *gin.Context) {
 
 	deployment, err := h.service.GetDeployment(c.Request.Context(), tenantID, deploymentID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		httputil.InternalError(c, "NOT_FOUND", err)
 		return
 	}
 
@@ -171,7 +171,7 @@ func (h *Handler) PromoteCanary(c *gin.Context) {
 
 	deployment, err := h.service.PromoteCanary(c.Request.Context(), tenantID, deploymentID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "PROMOTE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "PROMOTE_FAILED", err)
 		return
 	}
 
@@ -193,7 +193,7 @@ func (h *Handler) RollbackCanary(c *gin.Context) {
 
 	deployment, err := h.service.RollbackCanary(c.Request.Context(), tenantID, deploymentID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "ROLLBACK_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "ROLLBACK_FAILED", err)
 		return
 	}
 
@@ -215,7 +215,7 @@ func (h *Handler) PauseCanary(c *gin.Context) {
 
 	deployment, err := h.service.PauseCanary(c.Request.Context(), tenantID, deploymentID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "PAUSE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "PAUSE_FAILED", err)
 		return
 	}
 
@@ -237,7 +237,7 @@ func (h *Handler) ResumeCanary(c *gin.Context) {
 
 	deployment, err := h.service.ResumeCanary(c.Request.Context(), tenantID, deploymentID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "RESUME_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "RESUME_FAILED", err)
 		return
 	}
 
@@ -259,7 +259,7 @@ func (h *Handler) EvaluateCanary(c *gin.Context) {
 
 	comparison, err := h.service.EvaluateCanary(c.Request.Context(), tenantID, deploymentID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "EVALUATE_FAILED", "message": err.Error()}})
+		httputil.InternalError(c, "EVALUATE_FAILED", err)
 		return
 	}
 
