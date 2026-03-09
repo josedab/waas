@@ -251,10 +251,24 @@ See [`.env.example`](.env.example) for the full list with defaults. Key variable
 | `JWT_SECRET` | - | JWT signing secret |
 | `ENVIRONMENT` | `development` | `development` or `production` |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `LOG_FORMAT` | `json` | Log output format: `json` or `text` |
 | `ADMIN_TENANT_IDS` | - | Comma-separated tenant IDs with admin privileges |
 | `ALLOW_INSECURE_TLS` | `false` | Skip TLS certificate verification for webhook delivery |
 | `CORS_ALLOWED_ORIGINS` | - | Comma-separated allowed CORS origins |
-| `APP_ENV` | `development` | Application environment (`development`, `production`) |
+| `WEBSOCKET_ALLOWED_ORIGINS` | - | Comma-separated allowed WebSocket origins |
+| `WEBHOOK_PLATFORM_API_KEY` | - | API key for platform-level webhook notifications |
+| `APP_ENV` | `development` | **Deprecated** — legacy alias for `ENVIRONMENT`. If both are set, `ENVIRONMENT` takes precedence. |
+
+**Optional integrations** (set in `.env` as needed):
+
+| Category | Variables | Description |
+|----------|-----------|-------------|
+| AI / LLM | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | API keys for AI-powered features |
+| Billing | `STRIPE_API_KEY` | Stripe secret key for billing integration |
+| Observability | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`, `OTEL_SERVICE_VERSION`, `OTEL_ENVIRONMENT`, `OTEL_INSECURE` | OpenTelemetry tracing configuration (see [Observability Guide](docs/observability-guide.md)) |
+| Docker Compose | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Used by `docker-compose.yml` to initialize the PostgreSQL container |
+
+> **Full reference:** See the [Environment Variable Reference](docs/deployment-guide.md#environment-variable-reference) in the deployment guide for all ~27 supported variables, including optional AI, billing, observability, and Docker-specific settings.
 
 ## Documentation
 
