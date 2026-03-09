@@ -119,6 +119,7 @@ tenantID := c.GetString("tenant_id")  // Set by auth middleware
 | `API_PORT` | `8080` | API server port |
 | `JWT_SECRET` | (required) | JWT signing secret |
 | `LOG_LEVEL` | `info` | Log level (debug/info/warn/error) |
+| `LOG_FORMAT` | `json` | Log output format (`json` or `text`) |
 
 ## Useful Links
 
