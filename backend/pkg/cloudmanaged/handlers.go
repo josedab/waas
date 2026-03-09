@@ -77,6 +77,11 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 
 		// Admin: list tenants
 		cloud.GET("/tenants", h.ListTenants)
+
+		// Provisioning API
+		cloud.POST("/provision", h.ProvisionTenant)
+		cloud.POST("/api-keys", h.GenerateAPIKey)
+		cloud.GET("/resource-quota", h.GetResourceQuota)
 	}
 }
 
@@ -482,4 +487,61 @@ func (h *Handler) ListTenants(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"tenants": tenants, "limit": limit, "offset": offset})
+}
+
+// ProvisionTenant handles full tenant provisioning
+func (h *Handler) ProvisionTenant(c *gin.Context) {
+	var req SignupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkgerrors.HandleBindError(c, err)
+		return
+	}
+
+	result, err := h.service.SelfServiceProvision(c.Request.Context(), &req)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+
+	c.JSON(http.StatusCreated, result)
+}
+
+// GenerateAPIKey creates a new API key for the tenant
+func (h *Handler) GenerateAPIKey(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req APIKeyCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		pkgerrors.HandleBindError(c, err)
+		return
+	}
+
+	result, err := h.service.CreateAPIKey(c.Request.Context(), tenantID, &req)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+
+	c.JSON(http.StatusCreated, result)
+}
+
+// GetResourceQuota returns enforced resource limits for the tenant
+func (h *Handler) GetResourceQuota(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	quota, err := h.service.GetPlanResourceQuota(c.Request.Context(), tenantID)
+	if err != nil {
+		pkgerrors.RespondWithError(c, pkgerrors.HandleRepositoryError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, quota)
 }
