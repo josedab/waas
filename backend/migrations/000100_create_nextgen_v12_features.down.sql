@@ -1,0 +1,16 @@
+DROP TABLE IF EXISTS protocol_delivery_routes;
+DROP TABLE IF EXISTS webhook_test_results;
+DROP TABLE IF EXISTS webhook_test_suites;
+DROP TABLE IF EXISTS portal_sdk_configs;
+DROP TABLE IF EXISTS inbound_provider_registry;
+DROP TABLE IF EXISTS replay_archive_events;
+DROP TABLE IF EXISTS gitops_environments;
+DROP TABLE IF EXISTS cloud_tenant_provisions;
+DROP TABLE IF EXISTS event_catalog_entries;
+DROP TABLE IF EXISTS schema_compatibility_checks;
+DROP TABLE IF EXISTS dlq_failure_clusters;
+DROP TABLE IF EXISTS dlq_entries;
+DROP TABLE IF EXISTS reliability_alert_thresholds;
+DROP TABLE IF EXISTS reliability_sla_targets;
+DROP TABLE IF EXISTS reliability_score_snapshots;
+DROP TABLE IF EXISTS endpoint_reliability_scores;
