@@ -22,6 +22,7 @@ type Service struct {
 	wsManager     *WebSocketManager
 	aggregator    *Aggregator
 	analyticsRepo repository.AnalyticsRepositoryInterface
+	cancelWorkers context.CancelFunc
 }
 
 func NewService() (*Service, error) {
@@ -84,7 +85,8 @@ func (s *Service) Handler() http.Handler {
 
 // StartWorkers starts background workers (WebSocket manager, aggregator).
 func (s *Service) StartWorkers() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancelWorkers = cancel
 	s.wsManager.Start(ctx)
 	s.aggregator.Start(ctx)
 }
@@ -102,6 +104,11 @@ func (s *Service) Start(addr string) error {
 
 func (s *Service) Stop() {
 	s.logger.Info("Stopping analytics service", nil)
+
+	// Cancel worker context
+	if s.cancelWorkers != nil {
+		s.cancelWorkers()
+	}
 
 	// Stop background workers
 	s.wsManager.Stop()

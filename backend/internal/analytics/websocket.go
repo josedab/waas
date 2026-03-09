@@ -268,7 +268,9 @@ func (wsm *WebSocketManager) broadcastMetrics() {
 // sendInitialData sends initial dashboard data to a new connection
 func (wsm *WebSocketManager) sendInitialData(conn *websocket.Conn, tenantID uuid.UUID) {
 	// Get dashboard metrics for the last hour
-	dashboard, err := wsm.analyticsRepo.GetDashboardMetrics(context.Background(), tenantID, wsDashboardWindow)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	dashboard, err := wsm.analyticsRepo.GetDashboardMetrics(ctx, tenantID, wsDashboardWindow)
 	if err != nil {
 		wsm.logger.Error("Failed to get initial dashboard data", map[string]interface{}{
 			"error":     err.Error(),
