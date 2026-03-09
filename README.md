@@ -122,6 +122,10 @@ make validate-setup    # Check prerequisites
 | **Delivery Engine** | — | Background job processor, retries with exponential backoff |
 | **Analytics Service** | 8082 | Metrics aggregation, dashboards, WebSocket real-time updates |
 
+### Deployment
+
+Production deployment is supported via [Helm chart](deploy/helm/waas/) and [Terraform modules](deploy/terraform/) for AWS (EKS + RDS + ElastiCache) and GCP (GKE + Cloud SQL + Memorystore). See the [Infrastructure guide](deploy/) for details.
+
 ## SDKs
 
 | Language | Path | Status |
@@ -160,6 +164,7 @@ make validate-setup    # Check prerequisites
 | [**Observability**](backend/docs/observability-guide.md) | Tracing, metrics, and Grafana dashboards setup |
 | [**CLI Tool**](backend/cmd/waas-cli/README.md) | Terminal-based webhook management, testing, and GitOps workflows |
 | [**Dashboard**](backend/web/dashboard/README.md) | React frontend development |
+| [**Infrastructure**](deploy/) | Helm chart, Terraform modules for AWS & GCP |
 
 ## Prerequisites
 
