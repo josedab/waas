@@ -245,10 +245,14 @@ func (e *Executor) executeHTTPNode(ctx *ExecutionContext, node *Node) (json.RawM
 	var result json.RawMessage
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		// Return status as result if no JSON body
-		result, _ = json.Marshal(map[string]interface{}{
+		var marshalErr error
+		result, marshalErr = json.Marshal(map[string]interface{}{
 			"status_code": resp.StatusCode,
 			"status":      resp.Status,
 		})
+		if marshalErr != nil {
+			return nil, fmt.Errorf("failed to marshal status response: %w", marshalErr)
+		}
 	}
 
 	if resp.StatusCode >= 400 {
