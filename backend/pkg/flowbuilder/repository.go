@@ -131,7 +131,9 @@ func (r *PostgresRepository) ListWorkflows(ctx context.Context, tenantID string,
 	}
 
 	offset := (page - 1) * pageSize
-	query += fmt.Sprintf(` ORDER BY updated_at DESC LIMIT %d OFFSET %d`, pageSize, offset)
+	nextParam := len(args) + 1
+	query += fmt.Sprintf(` ORDER BY updated_at DESC LIMIT $%d OFFSET $%d`, nextParam, nextParam+1)
+	args = append(args, pageSize, offset)
 
 	var workflows []Workflow
 	err = r.db.SelectContext(ctx, &workflows, query, args...)
@@ -307,7 +309,9 @@ func (r *PostgresRepository) ListTemplates(ctx context.Context, category string,
 	}
 
 	offset := (page - 1) * pageSize
-	query += fmt.Sprintf(` ORDER BY usage_count DESC LIMIT %d OFFSET %d`, pageSize, offset)
+	nextParam := len(args) + 1
+	query += fmt.Sprintf(` ORDER BY usage_count DESC LIMIT $%d OFFSET $%d`, nextParam, nextParam+1)
+	args = append(args, pageSize, offset)
 
 	var templates []WorkflowTemplate
 	err = r.db.SelectContext(ctx, &templates, query, args...)
