@@ -599,14 +599,15 @@ func (s *Service) autoTuneEndpoint(ctx context.Context, tenantID, endpointID str
 		Reason:     rec.Reason,
 	}
 
-	// Get current throttler rate
+	// Get current throttler rate and apply recommendation atomically
 	if throttler, ok := s.throttlers.Load(tenantID + ":" + endpointID); ok {
 		t := throttler.(*Throttler)
 		t.mu.Lock()
 		result.OldRate = t.currentRate
-		t.mu.Unlock()
-		t.ApplyRecommendation(rec)
-		t.mu.Lock()
+		// Inline ApplyRecommendation logic to avoid double-locking
+		blendFactor := rec.Confidence * 0.3
+		t.currentRate = t.currentRate*(1-blendFactor) + rec.RecommendedRate*blendFactor
+		t.currentRate = math.Max(t.config.MinRatePerSec, math.Min(t.config.MaxRatePerSec, t.currentRate))
 		result.NewRate = t.currentRate
 		t.mu.Unlock()
 	}
