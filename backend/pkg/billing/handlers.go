@@ -784,9 +784,6 @@ func (h *Handler) HandleStripeWebhook(c *gin.Context) {
 
 // Ensure imports are used
 var (
-	_ = strconv.Atoi
-	_ = json.Unmarshal
-	_ = io.ReadAll
 	_ = time.Now
 	_ = uuid.New
 )
