@@ -216,6 +216,12 @@ make audit-deps         # Check for outdated/vulnerable dependencies
 # Git hooks
 make install-hooks      # Install pre-commit hooks (gofmt + go vet)
 make uninstall-hooks    # Remove pre-commit hooks
+
+# CI & profiling
+make ci-local           # Run full CI pipeline locally before pushing
+make test-failed        # Re-run only tests that failed in the last run
+make profile            # CPU profiling with pprof (PKG=./pkg/auth BENCH=.)
+make new-pkg NAME=foo   # Scaffold a new package under pkg/
 ```
 
 > **Tip:** All targets in `backend/Makefile` are also available from the repository root — just run `make <target>` from the top-level directory.
