@@ -41,7 +41,16 @@ func Middleware(service *Service, getTenantID func(*gin.Context) string) gin.Han
 		// Read request body
 		var requestBody []byte
 		if c.Request.Body != nil {
-			requestBody, _ = io.ReadAll(c.Request.Body)
+			var err error
+			requestBody, err = io.ReadAll(c.Request.Body)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"code":    "INVALID_REQUEST_BODY",
+					"message": "Failed to read request body",
+				})
+				c.Abort()
+				return
+			}
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBody))
 		}
 
