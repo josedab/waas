@@ -292,6 +292,7 @@ See [`.env.example`](.env.example) for the full list with defaults. Key variable
 - [SDK Development](sdk/CONTRIBUTING.md) - Building and maintaining SDKs
 - [CLI Tool](cmd/waas-cli/README.md) - Terminal-based webhook management, testing, and GitOps workflows
 - [Dashboard](web/dashboard/README.md) - Frontend development
+- [Architecture Decision Records](docs/adrs/) - Key design decisions and rationale
 
 ## Troubleshooting
 
