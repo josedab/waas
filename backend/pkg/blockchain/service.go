@@ -539,7 +539,15 @@ func (s *Service) logToEvent(log Log, monitor *ContractMonitor) *ContractEvent {
 	var decodedData json.RawMessage
 	if s.decoder != nil {
 		if decoded, err := s.decoder.DecodeLog(&log); err == nil {
-			decodedData, _ = json.Marshal(decoded)
+			marshaledData, marshalErr := json.Marshal(decoded)
+			if marshalErr != nil {
+				s.logger.Error("failed to marshal decoded event data", map[string]interface{}{
+					"error":      marshalErr.Error(),
+					"monitor_id": monitor.ID,
+				})
+			} else {
+				decodedData = marshaledData
+			}
 		}
 	}
 
