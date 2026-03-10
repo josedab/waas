@@ -94,3 +94,61 @@ type NotificationPreferencesRequest struct {
 	Enabled *bool               `json:"enabled,omitempty"`
 	Filters *NotificationFilter `json:"filters,omitempty"`
 }
+
+// ReplayRequest is the DTO for replaying a webhook delivery from mobile.
+type ReplayRequest struct {
+	DeliveryID string `json:"delivery_id" binding:"required"`
+	EndpointID string `json:"endpoint_id" binding:"required"`
+}
+
+// ReplayResult describes the outcome of a delivery replay.
+type ReplayResult struct {
+	OriginalDeliveryID string    `json:"original_delivery_id"`
+	NewDeliveryID      string    `json:"new_delivery_id"`
+	EndpointID         string    `json:"endpoint_id"`
+	Status             string    `json:"status"` // queued, delivered, failed
+	StatusCode         int       `json:"status_code,omitempty"`
+	ReplayedAt         time.Time `json:"replayed_at"`
+}
+
+// OfflineCacheEntry stores data for offline access.
+type OfflineCacheEntry struct {
+	ID          string    `json:"id"`
+	TenantID    string    `json:"tenant_id"`
+	DataType    string    `json:"data_type"` // delivery_log, endpoint_status, dashboard
+	Data        string    `json:"data"`
+	CachedAt    time.Time `json:"cached_at"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	SyncVersion int       `json:"sync_version"`
+}
+
+// OnCallIntegration configures PagerDuty/OpsGenie integration for mobile.
+type OnCallIntegration struct {
+	ID        string `json:"id"`
+	TenantID  string `json:"tenant_id"`
+	Provider  string `json:"provider"` // pagerduty, opsgenie
+	APIKey    string `json:"api_key"`
+	ServiceID string `json:"service_id,omitempty"`
+	Enabled   bool   `json:"enabled"`
+}
+
+// OnCallStatus represents the current on-call status.
+type OnCallStatus struct {
+	Provider   string    `json:"provider"`
+	OnCall     bool      `json:"on_call"`
+	ShiftStart time.Time `json:"shift_start"`
+	ShiftEnd   time.Time `json:"shift_end"`
+	TeamName   string    `json:"team_name,omitempty"`
+	EscLevel   int       `json:"escalation_level"`
+}
+
+// IncidentSummary provides a mobile-optimized incident view.
+type IncidentSummary struct {
+	ID           string    `json:"id"`
+	Title        string    `json:"title"`
+	Severity     string    `json:"severity"`
+	Status       string    `json:"status"` // triggered, acknowledged, resolved
+	EndpointID   string    `json:"endpoint_id,omitempty"`
+	FailureCount int       `json:"failure_count"`
+	CreatedAt    time.Time `json:"created_at"`
+}

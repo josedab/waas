@@ -123,3 +123,49 @@ func TestSendTestNotification(t *testing.T) {
 	_, err = svc.SendTestNotification("t1", "non-existent")
 	assert.ErrorIs(t, err, ErrDeviceNotFound)
 }
+
+func TestReplayDelivery(t *testing.T) {
+	repo := NewMemoryRepository()
+	svc := NewService(repo, nil)
+
+	result, err := svc.ReplayDelivery("t1", &ReplayRequest{
+		DeliveryID: "del-123",
+		EndpointID: "ep-1",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "del-123", result.OriginalDeliveryID)
+	assert.NotEmpty(t, result.NewDeliveryID)
+	assert.Equal(t, "queued", result.Status)
+
+	_, err = svc.ReplayDelivery("t1", &ReplayRequest{})
+	assert.Error(t, err)
+}
+
+func TestGetOfflineCacheData(t *testing.T) {
+	repo := NewMemoryRepository()
+	svc := NewService(repo, nil)
+
+	entries, err := svc.GetOfflineCacheData("t1")
+	require.NoError(t, err)
+	assert.NotEmpty(t, entries)
+	assert.Equal(t, "t1", entries[0].TenantID)
+}
+
+func TestGetOnCallStatus(t *testing.T) {
+	repo := NewMemoryRepository()
+	svc := NewService(repo, nil)
+
+	status, err := svc.GetOnCallStatus("t1")
+	require.NoError(t, err)
+	assert.True(t, status.OnCall)
+	assert.Equal(t, "pagerduty", status.Provider)
+}
+
+func TestListIncidents(t *testing.T) {
+	repo := NewMemoryRepository()
+	svc := NewService(repo, nil)
+
+	incidents, err := svc.ListIncidents("t1")
+	require.NoError(t, err)
+	assert.Empty(t, incidents)
+}
