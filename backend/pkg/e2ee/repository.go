@@ -60,7 +60,7 @@ func (r *MemoryRepository) GetKeyPairByVersion(endpointID string, version int) (
 func (r *MemoryRepository) ListKeyPairs(endpointID string) ([]*KeyPair, error) {
 	var result []*KeyPair
 	for _, kp := range r.keyPairs {
-		if kp.EndpointID == endpointID {
+		if endpointID == "" || kp.EndpointID == endpointID {
 			result = append(result, kp)
 		}
 	}

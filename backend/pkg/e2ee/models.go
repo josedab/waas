@@ -75,3 +75,45 @@ type HealthCheck struct {
 type RegisterKeyRequest struct {
 	EndpointID string `json:"endpoint_id" binding:"required"`
 }
+
+// EnvelopeEncryptedPayload uses AES-256-GCM envelope encryption with X25519 key exchange.
+type EnvelopeEncryptedPayload struct {
+	EncryptedDEK    string `json:"encrypted_dek"` // DEK encrypted with shared key (base64)
+	DEKNonce        string `json:"dek_nonce"`     // Nonce used for DEK encryption (base64)
+	Ciphertext      string `json:"ciphertext"`    // Payload encrypted with DEK (base64)
+	PayloadNonce    string `json:"payload_nonce"` // Nonce used for payload encryption (base64)
+	EphemeralPubKey string `json:"ephemeral_public_key"`
+	KeyVersion      int    `json:"key_version"`
+	Algorithm       string `json:"algorithm"` // x25519-aes256gcm
+}
+
+// KeyEscrowConfig configures key escrow for compliance scenarios.
+type KeyEscrowConfig struct {
+	Enabled         bool   `json:"enabled"`
+	EscrowKeyID     string `json:"escrow_key_id,omitempty"`
+	RequireDualAuth bool   `json:"require_dual_auth,omitempty"`
+}
+
+// BatchEncryptRequest allows encrypting to multiple endpoints at once.
+type BatchEncryptRequest struct {
+	EndpointIDs []string `json:"endpoint_ids" binding:"required"`
+	Plaintext   []byte   `json:"plaintext" binding:"required"`
+}
+
+// BatchEncryptResult captures per-endpoint encryption results.
+type BatchEncryptResult struct {
+	Results map[string]*EncryptedPayload `json:"results"`
+	Errors  map[string]string            `json:"errors,omitempty"`
+}
+
+// KeyMetrics aggregates encryption metrics for observability.
+type KeyMetrics struct {
+	TenantID            string `json:"tenant_id"`
+	TotalKeys           int    `json:"total_keys"`
+	ActiveKeys          int    `json:"active_keys"`
+	RotatedKeys         int    `json:"rotated_keys"`
+	RevokedKeys         int    `json:"revoked_keys"`
+	EncryptionOps       int64  `json:"encryption_ops"`
+	DecryptionOps       int64  `json:"decryption_ops"`
+	KeysNeedingRotation int    `json:"keys_needing_rotation"`
+}

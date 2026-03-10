@@ -1,6 +1,8 @@
 package e2ee
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -300,4 +302,238 @@ func (s *Service) audit(tenantID, endpointID, operation string, version int, suc
 	if err := s.repo.AppendAuditEntry(entry); err != nil {
 		s.logger.Error("failed to append audit entry", map[string]interface{}{"error": err.Error(), "tenant_id": tenantID, "endpoint_id": endpointID})
 	}
+}
+
+// EnvelopeEncrypt performs AES-256-GCM envelope encryption using X25519 key exchange.
+// A random Data Encryption Key (DEK) encrypts the payload; the DEK is then encrypted
+// with the shared secret derived from X25519 key exchange.
+func (s *Service) EnvelopeEncrypt(endpointID string, plaintext []byte) (*EnvelopeEncryptedPayload, error) {
+	kp, err := s.repo.GetActiveKeyPair(endpointID)
+	if err != nil {
+		return nil, fmt.Errorf("no active key for endpoint: %w", err)
+	}
+
+	receiverPubBytes, err := base64.StdEncoding.DecodeString(kp.PublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("invalid public key: %w", err)
+	}
+	var receiverPub [32]byte
+	copy(receiverPub[:], receiverPubBytes)
+
+	// Generate ephemeral X25519 key pair
+	ephPub, ephPriv, err := box.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate ephemeral key: %w", err)
+	}
+
+	// Derive shared secret via X25519
+	var sharedSecret [32]byte
+	curve25519.ScalarMult(&sharedSecret, ephPriv, &receiverPub)
+
+	// Generate random DEK (32 bytes for AES-256)
+	dek := make([]byte, 32)
+	if _, err := rand.Read(dek); err != nil {
+		return nil, fmt.Errorf("failed to generate DEK: %w", err)
+	}
+
+	// Encrypt payload with DEK using AES-256-GCM
+	payloadBlock, err := aes.NewCipher(dek)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AES cipher: %w", err)
+	}
+	payloadGCM, err := cipher.NewGCM(payloadBlock)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCM: %w", err)
+	}
+	payloadNonce := make([]byte, payloadGCM.NonceSize())
+	if _, err := rand.Read(payloadNonce); err != nil {
+		return nil, fmt.Errorf("failed to generate payload nonce: %w", err)
+	}
+	ciphertext := payloadGCM.Seal(nil, payloadNonce, plaintext, nil)
+
+	// Encrypt DEK with shared secret using AES-256-GCM
+	dekBlock, err := aes.NewCipher(sharedSecret[:])
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DEK cipher: %w", err)
+	}
+	dekGCM, err := cipher.NewGCM(dekBlock)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DEK GCM: %w", err)
+	}
+	dekNonce := make([]byte, dekGCM.NonceSize())
+	if _, err := rand.Read(dekNonce); err != nil {
+		return nil, fmt.Errorf("failed to generate DEK nonce: %w", err)
+	}
+	encryptedDEK := dekGCM.Seal(nil, dekNonce, dek, nil)
+
+	s.audit(kp.TenantID, endpointID, "payload_encrypted", kp.Version, true, "aes256gcm-envelope")
+
+	return &EnvelopeEncryptedPayload{
+		EncryptedDEK:    base64.StdEncoding.EncodeToString(encryptedDEK),
+		DEKNonce:        base64.StdEncoding.EncodeToString(dekNonce),
+		Ciphertext:      base64.StdEncoding.EncodeToString(ciphertext),
+		PayloadNonce:    base64.StdEncoding.EncodeToString(payloadNonce),
+		EphemeralPubKey: base64.StdEncoding.EncodeToString(ephPub[:]),
+		KeyVersion:      kp.Version,
+		Algorithm:       "x25519-aes256gcm",
+	}, nil
+}
+
+// EnvelopeDecrypt decrypts an AES-256-GCM envelope-encrypted payload.
+func (s *Service) EnvelopeDecrypt(endpointID string, encrypted *EnvelopeEncryptedPayload) (*DecryptedPayload, error) {
+	kp, err := s.repo.GetKeyPairByVersion(endpointID, encrypted.KeyVersion)
+	if err != nil {
+		return nil, fmt.Errorf("key not found for version %d: %w", encrypted.KeyVersion, err)
+	}
+
+	privBytes, err := base64.StdEncoding.DecodeString(kp.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("invalid private key: %w", err)
+	}
+	var privKey [32]byte
+	copy(privKey[:], privBytes)
+
+	ephPubBytes, err := base64.StdEncoding.DecodeString(encrypted.EphemeralPubKey)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ephemeral public key: %w", err)
+	}
+	var ephPub [32]byte
+	copy(ephPub[:], ephPubBytes)
+
+	// Derive shared secret
+	var sharedSecret [32]byte
+	curve25519.ScalarMult(&sharedSecret, &privKey, &ephPub)
+
+	// Decrypt DEK
+	encDEK, err := base64.StdEncoding.DecodeString(encrypted.EncryptedDEK)
+	if err != nil {
+		return nil, fmt.Errorf("invalid encrypted DEK: %w", err)
+	}
+	dekNonce, err := base64.StdEncoding.DecodeString(encrypted.DEKNonce)
+	if err != nil {
+		return nil, fmt.Errorf("invalid DEK nonce: %w", err)
+	}
+	dekBlock, err := aes.NewCipher(sharedSecret[:])
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DEK cipher: %w", err)
+	}
+	dekGCM, err := cipher.NewGCM(dekBlock)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DEK GCM: %w", err)
+	}
+	dek, err := dekGCM.Open(nil, dekNonce, encDEK, nil)
+	if err != nil {
+		s.audit(kp.TenantID, endpointID, "payload_decrypted", kp.Version, false, "DEK decryption failed")
+		return nil, fmt.Errorf("DEK decryption failed: %w", err)
+	}
+
+	// Decrypt payload
+	ciphertextBytes, err := base64.StdEncoding.DecodeString(encrypted.Ciphertext)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ciphertext: %w", err)
+	}
+	payloadNonce, err := base64.StdEncoding.DecodeString(encrypted.PayloadNonce)
+	if err != nil {
+		return nil, fmt.Errorf("invalid payload nonce: %w", err)
+	}
+	payloadBlock, err := aes.NewCipher(dek)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create payload cipher: %w", err)
+	}
+	payloadGCM, err := cipher.NewGCM(payloadBlock)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create payload GCM: %w", err)
+	}
+	plaintext, err := payloadGCM.Open(nil, payloadNonce, ciphertextBytes, nil)
+	if err != nil {
+		s.audit(kp.TenantID, endpointID, "payload_decrypted", kp.Version, false, "payload decryption failed")
+		return nil, fmt.Errorf("payload decryption failed: %w", err)
+	}
+
+	s.audit(kp.TenantID, endpointID, "payload_decrypted", kp.Version, true, "aes256gcm-envelope")
+
+	return &DecryptedPayload{
+		Plaintext:  plaintext,
+		KeyVersion: kp.Version,
+		Verified:   true,
+	}, nil
+}
+
+// BatchEncrypt encrypts a payload for multiple endpoints simultaneously.
+func (s *Service) BatchEncrypt(req *BatchEncryptRequest) (*BatchEncryptResult, error) {
+	if len(req.EndpointIDs) == 0 {
+		return nil, fmt.Errorf("at least one endpoint_id is required")
+	}
+	if len(req.Plaintext) == 0 {
+		return nil, fmt.Errorf("plaintext is required")
+	}
+
+	result := &BatchEncryptResult{
+		Results: make(map[string]*EncryptedPayload),
+		Errors:  make(map[string]string),
+	}
+
+	for _, epID := range req.EndpointIDs {
+		encrypted, err := s.Encrypt(epID, req.Plaintext)
+		if err != nil {
+			result.Errors[epID] = err.Error()
+		} else {
+			result.Results[epID] = encrypted
+		}
+	}
+
+	return result, nil
+}
+
+// RevokeKey revokes a key, preventing further use.
+func (s *Service) RevokeKey(tenantID, endpointID string, version int) error {
+	kp, err := s.repo.GetKeyPairByVersion(endpointID, version)
+	if err != nil {
+		return fmt.Errorf("key not found: %w", err)
+	}
+
+	if err := s.repo.UpdateKeyPairStatus(kp.ID, "revoked"); err != nil {
+		return fmt.Errorf("failed to revoke key: %w", err)
+	}
+
+	s.audit(tenantID, endpointID, "key_revoked", version, true, "")
+	return nil
+}
+
+// GetKeyMetrics returns encryption metrics for a tenant.
+func (s *Service) GetKeyMetrics(tenantID string) (*KeyMetrics, error) {
+	metrics := &KeyMetrics{TenantID: tenantID}
+
+	// Scan all endpoints for this tenant
+	allKeys, _ := s.repo.ListKeyPairs("")
+	endpoints := make(map[string]bool)
+	for _, kp := range allKeys {
+		if kp.TenantID != tenantID {
+			continue
+		}
+		endpoints[kp.EndpointID] = true
+		metrics.TotalKeys++
+		switch kp.Status {
+		case "active":
+			metrics.ActiveKeys++
+		case "rotated":
+			metrics.RotatedKeys++
+		case "revoked":
+			metrics.RevokedKeys++
+		}
+	}
+
+	for epID := range endpoints {
+		entries, _ := s.repo.ListAuditEntries(epID, 10000)
+		for _, e := range entries {
+			if e.Operation == "payload_encrypted" {
+				metrics.EncryptionOps++
+			}
+			if e.Operation == "payload_decrypted" {
+				metrics.DecryptionOps++
+			}
+		}
+	}
+
+	return metrics, nil
 }
