@@ -99,3 +99,56 @@ func TestComputeMatchKey_DifferentRules(t *testing.T) {
 	k2 := computeMatchKey("rule-2", payload, fields)
 	assert.NotEqual(t, k1, k2)
 }
+
+func TestBuildCorrelationGraph(t *testing.T) {
+	svc := NewService(NewMemoryRepository())
+	ctx := context.Background()
+
+	svc.CreateRule(ctx, "t1", &CreateRuleRequest{
+		Name: "Order→Payment", TriggerEvent: "order.created", FollowEvent: "payment.completed", CompositeEvent: "order.paid",
+	})
+	svc.CreateRule(ctx, "t1", &CreateRuleRequest{
+		Name: "Payment→Ship", TriggerEvent: "payment.completed", FollowEvent: "shipment.created", CompositeEvent: "order.shipped",
+	})
+
+	graph, err := svc.BuildCorrelationGraph(ctx, "t1")
+	require.NoError(t, err)
+	assert.Len(t, graph.Nodes, 3) // order.created, payment.completed, shipment.created
+	assert.Len(t, graph.Edges, 2)
+}
+
+func TestBuildCausalChain(t *testing.T) {
+	svc := NewService(NewMemoryRepository())
+	ctx := context.Background()
+
+	chain, err := svc.BuildCausalChain(ctx, "t1", "event-1")
+	require.NoError(t, err)
+	assert.NotEmpty(t, chain.ID)
+	assert.Equal(t, "event-1", chain.RootEvent)
+	assert.Len(t, chain.Events, 1) // only root
+}
+
+func TestCrossTenantJoin(t *testing.T) {
+	svc := NewService(NewMemoryRepository())
+	ctx := context.Background()
+
+	result, err := svc.CrossTenantJoin(ctx, &CrossTenantJoinRequest{
+		SourceTenantID: "t1",
+		TargetTenantID: "t2",
+		JoinField:      "order_id",
+		SourceEvent:    "order.created",
+		TargetEvent:    "fulfillment.started",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "order_id", result.JoinField)
+
+	// Same tenant should error
+	_, err = svc.CrossTenantJoin(ctx, &CrossTenantJoinRequest{
+		SourceTenantID: "t1",
+		TargetTenantID: "t1",
+		JoinField:      "order_id",
+		SourceEvent:    "a",
+		TargetEvent:    "b",
+	})
+	assert.Error(t, err)
+}

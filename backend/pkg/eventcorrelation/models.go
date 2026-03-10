@@ -91,3 +91,63 @@ type IngestEventRequest struct {
 	EventType string          `json:"event_type" binding:"required"`
 	Payload   json.RawMessage `json:"payload" binding:"required"`
 }
+
+// CausalChain represents a sequence of correlated events forming a causal relationship.
+type CausalChain struct {
+	ID         string        `json:"id"`
+	TenantID   string        `json:"tenant_id"`
+	RootEvent  string        `json:"root_event"`
+	ChainDepth int           `json:"chain_depth"`
+	Events     []ChainEvent  `json:"events"`
+	Duration   time.Duration `json:"duration_ms"`
+	Status     string        `json:"status"` // complete, partial, broken
+}
+
+// ChainEvent is a single event in a causal chain.
+type ChainEvent struct {
+	EventID   string    `json:"event_id"`
+	EventType string    `json:"event_type"`
+	Depth     int       `json:"depth"`
+	Timestamp time.Time `json:"timestamp"`
+	RuleID    string    `json:"rule_id,omitempty"`
+}
+
+// CorrelationGraph is a dependency graph visualization of correlated events.
+type CorrelationGraph struct {
+	Nodes []CorrelationGraphNode `json:"nodes"`
+	Edges []CorrelationGraphEdge `json:"edges"`
+}
+
+// CorrelationGraphNode represents an event type in the correlation graph.
+type CorrelationGraphNode struct {
+	ID         string  `json:"id"`
+	EventType  string  `json:"event_type"`
+	EventCount int64   `json:"event_count"`
+	AvgMatchMs float64 `json:"avg_match_time_ms"`
+}
+
+// CorrelationGraphEdge represents a correlation rule as an edge.
+type CorrelationGraphEdge struct {
+	Source     string  `json:"source"`
+	Target     string  `json:"target"`
+	RuleName   string  `json:"rule_name"`
+	MatchCount int64   `json:"match_count"`
+	MatchRate  float64 `json:"match_rate"`
+}
+
+// CrossTenantJoinRequest requests correlation across tenant boundaries.
+type CrossTenantJoinRequest struct {
+	SourceTenantID string `json:"source_tenant_id" binding:"required"`
+	TargetTenantID string `json:"target_tenant_id" binding:"required"`
+	JoinField      string `json:"join_field" binding:"required"`
+	SourceEvent    string `json:"source_event" binding:"required"`
+	TargetEvent    string `json:"target_event" binding:"required"`
+}
+
+// CrossTenantJoinResult captures matched events across tenants.
+type CrossTenantJoinResult struct {
+	JoinField    string `json:"join_field"`
+	MatchCount   int    `json:"match_count"`
+	SourceTenant string `json:"source_tenant_id"`
+	TargetTenant string `json:"target_tenant_id"`
+}

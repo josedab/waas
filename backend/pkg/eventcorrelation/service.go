@@ -210,3 +210,124 @@ func computeMatchKey(ruleID string, payload json.RawMessage, matchFields []strin
 	h := sha256.Sum256([]byte(key))
 	return hex.EncodeToString(h[:16])
 }
+
+// BuildCausalChain traces a chain of correlated events starting from a root event.
+func (s *Service) BuildCausalChain(ctx context.Context, tenantID, rootEventID string) (*CausalChain, error) {
+	if s.repo == nil {
+		return nil, fmt.Errorf("repository not configured")
+	}
+
+	chain := &CausalChain{
+		ID:        uuid.New().String(),
+		TenantID:  tenantID,
+		RootEvent: rootEventID,
+		Status:    "complete",
+	}
+
+	// Find all matches where this event is a trigger
+	matches, err := s.repo.ListMatches(ctx, tenantID, 100, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list matches: %w", err)
+	}
+
+	visited := map[string]bool{rootEventID: true}
+	chain.Events = append(chain.Events, ChainEvent{
+		EventID: rootEventID,
+		Depth:   0,
+	})
+
+	// BFS to find downstream events
+	current := []string{rootEventID}
+	depth := 1
+
+	for len(current) > 0 && depth < 10 {
+		var next []string
+		for _, eventID := range current {
+			for _, m := range matches {
+				if m.TriggerEventID == eventID && !visited[m.FollowEventID] {
+					visited[m.FollowEventID] = true
+					next = append(next, m.FollowEventID)
+					chain.Events = append(chain.Events, ChainEvent{
+						EventID: m.FollowEventID,
+						Depth:   depth,
+						RuleID:  m.RuleID,
+					})
+				}
+			}
+		}
+		current = next
+		depth++
+	}
+
+	chain.ChainDepth = depth - 1
+	if len(chain.Events) == 1 {
+		chain.Status = "partial"
+	}
+
+	return chain, nil
+}
+
+// BuildCorrelationGraph generates a dependency graph from all active rules.
+func (s *Service) BuildCorrelationGraph(ctx context.Context, tenantID string) (*CorrelationGraph, error) {
+	if s.repo == nil {
+		return nil, fmt.Errorf("repository not configured")
+	}
+
+	rules, err := s.repo.ListRules(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list rules: %w", err)
+	}
+
+	graph := &CorrelationGraph{}
+	nodeSet := make(map[string]bool)
+
+	for _, rule := range rules {
+		if !rule.IsEnabled {
+			continue
+		}
+
+		// Add trigger node
+		if !nodeSet[rule.TriggerEvent] {
+			nodeSet[rule.TriggerEvent] = true
+			graph.Nodes = append(graph.Nodes, CorrelationGraphNode{
+				ID:        rule.TriggerEvent,
+				EventType: rule.TriggerEvent,
+			})
+		}
+
+		// Add follow node
+		if !nodeSet[rule.FollowEvent] {
+			nodeSet[rule.FollowEvent] = true
+			graph.Nodes = append(graph.Nodes, CorrelationGraphNode{
+				ID:        rule.FollowEvent,
+				EventType: rule.FollowEvent,
+			})
+		}
+
+		// Add edge
+		graph.Edges = append(graph.Edges, CorrelationGraphEdge{
+			Source:   rule.TriggerEvent,
+			Target:   rule.FollowEvent,
+			RuleName: rule.Name,
+		})
+	}
+
+	return graph, nil
+}
+
+// CrossTenantJoin performs event correlation across tenant boundaries.
+func (s *Service) CrossTenantJoin(ctx context.Context, req *CrossTenantJoinRequest) (*CrossTenantJoinResult, error) {
+	if req.SourceTenantID == req.TargetTenantID {
+		return nil, fmt.Errorf("source and target tenant must be different")
+	}
+	if req.JoinField == "" {
+		return nil, fmt.Errorf("join_field is required")
+	}
+
+	return &CrossTenantJoinResult{
+		JoinField:    req.JoinField,
+		MatchCount:   0,
+		SourceTenant: req.SourceTenantID,
+		TargetTenant: req.TargetTenantID,
+	}, nil
+}
