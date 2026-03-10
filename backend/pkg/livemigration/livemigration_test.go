@@ -361,3 +361,92 @@ func TestGetCheckpoint_NotFound(t *testing.T) {
 		t.Error("expected error for nonexistent checkpoint")
 	}
 }
+
+func TestStateMachineTransitions(t *testing.T) {
+	sm := NewStateMachine("job-1", "tenant-1")
+	if sm.Current != JobStatusPending {
+		t.Errorf("expected initial state %s, got %s", JobStatusPending, sm.Current)
+	}
+
+	// Valid transitions
+	if err := sm.Transition(JobStatusDiscovering); err != nil {
+		t.Fatalf("valid transition failed: %v", err)
+	}
+	if sm.Current != JobStatusDiscovering {
+		t.Errorf("expected %s, got %s", JobStatusDiscovering, sm.Current)
+	}
+
+	if err := sm.Transition(JobStatusImporting); err != nil {
+		t.Fatalf("valid transition failed: %v", err)
+	}
+
+	// Invalid transition
+	if err := sm.Transition(JobStatusCompleted); err == nil {
+		t.Error("expected error for invalid transition")
+	}
+
+	// History should track states
+	if len(sm.History) < 3 {
+		t.Errorf("expected at least 3 history entries, got %d", len(sm.History))
+	}
+}
+
+func TestStateMachineCanTransition(t *testing.T) {
+	sm := NewStateMachine("job-1", "tenant-1")
+
+	if !sm.CanTransition(JobStatusDiscovering) {
+		t.Error("should be able to transition to discovering from pending")
+	}
+	if sm.CanTransition(JobStatusCompleted) {
+		t.Error("should not be able to transition to completed from pending")
+	}
+	if !sm.CanTransition(JobStatusFailed) {
+		t.Error("should be able to transition to failed from pending")
+	}
+}
+
+func TestDNSCutover(t *testing.T) {
+	repo := newMockRepository()
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	// Create a job in cutting_over status
+	job, _ := svc.CreateMigration(ctx, "tenant-1", &CreateMigrationRequest{
+		Name:           "DNS Test",
+		SourcePlatform: PlatformSvix,
+		SourceConfig:   "{}",
+	})
+	job.Status = JobStatusCuttingOver
+	repo.UpdateJob(ctx, job)
+
+	config := &DNSCutoverConfig{
+		Domain:     "webhooks.example.com",
+		DestRecord: "new-region.example.com",
+		TTL:        300,
+	}
+
+	result, err := svc.ExecuteDNSCutover(ctx, "tenant-1", job.ID, config)
+	if err != nil {
+		t.Fatalf("DNS cutover failed: %v", err)
+	}
+	if result.Status != "verified" {
+		t.Errorf("expected verified status, got %s", result.Status)
+	}
+	if !result.HealthCheckPass {
+		t.Error("expected health check to pass")
+	}
+}
+
+func TestDNSCutoverValidation(t *testing.T) {
+	repo := newMockRepository()
+	svc := NewService(repo)
+	ctx := context.Background()
+
+	_, err := svc.ExecuteDNSCutover(ctx, "tenant-1", "nonexistent", &DNSCutoverConfig{
+		Domain:     "example.com",
+		DestRecord: "new.example.com",
+	})
+	if err == nil {
+		t.Error("expected error for nonexistent job")
+	}
+}

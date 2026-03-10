@@ -199,6 +199,64 @@ type SDKCompatEndpoint struct {
 	Disabled    bool              `json:"disabled"`
 }
 
+// MigrationState represents a formal state in the migration state machine.
+type MigrationState struct {
+	State     string            `json:"state"`
+	EnteredAt time.Time         `json:"entered_at"`
+	ExitedAt  *time.Time        `json:"exited_at,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+}
+
+// MigrationStateMachine tracks formal state transitions for a migration job.
+type MigrationStateMachine struct {
+	JobID     string           `json:"job_id"`
+	TenantID  string           `json:"tenant_id"`
+	Current   string           `json:"current_state"`
+	History   []MigrationState `json:"history"`
+	CreatedAt time.Time        `json:"created_at"`
+}
+
+// DNSCutoverConfig configures automated DNS cutover.
+type DNSCutoverConfig struct {
+	Provider        string `json:"provider"` // route53, cloudflare, gcp_dns
+	Domain          string `json:"domain"`
+	SourceRecord    string `json:"source_record"`
+	DestRecord      string `json:"dest_record"`
+	TTL             int    `json:"ttl"`
+	HealthCheckURL  string `json:"health_check_url"`
+	RollbackOnError bool   `json:"rollback_on_error"`
+}
+
+// DNSCutoverResult captures DNS cutover execution results.
+type DNSCutoverResult struct {
+	ID              string     `json:"id"`
+	JobID           string     `json:"job_id"`
+	Status          string     `json:"status"` // pending, propagating, verified, failed, rolled_back
+	OldRecord       string     `json:"old_record"`
+	NewRecord       string     `json:"new_record"`
+	PropagationPct  float64    `json:"propagation_pct"`
+	HealthCheckPass bool       `json:"health_check_pass"`
+	StartedAt       time.Time  `json:"started_at"`
+	CompletedAt     *time.Time `json:"completed_at,omitempty"`
+	Error           string     `json:"error,omitempty"`
+}
+
+// EventBufferConfig configures the event buffer for zero-loss migration.
+type EventBufferConfig struct {
+	MaxBufferSize int    `json:"max_buffer_size"`
+	FlushInterval string `json:"flush_interval"`
+	DrainTimeout  string `json:"drain_timeout"`
+}
+
+// EventBufferStats tracks the event buffer during migration.
+type EventBufferStats struct {
+	Buffered    int64     `json:"buffered"`
+	Flushed     int64     `json:"flushed"`
+	Dropped     int64     `json:"dropped"`
+	OldestEvent time.Time `json:"oldest_event"`
+	IsDraining  bool      `json:"is_draining"`
+}
+
 // SvixEndpoint represents a Svix endpoint for import
 type SvixEndpoint struct {
 	UID         string            `json:"uid"`
