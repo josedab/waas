@@ -12,6 +12,7 @@ type Repository interface {
 	GetFailureTracker(endpointID string) (*FailureTracker, error)
 	UpsertFailureTracker(ft *FailureTracker) error
 	ResetFailureTracker(endpointID string) error
+	ListFailureTrackers(tenantID string) ([]*FailureTracker, error)
 
 	AppendMigrationEvent(evt *MigrationEvent) error
 	ListMigrationEvents(tenantID string, limit int) ([]*MigrationEvent, error)
@@ -75,6 +76,14 @@ func (r *MemoryRepository) UpsertFailureTracker(ft *FailureTracker) error {
 func (r *MemoryRepository) ResetFailureTracker(endpointID string) error {
 	delete(r.trackers, endpointID)
 	return nil
+}
+
+func (r *MemoryRepository) ListFailureTrackers(tenantID string) ([]*FailureTracker, error) {
+	var result []*FailureTracker
+	for _, ft := range r.trackers {
+		result = append(result, ft)
+	}
+	return result, nil
 }
 
 func (r *MemoryRepository) AppendMigrationEvent(evt *MigrationEvent) error {

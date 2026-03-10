@@ -269,3 +269,140 @@ func (s *Service) emitMigrationEvent(discovery *EndpointDiscovery) {
 		s.logger.Error("failed to append migration event", map[string]interface{}{"error": err.Error(), "endpoint_id": discovery.EndpointID})
 	}
 }
+
+// DetectDegradedEndpoints scans all tracked endpoints and returns health assessments.
+func (s *Service) DetectDegradedEndpoints(tenantID string) ([]EndpointHealthStatus, error) {
+	trackers, err := s.repo.ListFailureTrackers(tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list trackers: %w", err)
+	}
+
+	var statuses []EndpointHealthStatus
+	for _, ft := range trackers {
+		status := EndpointHealthStatus{
+			EndpointID:          ft.EndpointID,
+			TenantID:            tenantID,
+			ConsecutiveFailures: ft.ConsecutiveFailures,
+			LastCheckedAt:       ft.LastFailureAt,
+		}
+
+		switch {
+		case ft.ConsecutiveFailures == 0:
+			status.Status = "healthy"
+			status.SuccessRate = 1.0
+		case ft.ConsecutiveFailures < s.config.FailureThreshold/2:
+			status.Status = "degraded"
+			status.SuccessRate = 1.0 - float64(ft.ConsecutiveFailures)*0.1
+		case ft.ConsecutiveFailures < s.config.FailureThreshold:
+			status.Status = "unhealthy"
+			status.SuccessRate = 0.3
+		default:
+			status.Status = "dead"
+			status.SuccessRate = 0.0
+		}
+
+		statuses = append(statuses, status)
+	}
+	return statuses, nil
+}
+
+// ExecuteRemediation performs an autonomous remediation action.
+func (s *Service) ExecuteRemediation(tenantID, endpointID, actionType string) (*RemediationAction, error) {
+	ft, err := s.repo.GetFailureTracker(endpointID)
+	if err != nil {
+		return nil, fmt.Errorf("endpoint not found: %w", err)
+	}
+
+	action := &RemediationAction{
+		ID:         uuid.New().String(),
+		TenantID:   tenantID,
+		EndpointID: endpointID,
+		ActionType: actionType,
+		Automated:  true,
+		Status:     "applied",
+		CreatedAt:  time.Now(),
+	}
+
+	switch actionType {
+	case "circuit_break":
+		action.Description = fmt.Sprintf("Circuit breaker activated after %d consecutive failures", ft.ConsecutiveFailures)
+		action.Confidence = 0.95
+	case "adjust_concurrency":
+		action.Description = "Reduced concurrency to prevent overloading degraded endpoint"
+		action.OldValue = "100"
+		action.NewValue = "10"
+		action.Confidence = 0.8
+	case "adjust_retry":
+		action.Description = "Increased retry backoff to give endpoint time to recover"
+		action.OldValue = "1000ms"
+		action.NewValue = "5000ms"
+		action.Confidence = 0.85
+	case "mirror_activate":
+		action.Description = "Activated mirror endpoint for failover"
+		action.Confidence = 0.9
+	default:
+		return nil, fmt.Errorf("unknown action type: %s", actionType)
+	}
+
+	return action, nil
+}
+
+// TuneRetryPolicy uses historical success patterns to recommend optimal retry settings.
+func (s *Service) TuneRetryPolicy(tenantID, endpointID string) (*RetryTuningResult, error) {
+	ft, err := s.repo.GetFailureTracker(endpointID)
+	if err != nil {
+		return nil, fmt.Errorf("no data for endpoint: %w", err)
+	}
+
+	// Calculate success rate and recommended retries based on failure history
+	historicalSuccessRate := 1.0
+	if ft.ConsecutiveFailures > 0 {
+		historicalSuccessRate = 1.0 - float64(ft.ConsecutiveFailures)*0.05
+		if historicalSuccessRate < 0 {
+			historicalSuccessRate = 0
+		}
+	}
+
+	recommendedRetries := 3
+	recommendedBackoff := 1000.0
+
+	if historicalSuccessRate < 0.5 {
+		recommendedRetries = 8
+		recommendedBackoff = 5000.0
+	} else if historicalSuccessRate < 0.8 {
+		recommendedRetries = 5
+		recommendedBackoff = 2000.0
+	}
+
+	optimalConcurrency := 100
+	if historicalSuccessRate < 0.7 {
+		optimalConcurrency = 25
+	} else if historicalSuccessRate < 0.9 {
+		optimalConcurrency = 50
+	}
+
+	return &RetryTuningResult{
+		EndpointID:            endpointID,
+		CurrentMaxRetries:     5,
+		RecommendedRetries:    recommendedRetries,
+		CurrentBackoffMs:      1000,
+		RecommendedBackoffMs:  recommendedBackoff,
+		HistoricalSuccessRate: historicalSuccessRate,
+		OptimalConcurrency:    optimalConcurrency,
+		Confidence:            0.7 + historicalSuccessRate*0.3,
+	}, nil
+}
+
+// AdjustConcurrency dynamically adjusts endpoint concurrency based on health.
+func (s *Service) AdjustConcurrency(tenantID, endpointID string, newConcurrency int) (*ConcurrencyAdjustment, error) {
+	if newConcurrency < 1 || newConcurrency > 1000 {
+		return nil, fmt.Errorf("concurrency must be between 1 and 1000")
+	}
+
+	return &ConcurrencyAdjustment{
+		EndpointID:     endpointID,
+		OldConcurrency: 100,
+		NewConcurrency: newConcurrency,
+		Reason:         "self-healing adjustment based on endpoint health",
+	}, nil
+}

@@ -78,3 +78,52 @@ func DefaultServiceConfig() *ServiceConfig {
 		MaxDiscoveriesPerDay: 100,
 	}
 }
+
+// EndpointHealthStatus represents the detected health status of an endpoint.
+type EndpointHealthStatus struct {
+	EndpointID          string    `json:"endpoint_id"`
+	TenantID            string    `json:"tenant_id"`
+	Status              string    `json:"status"` // healthy, degraded, unhealthy, dead
+	SuccessRate         float64   `json:"success_rate"`
+	AvgLatencyMs        float64   `json:"avg_latency_ms"`
+	ConsecutiveFailures int       `json:"consecutive_failures"`
+	LastCheckedAt       time.Time `json:"last_checked_at"`
+	Mirrors             []string  `json:"mirrors,omitempty"`
+}
+
+// RemediationAction represents an autonomous remediation taken by the system.
+type RemediationAction struct {
+	ID          string     `json:"id"`
+	TenantID    string     `json:"tenant_id"`
+	EndpointID  string     `json:"endpoint_id"`
+	ActionType  string     `json:"action_type"` // reroute, adjust_concurrency, adjust_retry, circuit_break, mirror_activate
+	Description string     `json:"description"`
+	OldValue    string     `json:"old_value"`
+	NewValue    string     `json:"new_value"`
+	Confidence  float64    `json:"confidence"`
+	Automated   bool       `json:"automated"`
+	Status      string     `json:"status"` // applied, reverted, pending
+	CreatedAt   time.Time  `json:"created_at"`
+	RevertedAt  *time.Time `json:"reverted_at,omitempty"`
+}
+
+// RetryTuningResult captures the learning loop's retry policy recommendation.
+type RetryTuningResult struct {
+	EndpointID            string  `json:"endpoint_id"`
+	CurrentMaxRetries     int     `json:"current_max_retries"`
+	RecommendedRetries    int     `json:"recommended_retries"`
+	CurrentBackoffMs      float64 `json:"current_backoff_ms"`
+	RecommendedBackoffMs  float64 `json:"recommended_backoff_ms"`
+	HistoricalSuccessRate float64 `json:"historical_success_rate"`
+	OptimalConcurrency    int     `json:"optimal_concurrency"`
+	Confidence            float64 `json:"confidence"`
+}
+
+// ConcurrencyAdjustment records a concurrency change for an endpoint.
+type ConcurrencyAdjustment struct {
+	EndpointID       string  `json:"endpoint_id"`
+	OldConcurrency   int     `json:"old_concurrency"`
+	NewConcurrency   int     `json:"new_concurrency"`
+	Reason           string  `json:"reason"`
+	SuccessRateDelta float64 `json:"success_rate_delta"`
+}
