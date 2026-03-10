@@ -35,6 +35,8 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 		g.GET("/:id/executions", h.ListExecutions)
 		g.GET("/alerts", h.ListAlertEvents)
 		g.GET("/alerts/active", h.GetActiveAlerts)
+		g.POST("/apply", h.ApplyConfig)
+		g.POST("/drift-check", h.CheckDrift)
 	}
 }
 
@@ -205,4 +207,40 @@ func (h *Handler) GetActiveAlerts(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"alerts": alerts})
+}
+
+func (h *Handler) ApplyConfig(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	var req ApplyConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.service.ApplyConfig(c.Request.Context(), tenantID, &req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) CheckDrift(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	var body struct {
+		Config json.RawMessage `json:"config" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.service.CheckDrift(c.Request.Context(), tenantID, body.Config)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
 }

@@ -18,4 +18,7 @@ type Repository interface {
 	GetActiveAlerts(ctx context.Context, tenantID string) ([]AlertEvent, error)
 
 	GetPipelineStats(ctx context.Context, pipelineID string) (*PipelineStats, error)
+
+	SaveReconcileResult(ctx context.Context, result *ReconcileResult) error
+	GetLatestReconcileResult(ctx context.Context, tenantID string) (*ReconcileResult, error)
 }

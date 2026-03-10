@@ -5,6 +5,22 @@ import (
 	"time"
 )
 
+// Reconciliation status constants
+const (
+	ReconcileStatusPending   = "pending"
+	ReconcileStatusRunning   = "running"
+	ReconcileStatusConverged = "converged"
+	ReconcileStatusDiverged  = "diverged"
+	ReconcileStatusFailed    = "failed"
+)
+
+// Integration type constants
+const (
+	IntegrationGrafana   = "grafana"
+	IntegrationPagerDuty = "pagerduty"
+	IntegrationSlack     = "slack"
+)
+
 // Pipeline status constants
 const (
 	PipelineStatusDraft    = "draft"
@@ -149,4 +165,121 @@ type UpdatePipelineRequest struct {
 	Description string          `json:"description,omitempty"`
 	Spec        json.RawMessage `json:"spec,omitempty"`
 	Status      string          `json:"status,omitempty"`
+}
+
+// ObsConfig is the top-level YAML configuration for waas-obs.yaml.
+type ObsConfig struct {
+	Version      string              `json:"version" yaml:"version"`
+	TenantID     string              `json:"tenant_id" yaml:"tenant_id"`
+	Dashboards   []DashboardConfig   `json:"dashboards,omitempty" yaml:"dashboards"`
+	AlertRules   []PrometheusAlert   `json:"alert_rules,omitempty" yaml:"alert_rules"`
+	SLOs         []SLODefinition     `json:"slos,omitempty" yaml:"slos"`
+	Integrations []IntegrationConfig `json:"integrations,omitempty" yaml:"integrations"`
+}
+
+// DashboardConfig declares a Grafana dashboard to auto-provision.
+type DashboardConfig struct {
+	Name      string         `json:"name" yaml:"name"`
+	FolderUID string         `json:"folder_uid,omitempty" yaml:"folder_uid"`
+	Panels    []PanelConfig  `json:"panels" yaml:"panels"`
+	Variables []DashboardVar `json:"variables,omitempty" yaml:"variables"`
+	Tags      []string       `json:"tags,omitempty" yaml:"tags"`
+	Refresh   string         `json:"refresh,omitempty" yaml:"refresh"`
+}
+
+// PanelConfig defines a single dashboard panel.
+type PanelConfig struct {
+	Title      string `json:"title" yaml:"title"`
+	Type       string `json:"type" yaml:"type"`
+	Query      string `json:"query" yaml:"query"`
+	Datasource string `json:"datasource,omitempty" yaml:"datasource"`
+	Unit       string `json:"unit,omitempty" yaml:"unit"`
+	GridPos    struct {
+		X int `json:"x" yaml:"x"`
+		Y int `json:"y" yaml:"y"`
+		W int `json:"w" yaml:"w"`
+		H int `json:"h" yaml:"h"`
+	} `json:"grid_pos,omitempty" yaml:"grid_pos"`
+}
+
+// DashboardVar defines a template variable for a Grafana dashboard.
+type DashboardVar struct {
+	Name    string   `json:"name" yaml:"name"`
+	Type    string   `json:"type" yaml:"type"`
+	Query   string   `json:"query,omitempty" yaml:"query"`
+	Options []string `json:"options,omitempty" yaml:"options"`
+}
+
+// PrometheusAlert declares a Prometheus alerting rule.
+type PrometheusAlert struct {
+	Name        string            `json:"name" yaml:"name"`
+	Group       string            `json:"group" yaml:"group"`
+	Expr        string            `json:"expr" yaml:"expr"`
+	For         string            `json:"for" yaml:"for"`
+	Severity    string            `json:"severity" yaml:"severity"`
+	Summary     string            `json:"summary,omitempty" yaml:"summary"`
+	Description string            `json:"description,omitempty" yaml:"description"`
+	Labels      map[string]string `json:"labels,omitempty" yaml:"labels"`
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations"`
+	NotifyVia   []string          `json:"notify_via,omitempty" yaml:"notify_via"`
+}
+
+// SLODefinition declares a service level objective.
+type SLODefinition struct {
+	Name          string  `json:"name" yaml:"name"`
+	Description   string  `json:"description,omitempty" yaml:"description"`
+	TargetPercent float64 `json:"target_percent" yaml:"target_percent"`
+	Window        string  `json:"window" yaml:"window"`
+	Indicator     string  `json:"indicator" yaml:"indicator"`
+	Query         string  `json:"query" yaml:"query"`
+	BurnRateAlert bool    `json:"burn_rate_alert,omitempty" yaml:"burn_rate_alert"`
+}
+
+// IntegrationConfig declares an external integration (PagerDuty, Slack, etc.).
+type IntegrationConfig struct {
+	Type       string            `json:"type" yaml:"type"`
+	Name       string            `json:"name" yaml:"name"`
+	ServiceKey string            `json:"service_key,omitempty" yaml:"service_key"`
+	Channel    string            `json:"channel,omitempty" yaml:"channel"`
+	WebhookURL string            `json:"webhook_url,omitempty" yaml:"webhook_url"`
+	Severity   []string          `json:"severity,omitempty" yaml:"severity"`
+	Extra      map[string]string `json:"extra,omitempty" yaml:"extra"`
+}
+
+// ReconcileResult captures the outcome of a reconciliation loop run.
+type ReconcileResult struct {
+	ID               string      `json:"id"`
+	TenantID         string      `json:"tenant_id"`
+	ConfigChecksum   string      `json:"config_checksum"`
+	Status           string      `json:"status"`
+	DashboardsSync   int         `json:"dashboards_synced"`
+	AlertRulesSync   int         `json:"alert_rules_synced"`
+	SLOsSync         int         `json:"slos_synced"`
+	IntegrationsSync int         `json:"integrations_synced"`
+	Errors           []string    `json:"errors,omitempty"`
+	Drift            []DriftItem `json:"drift,omitempty"`
+	StartedAt        time.Time   `json:"started_at"`
+	CompletedAt      *time.Time  `json:"completed_at,omitempty"`
+}
+
+// DriftItem describes a single divergence between desired and actual state.
+type DriftItem struct {
+	Resource string `json:"resource"`
+	Name     string `json:"name"`
+	Field    string `json:"field"`
+	Expected string `json:"expected"`
+	Actual   string `json:"actual"`
+}
+
+// ApplyConfigRequest is the DTO for applying a waas-obs.yaml config.
+type ApplyConfigRequest struct {
+	Config json.RawMessage `json:"config" binding:"required"`
+	DryRun bool            `json:"dry_run,omitempty"`
+}
+
+// DriftCheckResponse is the DTO for a drift check result.
+type DriftCheckResponse struct {
+	HasDrift bool        `json:"has_drift"`
+	Drift    []DriftItem `json:"drift,omitempty"`
+	Checksum string      `json:"checksum"`
 }

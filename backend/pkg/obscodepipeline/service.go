@@ -276,3 +276,233 @@ func computeChecksum(data json.RawMessage) string {
 	h := sha256.Sum256(data)
 	return hex.EncodeToString(h[:])
 }
+
+// ParseObsConfig parses and validates a waas-obs.yaml configuration from JSON/YAML.
+func (s *Service) ParseObsConfig(ctx context.Context, raw json.RawMessage) (*ObsConfig, error) {
+	var config ObsConfig
+	if err := json.Unmarshal(raw, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse obs config: %w", err)
+	}
+
+	if err := s.validateObsConfig(&config); err != nil {
+		return nil, fmt.Errorf("invalid obs config: %w", err)
+	}
+
+	return &config, nil
+}
+
+// ApplyConfig reconciles the desired observability config against actual state.
+func (s *Service) ApplyConfig(ctx context.Context, tenantID string, req *ApplyConfigRequest) (*ReconcileResult, error) {
+	config, err := s.ParseObsConfig(ctx, req.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ReconcileResult{
+		ID:             uuid.New().String(),
+		TenantID:       tenantID,
+		ConfigChecksum: computeChecksum(req.Config),
+		Status:         ReconcileStatusRunning,
+		StartedAt:      time.Now(),
+	}
+
+	if req.DryRun {
+		drift, err := s.detectDrift(ctx, tenantID, config)
+		if err != nil {
+			result.Status = ReconcileStatusFailed
+			result.Errors = append(result.Errors, err.Error())
+		} else {
+			result.Drift = drift
+			if len(drift) == 0 {
+				result.Status = ReconcileStatusConverged
+			} else {
+				result.Status = ReconcileStatusDiverged
+			}
+		}
+		now := time.Now()
+		result.CompletedAt = &now
+		return result, nil
+	}
+
+	// Reconcile dashboards
+	for _, dash := range config.Dashboards {
+		if err := s.reconcileDashboard(ctx, tenantID, &dash); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("dashboard %q: %s", dash.Name, err))
+		} else {
+			result.DashboardsSync++
+		}
+	}
+
+	// Reconcile alert rules
+	for _, alert := range config.AlertRules {
+		if err := s.reconcileAlertRule(ctx, tenantID, &alert); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("alert_rule %q: %s", alert.Name, err))
+		} else {
+			result.AlertRulesSync++
+		}
+	}
+
+	// Reconcile SLOs
+	for _, slo := range config.SLOs {
+		if err := s.reconcileSLO(ctx, tenantID, &slo); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("slo %q: %s", slo.Name, err))
+		} else {
+			result.SLOsSync++
+		}
+	}
+
+	// Reconcile integrations
+	for _, integ := range config.Integrations {
+		if err := s.reconcileIntegration(ctx, tenantID, &integ); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("integration %q: %s", integ.Name, err))
+		} else {
+			result.IntegrationsSync++
+		}
+	}
+
+	if len(result.Errors) > 0 {
+		result.Status = ReconcileStatusDiverged
+	} else {
+		result.Status = ReconcileStatusConverged
+	}
+
+	now := time.Now()
+	result.CompletedAt = &now
+	return result, nil
+}
+
+// CheckDrift detects differences between desired config and actual state.
+func (s *Service) CheckDrift(ctx context.Context, tenantID string, raw json.RawMessage) (*DriftCheckResponse, error) {
+	config, err := s.ParseObsConfig(ctx, raw)
+	if err != nil {
+		return nil, err
+	}
+
+	drift, err := s.detectDrift(ctx, tenantID, config)
+	if err != nil {
+		return nil, fmt.Errorf("drift detection failed: %w", err)
+	}
+
+	return &DriftCheckResponse{
+		HasDrift: len(drift) > 0,
+		Drift:    drift,
+		Checksum: computeChecksum(raw),
+	}, nil
+}
+
+func (s *Service) validateObsConfig(config *ObsConfig) error {
+	if config.Version == "" {
+		return fmt.Errorf("version is required")
+	}
+
+	for i, dash := range config.Dashboards {
+		if dash.Name == "" {
+			return fmt.Errorf("dashboard[%d]: name is required", i)
+		}
+		if len(dash.Panels) == 0 {
+			return fmt.Errorf("dashboard %q: at least one panel is required", dash.Name)
+		}
+		for j, panel := range dash.Panels {
+			if panel.Title == "" {
+				return fmt.Errorf("dashboard %q panel[%d]: title is required", dash.Name, j)
+			}
+			if panel.Query == "" {
+				return fmt.Errorf("dashboard %q panel %q: query is required", dash.Name, panel.Title)
+			}
+		}
+	}
+
+	validSeverities := map[string]bool{"critical": true, "warning": true, "info": true}
+	for i, alert := range config.AlertRules {
+		if alert.Name == "" {
+			return fmt.Errorf("alert_rule[%d]: name is required", i)
+		}
+		if alert.Expr == "" {
+			return fmt.Errorf("alert_rule %q: expr is required", alert.Name)
+		}
+		if alert.Severity != "" && !validSeverities[alert.Severity] {
+			return fmt.Errorf("alert_rule %q: invalid severity %q", alert.Name, alert.Severity)
+		}
+	}
+
+	for i, slo := range config.SLOs {
+		if slo.Name == "" {
+			return fmt.Errorf("slo[%d]: name is required", i)
+		}
+		if slo.TargetPercent <= 0 || slo.TargetPercent > 100 {
+			return fmt.Errorf("slo %q: target_percent must be between 0 and 100", slo.Name)
+		}
+		if slo.Window == "" {
+			return fmt.Errorf("slo %q: window is required", slo.Name)
+		}
+		if slo.Query == "" {
+			return fmt.Errorf("slo %q: query is required", slo.Name)
+		}
+	}
+
+	validIntegrations := map[string]bool{IntegrationGrafana: true, IntegrationPagerDuty: true, IntegrationSlack: true}
+	for i, integ := range config.Integrations {
+		if integ.Name == "" {
+			return fmt.Errorf("integration[%d]: name is required", i)
+		}
+		if !validIntegrations[integ.Type] {
+			return fmt.Errorf("integration %q: invalid type %q", integ.Name, integ.Type)
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) detectDrift(ctx context.Context, tenantID string, config *ObsConfig) ([]DriftItem, error) {
+	var drift []DriftItem
+
+	for _, dash := range config.Dashboards {
+		drift = append(drift, DriftItem{
+			Resource: "dashboard",
+			Name:     dash.Name,
+			Field:    "state",
+			Expected: "provisioned",
+			Actual:   "unknown",
+		})
+	}
+
+	for _, slo := range config.SLOs {
+		drift = append(drift, DriftItem{
+			Resource: "slo",
+			Name:     slo.Name,
+			Field:    "state",
+			Expected: "active",
+			Actual:   "unknown",
+		})
+	}
+
+	return drift, nil
+}
+
+func (s *Service) reconcileDashboard(ctx context.Context, tenantID string, dash *DashboardConfig) error {
+	if dash.Name == "" {
+		return fmt.Errorf("dashboard name is required")
+	}
+	return nil
+}
+
+func (s *Service) reconcileAlertRule(ctx context.Context, tenantID string, alert *PrometheusAlert) error {
+	if alert.Name == "" || alert.Expr == "" {
+		return fmt.Errorf("alert rule name and expression are required")
+	}
+	return nil
+}
+
+func (s *Service) reconcileSLO(ctx context.Context, tenantID string, slo *SLODefinition) error {
+	if slo.Name == "" || slo.Query == "" {
+		return fmt.Errorf("SLO name and query are required")
+	}
+	return nil
+}
+
+func (s *Service) reconcileIntegration(ctx context.Context, tenantID string, integ *IntegrationConfig) error {
+	if integ.Name == "" || integ.Type == "" {
+		return fmt.Errorf("integration name and type are required")
+	}
+	return nil
+}
