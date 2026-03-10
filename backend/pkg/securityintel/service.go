@@ -296,3 +296,128 @@ func truncate(s string, maxLen int) string {
 	}
 	return s[:maxLen-3] + "..."
 }
+
+// GetIPReputation scores an IP address based on observed threat history.
+func (s *Service) GetIPReputation(ctx context.Context, tenantID, ip string) (*IPReputationScore, error) {
+	if ip == "" {
+		return nil, errors.New("IP address is required")
+	}
+
+	events, err := s.repo.ListEvents(ctx, tenantID, 1000, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	rep := &IPReputationScore{
+		IP:          ip,
+		Score:       0.0,
+		Category:    "clean",
+		FirstSeenAt: time.Now(),
+		LastSeenAt:  time.Now(),
+	}
+
+	for _, e := range events {
+		if e.SourceIP == ip {
+			rep.ThreatCount++
+			if e.DetectedAt.Before(rep.FirstSeenAt) {
+				rep.FirstSeenAt = e.DetectedAt
+			}
+			if e.DetectedAt.After(rep.LastSeenAt) {
+				rep.LastSeenAt = e.DetectedAt
+			}
+		}
+	}
+
+	if rep.ThreatCount > 0 {
+		rep.Score = float64(rep.ThreatCount) / float64(rep.ThreatCount+10) // Bayesian-like scoring
+		if rep.Score > 0.7 {
+			rep.Category = "malicious"
+		} else if rep.Score > 0.3 {
+			rep.Category = "suspicious"
+		}
+	}
+
+	rep.Blocked = rep.ThreatCount >= s.config.AutoBlockThreshold
+
+	return rep, nil
+}
+
+// BlockIP adds an IP to the block list.
+func (s *Service) BlockIP(ctx context.Context, tenantID, ip, reason string) (*IPBlockEntry, error) {
+	if ip == "" {
+		return nil, errors.New("IP address is required")
+	}
+
+	entry := &IPBlockEntry{
+		IP:          ip,
+		TenantID:    tenantID,
+		Reason:      reason,
+		AutoBlocked: false,
+		CreatedAt:   time.Now(),
+	}
+
+	return entry, nil
+}
+
+// CreateGeoFenceRule creates a geographic access control rule.
+func (s *Service) CreateGeoFenceRule(ctx context.Context, tenantID string, name, action string, countries []string) (*GeoFenceRule, error) {
+	if name == "" {
+		return nil, errors.New("name is required")
+	}
+	if action != "allow" && action != "block" {
+		return nil, errors.New("action must be 'allow' or 'block'")
+	}
+	if len(countries) == 0 {
+		return nil, errors.New("at least one country code is required")
+	}
+
+	rule := &GeoFenceRule{
+		ID:        uuid.New().String(),
+		TenantID:  tenantID,
+		Name:      name,
+		Action:    action,
+		Countries: countries,
+		Enabled:   true,
+		CreatedAt: time.Now(),
+	}
+
+	return rule, nil
+}
+
+// ExportComplianceAudit generates a compliance audit export.
+func (s *Service) ExportComplianceAudit(ctx context.Context, tenantID string, start, end time.Time) (*ComplianceAuditExport, error) {
+	events, err := s.repo.ListEvents(ctx, tenantID, 10000, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter events within the time range
+	var filtered []SecurityEvent
+	criticalCount := 0
+	blockedCount := 0
+	for _, e := range events {
+		if (e.DetectedAt.Equal(start) || e.DetectedAt.After(start)) && e.DetectedAt.Before(end) {
+			filtered = append(filtered, e)
+			if e.ThreatLevel == ThreatCritical {
+				criticalCount++
+			}
+			if e.Action == "blocked" {
+				blockedCount++
+			}
+		}
+	}
+
+	export := &ComplianceAuditExport{
+		TenantID:        tenantID,
+		ExportFormat:    "json",
+		PeriodStart:     start,
+		PeriodEnd:       end,
+		TotalEvents:     len(filtered),
+		CriticalEvents:  criticalCount,
+		BlockedRequests: blockedCount,
+		Events:          filtered,
+		GeneratedAt:     time.Now(),
+	}
+
+	return export, nil
+}

@@ -3,6 +3,7 @@ package securityintel
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 func TestNewService(t *testing.T) {
@@ -127,5 +128,76 @@ func TestDetectAnomalies(t *testing.T) {
 	}
 	if len(anomalies) == 0 {
 		t.Error("expected anomaly reports")
+	}
+}
+
+func TestGetIPReputation(t *testing.T) {
+	svc := NewService(nil, nil)
+	ctx := context.Background()
+
+	rep, err := svc.GetIPReputation(ctx, "tenant-1", "1.2.3.4")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rep.IP != "1.2.3.4" {
+		t.Errorf("expected IP 1.2.3.4, got %s", rep.IP)
+	}
+	if rep.Category != "clean" {
+		t.Errorf("expected clean category, got %s", rep.Category)
+	}
+
+	_, err = svc.GetIPReputation(ctx, "tenant-1", "")
+	if err == nil {
+		t.Error("expected error for empty IP")
+	}
+}
+
+func TestCreateGeoFenceRule(t *testing.T) {
+	svc := NewService(nil, nil)
+	ctx := context.Background()
+
+	rule, err := svc.CreateGeoFenceRule(ctx, "tenant-1", "Block high-risk", "block", []string{"CN", "RU"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rule.Action != "block" {
+		t.Errorf("expected block action, got %s", rule.Action)
+	}
+	if len(rule.Countries) != 2 {
+		t.Errorf("expected 2 countries, got %d", len(rule.Countries))
+	}
+
+	_, err = svc.CreateGeoFenceRule(ctx, "tenant-1", "Bad", "invalid", []string{"US"})
+	if err == nil {
+		t.Error("expected error for invalid action")
+	}
+}
+
+func TestExportComplianceAudit(t *testing.T) {
+	svc := NewService(nil, nil)
+	ctx := context.Background()
+
+	export, err := svc.ExportComplianceAudit(ctx, "tenant-1", time.Now().AddDate(0, -1, 0), time.Now())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if export.TenantID != "tenant-1" {
+		t.Errorf("expected tenant-1, got %s", export.TenantID)
+	}
+	if export.GeneratedAt.IsZero() {
+		t.Error("expected non-zero generated_at")
+	}
+}
+
+func TestBlockIP(t *testing.T) {
+	svc := NewService(nil, nil)
+	ctx := context.Background()
+
+	entry, err := svc.BlockIP(ctx, "tenant-1", "10.0.0.1", "manual block")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if entry.IP != "10.0.0.1" {
+		t.Errorf("expected IP 10.0.0.1, got %s", entry.IP)
 	}
 }

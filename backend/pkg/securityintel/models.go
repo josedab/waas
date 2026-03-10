@@ -130,3 +130,50 @@ type InspectPayloadRequest struct {
 	ContentType string `json:"content_type"`
 	EndpointID  string `json:"endpoint_id,omitempty"`
 }
+
+// IPReputationScore represents an IP's threat reputation.
+type IPReputationScore struct {
+	IP          string    `json:"ip"`
+	Score       float64   `json:"score"`    // 0.0 (safe) to 1.0 (malicious)
+	Category    string    `json:"category"` // clean, suspicious, malicious, tor_exit, vpn, proxy
+	ThreatCount int       `json:"threat_count"`
+	FirstSeenAt time.Time `json:"first_seen_at"`
+	LastSeenAt  time.Time `json:"last_seen_at"`
+	Blocked     bool      `json:"blocked"`
+	Country     string    `json:"country,omitempty"`
+}
+
+// GeoFenceRule defines a geographic access control rule.
+type GeoFenceRule struct {
+	ID        string    `json:"id"`
+	TenantID  string    `json:"tenant_id"`
+	Name      string    `json:"name"`
+	Action    string    `json:"action"`    // allow, block
+	Countries []string  `json:"countries"` // ISO 3166-1 alpha-2 codes
+	Enabled   bool      `json:"enabled"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// IPBlockEntry records a blocked IP address.
+type IPBlockEntry struct {
+	IP          string     `json:"ip"`
+	TenantID    string     `json:"tenant_id"`
+	Reason      string     `json:"reason"`
+	AutoBlocked bool       `json:"auto_blocked"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+// ComplianceAuditExport is the data structure for compliance report export.
+type ComplianceAuditExport struct {
+	TenantID        string          `json:"tenant_id"`
+	ExportFormat    string          `json:"export_format"` // json, csv
+	PeriodStart     time.Time       `json:"period_start"`
+	PeriodEnd       time.Time       `json:"period_end"`
+	TotalEvents     int             `json:"total_events"`
+	CriticalEvents  int             `json:"critical_events"`
+	BlockedRequests int             `json:"blocked_requests"`
+	PolicyActions   int             `json:"policy_actions"`
+	Events          []SecurityEvent `json:"events"`
+	GeneratedAt     time.Time       `json:"generated_at"`
+}
