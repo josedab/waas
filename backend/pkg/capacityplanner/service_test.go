@@ -343,3 +343,57 @@ func TestAcknowledgeAlertNotFound(t *testing.T) {
 		t.Error("expected error for nonexistent alert")
 	}
 }
+
+func TestForecastCosts(t *testing.T) {
+	repo := NewMemoryRepository()
+	svc := NewService(repo, nil)
+	ctx := context.Background()
+
+	seedTrafficHistory(repo, "tenant-1", 10)
+
+	for _, provider := range []string{"aws", "gcp", "azure"} {
+		forecast, err := svc.ForecastCosts(ctx, "tenant-1", provider)
+		if err != nil {
+			t.Fatalf("ForecastCosts(%s) failed: %v", provider, err)
+		}
+		if forecast.Provider != provider {
+			t.Errorf("expected provider %s, got %s", provider, forecast.Provider)
+		}
+		if forecast.CurrentMonthlyCost <= 0 {
+			t.Errorf("expected positive cost for %s", provider)
+		}
+		if len(forecast.CostBreakdown) != 3 {
+			t.Errorf("expected 3 cost line items, got %d", len(forecast.CostBreakdown))
+		}
+		if len(forecast.ProjectedCosts) != 4 {
+			t.Errorf("expected 4 projected costs, got %d", len(forecast.ProjectedCosts))
+		}
+	}
+
+	_, err := svc.ForecastCosts(ctx, "tenant-1", "invalid")
+	if err == nil {
+		t.Error("expected error for invalid provider")
+	}
+}
+
+func TestGenerateWeeklyDigest(t *testing.T) {
+	repo := NewMemoryRepository()
+	svc := NewService(repo, nil)
+	ctx := context.Background()
+
+	seedTrafficHistory(repo, "tenant-1", 10)
+
+	digest, err := svc.GenerateWeeklyDigest(ctx, "tenant-1")
+	if err != nil {
+		t.Fatalf("GenerateWeeklyDigest failed: %v", err)
+	}
+	if digest.TenantID != "tenant-1" {
+		t.Errorf("expected tenant-1, got %s", digest.TenantID)
+	}
+	if digest.TrendDirection == "" {
+		t.Error("expected non-empty trend direction")
+	}
+	if digest.GeneratedAt.IsZero() {
+		t.Error("expected non-zero generated_at")
+	}
+}

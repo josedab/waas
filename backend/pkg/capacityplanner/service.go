@@ -316,3 +316,102 @@ func (s *Service) detectBottlenecks(usage *UsageMetrics) []Bottleneck {
 
 	return bottlenecks
 }
+
+// ForecastCosts generates a cost forecast for a specific cloud provider.
+func (s *Service) ForecastCosts(ctx context.Context, tenantID, provider string) (*CloudCostForecast, error) {
+	usage, err := s.GetCurrentUsage(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get usage: %w", err)
+	}
+
+	var computeRate, storageRate, bandwidthRate float64
+	switch provider {
+	case CloudAWS:
+		computeRate, storageRate, bandwidthRate = 0.0464, 0.023, 0.09
+	case CloudGCP:
+		computeRate, storageRate, bandwidthRate = 0.0440, 0.020, 0.08
+	case CloudAzure:
+		computeRate, storageRate, bandwidthRate = 0.0456, 0.021, 0.087
+	default:
+		return nil, fmt.Errorf("unsupported provider: %s; use aws, gcp, or azure", provider)
+	}
+
+	computeCost := usage.PeakRequestsPerSec * computeRate * 730
+	storageCost := usage.StorageUsedGB * storageRate
+	bandwidthCost := usage.BandwidthUsedGB * bandwidthRate
+	currentTotal := computeCost + storageCost + bandwidthCost
+
+	forecast := &CloudCostForecast{
+		Provider:           provider,
+		CurrentMonthlyCost: math.Round(currentTotal*100) / 100,
+		CostBreakdown: []CostLineItem{
+			{Category: "compute", Amount: math.Round(computeCost*100) / 100, Unit: "monthly"},
+			{Category: "storage", Amount: math.Round(storageCost*100) / 100, Unit: "monthly"},
+			{Category: "bandwidth", Amount: math.Round(bandwidthCost*100) / 100, Unit: "monthly"},
+		},
+	}
+
+	projections := s.buildProjections(usage)
+	for _, p := range projections {
+		growthFactor := 1 + p.GrowthRatePct/100
+		forecast.ProjectedCosts = append(forecast.ProjectedCosts, ProjectedCost{
+			Period:     p.Period,
+			Amount:     math.Round(currentTotal*growthFactor*100) / 100,
+			Confidence: p.ConfidenceLevel,
+		})
+	}
+
+	if usage.PeakRequestsPerSec < usage.DailyAvgRequests/86400*3 {
+		forecast.Savings = append(forecast.Savings, CostSavingTip{
+			Description:     "Use auto-scaling to reduce over-provisioned compute",
+			EstimatedSaving: 20,
+			Effort:          "medium",
+		})
+	}
+	if usage.StorageUsedGB > 10 {
+		forecast.Savings = append(forecast.Savings, CostSavingTip{
+			Description:     "Implement data retention policies to reduce storage costs",
+			EstimatedSaving: 15,
+			Effort:          "low",
+		})
+	}
+
+	return forecast, nil
+}
+
+// GenerateWeeklyDigest creates a weekly summary with key metrics and recommendations.
+func (s *Service) GenerateWeeklyDigest(ctx context.Context, tenantID string) (*WeeklyDigest, error) {
+	usage, err := s.GetCurrentUsage(ctx, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get usage: %w", err)
+	}
+
+	projections := s.buildProjections(usage)
+	recommendations := s.buildRecommendations(usage, projections)
+	alerts, _ := s.repo.ListAlerts(tenantID)
+
+	// Determine trend
+	trend := "stable"
+	if len(projections) > 0 && projections[0].GrowthRatePct > 15 {
+		trend = "growing"
+	} else if len(projections) > 0 && projections[0].GrowthRatePct < -5 {
+		trend = "declining"
+	}
+
+	// Limit to top 3 recommendations
+	topRecs := recommendations
+	if len(topRecs) > 3 {
+		topRecs = topRecs[:3]
+	}
+
+	return &WeeklyDigest{
+		TenantID:           tenantID,
+		PeriodStart:        time.Now().AddDate(0, 0, -7),
+		PeriodEnd:          time.Now(),
+		UsageSummary:       *usage,
+		TopRecommendations: topRecs,
+		Alerts:             alerts,
+		TrendDirection:     trend,
+		GeneratedAt:        time.Now(),
+	}, nil
+}
