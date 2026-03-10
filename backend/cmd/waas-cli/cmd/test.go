@@ -31,6 +31,10 @@ var (
 	testPayload  string
 	testFile     string
 	testTimeout  string
+	testSuite    string
+	testCI       bool
+	testJunitOut string
+	testTags     string
 )
 
 func init() {
@@ -41,6 +45,10 @@ func init() {
 	testCmd.Flags().StringVar(&testPayload, "data", "", "Custom test payload JSON")
 	testCmd.Flags().StringVar(&testFile, "file", "", "File containing test payload")
 	testCmd.Flags().StringVar(&testTimeout, "timeout", "15s", "Timeout waiting for delivery")
+	testCmd.Flags().StringVar(&testSuite, "suite", "", "Path to YAML test suite file")
+	testCmd.Flags().BoolVar(&testCI, "ci", false, "CI mode: headless execution with JUnit output")
+	testCmd.Flags().StringVar(&testJunitOut, "junit-output", "", "Path to write JUnit XML report")
+	testCmd.Flags().StringVar(&testTags, "tags", "", "Comma-separated tags to filter tests")
 }
 
 func runTest(cmd *cobra.Command, args []string) error {
