@@ -104,3 +104,71 @@ func TestApplyConfig(t *testing.T) {
 	assert.Equal(t, "https://api.example.com/hooks", config.URL)
 	assert.True(t, config.Validated)
 }
+
+func TestValidateConfig(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), nil, nil)
+
+	t.Run("valid config", func(t *testing.T) {
+		result := svc.ValidateConfig(&GeneratedConfig{
+			URL:         "https://example.com/hook",
+			EventTypes:  []string{"order.created"},
+			RetryPolicy: &RetryPolicySpec{MaxRetries: 5, Strategy: "exponential"},
+		})
+		assert.True(t, result.Valid)
+		assert.Empty(t, result.Errors)
+		assert.True(t, result.Score > 0.8)
+	})
+
+	t.Run("missing URL", func(t *testing.T) {
+		result := svc.ValidateConfig(&GeneratedConfig{
+			EventTypes: []string{"order.created"},
+		})
+		assert.False(t, result.Valid)
+		assert.NotEmpty(t, result.Errors)
+	})
+
+	t.Run("http warning", func(t *testing.T) {
+		result := svc.ValidateConfig(&GeneratedConfig{
+			URL:        "http://example.com/hook",
+			EventTypes: []string{"order.created"},
+		})
+		assert.True(t, result.Valid)
+		assert.NotEmpty(t, result.Warnings)
+	})
+
+	t.Run("invalid routing rule", func(t *testing.T) {
+		result := svc.ValidateConfig(&GeneratedConfig{
+			URL:          "https://example.com/hook",
+			EventTypes:   []string{"order.created"},
+			RoutingRules: []RoutingRule{{Name: "", Destination: ""}},
+		})
+		assert.False(t, result.Valid)
+	})
+}
+
+func TestGenerateRoutingRules(t *testing.T) {
+	repo := NewMemoryRepository()
+	svc := NewService(repo, nil, nil)
+
+	rules, err := svc.GenerateRoutingRules("tenant-1", "", "Route order.created to https://orders.example.com")
+	require.NoError(t, err)
+	assert.NotEmpty(t, rules)
+}
+
+func TestGetRefinementSuggestions(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), nil, nil)
+
+	suggestions := svc.GetRefinementSuggestions(&GeneratedConfig{
+		URL:        "https://example.com/hook",
+		EventTypes: []string{"order.created", "payment.completed"},
+	})
+	assert.NotEmpty(t, suggestions)
+
+	// Should suggest auth, retry, rate limit, and routing
+	categories := make(map[string]bool)
+	for _, s := range suggestions {
+		categories[s.Category] = true
+	}
+	assert.True(t, categories["security"])
+	assert.True(t, categories["reliability"])
+}

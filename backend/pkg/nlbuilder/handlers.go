@@ -26,6 +26,9 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 		group.GET("/conversations/:id", h.GetConversation)
 		group.POST("/chat", h.Chat)
 		group.POST("/conversations/:id/apply", h.ApplyConfig)
+		group.POST("/conversations/:id/routing-rules", h.GenerateRoutingRules)
+		group.POST("/validate-config", h.ValidateConfig)
+		group.POST("/refinement-suggestions", h.GetRefinementSuggestions)
 	}
 }
 
@@ -127,4 +130,51 @@ func (h *Handler) ApplyConfig(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, config)
+}
+
+// GenerateRoutingRules creates routing rules from natural language.
+func (h *Handler) GenerateRoutingRules(c *gin.Context) {
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		tenantID = "default"
+	}
+
+	var req struct {
+		Description string `json:"description" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	rules, err := h.service.GenerateRoutingRules(tenantID, c.Param("id"), req.Description)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"routing_rules": rules})
+}
+
+// ValidateConfig validates a generated webhook configuration.
+func (h *Handler) ValidateConfig(c *gin.Context) {
+	var config GeneratedConfig
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := h.service.ValidateConfig(&config)
+	c.JSON(http.StatusOK, result)
+}
+
+// GetRefinementSuggestions returns AI improvement suggestions for a config.
+func (h *Handler) GetRefinementSuggestions(c *gin.Context) {
+	var config GeneratedConfig
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	suggestions := h.service.GetRefinementSuggestions(&config)
+	c.JSON(http.StatusOK, gin.H{"suggestions": suggestions})
 }

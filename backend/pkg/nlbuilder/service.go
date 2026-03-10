@@ -3,6 +3,7 @@ package nlbuilder
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -290,3 +291,181 @@ func (s *Service) getSuggestions(config *GeneratedConfig) []string {
 }
 
 const systemPrompt = `You are a webhook configuration assistant. Help users create webhook endpoint configurations by understanding their natural language descriptions. Extract: target URL, event types, retry policies, transformations, and filters. Always confirm before applying.`
+
+// ValidateConfig performs comprehensive validation on a generated config.
+func (s *Service) ValidateConfig(config *GeneratedConfig) *ValidationResult {
+	result := &ValidationResult{Valid: true, Score: 1.0}
+
+	if config.URL == "" {
+		result.Errors = append(result.Errors, ValidationError{Field: "url", Message: "URL is required"})
+		result.Valid = false
+		result.Score -= 0.3
+	} else if !strings.HasPrefix(config.URL, "http://") && !strings.HasPrefix(config.URL, "https://") {
+		result.Errors = append(result.Errors, ValidationError{Field: "url", Message: "URL must start with http:// or https://"})
+		result.Valid = false
+		result.Score -= 0.3
+	}
+
+	if len(config.EventTypes) == 0 {
+		result.Errors = append(result.Errors, ValidationError{Field: "event_types", Message: "at least one event type is required"})
+		result.Valid = false
+		result.Score -= 0.2
+	}
+
+	if config.URL != "" && !strings.HasPrefix(config.URL, "https://") {
+		result.Warnings = append(result.Warnings, "endpoint does not use HTTPS — consider using a secure URL")
+		result.Score -= 0.1
+	}
+
+	if config.RetryPolicy == nil {
+		result.Warnings = append(result.Warnings, "no retry policy configured — deliveries will not be retried on failure")
+		result.Score -= 0.05
+	} else if config.RetryPolicy.MaxRetries > 15 {
+		result.Warnings = append(result.Warnings, "high retry count may cause delivery delays")
+		result.Score -= 0.05
+	}
+
+	if config.RateLimit > 0 && config.RateLimit < 10 {
+		result.Warnings = append(result.Warnings, "very low rate limit may cause delivery backlogs")
+	}
+
+	for i, rule := range config.RoutingRules {
+		if rule.Name == "" {
+			result.Errors = append(result.Errors, ValidationError{
+				Field:   fmt.Sprintf("routing_rules[%d].name", i),
+				Message: "routing rule name is required",
+			})
+			result.Valid = false
+		}
+		if rule.Destination == "" {
+			result.Errors = append(result.Errors, ValidationError{
+				Field:   fmt.Sprintf("routing_rules[%d].destination", i),
+				Message: "routing rule destination is required",
+			})
+			result.Valid = false
+		}
+	}
+
+	if result.Score < 0 {
+		result.Score = 0
+	}
+
+	return result
+}
+
+// GenerateRoutingRules creates routing rules from a natural language description.
+func (s *Service) GenerateRoutingRules(tenantID string, conversationID string, description string) ([]RoutingRule, error) {
+	if description == "" {
+		return nil, fmt.Errorf("routing description is required")
+	}
+
+	msg := strings.ToLower(description)
+	var rules []RoutingRule
+
+	// Route by event type
+	if strings.Contains(msg, "route") || strings.Contains(msg, "send") {
+		eventPattern := regexp.MustCompile(`([a-z]+\.[a-z]+(?:\.[a-z]+)?)`)
+		urlPattern := regexp.MustCompile(`https?://[^\s"']+`)
+
+		events := eventPattern.FindAllString(msg, -1)
+		urls := urlPattern.FindAllString(description, -1)
+
+		for i, event := range events {
+			if isCommonPhrase(event) {
+				continue
+			}
+			dest := ""
+			if i < len(urls) {
+				dest = urls[i]
+			} else if len(urls) > 0 {
+				dest = urls[0]
+			}
+			rules = append(rules, RoutingRule{
+				Name:        fmt.Sprintf("route-%s", event),
+				Condition:   fmt.Sprintf("event_type == '%s'", event),
+				Destination: dest,
+				Priority:    i + 1,
+			})
+		}
+	}
+
+	// Failover routing
+	if strings.Contains(msg, "failover") || strings.Contains(msg, "fallback") {
+		urlPattern := regexp.MustCompile(`https?://[^\s"']+`)
+		urls := urlPattern.FindAllString(description, -1)
+		for i, url := range urls {
+			rules = append(rules, RoutingRule{
+				Name:        fmt.Sprintf("failover-%d", i+1),
+				Condition:   fmt.Sprintf("attempt >= %d", i+1),
+				Destination: url,
+				Priority:    i + 1,
+			})
+		}
+	}
+
+	if len(rules) == 0 {
+		rules = append(rules, RoutingRule{
+			Name:      "default",
+			Condition: "true",
+			Priority:  1,
+		})
+	}
+
+	// Update conversation if exists
+	if conversationID != "" {
+		conv, err := s.repo.GetConversation(conversationID)
+		if err == nil && conv.Config != nil {
+			conv.Config.RoutingRules = rules
+			_ = s.repo.UpdateConversation(conv)
+		}
+	}
+
+	return rules, nil
+}
+
+// GetRefinementSuggestions returns AI-generated suggestions to improve a config.
+func (s *Service) GetRefinementSuggestions(config *GeneratedConfig) []RefinementSuggestion {
+	var suggestions []RefinementSuggestion
+
+	if config.AuthConfig == nil {
+		suggestions = append(suggestions, RefinementSuggestion{
+			Category:    "security",
+			Description: "Add HMAC signature verification for payload authenticity",
+			AutoApply:   false,
+		})
+	}
+
+	if config.RetryPolicy == nil {
+		suggestions = append(suggestions, RefinementSuggestion{
+			Category:    "reliability",
+			Description: "Add exponential backoff retry policy (5 attempts, 1s initial delay)",
+			AutoApply:   true,
+		})
+	}
+
+	if config.RateLimit == 0 {
+		suggestions = append(suggestions, RefinementSuggestion{
+			Category:    "performance",
+			Description: "Set a rate limit to prevent overwhelming the target endpoint",
+			AutoApply:   false,
+		})
+	}
+
+	if config.Transform == nil {
+		suggestions = append(suggestions, RefinementSuggestion{
+			Category:    "compatibility",
+			Description: "Add a payload transformation to match the target API's expected format",
+			AutoApply:   false,
+		})
+	}
+
+	if len(config.RoutingRules) == 0 && len(config.EventTypes) > 1 {
+		suggestions = append(suggestions, RefinementSuggestion{
+			Category:    "routing",
+			Description: "Add routing rules to send different event types to different destinations",
+			AutoApply:   false,
+		})
+	}
+
+	return suggestions
+}

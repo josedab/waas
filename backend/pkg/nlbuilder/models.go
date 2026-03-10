@@ -71,8 +71,48 @@ type GeneratedConfig struct {
 	Filter       *FilterSpec       `json:"filter,omitempty"`
 	Headers      map[string]string `json:"headers,omitempty"`
 	RateLimit    int               `json:"rate_limit,omitempty"`
+	RoutingRules []RoutingRule     `json:"routing_rules,omitempty"`
+	AuthConfig   *AuthConfig       `json:"auth_config,omitempty"`
 	Validated    bool              `json:"validated"`
 	Warnings     []string          `json:"warnings,omitempty"`
+}
+
+// RoutingRule defines conditional routing logic for webhook delivery.
+type RoutingRule struct {
+	Name        string            `json:"name"`
+	Condition   string            `json:"condition"`
+	Destination string            `json:"destination"`
+	Priority    int               `json:"priority"`
+	Transform   *TransformSpec    `json:"transform,omitempty"`
+	Headers     map[string]string `json:"headers,omitempty"`
+}
+
+// AuthConfig defines the authentication configuration for an endpoint.
+type AuthConfig struct {
+	Type   string `json:"type"` // hmac, bearer, basic, api_key
+	Secret string `json:"secret,omitempty"`
+	Header string `json:"header,omitempty"`
+}
+
+// ValidationResult describes the outcome of validating a generated config.
+type ValidationResult struct {
+	Valid    bool              `json:"valid"`
+	Errors   []ValidationError `json:"errors,omitempty"`
+	Warnings []string          `json:"warnings,omitempty"`
+	Score    float64           `json:"score"`
+}
+
+// ValidationError is a single validation problem.
+type ValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+// RefinementSuggestion provides an AI-generated improvement suggestion.
+type RefinementSuggestion struct {
+	Category    string `json:"category"`
+	Description string `json:"description"`
+	AutoApply   bool   `json:"auto_apply"`
 }
 
 // ConfigPreview shows a before/after view of the generated config.
