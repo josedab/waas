@@ -63,6 +63,7 @@ import (
 	"github.com/josedab/waas/pkg/policyengine"
 	"github.com/josedab/waas/pkg/standardwebhooks"
 	"github.com/josedab/waas/pkg/topologysim"
+	"github.com/josedab/waas/pkg/reliability"
 	"github.com/josedab/waas/pkg/remediation"
 	"github.com/josedab/waas/pkg/sandbox"
 	"github.com/josedab/waas/pkg/schemaregistry"
@@ -133,6 +134,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Event Schema Registry
 	schemaregistryHandler := schemaregistry.NewHandler(s.schemaregistryService)
 	schemaregistryHandler.RegisterRoutes(protected)
+	schemaregistryHandler.RegisterCatalogRoutes(protected)
 
 	// Event Catalog & Schema Registry
 	catalogHandler := catalog.NewHandler(s.catalogService)
@@ -145,6 +147,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Multi-Protocol Gateway
 	protocolgwHandler := protocolgw.NewHandler(s.protocolgwService)
 	protocolgwHandler.RegisterRoutes(protected)
+	protocolgwHandler.RegisterMultiProtocolRoutes(protected)
 
 	// Embeddable Analytics SDK
 	analyticsembedHandler := analyticsembed.NewHandler(s.analyticsembedService)
@@ -157,6 +160,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// GitOps Configuration Management
 	gitopsHandler := gitops.NewHandler(s.gitopsService)
 	gitopsHandler.RegisterRoutes(protected)
+	gitopsHandler.RegisterPromotionRoutes(protected)
 
 	// Live Migration Toolkit
 	livemigrationHandler := livemigration.NewHandler(s.livemigrationService)
@@ -168,6 +172,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Inbound Webhook Gateway (management)
 	inboundHandler := inbound.NewHandler(s.inboundService)
 	inboundHandler.RegisterRoutes(protected)
+	inboundHandler.RegisterV2Routes(protected)
 
 	// Fan-Out & Topic-Based Routing
 	fanoutHandler := fanout.NewHandler(s.fanoutService)
@@ -196,6 +201,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Webhook Replay & Time Travel
 	timetravelHandler := timetravel.NewHandler(s.timetravelService)
 	timetravelHandler.RegisterRoutes(protected)
+	timetravelHandler.RegisterTimelineRoutes(protected)
 
 	// Managed Cloud Offering
 	cloudmanagedHandler := cloudmanaged.NewHandler(s.cloudmanagedService)
@@ -209,6 +215,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Real-Time Collaborative Debugging
 	collabdebugHandler := collabdebug.NewHandler(s.collabdebugService)
 	collabdebugHandler.RegisterRoutes(protected)
+	collabdebugHandler.RegisterWebSocketRoutes(protected)
 
 	// Webhook Security Scanner & WAF
 	wafHandler := waf.NewHandler(s.wafService)
@@ -225,6 +232,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// DLQ & Observability Dashboard
 	dlqHandler := dlq.NewHandler(s.dlqService)
 	dlqHandler.RegisterRoutes(protected)
+	dlqHandler.RegisterAIRoutes(protected)
 
 	// OpenAPI-to-Webhook Generator
 	openapigenHandler := openapigen.NewHandler(s.openapigenService)
@@ -250,6 +258,7 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Portal SDK
 	portalsdkHandler := portalsdk.NewHandler(s.portalsdkService)
 	portalsdkHandler.RegisterRoutes(protected)
+	portalsdkHandler.RegisterEmbedRoutes(protected)
 
 	// Receiver Dashboard
 	receiverdashHandler := receiverdash.NewHandler(s.receiverdashService)
@@ -372,4 +381,10 @@ func (s *Server) registerObservabilityRoutes(protected *gin.RouterGroup) {
 	// Webhook Infrastructure Capacity Planner
 	capacityplannerHandler := capacityplanner.NewHandler(s.capacityplannerService)
 	capacityplannerHandler.RegisterRoutes(protected)
+
+	// ── Next-gen features v12 ─────────────────────────────────────
+
+	// Webhook Reliability Scoring
+	reliabilityHandler := reliability.NewHandler(s.reliabilityService)
+	reliabilityHandler.RegisterRoutes(protected)
 }

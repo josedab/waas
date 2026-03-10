@@ -96,6 +96,7 @@ import (
 	"github.com/josedab/waas/pkg/protocols"
 	"github.com/josedab/waas/pkg/pushbridge"
 	"github.com/josedab/waas/pkg/queue"
+	"github.com/josedab/waas/pkg/reliability"
 	"github.com/josedab/waas/pkg/remediation"
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/sandbox"
@@ -236,6 +237,8 @@ type Server struct {
 	sdkgenService           *sdkgen.Service
 	dataplaneService        *dataplane.Service
 	onboardingWizardService *onboarding.Service
+	// Next-gen features v12
+	reliabilityService      *reliability.Service
 	// Next-gen features v11
 	aibuilderService        *aibuilder.Service
 	edgenetworkService      *edgenetwork.Service
@@ -595,6 +598,10 @@ func NewServer() (*Server, error) {
 	// Webhook Infrastructure Capacity Planner
 	capacityplannerService := capacityplanner.NewService(nil, nil)
 
+	// ── Phase 10c: Next-gen features v12 ──────────────────────────────
+	// Webhook Reliability Scoring
+	reliabilityService := reliability.NewService(nil)
+
 	// ── Phase 9: HTTP layer (Gin router + middleware) ───────────────────
 	// Setup Gin with monitoring middleware
 	router := gin.New()
@@ -750,6 +757,7 @@ func NewServer() (*Server, error) {
 		endpointmeshService:     endpointmeshService,
 		mobileappService:        mobileappService,
 		capacityplannerService:  capacityplannerService,
+		reliabilityService:     reliabilityService,
 	}
 
 	server.setupRoutes()
