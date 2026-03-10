@@ -381,3 +381,250 @@ func percentile(sorted []float64, p float64) float64 {
 	}
 	return sorted[idx]
 }
+
+// GenerateTopology creates a topology from a pre-defined pattern.
+func (s *Service) GenerateTopology(tenantID string, req *GenerateTopologyRequest) (*Topology, error) {
+	if req.EndpointCount < 2 || req.EndpointCount > s.config.MaxEndpoints {
+		return nil, fmt.Errorf("endpoint_count must be between 2 and %d", s.config.MaxEndpoints)
+	}
+
+	failRate := req.FailureRate
+	if failRate <= 0 {
+		failRate = 0.05
+	}
+	latency := req.LatencyMean
+	if latency <= 0 {
+		latency = 100
+	}
+	rps := req.RPS
+	if rps <= 0 {
+		rps = 50
+	}
+
+	var endpoints []SimEndpoint
+	var traffic []TrafficSource
+
+	for i := 0; i < req.EndpointCount; i++ {
+		endpoints = append(endpoints, SimEndpoint{
+			ID:             fmt.Sprintf("ep-%d", i+1),
+			Name:           fmt.Sprintf("Endpoint %d", i+1),
+			FailureRate:    failRate,
+			LatencyMean:    latency,
+			LatencyStdDev:  latency * 0.2,
+			MaxConcurrency: 100,
+			RetryPolicy: &SimRetryPolicy{
+				MaxRetries:  3,
+				BackoffBase: 1000,
+				BackoffMax:  30000,
+			},
+		})
+	}
+
+	switch req.Pattern {
+	case PatternFanOut:
+		// One source fans out to all endpoints
+		targetIDs := make([]string, req.EndpointCount)
+		for i := range targetIDs {
+			targetIDs[i] = fmt.Sprintf("ep-%d", i+1)
+		}
+		traffic = append(traffic, TrafficSource{
+			EventType: "fan_out.event",
+			TargetIDs: targetIDs,
+			RPS:       rps,
+			Pattern:   "constant",
+			Duration:  "5m",
+		})
+
+	case PatternChain:
+		// Sequential chain: ep-1 → ep-2 → ep-3 → ...
+		for i := 0; i < req.EndpointCount-1; i++ {
+			traffic = append(traffic, TrafficSource{
+				EventType: fmt.Sprintf("chain.step_%d", i+1),
+				TargetIDs: []string{fmt.Sprintf("ep-%d", i+2)},
+				RPS:       rps,
+				Pattern:   "constant",
+				Duration:  "5m",
+			})
+		}
+
+	case PatternMesh:
+		// Every endpoint connects to every other
+		for i := 0; i < req.EndpointCount; i++ {
+			var targets []string
+			for j := 0; j < req.EndpointCount; j++ {
+				if i != j {
+					targets = append(targets, fmt.Sprintf("ep-%d", j+1))
+				}
+			}
+			traffic = append(traffic, TrafficSource{
+				EventType: fmt.Sprintf("mesh.from_%d", i+1),
+				TargetIDs: targets,
+				RPS:       rps / float64(req.EndpointCount),
+				Pattern:   "constant",
+				Duration:  "5m",
+			})
+		}
+
+	case PatternTree:
+		// Binary tree: ep-1 → [ep-2, ep-3], ep-2 → [ep-4, ep-5], etc.
+		for i := 0; i < req.EndpointCount; i++ {
+			left := 2*i + 1
+			right := 2*i + 2
+			var targets []string
+			if left < req.EndpointCount {
+				targets = append(targets, fmt.Sprintf("ep-%d", left+1))
+			}
+			if right < req.EndpointCount {
+				targets = append(targets, fmt.Sprintf("ep-%d", right+1))
+			}
+			if len(targets) > 0 {
+				traffic = append(traffic, TrafficSource{
+					EventType: fmt.Sprintf("tree.level_%d", i+1),
+					TargetIDs: targets,
+					RPS:       rps,
+					Pattern:   "constant",
+					Duration:  "5m",
+				})
+			}
+		}
+
+	default:
+		return nil, fmt.Errorf("unknown pattern: %s", req.Pattern)
+	}
+
+	return s.CreateTopology(tenantID, &CreateTopologyRequest{
+		Name:        req.Name,
+		Description: fmt.Sprintf("Auto-generated %s topology with %d endpoints", req.Pattern, req.EndpointCount),
+		Endpoints:   endpoints,
+		Traffic:     traffic,
+	})
+}
+
+// SimulateFailureCascade models how a failure at one endpoint cascades through the topology.
+func (s *Service) SimulateFailureCascade(topologyID, originEndpointID string) (*FailureCascadeResult, error) {
+	topology, err := s.repo.GetTopology(topologyID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build adjacency: which endpoints are downstream of each source
+	downstream := make(map[string][]string)
+	for _, t := range topology.Traffic {
+		for _, target := range t.TargetIDs {
+			downstream[target] = append(downstream[target], t.TargetIDs...)
+		}
+	}
+
+	result := &FailureCascadeResult{
+		OriginEndpoint: originEndpointID,
+	}
+
+	visited := map[string]bool{originEndpointID: true}
+	current := []string{originEndpointID}
+
+	for depth := 0; len(current) > 0 && depth < 10; depth++ {
+		step := CascadeStep{
+			Depth:             depth + 1,
+			AffectedEndpoints: current,
+			ImpactPct:         float64(len(visited)) / float64(len(topology.Endpoints)) * 100,
+		}
+		result.CascadeSteps = append(result.CascadeSteps, step)
+
+		var next []string
+		for _, ep := range current {
+			for _, ds := range downstream[ep] {
+				if !visited[ds] {
+					visited[ds] = true
+					next = append(next, ds)
+				}
+			}
+		}
+		current = next
+	}
+
+	result.AffectedCount = len(visited)
+	result.CascadeDepth = len(result.CascadeSteps)
+	result.TotalImpactPct = float64(len(visited)) / float64(len(topology.Endpoints)) * 100
+
+	// Estimate recovery time based on retry policies
+	var maxRecovery float64
+	for _, ep := range topology.Endpoints {
+		if visited[ep.ID] && ep.RetryPolicy != nil {
+			recovery := ep.RetryPolicy.BackoffBase * math.Pow(2, float64(ep.RetryPolicy.MaxRetries))
+			if recovery > maxRecovery {
+				maxRecovery = recovery
+			}
+		}
+	}
+	result.RecoveryTimeMs = maxRecovery
+
+	return result, nil
+}
+
+// GenerateVisGraph creates visualization data for a topology.
+func (s *Service) GenerateVisGraph(topologyID string) (*VisGraph, error) {
+	topology, err := s.repo.GetTopology(topologyID)
+	if err != nil {
+		return nil, err
+	}
+
+	graph := &VisGraph{}
+
+	// Layout nodes in a circle
+	n := len(topology.Endpoints)
+	for i, ep := range topology.Endpoints {
+		angle := 2 * math.Pi * float64(i) / float64(n)
+		graph.Nodes = append(graph.Nodes, VisNode{
+			ID:     ep.ID,
+			Label:  ep.Name,
+			Type:   "endpoint",
+			X:      300 + 200*math.Cos(angle),
+			Y:      300 + 200*math.Sin(angle),
+			Health: 1.0 - ep.FailureRate,
+			Metrics: map[string]float64{
+				"failure_rate": ep.FailureRate,
+				"latency_ms":   ep.LatencyMean,
+			},
+		})
+	}
+
+	// Create edges from traffic sources
+	for _, t := range topology.Traffic {
+		for _, target := range t.TargetIDs {
+			var sourceID string
+			// Find source: the event type prefix or create virtual source
+			if len(t.TargetIDs) > 0 {
+				sourceID = "source-" + t.EventType
+			}
+
+			// Check if source node exists
+			found := false
+			for _, node := range graph.Nodes {
+				if node.ID == sourceID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				graph.Nodes = append(graph.Nodes, VisNode{
+					ID:    sourceID,
+					Label: t.EventType,
+					Type:  "source",
+					X:     150,
+					Y:     150,
+				})
+			}
+
+			graph.Edges = append(graph.Edges, VisEdge{
+				Source:      sourceID,
+				Target:      target,
+				Label:       fmt.Sprintf("%.0f rps", t.RPS),
+				Weight:      t.RPS,
+				Animated:    true,
+				SuccessRate: 1.0,
+			})
+		}
+	}
+
+	return graph, nil
+}

@@ -138,3 +138,68 @@ type CreateTopologyRequest struct {
 	Traffic     []TrafficSource   `json:"traffic" binding:"required"`
 	Constraints *InfraConstraints `json:"constraints"`
 }
+
+// TopologyPattern defines a pre-built topology pattern.
+type TopologyPattern string
+
+const (
+	PatternFanOut TopologyPattern = "fan_out"
+	PatternChain  TopologyPattern = "chain"
+	PatternMesh   TopologyPattern = "mesh"
+	PatternTree   TopologyPattern = "tree"
+)
+
+// GenerateTopologyRequest creates a topology from a named pattern.
+type GenerateTopologyRequest struct {
+	Pattern       TopologyPattern `json:"pattern" binding:"required"`
+	Name          string          `json:"name" binding:"required"`
+	EndpointCount int             `json:"endpoint_count" binding:"required,min=2,max=50"`
+	FailureRate   float64         `json:"failure_rate"`
+	LatencyMean   float64         `json:"latency_mean_ms"`
+	RPS           float64         `json:"rps"`
+}
+
+// FailureCascadeResult models cascading failures across a topology.
+type FailureCascadeResult struct {
+	OriginEndpoint string        `json:"origin_endpoint"`
+	AffectedCount  int           `json:"affected_count"`
+	CascadeDepth   int           `json:"cascade_depth"`
+	CascadeSteps   []CascadeStep `json:"cascade_steps"`
+	TotalImpactPct float64       `json:"total_impact_pct"`
+	RecoveryTimeMs float64       `json:"recovery_time_ms"`
+}
+
+// CascadeStep describes a single step in a failure cascade.
+type CascadeStep struct {
+	Depth             int      `json:"depth"`
+	AffectedEndpoints []string `json:"affected_endpoints"`
+	ImpactPct         float64  `json:"impact_pct"`
+}
+
+// VisNode represents a node for visualization rendering.
+type VisNode struct {
+	ID      string             `json:"id"`
+	Label   string             `json:"label"`
+	Type    string             `json:"type"` // source, endpoint, relay
+	X       float64            `json:"x"`
+	Y       float64            `json:"y"`
+	Health  float64            `json:"health"` // 0.0-1.0
+	Metrics map[string]float64 `json:"metrics,omitempty"`
+}
+
+// VisEdge represents an edge for visualization rendering.
+type VisEdge struct {
+	Source      string  `json:"source"`
+	Target      string  `json:"target"`
+	Label       string  `json:"label,omitempty"`
+	Weight      float64 `json:"weight"`
+	LatencyMs   float64 `json:"latency_ms"`
+	SuccessRate float64 `json:"success_rate"`
+	Animated    bool    `json:"animated"`
+}
+
+// VisGraph is the complete visualization data for a topology.
+type VisGraph struct {
+	Nodes []VisNode `json:"nodes"`
+	Edges []VisEdge `json:"edges"`
+}

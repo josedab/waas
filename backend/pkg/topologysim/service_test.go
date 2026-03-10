@@ -123,3 +123,74 @@ func TestBottleneckDetection(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "completed", result.Status)
 }
+
+func TestGenerateFanOutTopology(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), nil)
+
+	topology, err := svc.GenerateTopology("t1", &GenerateTopologyRequest{
+		Pattern:       PatternFanOut,
+		Name:          "Fan-Out Test",
+		EndpointCount: 5,
+		RPS:           100,
+	})
+	require.NoError(t, err)
+	assert.Len(t, topology.Endpoints, 5)
+	assert.Len(t, topology.Traffic, 1)
+	assert.Len(t, topology.Traffic[0].TargetIDs, 5)
+}
+
+func TestGenerateChainTopology(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), nil)
+
+	topology, err := svc.GenerateTopology("t1", &GenerateTopologyRequest{
+		Pattern:       PatternChain,
+		Name:          "Chain Test",
+		EndpointCount: 4,
+	})
+	require.NoError(t, err)
+	assert.Len(t, topology.Endpoints, 4)
+	assert.Len(t, topology.Traffic, 3) // 4 endpoints = 3 links
+}
+
+func TestGenerateMeshTopology(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), nil)
+
+	topology, err := svc.GenerateTopology("t1", &GenerateTopologyRequest{
+		Pattern:       PatternMesh,
+		Name:          "Mesh Test",
+		EndpointCount: 3,
+	})
+	require.NoError(t, err)
+	assert.Len(t, topology.Endpoints, 3)
+	assert.Len(t, topology.Traffic, 3) // each endpoint sends to 2 others
+}
+
+func TestSimulateFailureCascade(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), nil)
+
+	topology, _ := svc.GenerateTopology("t1", &GenerateTopologyRequest{
+		Pattern:       PatternChain,
+		Name:          "Cascade Test",
+		EndpointCount: 4,
+	})
+
+	result, err := svc.SimulateFailureCascade(topology.ID, "ep-1")
+	require.NoError(t, err)
+	assert.Equal(t, "ep-1", result.OriginEndpoint)
+	assert.Greater(t, result.AffectedCount, 0)
+}
+
+func TestGenerateVisGraph(t *testing.T) {
+	svc := NewService(NewMemoryRepository(), nil)
+
+	topology, _ := svc.GenerateTopology("t1", &GenerateTopologyRequest{
+		Pattern:       PatternFanOut,
+		Name:          "Vis Test",
+		EndpointCount: 3,
+	})
+
+	graph, err := svc.GenerateVisGraph(topology.ID)
+	require.NoError(t, err)
+	assert.NotEmpty(t, graph.Nodes)
+	assert.NotEmpty(t, graph.Edges)
+}
