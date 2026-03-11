@@ -328,3 +328,427 @@ func TestEdgeFunctionsService_CreateFunction_RepoError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to create function")
 }
+
+// --- UpdateFunction Tests ---
+
+func TestEdgeFunctionsService_UpdateFunction_ValidUpdate(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:              functionID,
+		TenantID:        tenantID,
+		Code:            "old code",
+		EntryPoint:      "handler",
+		Status:          models.FunctionStatusDraft,
+		Runtime:         models.RuntimeJavaScript,
+		EnvironmentVars: map[string]string{},
+	}, nil)
+	repo.On("UpdateFunction", mock.Anything, mock.AnythingOfType("*models.EdgeFunction")).Return(nil)
+	repo.On("CreateVersion", mock.Anything, mock.AnythingOfType("*models.EdgeFunctionVersion")).Return(nil).Maybe()
+	repo.On("UpdateFunctionStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+
+	fn, err := svc.UpdateFunction(context.Background(), tenantID, functionID, &models.UpdateEdgeFunctionRequest{
+		Code:      "new code",
+		ChangeLog: "updated code",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "new code", fn.Code)
+}
+
+func TestEdgeFunctionsService_UpdateFunction_TenantMismatch(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	functionID := uuid.New()
+	ownerTenantID := uuid.New()
+	otherTenantID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		TenantID: ownerTenantID,
+	}, nil)
+
+	_, err := svc.UpdateFunction(context.Background(), otherTenantID, functionID, &models.UpdateEdgeFunctionRequest{
+		Code: "hacked",
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "function not found")
+}
+
+// --- GetFunctionWithDetails Tests ---
+
+func TestEdgeFunctionsService_GetFunctionWithDetails(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:       functionID,
+		TenantID: tenantID,
+		Name:     "my-fn",
+	}, nil)
+	repo.On("GetDeploymentsByFunction", mock.Anything, functionID).Return([]*models.EdgeFunctionDeployment{
+		{ID: uuid.New(), FunctionID: functionID, Status: "active"},
+	}, nil)
+	repo.On("GetTriggersByFunction", mock.Anything, functionID).Return([]*models.EdgeFunctionTrigger{
+		{ID: uuid.New(), FunctionID: functionID, TriggerType: models.TriggerPreSend},
+	}, nil)
+
+	result, err := svc.GetFunctionWithDetails(context.Background(), tenantID, functionID)
+	require.NoError(t, err)
+	assert.Equal(t, "my-fn", result.EdgeFunction.Name)
+	assert.Len(t, result.Deployments, 1)
+	assert.Len(t, result.Triggers, 1)
+}
+
+// --- CreateTrigger Tests ---
+
+func TestEdgeFunctionsService_CreateTrigger_ValidPreSend(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:       functionID,
+		TenantID: tenantID,
+	}, nil)
+	repo.On("CreateTrigger", mock.Anything, mock.AnythingOfType("*models.EdgeFunctionTrigger")).Return(nil)
+
+	trigger, err := svc.CreateTrigger(context.Background(), tenantID, functionID, &models.CreateTriggerRequest{
+		TriggerType: models.TriggerPreSend,
+		EventTypes:  []string{"message.created"},
+		Priority:    10,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, models.TriggerPreSend, trigger.TriggerType)
+	assert.True(t, trigger.Enabled)
+	assert.Equal(t, 10, trigger.Priority)
+}
+
+func TestEdgeFunctionsService_CreateTrigger_InvalidType(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:       functionID,
+		TenantID: tenantID,
+	}, nil)
+
+	_, err := svc.CreateTrigger(context.Background(), tenantID, functionID, &models.CreateTriggerRequest{
+		TriggerType: "invalid_type",
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid trigger_type")
+}
+
+// --- GetTriggers Tests ---
+
+func TestEdgeFunctionsService_GetTriggers(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:       functionID,
+		TenantID: tenantID,
+	}, nil)
+	repo.On("GetTriggersByFunction", mock.Anything, functionID).Return([]*models.EdgeFunctionTrigger{
+		{ID: uuid.New(), FunctionID: functionID, TriggerType: models.TriggerPreSend},
+		{ID: uuid.New(), FunctionID: functionID, TriggerType: models.TriggerPostReceive},
+	}, nil)
+
+	triggers, err := svc.GetTriggers(context.Background(), tenantID, functionID)
+	require.NoError(t, err)
+	assert.Len(t, triggers, 2)
+}
+
+// --- RunTest Tests ---
+
+func TestEdgeFunctionsService_RunTest_ExpectedOutput(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:              functionID,
+		TenantID:        tenantID,
+		Status:          models.FunctionStatusDraft,
+		Runtime:         models.RuntimeJavaScript,
+		Code:            `function handler(input) { return { doubled: input.val * 2 }; }`,
+		EntryPoint:      "handler",
+		TimeoutMs:       5000,
+		EnvironmentVars: map[string]string{},
+	}, nil)
+	repo.On("CreateTest", mock.Anything, mock.AnythingOfType("*models.EdgeFunctionTest")).Return(nil)
+
+	test, err := svc.RunTest(context.Background(), tenantID, functionID, &models.RunTestRequest{
+		TestName:       "double-test",
+		Input:          map[string]interface{}{"val": 5},
+		ExpectedOutput: map[string]interface{}{"doubled": float64(10)},
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, test.Passed)
+	assert.True(t, *test.Passed)
+	assert.Equal(t, "double-test", test.TestName)
+}
+
+func TestEdgeFunctionsService_RunTest_ErrorInCode(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:              functionID,
+		TenantID:        tenantID,
+		Status:          models.FunctionStatusDraft,
+		Runtime:         models.RuntimeJavaScript,
+		Code:            `function handler(input) { throw new Error("boom"); }`,
+		EntryPoint:      "handler",
+		TimeoutMs:       5000,
+		EnvironmentVars: map[string]string{},
+	}, nil)
+	repo.On("CreateTest", mock.Anything, mock.AnythingOfType("*models.EdgeFunctionTest")).Return(nil)
+
+	test, err := svc.RunTest(context.Background(), tenantID, functionID, &models.RunTestRequest{
+		TestName: "error-test",
+		Input:    map[string]interface{}{"key": "value"},
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, test.Passed)
+	assert.False(t, *test.Passed)
+	assert.NotEmpty(t, test.ErrorMessage)
+}
+
+// --- RollbackFunction Tests ---
+
+func TestEdgeFunctionsService_RollbackFunction(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:              functionID,
+		TenantID:        tenantID,
+		Code:            "current code",
+		EntryPoint:      "handler",
+		Status:          models.FunctionStatusActive,
+		Runtime:         models.RuntimeJavaScript,
+		EnvironmentVars: map[string]string{},
+	}, nil)
+	repo.On("GetVersion", mock.Anything, functionID, 1).Return(&models.EdgeFunctionVersion{
+		FunctionID: functionID,
+		Version:    1,
+		Code:       "old code v1",
+		EntryPoint: "handler",
+	}, nil)
+	repo.On("UpdateFunction", mock.Anything, mock.AnythingOfType("*models.EdgeFunction")).Return(nil)
+	repo.On("CreateVersion", mock.Anything, mock.AnythingOfType("*models.EdgeFunctionVersion")).Return(nil).Maybe()
+	repo.On("UpdateFunctionStatus", mock.Anything, functionID, models.FunctionStatusDraft).Return(nil).Maybe()
+
+	fn, err := svc.RollbackFunction(context.Background(), tenantID, functionID, 1)
+	require.NoError(t, err)
+	assert.Equal(t, "old code v1", fn.Code)
+	assert.Equal(t, models.FunctionStatusDraft, fn.Status)
+}
+
+// --- GetVersions Tests ---
+
+func TestEdgeFunctionsService_GetVersions(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:       functionID,
+		TenantID: tenantID,
+	}, nil)
+	repo.On("GetVersions", mock.Anything, functionID).Return([]*models.EdgeFunctionVersion{
+		{FunctionID: functionID, Version: 1},
+		{FunctionID: functionID, Version: 2},
+	}, nil)
+
+	versions, err := svc.GetVersions(context.Background(), tenantID, functionID)
+	require.NoError(t, err)
+	assert.Len(t, versions, 2)
+}
+
+// --- GetDeployments Tests ---
+
+func TestEdgeFunctionsService_GetDeployments(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:       functionID,
+		TenantID: tenantID,
+	}, nil)
+	repo.On("GetDeploymentsByFunction", mock.Anything, functionID).Return([]*models.EdgeFunctionDeployment{
+		{ID: uuid.New(), FunctionID: functionID, Status: "active"},
+		{ID: uuid.New(), FunctionID: functionID, Status: "pending"},
+	}, nil)
+
+	deployments, err := svc.GetDeployments(context.Background(), tenantID, functionID)
+	require.NoError(t, err)
+	assert.Len(t, deployments, 2)
+}
+
+// --- GetInvocations Tests ---
+
+func TestEdgeFunctionsService_GetInvocations(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:       functionID,
+		TenantID: tenantID,
+	}, nil)
+	repo.On("GetInvocationsByFunction", mock.Anything, functionID, 10).Return([]*models.EdgeFunctionInvocation{
+		{ID: uuid.New(), FunctionID: functionID, Status: "success"},
+	}, nil)
+
+	invocations, err := svc.GetInvocations(context.Background(), tenantID, functionID, 10)
+	require.NoError(t, err)
+	assert.Len(t, invocations, 1)
+}
+
+func TestEdgeFunctionsService_GetInvocations_DefaultLimit(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+	functionID := uuid.New()
+
+	repo.On("GetFunction", mock.Anything, functionID).Return(&models.EdgeFunction{
+		ID:       functionID,
+		TenantID: tenantID,
+	}, nil)
+	repo.On("GetInvocationsByFunction", mock.Anything, functionID, 50).Return([]*models.EdgeFunctionInvocation{}, nil)
+
+	invocations, err := svc.GetInvocations(context.Background(), tenantID, functionID, 0)
+	require.NoError(t, err)
+	assert.Empty(t, invocations)
+}
+
+// --- GetDashboard Tests ---
+
+func TestEdgeFunctionsService_GetDashboard(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	tenantID := uuid.New()
+
+	repo.On("CountFunctions", mock.Anything, tenantID).Return(5, nil)
+	repo.On("CountActiveFunctions", mock.Anything, tenantID).Return(3, nil)
+	repo.On("CountDeployments", mock.Anything, tenantID).Return(8, nil)
+	repo.On("CountInvocations", mock.Anything, tenantID, mock.AnythingOfType("time.Time")).Return(int64(100), nil)
+	repo.On("GetErrorRate", mock.Anything, tenantID, mock.AnythingOfType("time.Time")).Return(2.5, nil)
+	repo.On("GetRecentInvocations", mock.Anything, tenantID, 10).Return([]*models.EdgeFunctionInvocation{
+		{ID: uuid.New(), DurationMs: 20},
+		{ID: uuid.New(), DurationMs: 40},
+	}, nil)
+	repo.On("GetFunctionsByTenant", mock.Anything, tenantID).Return([]*models.EdgeFunction{
+		{Runtime: models.RuntimeJavaScript},
+		{Runtime: models.RuntimeJavaScript},
+		{Runtime: models.RuntimeTypeScript},
+	}, nil)
+
+	dashboard, err := svc.GetDashboard(context.Background(), tenantID)
+	require.NoError(t, err)
+	assert.Equal(t, 5, dashboard.TotalFunctions)
+	assert.Equal(t, 3, dashboard.ActiveFunctions)
+	assert.Equal(t, 8, dashboard.TotalDeployments)
+	assert.Equal(t, int64(100), dashboard.TotalInvocations)
+	assert.Equal(t, 2.5, dashboard.ErrorRate)
+	assert.Equal(t, 30.0, dashboard.AvgDurationMs)
+	assert.Equal(t, 2, dashboard.FunctionsByRuntime[models.RuntimeJavaScript])
+	assert.Equal(t, 1, dashboard.FunctionsByRuntime[models.RuntimeTypeScript])
+}
+
+// --- GetLocations / GetActiveLocations Tests ---
+
+func TestEdgeFunctionsService_GetLocations(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	repo.On("GetAllLocations", mock.Anything).Return([]*models.EdgeLocation{
+		{ID: uuid.New(), Name: "US East", Code: "us-east-1", Region: "us-east"},
+		{ID: uuid.New(), Name: "EU West", Code: "eu-west-1", Region: "eu-west"},
+	}, nil)
+
+	locations, err := svc.GetLocations(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, locations, 2)
+	assert.Equal(t, "us-east-1", locations[0].Code)
+}
+
+func TestEdgeFunctionsService_GetActiveLocations(t *testing.T) {
+	t.Parallel()
+	repo := &MockEdgeFunctionsRepo{}
+	logger := utils.NewLogger("test")
+	svc := NewEdgeFunctionsService(repo, logger)
+
+	repo.On("GetActiveLocations", mock.Anything).Return([]*models.EdgeLocation{
+		{ID: uuid.New(), Name: "US East", Code: "us-east-1", Status: "active"},
+	}, nil)
+
+	locations, err := svc.GetActiveLocations(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, locations, 1)
+	assert.Equal(t, "active", locations[0].Status)
+}
