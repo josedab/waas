@@ -10,16 +10,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var exportCmd = &cobra.Command{
-	Use:   "export",
+var configExportCmd = &cobra.Command{
+	Use:   "config-export",
 	Short: "Export current configuration as YAML",
 	Long: `Export the current live webhook configuration as a YAML manifest.
 
 Examples:
-  waas export                                  # Export to stdout
-  waas export -o config.yaml                   # Export to file
-  waas export --env production                 # Export specific environment`,
-	RunE: runExport,
+  waas config-export                           # Export to stdout
+  waas config-export -o config.yaml            # Export to file
+  waas config-export --env production          # Export specific environment`,
+	RunE: runConfigExport,
 }
 
 var promoteCmd = &cobra.Command{
@@ -36,19 +36,19 @@ Examples:
 }
 
 var (
-	exportOutput string
-	exportEnv    string
-	promoteFrom  string
-	promoteTo    string
-	approvedBy   string
+	configExportOutput string
+	configExportEnv    string
+	promoteFrom        string
+	promoteTo          string
+	approvedBy         string
 )
 
 func init() {
-	rootCmd.AddCommand(exportCmd)
+	rootCmd.AddCommand(configExportCmd)
 	rootCmd.AddCommand(promoteCmd)
 
-	exportCmd.Flags().StringVarP(&exportOutput, "output", "o", "", "Output file path (default: stdout)")
-	exportCmd.Flags().StringVar(&exportEnv, "env", "dev", "Environment to export")
+	configExportCmd.Flags().StringVarP(&configExportOutput, "output", "o", "", "Output file path (default: stdout)")
+	configExportCmd.Flags().StringVar(&configExportEnv, "env", "dev", "Environment to export")
 
 	promoteCmd.Flags().StringVar(&promoteFrom, "from", "", "Source environment (required)")
 	promoteCmd.Flags().StringVar(&promoteTo, "to", "", "Target environment (required)")
@@ -57,14 +57,14 @@ func init() {
 	promoteCmd.MarkFlagRequired("to")
 }
 
-func runExport(cmd *cobra.Command, args []string) error {
+func runConfigExport(cmd *cobra.Command, args []string) error {
 	apiKey, err := getAPIKey()
 	if err != nil {
 		return err
 	}
 	client := NewClient(getAPIURL(), apiKey)
 
-	resp, err := client.doRequest("GET", fmt.Sprintf("/api/v1/gitops/export?environment=%s", exportEnv), nil)
+	resp, err := client.doRequest("GET", fmt.Sprintf("/api/v1/gitops/export?environment=%s", configExportEnv), nil)
 	if err != nil {
 		return fmt.Errorf("failed to export configuration: %w", err)
 	}
@@ -79,17 +79,17 @@ func runExport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unexpected response format")
 	}
 
-	if exportOutput != "" {
-		dir := filepath.Dir(exportOutput)
+	if configExportOutput != "" {
+		dir := filepath.Dir(configExportOutput)
 		if dir != "." {
 			if err := os.MkdirAll(dir, 0755); err != nil {
 				return fmt.Errorf("failed to create directory: %w", err)
 			}
 		}
-		if err := os.WriteFile(exportOutput, []byte(content), 0644); err != nil {
+		if err := os.WriteFile(configExportOutput, []byte(content), 0644); err != nil {
 			return fmt.Errorf("failed to write file: %w", err)
 		}
-		out.PrintSuccess(fmt.Sprintf("Configuration exported to %s", exportOutput))
+		out.PrintSuccess(fmt.Sprintf("Configuration exported to %s", configExportOutput))
 	} else {
 		fmt.Print(content)
 	}
