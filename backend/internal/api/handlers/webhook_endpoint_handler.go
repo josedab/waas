@@ -2,7 +2,9 @@
 package handlers
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	apperrors "github.com/josedab/waas/pkg/errors"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
@@ -16,13 +18,19 @@ import (
 	"github.com/google/uuid"
 )
 
+// URLValidatorInterface abstracts URL validation so it can be mocked in tests.
+type URLValidatorInterface interface {
+	ValidateWebhookURL(webhookURL string) error
+	CheckURLAccessibility(ctx context.Context, webhookURL string) error
+}
+
 // WebhookHandler handles webhook endpoint CRUD and webhook delivery operations.
 type WebhookHandler struct {
 	webhookRepo         repository.WebhookEndpointRepository
 	deliveryAttemptRepo repository.DeliveryAttemptRepository
 	publisher           queue.PublisherInterface
 	logger              *utils.Logger
-	urlValidator        *utils.URLValidator
+	urlValidator        URLValidatorInterface
 }
 
 // CreateWebhookEndpointRequest is the request payload for registering a new webhook endpoint.
@@ -48,6 +56,52 @@ type RetryConfigRequest struct {
 	BackoffMultiplier int `json:"backoff_multiplier,omitempty"`
 }
 
+// Input validation limits
+const (
+	MaxRetryAttempts     = 50
+	MaxInitialDelayMs    = 60000   // 1 minute
+	MaxDelayMsLimit      = 3600000 // 1 hour
+	MaxBackoffMultiplier = 10
+	MaxCustomHeaderCount = 20
+	MaxCustomHeaderBytes = 8192 // 8KB per header key+value
+)
+
+// validateRetryConfig checks that retry configuration values are within safe bounds.
+func validateRetryConfig(cfg *RetryConfigRequest) error {
+	if cfg == nil {
+		return nil
+	}
+	if cfg.MaxAttempts > MaxRetryAttempts {
+		return fmt.Errorf("max_attempts cannot exceed %d", MaxRetryAttempts)
+	}
+	if cfg.InitialDelayMs > MaxInitialDelayMs {
+		return fmt.Errorf("initial_delay_ms cannot exceed %d", MaxInitialDelayMs)
+	}
+	if cfg.MaxDelayMs > MaxDelayMsLimit {
+		return fmt.Errorf("max_delay_ms cannot exceed %d", MaxDelayMsLimit)
+	}
+	if cfg.BackoffMultiplier > MaxBackoffMultiplier {
+		return fmt.Errorf("backoff_multiplier cannot exceed %d", MaxBackoffMultiplier)
+	}
+	if cfg.BackoffMultiplier < 0 {
+		return fmt.Errorf("backoff_multiplier must be non-negative")
+	}
+	return nil
+}
+
+// validateCustomHeaders checks header count and individual sizes.
+func validateCustomHeaders(headers map[string]string) error {
+	if len(headers) > MaxCustomHeaderCount {
+		return fmt.Errorf("custom_headers cannot have more than %d entries", MaxCustomHeaderCount)
+	}
+	for key, val := range headers {
+		if len(key)+len(val) > MaxCustomHeaderBytes {
+			return fmt.Errorf("custom header %q exceeds max size of %d bytes", key, MaxCustomHeaderBytes)
+		}
+	}
+	return nil
+}
+
 // WebhookEndpointResponse is the API representation of a webhook endpoint.
 type WebhookEndpointResponse struct {
 	ID            uuid.UUID                 `json:"id"`
@@ -70,6 +124,11 @@ func NewWebhookHandler(webhookRepo repository.WebhookEndpointRepository, deliver
 	}
 }
 
+// SetURLValidator replaces the URL validator (useful for testing).
+func (h *WebhookHandler) SetURLValidator(v URLValidatorInterface) {
+	h.urlValidator = v
+}
+
 // CreateWebhookEndpoint creates a new webhook endpoint
 // @Summary Create webhook endpoint
 // @Description Create a new webhook endpoint for receiving webhook notifications
@@ -86,13 +145,7 @@ func NewWebhookHandler(webhookRepo repository.WebhookEndpointRepository, deliver
 func (h *WebhookHandler) CreateWebhookEndpoint(c *gin.Context) {
 	var req CreateWebhookEndpointRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request format",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
 		return
 	}
 
@@ -104,13 +157,7 @@ func (h *WebhookHandler) CreateWebhookEndpoint(c *gin.Context) {
 
 	// Validate URL format and accessibility
 	if err := h.urlValidator.ValidateWebhookURL(req.URL); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_URL",
-				"message": "Invalid webhook URL",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_URL", Message: "Invalid webhook URL", Details: err.Error()})
 		return
 	}
 
@@ -130,12 +177,19 @@ func (h *WebhookHandler) CreateWebhookEndpoint(c *gin.Context) {
 		h.logger.Error("Failed to generate webhook secret", map[string]interface{}{
 			"error": err.Error(),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INTERNAL_ERROR",
-				"message": "Failed to generate webhook secret",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "INTERNAL_ERROR", Message: "Failed to generate webhook secret"})
+		return
+	}
+
+	// Validate retry config bounds
+	if err := validateRetryConfig(req.RetryConfig); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_RETRY_CONFIG", Message: err.Error()})
+		return
+	}
+
+	// Validate custom headers
+	if err := validateCustomHeaders(req.CustomHeaders); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_HEADERS", Message: err.Error()})
 		return
 	}
 
@@ -175,13 +229,7 @@ func (h *WebhookHandler) CreateWebhookEndpoint(c *gin.Context) {
 
 	// Validate the endpoint
 	if err := models.ValidateWebhookEndpoint(endpoint); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "VALIDATION_ERROR",
-				"message": "Invalid webhook endpoint data",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "VALIDATION_ERROR", Message: "Invalid webhook endpoint data", Details: err.Error()})
 		return
 	}
 
@@ -192,12 +240,7 @@ func (h *WebhookHandler) CreateWebhookEndpoint(c *gin.Context) {
 			"tenant_id": tenantID,
 			"url":       req.URL,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to create webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to create webhook endpoint"})
 		return
 	}
 
@@ -258,6 +301,17 @@ func (h *WebhookHandler) GetWebhookEndpoints(c *gin.Context) {
 		}
 	}
 
+	// Get total count for pagination
+	totalCount, err := h.webhookRepo.CountByTenantID(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to count webhook endpoints", map[string]interface{}{
+			"error":     err.Error(),
+			"tenant_id": tenantID,
+		})
+		// Non-fatal: proceed with count=0
+		totalCount = 0
+	}
+
 	// Get endpoints from database
 	endpoints, err := h.webhookRepo.GetByTenantID(c.Request.Context(), tenantID, limit, offset)
 	if err != nil {
@@ -265,12 +319,7 @@ func (h *WebhookHandler) GetWebhookEndpoints(c *gin.Context) {
 			"error":     err.Error(),
 			"tenant_id": tenantID,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve webhook endpoints",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve webhook endpoints"})
 		return
 	}
 
@@ -291,9 +340,11 @@ func (h *WebhookHandler) GetWebhookEndpoints(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"endpoints": responses,
 		"pagination": gin.H{
-			"limit":  limit,
-			"offset": offset,
-			"count":  len(responses),
+			"limit":    limit,
+			"offset":   offset,
+			"count":    len(responses),
+			"total":    totalCount,
+			"has_more": offset+limit < totalCount,
 		},
 	})
 }
@@ -318,12 +369,7 @@ func (h *WebhookHandler) GetWebhookEndpoint(c *gin.Context) {
 	endpointIDStr := c.Param("id")
 	endpointID, err := uuid.Parse(endpointIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_ID",
-				"message": "Invalid endpoint ID format",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_ID", Message: "Invalid endpoint ID format"})
 		return
 	}
 
@@ -337,12 +383,7 @@ func (h *WebhookHandler) GetWebhookEndpoint(c *gin.Context) {
 	endpoint, err := h.webhookRepo.GetByID(c.Request.Context(), endpointID)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": map[string]interface{}{
-					"code":    "ENDPOINT_NOT_FOUND",
-					"message": "Webhook endpoint not found",
-				},
-			})
+			c.JSON(http.StatusNotFound, ErrorResponse{Code: "ENDPOINT_NOT_FOUND", Message: "Webhook endpoint not found"})
 			return
 		}
 
@@ -350,23 +391,13 @@ func (h *WebhookHandler) GetWebhookEndpoint(c *gin.Context) {
 			"error":       err.Error(),
 			"endpoint_id": endpointID,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve webhook endpoint"})
 		return
 	}
 
 	// Verify tenant ownership
 	if endpoint.TenantID != tenantID {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": map[string]interface{}{
-				"code":    "FORBIDDEN",
-				"message": "Access denied to this webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusForbidden, ErrorResponse{Code: "FORBIDDEN", Message: "Access denied to this webhook endpoint"})
 		return
 	}
 
@@ -405,24 +436,13 @@ func (h *WebhookHandler) UpdateWebhookEndpoint(c *gin.Context) {
 	endpointIDStr := c.Param("id")
 	endpointID, err := uuid.Parse(endpointIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_ID",
-				"message": "Invalid endpoint ID format",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_ID", Message: "Invalid endpoint ID format"})
 		return
 	}
 
 	var req UpdateWebhookEndpointRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request format",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
 		return
 	}
 
@@ -436,12 +456,7 @@ func (h *WebhookHandler) UpdateWebhookEndpoint(c *gin.Context) {
 	endpoint, err := h.webhookRepo.GetByID(c.Request.Context(), endpointID)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": map[string]interface{}{
-					"code":    "ENDPOINT_NOT_FOUND",
-					"message": "Webhook endpoint not found",
-				},
-			})
+			c.JSON(http.StatusNotFound, ErrorResponse{Code: "ENDPOINT_NOT_FOUND", Message: "Webhook endpoint not found"})
 			return
 		}
 
@@ -449,36 +464,20 @@ func (h *WebhookHandler) UpdateWebhookEndpoint(c *gin.Context) {
 			"error":       err.Error(),
 			"endpoint_id": endpointID,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve webhook endpoint"})
 		return
 	}
 
 	// Verify tenant ownership
 	if endpoint.TenantID != tenantID {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": map[string]interface{}{
-				"code":    "FORBIDDEN",
-				"message": "Access denied to this webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusForbidden, ErrorResponse{Code: "FORBIDDEN", Message: "Access denied to this webhook endpoint"})
 		return
 	}
 
 	// Update fields if provided
 	if req.URL != nil {
 		if err := h.urlValidator.ValidateWebhookURL(*req.URL); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": map[string]interface{}{
-					"code":    "INVALID_URL",
-					"message": "Invalid webhook URL",
-					"details": err.Error(),
-				},
-			})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_URL", Message: "Invalid webhook URL", Details: err.Error()})
 			return
 		}
 
@@ -498,10 +497,18 @@ func (h *WebhookHandler) UpdateWebhookEndpoint(c *gin.Context) {
 	}
 
 	if req.CustomHeaders != nil {
+		if err := validateCustomHeaders(req.CustomHeaders); err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_HEADERS", Message: err.Error()})
+			return
+		}
 		endpoint.CustomHeaders = req.CustomHeaders
 	}
 
 	if req.RetryConfig != nil {
+		if err := validateRetryConfig(req.RetryConfig); err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_RETRY_CONFIG", Message: err.Error()})
+			return
+		}
 		if req.RetryConfig.MaxAttempts > 0 {
 			endpoint.RetryConfig.MaxAttempts = req.RetryConfig.MaxAttempts
 		}
@@ -518,13 +525,7 @@ func (h *WebhookHandler) UpdateWebhookEndpoint(c *gin.Context) {
 
 	// Validate updated endpoint
 	if err := models.ValidateWebhookEndpoint(endpoint); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "VALIDATION_ERROR",
-				"message": "Invalid webhook endpoint data",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "VALIDATION_ERROR", Message: "Invalid webhook endpoint data", Details: err.Error()})
 		return
 	}
 
@@ -535,12 +536,7 @@ func (h *WebhookHandler) UpdateWebhookEndpoint(c *gin.Context) {
 			"endpoint_id": endpointID,
 			"tenant_id":   tenantID,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to update webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to update webhook endpoint"})
 		return
 	}
 
@@ -583,12 +579,7 @@ func (h *WebhookHandler) DeleteWebhookEndpoint(c *gin.Context) {
 	endpointIDStr := c.Param("id")
 	endpointID, err := uuid.Parse(endpointIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_ID",
-				"message": "Invalid endpoint ID format",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_ID", Message: "Invalid endpoint ID format"})
 		return
 	}
 
@@ -602,12 +593,7 @@ func (h *WebhookHandler) DeleteWebhookEndpoint(c *gin.Context) {
 	endpoint, err := h.webhookRepo.GetByID(c.Request.Context(), endpointID)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": map[string]interface{}{
-					"code":    "ENDPOINT_NOT_FOUND",
-					"message": "Webhook endpoint not found",
-				},
-			})
+			c.JSON(http.StatusNotFound, ErrorResponse{Code: "ENDPOINT_NOT_FOUND", Message: "Webhook endpoint not found"})
 			return
 		}
 
@@ -615,23 +601,13 @@ func (h *WebhookHandler) DeleteWebhookEndpoint(c *gin.Context) {
 			"error":       err.Error(),
 			"endpoint_id": endpointID,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve webhook endpoint"})
 		return
 	}
 
 	// Verify tenant ownership
 	if endpoint.TenantID != tenantID {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": map[string]interface{}{
-				"code":    "FORBIDDEN",
-				"message": "Access denied to this webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusForbidden, ErrorResponse{Code: "FORBIDDEN", Message: "Access denied to this webhook endpoint"})
 		return
 	}
 
@@ -642,12 +618,7 @@ func (h *WebhookHandler) DeleteWebhookEndpoint(c *gin.Context) {
 			"endpoint_id": endpointID,
 			"tenant_id":   tenantID,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to delete webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to delete webhook endpoint"})
 		return
 	}
 

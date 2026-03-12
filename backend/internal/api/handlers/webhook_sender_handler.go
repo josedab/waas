@@ -63,13 +63,7 @@ type BatchSendWebhookResponse struct {
 func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 	var req SendWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request format",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
 		return
 	}
 
@@ -82,14 +76,12 @@ func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 	// Validate payload size (1MB limit)
 	const maxPayloadSize = 1024 * 1024 // 1MB
 	if len(req.Payload) > maxPayloadSize {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "PAYLOAD_TOO_LARGE",
-				"message": "Webhook payload exceeds maximum size limit",
-				"details": map[string]interface{}{
-					"maxSizeBytes":    maxPayloadSize,
-					"actualSizeBytes": len(req.Payload),
-				},
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Code:    "PAYLOAD_TOO_LARGE",
+			Message: "Webhook payload exceeds maximum size limit",
+			Details: map[string]interface{}{
+				"maxSizeBytes":    maxPayloadSize,
+				"actualSizeBytes": len(req.Payload),
 			},
 		})
 		return
@@ -98,13 +90,7 @@ func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 	// Validate payload is valid JSON
 	var payloadTest interface{}
 	if err := json.Unmarshal(req.Payload, &payloadTest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_PAYLOAD",
-				"message": "Webhook payload must be valid JSON",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_PAYLOAD", Message: "Webhook payload must be valid JSON", Details: err.Error()})
 		return
 	}
 
@@ -116,12 +102,7 @@ func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 		endpoint, err := h.webhookRepo.GetByID(c.Request.Context(), *req.EndpointID)
 		if err != nil {
 			if errors.Is(err, apperrors.ErrNotFound) {
-				c.JSON(http.StatusNotFound, gin.H{
-					"error": map[string]interface{}{
-						"code":    "ENDPOINT_NOT_FOUND",
-						"message": "Webhook endpoint not found",
-					},
-				})
+				c.JSON(http.StatusNotFound, ErrorResponse{Code: "ENDPOINT_NOT_FOUND", Message: "Webhook endpoint not found"})
 				return
 			}
 
@@ -129,34 +110,19 @@ func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 				"error":       err.Error(),
 				"endpoint_id": *req.EndpointID,
 			})
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": map[string]interface{}{
-					"code":    "DATABASE_ERROR",
-					"message": "Failed to retrieve webhook endpoint",
-				},
-			})
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve webhook endpoint"})
 			return
 		}
 
 		// Verify tenant ownership
 		if endpoint.TenantID != tenantID {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": map[string]interface{}{
-					"code":    "FORBIDDEN",
-					"message": "Access denied to this webhook endpoint",
-				},
-			})
+			c.JSON(http.StatusForbidden, ErrorResponse{Code: "FORBIDDEN", Message: "Access denied to this webhook endpoint"})
 			return
 		}
 
 		// Check if endpoint is active
 		if !endpoint.IsActive {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": map[string]interface{}{
-					"code":    "ENDPOINT_INACTIVE",
-					"message": "Webhook endpoint is not active",
-				},
-			})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Code: "ENDPOINT_INACTIVE", Message: "Webhook endpoint is not active"})
 			return
 		}
 
@@ -169,22 +135,12 @@ func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 				"error":     err.Error(),
 				"tenant_id": tenantID,
 			})
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": map[string]interface{}{
-					"code":    "DATABASE_ERROR",
-					"message": "Failed to retrieve webhook endpoints",
-				},
-			})
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve webhook endpoints"})
 			return
 		}
 
 		if len(endpoints) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": map[string]interface{}{
-					"code":    "NO_ACTIVE_ENDPOINTS",
-					"message": "No active webhook endpoints found for tenant",
-				},
-			})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Code: "NO_ACTIVE_ENDPOINTS", Message: "No active webhook endpoints found for tenant"})
 			return
 		}
 	}
@@ -206,12 +162,7 @@ func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 	}
 
 	if len(responses) == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DELIVERY_QUEUE_ERROR",
-				"message": "Failed to queue webhook deliveries",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DELIVERY_QUEUE_ERROR", Message: "Failed to queue webhook deliveries"})
 		return
 	}
 
@@ -244,13 +195,7 @@ func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 	var req BatchSendWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request format",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
 		return
 	}
 
@@ -260,17 +205,25 @@ func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 		return
 	}
 
+	// Validate batch size
+	const maxBatchSize = 1000
+	if len(req.EndpointIDs) > maxBatchSize {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Code:    "BATCH_TOO_LARGE",
+			Message: fmt.Sprintf("Batch size %d exceeds maximum of %d endpoints", len(req.EndpointIDs), maxBatchSize),
+		})
+		return
+	}
+
 	// Validate payload size (1MB limit)
 	const maxPayloadSize = 1024 * 1024 // 1MB
 	if len(req.Payload) > maxPayloadSize {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "PAYLOAD_TOO_LARGE",
-				"message": "Webhook payload exceeds maximum size limit",
-				"details": map[string]interface{}{
-					"maxSizeBytes":    maxPayloadSize,
-					"actualSizeBytes": len(req.Payload),
-				},
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Code:    "PAYLOAD_TOO_LARGE",
+			Message: "Webhook payload exceeds maximum size limit",
+			Details: map[string]interface{}{
+				"maxSizeBytes":    maxPayloadSize,
+				"actualSizeBytes": len(req.Payload),
 			},
 		})
 		return
@@ -279,13 +232,7 @@ func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 	// Validate payload is valid JSON
 	var payloadTest interface{}
 	if err := json.Unmarshal(req.Payload, &payloadTest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_PAYLOAD",
-				"message": "Webhook payload must be valid JSON",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_PAYLOAD", Message: "Webhook payload must be valid JSON", Details: err.Error()})
 		return
 	}
 
@@ -326,23 +273,13 @@ func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 				"error":     err.Error(),
 				"tenant_id": tenantID,
 			})
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": map[string]interface{}{
-					"code":    "DATABASE_ERROR",
-					"message": "Failed to retrieve webhook endpoints",
-				},
-			})
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve webhook endpoints"})
 			return
 		}
 	}
 
 	if len(endpoints) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "NO_ACTIVE_ENDPOINTS",
-				"message": "No active webhook endpoints found for batch send",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "NO_ACTIVE_ENDPOINTS", Message: "No active webhook endpoints found for batch send"})
 		return
 	}
 
