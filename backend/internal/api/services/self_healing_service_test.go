@@ -336,3 +336,211 @@ func TestSelfHealingService_GetPredictions_DefaultLimit(t *testing.T) {
 	assert.Empty(t, preds)
 	repo.AssertExpectations(t)
 }
+
+// --- Direct tests for calculateFailureProbability ---
+
+func TestCalculateFailureProbability_AllZero(t *testing.T) {
+	t.Parallel()
+	svc := NewSelfHealingService(nil, utils.NewLogger("test"))
+	features := &models.MLFeatureVector{
+		SuccessRate1h:        1.0,
+		SuccessRate24h:       1.0,
+		ErrorRate1h:          0,
+		ErrorRate24h:         0,
+		AvgResponseTime1h:    0,
+		ConsecutiveFailures:  0,
+		TimeSinceLastFailure: 7200, // > 1 hour
+	}
+	prob := svc.calculateFailureProbability(features)
+	assert.Equal(t, 0.0, prob)
+}
+
+func TestCalculateFailureProbability_AllWorst(t *testing.T) {
+	t.Parallel()
+	svc := NewSelfHealingService(nil, utils.NewLogger("test"))
+	features := &models.MLFeatureVector{
+		SuccessRate1h:        0.0,
+		SuccessRate24h:       0.0,
+		ErrorRate1h:          1.0,
+		ErrorRate24h:         1.0,
+		AvgResponseTime1h:    6000,
+		ConsecutiveFailures:  50,
+		TimeSinceLastFailure: 300,
+	}
+	prob := svc.calculateFailureProbability(features)
+	assert.Equal(t, 1.0, prob) // capped at 1.0
+}
+
+func TestCalculateFailureProbability_ErrorRateWeight(t *testing.T) {
+	t.Parallel()
+	svc := NewSelfHealingService(nil, utils.NewLogger("test"))
+
+	// High ErrorRate1h (1.0) → contribution = 0.3
+	features := &models.MLFeatureVector{
+		SuccessRate1h:        1.0,
+		SuccessRate24h:       1.0,
+		ErrorRate1h:          1.0,
+		ErrorRate24h:         0,
+		TimeSinceLastFailure: 7200,
+	}
+	prob := svc.calculateFailureProbability(features)
+	assert.InDelta(t, 0.3, prob, 0.001)
+}
+
+func TestCalculateFailureProbability_SuccessRateWeight(t *testing.T) {
+	t.Parallel()
+	svc := NewSelfHealingService(nil, utils.NewLogger("test"))
+
+	// SuccessRate1h = 0.0 → contribution = (1-0)*0.2 = 0.2
+	features := &models.MLFeatureVector{
+		SuccessRate1h:        0.0,
+		SuccessRate24h:       1.0, // no contribution from 24h
+		ErrorRate1h:          0,
+		ErrorRate24h:         0,
+		TimeSinceLastFailure: 7200,
+	}
+	prob := svc.calculateFailureProbability(features)
+	assert.InDelta(t, 0.2, prob, 0.001)
+
+	// SuccessRate1h = 1.0 → contribution = 0
+	features2 := &models.MLFeatureVector{
+		SuccessRate1h:        1.0,
+		SuccessRate24h:       1.0,
+		TimeSinceLastFailure: 7200,
+	}
+	prob2 := svc.calculateFailureProbability(features2)
+	assert.Equal(t, 0.0, prob2)
+}
+
+func TestCalculateFailureProbability_ResponseTimeThresholds(t *testing.T) {
+	t.Parallel()
+	svc := NewSelfHealingService(nil, utils.NewLogger("test"))
+
+	tests := []struct {
+		name     string
+		respTime float64
+		expected float64
+	}{
+		{"above 5s threshold", 5001, 0.15},
+		{"above 2s threshold", 2001, 0.08},
+		{"below 2s threshold", 1999, 0.0},
+		{"exactly 5000", 5000, 0.08}, // not > 5000, so falls to > 2000
+		{"exactly 2000", 2000, 0.0},  // not > 2000
+		{"zero", 0, 0.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			features := &models.MLFeatureVector{
+				SuccessRate1h:        1.0,
+				SuccessRate24h:       1.0,
+				AvgResponseTime1h:    tt.respTime,
+				TimeSinceLastFailure: 7200,
+			}
+			prob := svc.calculateFailureProbability(features)
+			assert.InDelta(t, tt.expected, prob, 0.001)
+		})
+	}
+}
+
+func TestCalculateFailureProbability_ConsecutiveFailures(t *testing.T) {
+	t.Parallel()
+	svc := NewSelfHealingService(nil, utils.NewLogger("test"))
+
+	tests := []struct {
+		name     string
+		failures int
+		expected float64
+	}{
+		{"0 failures", 0, 0.0},
+		{"1 failure", 1, 0.02},
+		{"10 failures", 10, 0.20},
+		{"50 failures", 50, 1.0}, // 1.0 due to cap
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			features := &models.MLFeatureVector{
+				SuccessRate1h:        1.0,
+				SuccessRate24h:       1.0,
+				ConsecutiveFailures:  tt.failures,
+				TimeSinceLastFailure: 7200,
+			}
+			prob := svc.calculateFailureProbability(features)
+			assert.InDelta(t, tt.expected, prob, 0.001)
+		})
+	}
+}
+
+func TestCalculateFailureProbability_RecentFailure(t *testing.T) {
+	t.Parallel()
+	svc := NewSelfHealingService(nil, utils.NewLogger("test"))
+
+	// < 1 hour → +0.1
+	features := &models.MLFeatureVector{
+		SuccessRate1h:        1.0,
+		SuccessRate24h:       1.0,
+		TimeSinceLastFailure: 1800, // 30 minutes
+	}
+	prob := svc.calculateFailureProbability(features)
+	assert.InDelta(t, 0.1, prob, 0.001)
+
+	// > 1 hour → +0
+	features2 := &models.MLFeatureVector{
+		SuccessRate1h:        1.0,
+		SuccessRate24h:       1.0,
+		TimeSinceLastFailure: 3601,
+	}
+	prob2 := svc.calculateFailureProbability(features2)
+	assert.Equal(t, 0.0, prob2)
+}
+
+func TestCalculateFailureProbability_OutputCapping(t *testing.T) {
+	t.Parallel()
+	svc := NewSelfHealingService(nil, utils.NewLogger("test"))
+
+	// Sum would exceed 1.0 without capping
+	features := &models.MLFeatureVector{
+		SuccessRate1h:        0.0,     // +0.2
+		SuccessRate24h:       0.0,     // +0.1
+		ErrorRate1h:          1.0,     // +0.3
+		ErrorRate24h:         1.0,     // +0.15
+		AvgResponseTime1h:    6000,    // +0.15
+		ConsecutiveFailures:  20,      // +0.40
+		TimeSinceLastFailure: 300,     // +0.1
+	}
+	// Total = 0.2+0.1+0.3+0.15+0.15+0.4+0.1 = 1.40 → capped to 1.0
+	prob := svc.calculateFailureProbability(features)
+	assert.Equal(t, 1.0, prob)
+}
+
+func TestCalculateFailureProbability_CombinedFactors(t *testing.T) {
+	t.Parallel()
+	svc := NewSelfHealingService(nil, utils.NewLogger("test"))
+
+	features := &models.MLFeatureVector{
+		SuccessRate1h:        0.5,    // (1-0.5)*0.2 = 0.1
+		SuccessRate24h:       0.8,    // (1-0.8)*0.1 = 0.02
+		ErrorRate1h:          0.5,    // 0.5*0.3 = 0.15
+		ErrorRate24h:         0.3,    // 0.3*0.15 = 0.045
+		AvgResponseTime1h:    3000,   // > 2000 → +0.08
+		ConsecutiveFailures:  5,      // 5*0.02 = 0.10
+		TimeSinceLastFailure: 1800,   // < 3600 → +0.1
+	}
+	// Expected: 0.1 + 0.02 + 0.15 + 0.045 + 0.08 + 0.10 + 0.1 = 0.595
+	prob := svc.calculateFailureProbability(features)
+	assert.InDelta(t, 0.595, prob, 0.001)
+}
+
+func TestCalculateFailureProbability_ZeroTimeSinceLastFailure(t *testing.T) {
+	t.Parallel()
+	svc := NewSelfHealingService(nil, utils.NewLogger("test"))
+
+	features := &models.MLFeatureVector{
+		SuccessRate1h:        1.0,
+		SuccessRate24h:       1.0,
+		TimeSinceLastFailure: 0, // 0 < 3600, so +0.1
+	}
+	prob := svc.calculateFailureProbability(features)
+	assert.InDelta(t, 0.1, prob, 0.001)
+}
