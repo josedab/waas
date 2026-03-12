@@ -2,8 +2,10 @@ package utils
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -40,6 +42,27 @@ func LoadConfig() (*Config, error) {
 
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("❌ required environment variable(s) not set: %s. Run 'make ensure-env' first", joinStrings(missing, ", "))
+	}
+
+	// Validate port values are in valid range
+	var configErrors []string
+	if err := validatePort(cfg.APIPort, "API_PORT"); err != nil {
+		configErrors = append(configErrors, err.Error())
+	}
+	if err := validatePort(cfg.AnalyticsPort, "ANALYTICS_PORT"); err != nil {
+		configErrors = append(configErrors, err.Error())
+	}
+
+	// Validate URL formats
+	if err := validateDatabaseURL(cfg.DatabaseURL); err != nil {
+		configErrors = append(configErrors, err.Error())
+	}
+	if err := validateRedisURL(cfg.RedisURL); err != nil {
+		configErrors = append(configErrors, err.Error())
+	}
+
+	if len(configErrors) > 0 {
+		return nil, fmt.Errorf("❌ configuration error(s): %s", joinStrings(configErrors, "; "))
 	}
 
 	// Reject known-weak default values that indicate unmodified .env.example
@@ -98,4 +121,35 @@ func getEnvAsInt(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
+}
+
+func validatePort(port, name string) error {
+	p, err := strconv.Atoi(port)
+	if err != nil {
+		return fmt.Errorf("%s=%q is not a valid integer", name, port)
+	}
+	if p < 1 || p > 65535 {
+		return fmt.Errorf("%s=%d is out of range (must be 1-65535)", name, p)
+	}
+	return nil
+}
+
+func validateDatabaseURL(rawURL string) error {
+	if !strings.HasPrefix(rawURL, "postgres://") && !strings.HasPrefix(rawURL, "postgresql://") {
+		return fmt.Errorf("DATABASE_URL must start with postgres:// or postgresql://")
+	}
+	if _, err := url.Parse(rawURL); err != nil {
+		return fmt.Errorf("DATABASE_URL is not a valid URL: %v", err)
+	}
+	return nil
+}
+
+func validateRedisURL(rawURL string) error {
+	if !strings.HasPrefix(rawURL, "redis://") && !strings.HasPrefix(rawURL, "rediss://") {
+		return fmt.Errorf("REDIS_URL must start with redis:// or rediss://")
+	}
+	if _, err := url.Parse(rawURL); err != nil {
+		return fmt.Errorf("REDIS_URL is not a valid URL: %v", err)
+	}
+	return nil
 }
