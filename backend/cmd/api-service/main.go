@@ -25,12 +25,18 @@
 package main
 
 import (
-	"github.com/josedab/waas/internal/api"
-	_ "github.com/josedab/waas/docs"
-	"github.com/josedab/waas/pkg/utils"
+	"context"
+	"net/http"
 	"os"
+	"os/signal"
 	"strings"
-	
+	"syscall"
+	"time"
+
+	_ "github.com/josedab/waas/docs"
+	"github.com/josedab/waas/internal/api"
+	"github.com/josedab/waas/pkg/utils"
+
 	// Import feature packages for swagger doc generation
 	_ "github.com/josedab/waas/pkg/costing"
 	_ "github.com/josedab/waas/pkg/embed"
@@ -46,7 +52,7 @@ var logger = utils.NewLogger("api-service")
 
 func main() {
 	logger.Info("Starting Webhook API Service...", nil)
-	
+
 	server, err := api.NewServer()
 	if err != nil {
 		logger.Error("Failed to initialize API service", map[string]interface{}{"error": err.Error()})
@@ -57,10 +63,36 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	if err := server.Start(":" + port); err != nil {
-		logger.Error("Failed to start API service", map[string]interface{}{"error": err.Error()})
-		os.Exit(1)
+
+	addr := ":" + port
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: server.Router(),
 	}
+
+	// Start HTTP server in a goroutine so we can listen for shutdown signals
+	go func() {
+		logger.Info("API server listening", map[string]interface{}{"address": addr})
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("Failed to start API service", map[string]interface{}{"error": err.Error()})
+			os.Exit(1)
+		}
+	}()
+
+	// Wait for SIGINT or SIGTERM
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	logger.Info("Received signal, shutting down gracefully...", map[string]interface{}{"signal": sig.String()})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Error("HTTP server shutdown error", map[string]interface{}{"error": err.Error()})
+	}
+
+	logger.Info("API service stopped", nil)
 }
 
 // logStartupHint inspects an initialization error and logs actionable guidance.
