@@ -116,6 +116,16 @@ func (r *webhookEndpointRepository) GetByTenantID(ctx context.Context, tenantID 
 	return r.queryEndpoints(ctx, query, tenantID, limit, offset)
 }
 
+func (r *webhookEndpointRepository) CountByTenantID(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	query := `SELECT COUNT(*) FROM webhook_endpoints WHERE tenant_id = $1`
+	var count int
+	err := r.db.Pool.QueryRow(ctx, query, tenantID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count webhook endpoints: %w", err)
+	}
+	return count, nil
+}
+
 func (r *webhookEndpointRepository) GetActiveByTenantID(ctx context.Context, tenantID uuid.UUID) ([]*models.WebhookEndpoint, error) {
 	query := `
 		SELECT id, tenant_id, url, secret_hash, is_active, retry_config, custom_headers, created_at, updated_at

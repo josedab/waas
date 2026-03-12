@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"time"
 	"github.com/josedab/waas/pkg/models"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -24,6 +24,7 @@ type WebhookEndpointRepository interface {
 	Create(ctx context.Context, endpoint *models.WebhookEndpoint) error
 	GetByID(ctx context.Context, id uuid.UUID) (*models.WebhookEndpoint, error)
 	GetByTenantID(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*models.WebhookEndpoint, error)
+	CountByTenantID(ctx context.Context, tenantID uuid.UUID) (int, error)
 	GetActiveByTenantID(ctx context.Context, tenantID uuid.UUID) ([]*models.WebhookEndpoint, error)
 	Update(ctx context.Context, endpoint *models.WebhookEndpoint) error
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -61,13 +62,13 @@ type QuotaRepository interface {
 	UpdateQuotaUsage(ctx context.Context, usage *models.QuotaUsage) error
 	IncrementUsage(ctx context.Context, tenantID uuid.UUID, success bool) error
 	GetQuotaUsageByTenant(ctx context.Context, tenantID uuid.UUID, month time.Time) (*models.QuotaUsage, error)
-	
+
 	// Billing operations
 	CreateBillingRecord(ctx context.Context, record *models.BillingRecord) error
 	GetBillingRecord(ctx context.Context, tenantID uuid.UUID, billingPeriod time.Time) (*models.BillingRecord, error)
 	UpdateBillingRecord(ctx context.Context, record *models.BillingRecord) error
 	GetBillingHistory(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*models.BillingRecord, error)
-	
+
 	// Notification operations
 	CreateQuotaNotification(ctx context.Context, notification *models.QuotaNotification) error
 	GetPendingNotifications(ctx context.Context, tenantID uuid.UUID) ([]*models.QuotaNotification, error)
