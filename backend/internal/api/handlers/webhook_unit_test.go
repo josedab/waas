@@ -103,6 +103,16 @@ func (m *mockWebhookRepo) UpdateStatus(_ context.Context, id uuid.UUID, active b
 	return m.SetActive(nil, id, active)
 }
 
+func (m *mockWebhookRepo) CountByTenantID(_ context.Context, tenantID uuid.UUID) (int, error) {
+	count := 0
+	for _, ep := range m.endpoints {
+		if ep.TenantID == tenantID {
+			count++
+		}
+	}
+	return count, nil
+}
+
 // mockDeliveryAttemptRepo implements repository.DeliveryAttemptRepository
 type mockDeliveryAttemptRepo struct {
 	attempts  map[uuid.UUID]*models.DeliveryAttempt
@@ -167,6 +177,7 @@ func setupWebhookUnitTest(repo *mockWebhookRepo, deliveryRepo *mockDeliveryAttem
 	}
 
 	handler := NewWebhookHandler(repo, deliveryRepo, publisher, logger)
+	handler.SetURLValidator(&formatOnlyURLValidator{})
 	tenantID := uuid.New()
 
 	router := gin.New()
@@ -320,10 +331,9 @@ func TestWebhookEndpointUnit_CreateDatabaseFailure(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 
-	var resp map[string]interface{}
+	var resp ErrorResponse
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	errObj := resp["error"].(map[string]interface{})
-	assert.Equal(t, "DATABASE_ERROR", errObj["code"])
+	assert.Equal(t, "DATABASE_ERROR", resp.Code)
 }
 
 func TestWebhookEndpointUnit_TenantIsolation(t *testing.T) {
@@ -331,6 +341,7 @@ func TestWebhookEndpointUnit_TenantIsolation(t *testing.T) {
 	logger := utils.NewLogger("test")
 	publisher := queue.NewTestPublisher()
 	handler := NewWebhookHandler(repo, newMockDeliveryAttemptRepo(), publisher, logger)
+	handler.SetURLValidator(&noopURLValidator{})
 
 	tenant1 := uuid.New()
 	tenant2 := uuid.New()
@@ -469,6 +480,7 @@ func TestWebhookEndpointUnit_NoTenantContext(t *testing.T) {
 	logger := utils.NewLogger("test")
 	publisher := queue.NewTestPublisher()
 	handler := NewWebhookHandler(repo, newMockDeliveryAttemptRepo(), publisher, logger)
+	handler.SetURLValidator(&noopURLValidator{})
 
 	router := gin.New()
 	// No tenant_id middleware
@@ -682,10 +694,9 @@ func TestWebhookSenderUnit_SendToInactiveEndpoint(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
-	var resp map[string]interface{}
+	var resp ErrorResponse
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	errObj := resp["error"].(map[string]interface{})
-	assert.Equal(t, "ENDPOINT_INACTIVE", errObj["code"])
+	assert.Equal(t, "ENDPOINT_INACTIVE", resp.Code)
 }
 
 func TestWebhookSenderUnit_SendToNonexistentEndpoint(t *testing.T) {

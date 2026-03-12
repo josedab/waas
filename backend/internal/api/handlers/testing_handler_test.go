@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/josedab/waas/pkg/models"
+	"github.com/josedab/waas/pkg/queue"
+	"github.com/josedab/waas/pkg/repository"
+	"github.com/josedab/waas/pkg/utils"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
-	"github.com/josedab/waas/pkg/models"
-	"github.com/josedab/waas/pkg/queue"
-	"github.com/josedab/waas/pkg/repository"
-	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -64,6 +64,11 @@ func (m *MockWebhookRepo) SetActive(ctx context.Context, id uuid.UUID, active bo
 func (m *MockWebhookRepo) UpdateStatus(ctx context.Context, id uuid.UUID, active bool) error {
 	args := m.Called(ctx, id, active)
 	return args.Error(0)
+}
+
+func (m *MockWebhookRepo) CountByTenantID(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	args := m.Called(ctx, tenantID)
+	return args.Int(0), args.Error(1)
 }
 
 type MockDeliveryAttemptRepo struct {
@@ -164,8 +169,10 @@ func TestTestingHandler_TestWebhook(t *testing.T) {
 	logger := utils.NewTestLogger()
 
 	handler := NewTestingHandler(mockWebhookRepo, mockDeliveryRepo, mockPublisher, logger)
-
-	// Setup test server to receive webhook
+	handler.SetURLValidator(&noopURLValidator{})
+	handler.SetHTTPClientFactory(func(timeout time.Duration) *http.Client {
+		return &http.Client{Timeout: timeout}
+	})
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status": "received"}`))
@@ -222,6 +229,7 @@ func TestTestingHandler_TestWebhookInvalidURL(t *testing.T) {
 	logger := utils.NewTestLogger()
 
 	handler := NewTestingHandler(mockWebhookRepo, mockDeliveryRepo, mockPublisher, logger)
+	// Use the default URL validator (not noop) so invalid URLs are properly rejected
 
 	// Create test request with invalid URL
 	testReq := TestWebhookRequest{
@@ -242,15 +250,13 @@ func TestTestingHandler_TestWebhookInvalidURL(t *testing.T) {
 	// Execute handler
 	handler.TestWebhook(c)
 
-	// Verify response
+	// Verify response - invalid URL should be rejected by the URL validator
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
-	var response map[string]interface{}
+	var response ErrorResponse
 	err = json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-
-	errorInfo := response["error"].(map[string]interface{})
-	assert.Equal(t, "INVALID_URL", errorInfo["code"])
+	assert.Equal(t, "INVALID_URL", response.Code)
 }
 
 func TestTestingHandler_CreateTestEndpoint(t *testing.T) {
@@ -263,6 +269,7 @@ func TestTestingHandler_CreateTestEndpoint(t *testing.T) {
 	logger := utils.NewTestLogger()
 
 	handler := NewTestingHandler(mockWebhookRepo, mockDeliveryRepo, mockPublisher, logger)
+	handler.SetURLValidator(&noopURLValidator{})
 
 	// Create test request
 	testReq := CreateTestEndpointRequest{
@@ -312,6 +319,7 @@ func TestTestingHandler_InspectDelivery(t *testing.T) {
 	logger := utils.NewTestLogger()
 
 	handler := NewTestingHandler(mockWebhookRepo, mockDeliveryRepo, mockPublisher, logger)
+	handler.SetURLValidator(&noopURLValidator{})
 
 	// Test data
 	tenantID := uuid.New()
@@ -319,11 +327,11 @@ func TestTestingHandler_InspectDelivery(t *testing.T) {
 	endpointID := uuid.New()
 
 	endpoint := &models.WebhookEndpoint{
-		ID:       endpointID,
-		TenantID: tenantID,
-		URL:      "https://example.com/webhook",
+		ID:         endpointID,
+		TenantID:   tenantID,
+		URL:        "https://example.com/webhook",
 		SecretHash: "secret-hash",
-		IsActive: true,
+		IsActive:   true,
 		CustomHeaders: map[string]string{
 			"X-Custom": "value",
 		},
@@ -401,6 +409,7 @@ func TestTestingHandler_GetDeliveryLogs(t *testing.T) {
 	logger := utils.NewTestLogger()
 
 	handler := NewTestingHandler(mockWebhookRepo, mockDeliveryRepo, mockPublisher, logger)
+	handler.SetURLValidator(&noopURLValidator{})
 
 	// Test data
 	tenantID := uuid.New()
@@ -475,6 +484,7 @@ func TestTestingHandler_BuildErrorDetails(t *testing.T) {
 	logger := utils.NewTestLogger()
 
 	handler := NewTestingHandler(mockWebhookRepo, mockDeliveryRepo, mockPublisher, logger)
+	handler.SetURLValidator(&noopURLValidator{})
 
 	// Test timeout error
 	timeoutAttempt := &models.DeliveryAttempt{

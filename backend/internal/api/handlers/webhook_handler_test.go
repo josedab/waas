@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 	"github.com/josedab/waas/pkg/database"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/utils"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -22,6 +23,11 @@ import (
 func setupWebhookTestRouter(t *testing.T) (*gin.Engine, *database.DB, repository.TenantRepository, repository.WebhookEndpointRepository, *models.Tenant) {
 	// Set Gin to test mode
 	gin.SetMode(gin.TestMode)
+
+	// Skip integration tests when database is not available
+	if os.Getenv("TEST_DATABASE_URL") == "" {
+		t.Skip("Skipping integration test: TEST_DATABASE_URL not set")
+	}
 
 	// Create test database connection
 	db, err := database.NewTestConnection()
@@ -41,25 +47,25 @@ func setupWebhookTestRouter(t *testing.T) (*gin.Engine, *database.DB, repository
 	// Create mock delivery attempt repository and publisher for testing
 	deliveryAttemptRepo := repository.NewDeliveryAttemptRepository(db)
 	mockPublisher := queue.NewTestPublisher()
-	
+
 	// Create handlers
 	webhookHandler := NewWebhookHandler(webhookRepo, deliveryAttemptRepo, mockPublisher, logger)
 
 	// Create test tenant
 	tenant := &models.Tenant{
 		ID:                 uuid.New(),
-		Name:              "Test Tenant",
-		APIKeyHash:        "test-api-key-hash",
-		SubscriptionTier:  "basic",
+		Name:               "Test Tenant",
+		APIKeyHash:         "test-api-key-hash",
+		SubscriptionTier:   "basic",
 		RateLimitPerMinute: 100,
-		MonthlyQuota:      10000,
+		MonthlyQuota:       10000,
 	}
 	err = tenantRepo.Create(context.Background(), tenant)
 	require.NoError(t, err)
 
 	// Setup router
 	router := gin.New()
-	
+
 	// Add middleware to set tenant_id in context for testing
 	router.Use(func(c *gin.Context) {
 		c.Set("tenant_id", tenant.ID)
@@ -328,11 +334,11 @@ func TestGetWebhookEndpoint(t *testing.T) {
 	// Create endpoint for different tenant
 	otherTenant := &models.Tenant{
 		ID:                 uuid.New(),
-		Name:              "Other Tenant",
-		APIKeyHash:        "other-api-key-hash",
-		SubscriptionTier:  "basic",
+		Name:               "Other Tenant",
+		APIKeyHash:         "other-api-key-hash",
+		SubscriptionTier:   "basic",
 		RateLimitPerMinute: 100,
-		MonthlyQuota:      10000,
+		MonthlyQuota:       10000,
 	}
 
 	otherEndpoint := &models.WebhookEndpoint{
@@ -400,7 +406,7 @@ func TestGetWebhookEndpoint(t *testing.T) {
 				assert.Equal(t, endpoint.ID.String(), response["id"])
 				assert.Equal(t, endpoint.URL, response["url"])
 				assert.Equal(t, endpoint.IsActive, response["is_active"])
-				
+
 				// Verify no secret is returned
 				_, hasSecret := response["secret"]
 				assert.False(t, hasSecret, "Secret should not be returned")
@@ -556,7 +562,7 @@ func TestUpdateWebhookEndpoint(t *testing.T) {
 				// Check successful response
 				assert.Equal(t, endpoint.ID.String(), response["id"])
 				assert.NotEmpty(t, response["updated_at"])
-				
+
 				// Verify no secret is returned
 				_, hasSecret := response["secret"]
 				assert.False(t, hasSecret, "Secret should not be returned")
@@ -753,6 +759,11 @@ func TestWebhookEndpointValidation(t *testing.T) {
 }
 
 func TestWebhookEndpointTenantIsolation(t *testing.T) {
+	// Skip integration tests when database is not available
+	if os.Getenv("TEST_DATABASE_URL") == "" {
+		t.Skip("Skipping integration test: TEST_DATABASE_URL not set")
+	}
+
 	// Set Gin to test mode
 	gin.SetMode(gin.TestMode)
 
@@ -782,22 +793,22 @@ func TestWebhookEndpointTenantIsolation(t *testing.T) {
 	// Create two test tenants
 	tenant1 := &models.Tenant{
 		ID:                 uuid.New(),
-		Name:              "Tenant 1",
-		APIKeyHash:        "tenant1-api-key-hash",
-		SubscriptionTier:  "basic",
+		Name:               "Tenant 1",
+		APIKeyHash:         "tenant1-api-key-hash",
+		SubscriptionTier:   "basic",
 		RateLimitPerMinute: 100,
-		MonthlyQuota:      10000,
+		MonthlyQuota:       10000,
 	}
 	err = tenantRepo.Create(context.Background(), tenant1)
 	require.NoError(t, err)
 
 	tenant2 := &models.Tenant{
 		ID:                 uuid.New(),
-		Name:              "Tenant 2",
-		APIKeyHash:        "tenant2-api-key-hash",
-		SubscriptionTier:  "basic",
+		Name:               "Tenant 2",
+		APIKeyHash:         "tenant2-api-key-hash",
+		SubscriptionTier:   "basic",
 		RateLimitPerMinute: 100,
-		MonthlyQuota:      10000,
+		MonthlyQuota:       10000,
 	}
 	err = tenantRepo.Create(context.Background(), tenant2)
 	require.NoError(t, err)
@@ -862,7 +873,7 @@ func TestWebhookEndpointTenantIsolation(t *testing.T) {
 
 		endpoints := response["endpoints"].([]interface{})
 		assert.Len(t, endpoints, 1)
-		
+
 		endpoint := endpoints[0].(map[string]interface{})
 		assert.Equal(t, endpoint1.ID.String(), endpoint["id"])
 
@@ -908,9 +919,8 @@ func TestWebhookEndpointTenantIsolation(t *testing.T) {
 
 		endpoints := response["endpoints"].([]interface{})
 		assert.Len(t, endpoints, 1)
-		
+
 		endpoint := endpoints[0].(map[string]interface{})
 		assert.Equal(t, endpoint2.ID.String(), endpoint["id"])
 	})
 }
-

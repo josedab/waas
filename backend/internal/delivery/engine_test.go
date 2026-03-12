@@ -64,6 +64,11 @@ func (m *MockWebhookRepository) UpdateStatus(ctx context.Context, id uuid.UUID, 
 	return args.Error(0)
 }
 
+func (m *MockWebhookRepository) CountByTenantID(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	args := m.Called(ctx, tenantID)
+	return args.Int(0), args.Error(1)
+}
+
 // MockDeliveryRepository is a mock implementation of DeliveryAttemptRepository
 type MockDeliveryRepository struct {
 	mock.Mock
@@ -407,13 +412,13 @@ func TestIsRetryableStatusCode(t *testing.T) {
 		{401, false},
 		{403, false},
 		{404, false},
-		{408, true},  // Request Timeout
+		{408, true}, // Request Timeout
 		{410, false},
-		{429, true},  // Too Many Requests
-		{500, true},  // Internal Server Error
-		{502, true},  // Bad Gateway
-		{503, true},  // Service Unavailable
-		{504, true},  // Gateway Timeout
+		{429, true}, // Too Many Requests
+		{500, true}, // Internal Server Error
+		{502, true}, // Bad Gateway
+		{503, true}, // Service Unavailable
+		{504, true}, // Gateway Timeout
 	}
 
 	for _, tt := range tests {

@@ -127,12 +127,11 @@ func TestInternalErrorGeneric(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 
-	var resp map[string]interface{}
+	var resp ErrorResponse
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	errMsg, ok := resp["error"].(string)
-	require.True(t, ok)
-	assert.Contains(t, errMsg, "Correlation ID:")
-	assert.NotContains(t, errMsg, "sensitive db error")
+	assert.Equal(t, "INTERNAL_ERROR", resp.Code)
+	assert.Contains(t, resp.Message, "Correlation ID:")
+	assert.NotContains(t, resp.Message, "sensitive db error")
 }
 
 func TestRequireTenantID(t *testing.T) {

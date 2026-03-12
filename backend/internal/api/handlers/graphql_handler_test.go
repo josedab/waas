@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/josedab/waas/pkg/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,6 +17,10 @@ func setupGraphQLTest() (*GraphQLHandler, *gin.Engine) {
 	logger := utils.NewLogger("test")
 	handler := NewGraphQLHandler(nil, logger)
 	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("tenant_id", uuid.New())
+		c.Next()
+	})
 	return handler, router
 }
 

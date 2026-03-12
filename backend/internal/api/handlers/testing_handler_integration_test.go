@@ -5,16 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-	"time"
 	"github.com/josedab/waas/pkg/database"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/utils"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
+	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -38,6 +39,11 @@ type TestingHandlerIntegrationTestSuite struct {
 }
 
 func (suite *TestingHandlerIntegrationTestSuite) SetupSuite() {
+	// Skip integration tests when database is not available
+	if os.Getenv("TEST_DATABASE_URL") == "" {
+		suite.T().Skip("Skipping integration tests: TEST_DATABASE_URL not set")
+	}
+
 	// Initialize test database
 	var err error
 	suite.db, err = database.NewTestConnection()
@@ -120,14 +126,14 @@ func (suite *TestingHandlerIntegrationTestSuite) setupRoutes() {
 
 func (suite *TestingHandlerIntegrationTestSuite) cleanDatabase() {
 	ctx := context.Background()
-	
+
 	// Clean tables in correct order (respecting foreign keys)
 	tables := []string{
 		"delivery_attempts",
 		"webhook_endpoints",
 		"tenants",
 	}
-	
+
 	for _, table := range tables {
 		_, err := suite.db.Pool.Exec(ctx, fmt.Sprintf("DELETE FROM %s", table))
 		require.NoError(suite.T(), err)
@@ -253,11 +259,11 @@ func (suite *TestingHandlerIntegrationTestSuite) TestCreateTestEndpoint() {
 func (suite *TestingHandlerIntegrationTestSuite) TestDeliveryInspection() {
 	// Create a webhook endpoint
 	endpoint := &models.WebhookEndpoint{
-		ID:       uuid.New(),
-		TenantID: suite.testTenant.ID,
-		URL:      "https://example.com/webhook",
+		ID:         uuid.New(),
+		TenantID:   suite.testTenant.ID,
+		URL:        "https://example.com/webhook",
 		SecretHash: "secret-hash",
-		IsActive: true,
+		IsActive:   true,
 		RetryConfig: models.RetryConfiguration{
 			MaxAttempts:       3,
 			InitialDelayMs:    1000,
@@ -349,13 +355,13 @@ func (suite *TestingHandlerIntegrationTestSuite) TestDeliveryInspection() {
 func (suite *TestingHandlerIntegrationTestSuite) TestDeliveryLogs() {
 	// Create a webhook endpoint
 	endpoint := &models.WebhookEndpoint{
-		ID:       uuid.New(),
-		TenantID: suite.testTenant.ID,
-		URL:      "https://example.com/webhook",
+		ID:         uuid.New(),
+		TenantID:   suite.testTenant.ID,
+		URL:        "https://example.com/webhook",
 		SecretHash: "secret-hash",
-		IsActive: true,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		IsActive:   true,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	err := suite.webhookRepo.Create(context.Background(), endpoint)
@@ -462,7 +468,7 @@ func (suite *TestingHandlerIntegrationTestSuite) TestTestEndpointReceiver() {
 func (suite *TestingHandlerIntegrationTestSuite) TestWebSocketConnection() {
 	// This test would require a more complex setup with actual WebSocket testing
 	// For now, we'll test that the endpoint exists and returns the expected error for non-WebSocket requests
-	
+
 	req, err := http.NewRequest("GET", "/webhooks/realtime", nil)
 	require.NoError(suite.T(), err)
 

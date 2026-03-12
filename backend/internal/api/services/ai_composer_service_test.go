@@ -115,6 +115,11 @@ func (m *MockWebhookEndpointRepo) UpdateStatus(ctx context.Context, id uuid.UUID
 	return m.Called(ctx, id, active).Error(0)
 }
 
+func (m *MockWebhookEndpointRepo) CountByTenantID(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	args := m.Called(ctx, tenantID)
+	return args.Int(0), args.Error(1)
+}
+
 // --- Mock LLMClient ---
 type MockLLMClient struct {
 	mock.Mock

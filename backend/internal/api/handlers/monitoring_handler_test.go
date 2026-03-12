@@ -5,14 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"time"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/monitoring"
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/utils"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -574,7 +574,7 @@ func (m *MockDeliveryAttemptRepositoryWithFilters) SetDeliveryHistoryForEndpoint
 // TestMonitoringHandler_HealthEndpoints tests health check endpoints
 func TestMonitoringHandler_HealthEndpoints(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	tests := []struct {
 		name           string
 		endpoint       string
@@ -611,7 +611,7 @@ func TestMonitoringHandler_HealthEndpoints(t *testing.T) {
 				var response map[string]interface{}
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Contains(t, response, "error")
+				assert.Contains(t, response, "code")
 			},
 		},
 		{
@@ -647,11 +647,11 @@ func TestMonitoringHandler_HealthEndpoints(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := tt.setupHandler()
-			
+
 			router := gin.New()
 			router.GET(tt.endpoint, func(c *gin.Context) {
 				switch tt.endpoint {
@@ -663,11 +663,11 @@ func TestMonitoringHandler_HealthEndpoints(t *testing.T) {
 					handler.GetLivenessStatus(c)
 				}
 			})
-			
+
 			req, _ := http.NewRequest("GET", tt.endpoint, nil)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.checkResponse != nil {
 				tt.checkResponse(t, w)
@@ -679,7 +679,7 @@ func TestMonitoringHandler_HealthEndpoints(t *testing.T) {
 // TestMonitoringHandler_AlertEndpoints tests alert management endpoints
 func TestMonitoringHandler_AlertEndpoints(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	tests := []struct {
 		name           string
 		endpoint       string
@@ -694,12 +694,12 @@ func TestMonitoringHandler_AlertEndpoints(t *testing.T) {
 			setupHandler: func() *MonitoringHandler {
 				logger := utils.NewLogger("test")
 				alertManager := monitoring.NewAlertManager(logger)
-				
+
 				// Trigger an alert
 				alertManager.EvaluateMetric("test_metric", 10.0, map[string]string{
 					"component": "test",
 				})
-				
+
 				return NewMonitoringHandler(nil, nil, logger, nil, alertManager, nil)
 			},
 			expectedStatus: http.StatusOK,
@@ -723,7 +723,7 @@ func TestMonitoringHandler_AlertEndpoints(t *testing.T) {
 				var response map[string]interface{}
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Contains(t, response, "error")
+				assert.Contains(t, response, "code")
 			},
 		},
 		{
@@ -759,15 +759,15 @@ func TestMonitoringHandler_AlertEndpoints(t *testing.T) {
 				var response map[string]interface{}
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				assert.NoError(t, err)
-				assert.Contains(t, response, "error")
+				assert.Contains(t, response, "code")
 			},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := tt.setupHandler()
-			
+
 			router := gin.New()
 			router.GET(tt.endpoint, func(c *gin.Context) {
 				switch tt.endpoint {
@@ -777,12 +777,12 @@ func TestMonitoringHandler_AlertEndpoints(t *testing.T) {
 					handler.GetAlertHistory(c)
 				}
 			})
-			
+
 			url := tt.endpoint + tt.queryParams
 			req, _ := http.NewRequest("GET", url, nil)
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.checkResponse != nil {
 				tt.checkResponse(t, w)
@@ -794,45 +794,46 @@ func TestMonitoringHandler_AlertEndpoints(t *testing.T) {
 // TestMonitoringHandler_MetricsIntegration tests metrics integration
 func TestMonitoringHandler_MetricsIntegration(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	logger := utils.NewLogger("test")
 	metricsRecorder := monitoring.NewMetricsRecorder()
 	alertManager := monitoring.NewAlertManager(logger)
-	
+
 	// Add test notifier to capture alerts
 	testNotifier := &TestNotifier{alerts: make([]*monitoring.Alert, 0)}
 	alertManager.AddNotifier(testNotifier)
-	
+
 	handler := NewMonitoringHandler(nil, nil, logger, nil, alertManager, metricsRecorder)
-	
+
 	// Record some metrics that should trigger alerts
 	metricsRecorder.RecordWebhookDeliveryError("tenant-1", "endpoint-1", "timeout", "408")
 	metricsRecorder.RecordWebhookDeliveryError("tenant-1", "endpoint-1", "timeout", "408")
 	metricsRecorder.RecordWebhookDeliveryError("tenant-1", "endpoint-1", "timeout", "408")
-	
-	// Simulate high failure rate
+
+	// Simulate high failure rate - include "component" label to match HighDeliveryFailureRate rule
 	alertManager.EvaluateMetric("webhook_delivery_failure_rate", 0.1, map[string]string{
 		"tenant_id":   "tenant-1",
 		"endpoint_id": "endpoint-1",
+		"component":   "delivery",
 	})
-	
+
 	// Wait for alert processing
 	time.Sleep(100 * time.Millisecond)
-	
+
 	// Check that alerts were generated
 	router := gin.New()
 	router.GET("/alerts/active", handler.GetActiveAlerts)
-	
+
 	req, _ := http.NewRequest("GET", "/alerts/active", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	
+
 	assert.Equal(t, http.StatusOK, w.Code)
-	
+
 	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	
+
 	count, ok := response["count"].(float64)
 	assert.True(t, ok)
 	assert.Greater(t, int(count), 0, "Expected active alerts")

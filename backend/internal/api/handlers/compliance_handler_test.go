@@ -339,8 +339,8 @@ func TestGetDashboard_MissingTenantID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	// Handler panics on missing tenant_id; gin.Recovery returns 500
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	// Missing tenant_id returns 401 Unauthorized
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 // --- GetProfiles tests ---
@@ -376,7 +376,7 @@ func TestGetProfiles_MissingTenantID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 // --- CreateProfile tests ---
@@ -419,7 +419,7 @@ func TestCreateProfile_MissingTenantID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestCreateProfile_InvalidJSON(t *testing.T) {

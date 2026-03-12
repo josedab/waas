@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
 	"github.com/josedab/waas/pkg/utils"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -33,11 +33,11 @@ func TestSendWebhookUnit(t *testing.T) {
 
 	// Create test endpoint
 	endpoint := &models.WebhookEndpoint{
-		ID:       endpointID,
-		TenantID: tenantID,
-		URL:      "https://api.example.com/webhook",
+		ID:         endpointID,
+		TenantID:   tenantID,
+		URL:        "https://api.example.com/webhook",
 		SecretHash: "secret-hash",
-		IsActive: true,
+		IsActive:   true,
 		RetryConfig: models.RetryConfiguration{
 			MaxAttempts:       5,
 			InitialDelayMs:    1000,
@@ -112,12 +112,11 @@ func TestSendWebhookUnit(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
-		var response map[string]interface{}
+		var response ErrorResponse
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		errorObj := response["error"].(map[string]interface{})
-		assert.Equal(t, "INVALID_REQUEST", errorObj["code"])
+		assert.Equal(t, "INVALID_REQUEST", response.Code)
 	})
 
 	t.Run("Send webhook without tenant context", func(t *testing.T) {
@@ -143,12 +142,11 @@ func TestSendWebhookUnit(t *testing.T) {
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 
-		var response map[string]interface{}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
+		var response2 ErrorResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response2)
 		require.NoError(t, err)
 
-		errorObj := response["error"].(map[string]interface{})
-		assert.Equal(t, "UNAUTHORIZED", errorObj["code"])
+		assert.Equal(t, "UNAUTHORIZED", response2.Code)
 	})
 }
 
@@ -169,11 +167,11 @@ func TestBatchSendWebhookUnit(t *testing.T) {
 
 	// Create test endpoints
 	endpoint1 := &models.WebhookEndpoint{
-		ID:       endpoint1ID,
-		TenantID: tenantID,
-		URL:      "https://api1.example.com/webhook",
+		ID:         endpoint1ID,
+		TenantID:   tenantID,
+		URL:        "https://api1.example.com/webhook",
 		SecretHash: "secret-hash-1",
-		IsActive: true,
+		IsActive:   true,
 		RetryConfig: models.RetryConfiguration{
 			MaxAttempts:       5,
 			InitialDelayMs:    1000,
@@ -183,11 +181,11 @@ func TestBatchSendWebhookUnit(t *testing.T) {
 	}
 
 	endpoint2 := &models.WebhookEndpoint{
-		ID:       endpoint2ID,
-		TenantID: tenantID,
-		URL:      "https://api2.example.com/webhook",
+		ID:         endpoint2ID,
+		TenantID:   tenantID,
+		URL:        "https://api2.example.com/webhook",
 		SecretHash: "secret-hash-2",
-		IsActive: true,
+		IsActive:   true,
 		RetryConfig: models.RetryConfiguration{
 			MaxAttempts:       3,
 			InitialDelayMs:    500,

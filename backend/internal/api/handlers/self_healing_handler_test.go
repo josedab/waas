@@ -305,8 +305,7 @@ func TestSelfHealing_GetDashboard_Success(t *testing.T) {
 }
 
 func TestSelfHealing_GetDashboard_MissingTenantID(t *testing.T) {
-	// Without tenant_id in context, the handler panics on type assertion.
-	// Gin's recovery middleware catches the panic and returns 500.
+	// Without tenant_id in context, RequireTenantID returns 401.
 	handler := NewSelfHealingHandler(nil, utils.NewTestLogger())
 	r := setupSelfHealingRouter(handler, nil)
 	r.GET("/self-healing/dashboard", handler.GetDashboard)
@@ -315,7 +314,7 @@ func TestSelfHealing_GetDashboard_MissingTenantID(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestSelfHealing_GetEndpointAnalysis_Success(t *testing.T) {
