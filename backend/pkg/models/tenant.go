@@ -1,8 +1,8 @@
 package models
 
 import (
-	"time"
 	"github.com/google/uuid"
+	"time"
 )
 
 // Tenant represents an API consumer account with its subscription tier,
@@ -11,6 +11,7 @@ type Tenant struct {
 	ID                 uuid.UUID `json:"id" db:"id"`
 	Name               string    `json:"name" db:"name"`
 	APIKeyHash         string    `json:"-" db:"api_key_hash"`
+	APIKeyLookupHash   string    `json:"-" db:"api_key_lookup_hash"`
 	SubscriptionTier   string    `json:"subscription_tier" db:"subscription_tier"`
 	RateLimitPerMinute int       `json:"rate_limit_per_minute" db:"rate_limit_per_minute"`
 	MonthlyQuota       int       `json:"monthly_quota" db:"monthly_quota"`

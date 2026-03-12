@@ -2,8 +2,8 @@ package auth
 
 import (
 	"context"
-	"time"
 	"github.com/josedab/waas/pkg/models"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -123,14 +123,7 @@ func (m *MockTenantRepository) List(ctx context.Context, limit, offset int) ([]*
 	return args.Get(0).([]*models.Tenant), args.Error(1)
 }
 
-// Helper functions for tests
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
+// minInt returns the smaller of two integers.
 func minInt(a, b int) int {
 	if a < b {
 		return a

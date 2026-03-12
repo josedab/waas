@@ -145,6 +145,18 @@ func (m *MockWebhookEndpointRepository) GetByTenantID(ctx context.Context, tenan
 	return result, nil
 }
 
+func (m *MockWebhookEndpointRepository) CountByTenantID(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	count := 0
+	for _, ep := range m.endpoints {
+		if ep.TenantID == tenantID {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (m *MockWebhookEndpointRepository) GetActiveByTenantID(ctx context.Context, tenantID uuid.UUID) ([]*models.WebhookEndpoint, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

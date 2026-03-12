@@ -22,11 +22,11 @@ func GenerateAPIKey() (string, error) {
 	if _, err := rand.Read(bytes); err != nil {
 		return "", fmt.Errorf("failed to generate random bytes: %w", err)
 	}
-	
+
 	key := base64.URLEncoding.EncodeToString(bytes)
 	// Remove padding and ensure consistent length
 	key = strings.TrimRight(key, "=")
-	
+
 	return APIKeyPrefix + key, nil
 }
 
@@ -51,13 +51,20 @@ func GenerateAPIKeyHash() (apiKey, hash string, err error) {
 	if err != nil {
 		return "", "", err
 	}
-	
+
 	hash, err = HashAPIKey(apiKey)
 	if err != nil {
 		return "", "", err
 	}
-	
+
 	return apiKey, hash, nil
+}
+
+// LookupHash returns a SHA-256 hex digest of the API key for fast DB lookups.
+// Unlike bcrypt, SHA-256 is deterministic, so it can be used in WHERE clauses.
+func LookupHash(apiKey string) string {
+	h := sha256.Sum256([]byte(apiKey))
+	return hex.EncodeToString(h[:])
 }
 
 // ExtractTenantFromAPIKey extracts tenant identifier from API key for quick lookups

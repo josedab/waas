@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -26,8 +28,8 @@ func NewTenantRepository(db *database.DB) TenantRepository {
 
 func (r *tenantRepository) Create(ctx context.Context, tenant *models.Tenant) error {
 	query := `
-		INSERT INTO tenants (id, name, api_key_hash, subscription_tier, rate_limit_per_minute, monthly_quota, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+		INSERT INTO tenants (id, name, api_key_hash, api_key_lookup_hash, subscription_tier, rate_limit_per_minute, monthly_quota, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	now := time.Now()
 	if tenant.ID == uuid.Nil {
@@ -40,6 +42,7 @@ func (r *tenantRepository) Create(ctx context.Context, tenant *models.Tenant) er
 		tenant.ID,
 		tenant.Name,
 		tenant.APIKeyHash,
+		tenant.APIKeyLookupHash,
 		tenant.SubscriptionTier,
 		tenant.RateLimitPerMinute,
 		tenant.MonthlyQuota,
@@ -109,37 +112,68 @@ func (r *tenantRepository) GetByAPIKeyHash(ctx context.Context, apiKeyHash strin
 }
 
 func (r *tenantRepository) FindByAPIKey(ctx context.Context, apiKey string) (*models.Tenant, error) {
-	// Get all tenants and validate API key against each hash
-	// This is necessary because bcrypt hashes are one-way
-	query := `
-		SELECT id, name, api_key_hash, subscription_tier, rate_limit_per_minute, monthly_quota, created_at, updated_at
-		FROM tenants`
+	// Compute deterministic SHA-256 lookup hash for O(1) query
+	lookupHash := computeLookupHash(apiKey)
 
-	rows, err := r.db.Pool.Query(ctx, query)
+	// Fast path: direct lookup by api_key_lookup_hash
+	query := `
+		SELECT id, name, api_key_hash, COALESCE(api_key_lookup_hash, ''), subscription_tier, rate_limit_per_minute, monthly_quota, created_at, updated_at
+		FROM tenants
+		WHERE api_key_lookup_hash = $1`
+
+	var tenant models.Tenant
+	err := r.db.Pool.QueryRow(ctx, query, lookupHash).Scan(
+		&tenant.ID,
+		&tenant.Name,
+		&tenant.APIKeyHash,
+		&tenant.APIKeyLookupHash,
+		&tenant.SubscriptionTier,
+		&tenant.RateLimitPerMinute,
+		&tenant.MonthlyQuota,
+		&tenant.CreatedAt,
+		&tenant.UpdatedAt,
+	)
+	if err == nil {
+		// Verify with bcrypt to confirm match
+		if validateAPIKey(apiKey, tenant.APIKeyHash) {
+			return &tenant, nil
+		}
+		// Lookup hash collision (extremely unlikely with SHA-256); fall through
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("failed to query tenant by lookup hash: %w", err)
+	}
+
+	// Slow fallback: scan all tenants without lookup hash (migration compat)
+	fallbackQuery := `
+		SELECT id, name, api_key_hash, COALESCE(api_key_lookup_hash, ''), subscription_tier, rate_limit_per_minute, monthly_quota, created_at, updated_at
+		FROM tenants
+		WHERE api_key_lookup_hash IS NULL OR api_key_lookup_hash = ''`
+
+	rows, err := r.db.Pool.Query(ctx, fallbackQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tenants: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var tenant models.Tenant
+		var t models.Tenant
 		err := rows.Scan(
-			&tenant.ID,
-			&tenant.Name,
-			&tenant.APIKeyHash,
-			&tenant.SubscriptionTier,
-			&tenant.RateLimitPerMinute,
-			&tenant.MonthlyQuota,
-			&tenant.CreatedAt,
-			&tenant.UpdatedAt,
+			&t.ID, &t.Name, &t.APIKeyHash, &t.APIKeyLookupHash,
+			&t.SubscriptionTier, &t.RateLimitPerMinute, &t.MonthlyQuota,
+			&t.CreatedAt, &t.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan tenant: %w", err)
 		}
 
-		// Validate API key against stored hash
-		if validateAPIKey(apiKey, tenant.APIKeyHash) {
-			return &tenant, nil
+		if validateAPIKey(apiKey, t.APIKeyHash) {
+			// Backfill the lookup hash for this tenant
+			_, _ = r.db.Pool.Exec(ctx,
+				`UPDATE tenants SET api_key_lookup_hash = $1 WHERE id = $2`,
+				lookupHash, t.ID,
+			)
+			return &t, nil
 		}
 	}
 
@@ -150,11 +184,17 @@ func (r *tenantRepository) FindByAPIKey(ctx context.Context, apiKey string) (*mo
 	return nil, fmt.Errorf("tenant: %w", apperrors.ErrNotFound)
 }
 
+// computeLookupHash returns a deterministic SHA-256 hex digest for fast DB lookups.
+func computeLookupHash(apiKey string) string {
+	h := sha256.Sum256([]byte(apiKey))
+	return hex.EncodeToString(h[:])
+}
+
 func (r *tenantRepository) Update(ctx context.Context, tenant *models.Tenant) error {
 	query := `
 		UPDATE tenants 
-		SET name = $2, api_key_hash = $3, subscription_tier = $4, rate_limit_per_minute = $5, 
-		    monthly_quota = $6, updated_at = $7
+		SET name = $2, api_key_hash = $3, api_key_lookup_hash = $4, subscription_tier = $5, rate_limit_per_minute = $6, 
+		    monthly_quota = $7, updated_at = $8
 		WHERE id = $1`
 
 	tenant.UpdatedAt = time.Now()
@@ -163,6 +203,7 @@ func (r *tenantRepository) Update(ctx context.Context, tenant *models.Tenant) er
 		tenant.ID,
 		tenant.Name,
 		tenant.APIKeyHash,
+		tenant.APIKeyLookupHash,
 		tenant.SubscriptionTier,
 		tenant.RateLimitPerMinute,
 		tenant.MonthlyQuota,
