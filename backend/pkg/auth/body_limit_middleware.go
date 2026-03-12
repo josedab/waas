@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 const (
@@ -18,12 +19,7 @@ const (
 func MaxBodySize(maxBytes int64) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Body != nil && c.Request.ContentLength > maxBytes {
-			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{
-				"error": gin.H{
-					"code":    "REQUEST_BODY_TOO_LARGE",
-					"message": "Request body exceeds maximum allowed size",
-				},
-			})
+			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, httputil.APIErrorResponse{Code: "REQUEST_BODY_TOO_LARGE", Message: "Request body exceeds maximum allowed size"})
 			return
 		}
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes)

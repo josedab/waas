@@ -34,12 +34,7 @@ func (am *AdminMiddleware) RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenant, exists := GetTenantFromContext(c)
 		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": gin.H{
-					"code":    "NO_TENANT_CONTEXT",
-					"message": "No authenticated tenant found",
-				},
-			})
+			c.JSON(http.StatusUnauthorized, authErrorResponse{Code: "NO_TENANT_CONTEXT", Message: "No authenticated tenant found"})
 			c.Abort()
 			return
 		}
@@ -56,12 +51,7 @@ func (am *AdminMiddleware) RequireAdmin() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": gin.H{
-				"code":    "ADMIN_ACCESS_REQUIRED",
-				"message": "This endpoint requires admin privileges",
-			},
-		})
+		c.JSON(http.StatusForbidden, authErrorResponse{Code: "ADMIN_ACCESS_REQUIRED", Message: "This endpoint requires admin privileges"})
 		c.Abort()
 	}
 }

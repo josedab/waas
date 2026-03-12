@@ -3,12 +3,14 @@ package security
 import (
 	"net/http"
 	"strings"
+
 	"github.com/josedab/waas/pkg/auth"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // SecureAuthMiddleware extends the basic auth middleware with security features
@@ -34,12 +36,7 @@ func (sam *SecureAuthMiddleware) RequireAuth() gin.HandlerFunc {
 
 		if authHeader == "" {
 			sam.logAuthFailure(c, nil, "missing_auth_header", "Authorization header is required", clientIP, userAgent)
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": gin.H{
-					"code":    "MISSING_AUTH_HEADER",
-					"message": "Authorization header is required",
-				},
-			})
+			c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "MISSING_AUTH_HEADER", Message: "Authorization header is required"})
 			c.Abort()
 			return
 		}
@@ -47,12 +44,7 @@ func (sam *SecureAuthMiddleware) RequireAuth() gin.HandlerFunc {
 		// Extract API key from Bearer token
 		if !strings.HasPrefix(authHeader, auth.BearerPrefix) {
 			sam.logAuthFailure(c, nil, "invalid_auth_format", "Authorization header must use Bearer format", clientIP, userAgent)
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": gin.H{
-					"code":    "INVALID_AUTH_FORMAT",
-					"message": "Authorization header must use Bearer format",
-				},
-			})
+			c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "INVALID_AUTH_FORMAT", Message: "Authorization header must use Bearer format"})
 			c.Abort()
 			return
 		}
@@ -60,12 +52,7 @@ func (sam *SecureAuthMiddleware) RequireAuth() gin.HandlerFunc {
 		apiKey := strings.TrimPrefix(authHeader, auth.BearerPrefix)
 		if !auth.IsValidAPIKeyFormat(apiKey) {
 			sam.logAuthFailure(c, nil, "invalid_api_key_format", "API key format is invalid", clientIP, userAgent)
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": gin.H{
-					"code":    "INVALID_API_KEY_FORMAT",
-					"message": "API key format is invalid",
-				},
-			})
+			c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "INVALID_API_KEY_FORMAT", Message: "API key format is invalid"})
 			c.Abort()
 			return
 		}
@@ -74,12 +61,7 @@ func (sam *SecureAuthMiddleware) RequireAuth() gin.HandlerFunc {
 		tenant, err := sam.tenantRepo.FindByAPIKey(c.Request.Context(), apiKey)
 		if err != nil {
 			sam.logAuthFailure(c, nil, "invalid_api_key", "API key is invalid or expired", clientIP, userAgent)
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": gin.H{
-					"code":    "INVALID_API_KEY",
-					"message": "API key is invalid or expired",
-				},
-			})
+			c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "INVALID_API_KEY", Message: "API key is invalid or expired"})
 			c.Abort()
 			return
 		}
@@ -90,7 +72,7 @@ func (sam *SecureAuthMiddleware) RequireAuth() gin.HandlerFunc {
 		// Set tenant context
 		c.Set(auth.TenantKey, tenant)
 		c.Set(auth.TenantIDKey, tenant.ID.String())
-		
+
 		c.Next()
 	}
 }
@@ -100,24 +82,14 @@ func (sam *SecureAuthMiddleware) RequireTenantAccess(resourceTenantID uuid.UUID)
 	return func(c *gin.Context) {
 		tenant, exists := auth.GetTenantFromContext(c)
 		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": gin.H{
-					"code":    "NO_TENANT_CONTEXT",
-					"message": "No authenticated tenant found",
-				},
-			})
+			c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "NO_TENANT_CONTEXT", Message: "No authenticated tenant found"})
 			c.Abort()
 			return
 		}
 
 		if tenant.ID != resourceTenantID {
 			sam.logAccessViolation(c, tenant, resourceTenantID)
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": gin.H{
-					"code":    "TENANT_ACCESS_DENIED",
-					"message": "Access denied to resource",
-				},
-			})
+			c.JSON(http.StatusForbidden, httputil.APIErrorResponse{Code: "TENANT_ACCESS_DENIED", Message: "Access denied to resource"})
 			c.Abort()
 			return
 		}
@@ -131,21 +103,21 @@ func (sam *SecureAuthMiddleware) SecurityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Prevent MIME type sniffing
 		c.Header("X-Content-Type-Options", "nosniff")
-		
+
 		// Prevent clickjacking
 		c.Header("X-Frame-Options", "DENY")
-		
+
 		// Enable XSS protection
 		c.Header("X-XSS-Protection", "1; mode=block")
-		
+
 		// Content Security Policy
 		c.Header("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'")
-		
+
 		// Enforce HTTPS in production
 		if gin.Mode() == gin.ReleaseMode {
 			c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}
-		
+
 		// Prevent caching of sensitive responses
 		if strings.Contains(c.Request.URL.Path, "/api/") {
 			c.Header("Cache-Control", "no-store, no-cache, must-revalidate, private")
@@ -166,7 +138,7 @@ func (sam *SecureAuthMiddleware) SuspiciousActivityDetection() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		userAgent := strings.ToLower(c.GetHeader("User-Agent"))
-		
+
 		// Check for suspicious user agents
 		for _, suspicious := range suspiciousUserAgents {
 			if strings.Contains(userAgent, suspicious) {
@@ -174,13 +146,8 @@ func (sam *SecureAuthMiddleware) SuspiciousActivityDetection() gin.HandlerFunc {
 					"user_agent": c.GetHeader("User-Agent"),
 					"path":       c.Request.URL.Path,
 				})
-				
-				c.JSON(http.StatusForbidden, gin.H{
-					"error": gin.H{
-						"code":    "SUSPICIOUS_ACTIVITY",
-						"message": "Request blocked due to suspicious activity",
-					},
-				})
+
+				c.JSON(http.StatusForbidden, httputil.APIErrorResponse{Code: "SUSPICIOUS_ACTIVITY", Message: "Request blocked due to suspicious activity"})
 				c.Abort()
 				return
 			}
@@ -200,13 +167,8 @@ func (sam *SecureAuthMiddleware) SuspiciousActivityDetection() gin.HandlerFunc {
 					"path":    c.Request.URL.Path,
 					"query":   c.Request.URL.RawQuery,
 				})
-				
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": gin.H{
-						"code":    "INVALID_REQUEST",
-						"message": "Invalid request format",
-					},
-				})
+
+				c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format"})
 				c.Abort()
 				return
 			}

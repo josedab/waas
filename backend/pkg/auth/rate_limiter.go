@@ -40,25 +40,16 @@ func (rl *RateLimiter) RateLimit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenant, exists := GetTenantFromContext(c)
 		if !exists {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": gin.H{
-					"code":    "MISSING_TENANT_CONTEXT",
-					"message": "Tenant context not found",
-				},
-			})
+			c.JSON(http.StatusInternalServerError, authErrorResponse{Code: "MISSING_TENANT_CONTEXT", Message: "Tenant context not found"})
 			c.Abort()
 			return
 		}
 
 		rateLimitInfo, err := rl.CheckRateLimit(c.Request.Context(), tenant)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": gin.H{
-					"code":    "RATE_LIMIT_ERROR",
-					"message": "Failed to check rate limit",
-				},
-			})
-			c.Abort()
+			// Fail open: if Redis is unavailable, allow the request through
+			// rather than making the entire API unavailable.
+			c.Next()
 			return
 		}
 
@@ -69,18 +60,7 @@ func (rl *RateLimiter) RateLimit() gin.HandlerFunc {
 
 		if !rateLimitInfo.Allowed {
 			c.Header("Retry-After", strconv.FormatInt(rateLimitInfo.RetryAfter, 10))
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": gin.H{
-					"code":    "RATE_LIMIT_EXCEEDED",
-					"message": "Rate limit exceeded. Please try again later.",
-					"details": gin.H{
-						"limit":       tenant.RateLimitPerMinute,
-						"remaining":   rateLimitInfo.Remaining,
-						"reset_time":  rateLimitInfo.ResetTime.Unix(),
-						"retry_after": rateLimitInfo.RetryAfter,
-					},
-				},
-			})
+			c.JSON(http.StatusTooManyRequests, authErrorResponse{Code: "RATE_LIMIT_EXCEEDED", Message: "Rate limit exceeded. Please try again later."})
 			c.Abort()
 			return
 		}
@@ -203,13 +183,8 @@ func (rl *RateLimiter) IPRateLimit(maxRequests int, window time.Duration) gin.Ha
 		pipe.ExpireAt(c.Request.Context(), key, windowEnd)
 		_, err := pipe.Exec(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": gin.H{
-					"code":    "RATE_LIMIT_ERROR",
-					"message": "Failed to check rate limit",
-				},
-			})
-			c.Abort()
+			// Fail open: allow the request if Redis is unavailable
+			c.Next()
 			return
 		}
 
@@ -223,16 +198,18 @@ func (rl *RateLimiter) IPRateLimit(maxRequests int, window time.Duration) gin.Ha
 		if currentCount > maxRequests {
 			retryAfter := int64(windowEnd.Sub(now).Seconds())
 			c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": gin.H{
-					"code":    "RATE_LIMIT_EXCEEDED",
-					"message": "Too many requests. Please try again later.",
-				},
-			})
+			c.JSON(http.StatusTooManyRequests, authErrorResponse{Code: "RATE_LIMIT_EXCEEDED", Message: "Too many requests. Please try again later."})
 			c.Abort()
 			return
 		}
 
 		c.Next()
 	}
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

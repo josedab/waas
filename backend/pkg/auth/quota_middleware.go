@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/httputil"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -27,14 +28,14 @@ type QuotaMiddleware struct {
 // QuotaInfo describes a tenant's current quota status, including remaining
 // allowance and overage details.
 type QuotaInfo struct {
-	Allowed       bool
-	CurrentUsage  int
-	MonthlyQuota  int
-	Remaining     int
-	UsagePercent  float64
-	ResetDate     time.Time
-	IsOverage     bool
-	OverageCount  int
+	Allowed      bool
+	CurrentUsage int
+	MonthlyQuota int
+	Remaining    int
+	UsagePercent float64
+	ResetDate    time.Time
+	IsOverage    bool
+	OverageCount int
 }
 
 // NewQuotaMiddleware creates a QuotaMiddleware with the given quota repository and Redis client.
@@ -50,24 +51,14 @@ func (qm *QuotaMiddleware) EnforceQuota() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenant, exists := GetTenantFromContext(c)
 		if !exists {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": gin.H{
-					"code":    "MISSING_TENANT_CONTEXT",
-					"message": "Tenant context not found",
-				},
-			})
+			c.JSON(http.StatusInternalServerError, httputil.APIErrorResponse{Code: "MISSING_TENANT_CONTEXT", Message: "Tenant context not found"})
 			c.Abort()
 			return
 		}
 
 		quotaInfo, err := qm.CheckQuota(c.Request.Context(), tenant)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": gin.H{
-					"code":    "QUOTA_CHECK_ERROR",
-					"message": "Failed to check quota limits",
-				},
-			})
+			c.JSON(http.StatusInternalServerError, httputil.APIErrorResponse{Code: "QUOTA_CHECK_ERROR", Message: "Failed to check quota limits"})
 			c.Abort()
 			return
 		}
@@ -87,17 +78,15 @@ func (qm *QuotaMiddleware) EnforceQuota() gin.HandlerFunc {
 				c.Header("X-Quota-Overage", "true")
 				c.Header("X-Quota-Overage-Remaining", strconv.Itoa(tierConfig.BurstAllowance-quotaInfo.OverageCount))
 			} else {
-				c.JSON(http.StatusPaymentRequired, gin.H{
-					"error": gin.H{
-						"code":    "QUOTA_EXCEEDED",
-						"message": "Monthly quota limit exceeded",
-						"details": gin.H{
-							"current_usage":   quotaInfo.CurrentUsage,
-							"monthly_quota":   quotaInfo.MonthlyQuota,
-							"overage_count":   quotaInfo.OverageCount,
-							"reset_date":      quotaInfo.ResetDate.Unix(),
-							"usage_percent":   quotaInfo.UsagePercent,
-						},
+				c.JSON(http.StatusPaymentRequired, httputil.APIErrorResponse{
+					Code:    "QUOTA_EXCEEDED",
+					Message: "Monthly quota limit exceeded",
+					Details: gin.H{
+						"current_usage": quotaInfo.CurrentUsage,
+						"monthly_quota": quotaInfo.MonthlyQuota,
+						"overage_count": quotaInfo.OverageCount,
+						"reset_date":    quotaInfo.ResetDate.Unix(),
+						"usage_percent": quotaInfo.UsagePercent,
 					},
 				})
 				c.Abort()
@@ -219,12 +208,12 @@ func (qm *QuotaMiddleware) checkAndSendNotifications(ctx context.Context, tenant
 				}
 
 				notification := &models.QuotaNotification{
-					TenantID:    tenant.ID,
-					Type:        notificationType,
-					Threshold:   threshold,
-					UsageCount:  usage.RequestCount,
-					QuotaLimit:  quota,
-					Sent:        false,
+					TenantID:   tenant.ID,
+					Type:       notificationType,
+					Threshold:  threshold,
+					UsageCount: usage.RequestCount,
+					QuotaLimit: quota,
+					Sent:       false,
 				}
 
 				if err := qm.quotaRepo.CreateQuotaNotification(ctx, notification); err != nil {
