@@ -721,24 +721,61 @@ func (e *DeliveryEngine) SetDLQHook(hook DLQHook) {
 // routeToDeadLetter invokes the DLQ hook if configured.
 func (e *DeliveryEngine) routeToDeadLetter(ctx context.Context, message *queue.DeliveryMessage, result *queue.DeliveryResult) {
 	if e.dlqHook == nil {
+		e.logger.Warn("DLQ hook not configured; permanently failed delivery has no DLQ destination", map[string]interface{}{
+			"delivery_id": message.DeliveryID,
+			"endpoint_id": message.EndpointID,
+		})
 		return
 	}
 
-	payloadJSON, _ := json.Marshal(message.Payload)
-	headersJSON, _ := json.Marshal(message.Headers)
+	payloadJSON, err := json.Marshal(message.Payload)
+	if err != nil {
+		e.logger.Error("Failed to marshal payload for DLQ", map[string]interface{}{
+			"delivery_id": message.DeliveryID,
+			"error":       err.Error(),
+		})
+		payloadJSON = []byte(`{"error":"failed to marshal payload"}`)
+	}
+
+	headersJSON, err := json.Marshal(message.Headers)
+	if err != nil {
+		e.logger.Error("Failed to marshal headers for DLQ", map[string]interface{}{
+			"delivery_id": message.DeliveryID,
+			"error":       err.Error(),
+		})
+		headersJSON = []byte(`{}`)
+	}
 
 	errMsg := ""
 	if result.ErrorMessage != nil {
 		errMsg = *result.ErrorMessage
 	}
 
-	attempt := DLQAttemptDetail{
+	// Include all known attempts for debugging context
+	attempts := []DLQAttemptDetail{{
 		AttemptNumber: result.AttemptNumber,
 		HTTPStatus:    result.HTTPStatus,
 		ResponseBody:  result.ResponseBody,
 		ErrorMessage:  result.ErrorMessage,
 		AttemptedAt:   time.Now(),
+	}}
+
+	// Fetch earlier attempts from the repository for full context
+	if e.deliveryRepo != nil {
+		earlier, fetchErr := e.deliveryRepo.GetByEndpointID(ctx, message.EndpointID, result.AttemptNumber, 0)
+		if fetchErr == nil && len(earlier) > 0 {
+			attempts = make([]DLQAttemptDetail, 0, len(earlier))
+			for _, a := range earlier {
+				attempts = append(attempts, DLQAttemptDetail{
+					AttemptNumber: a.AttemptNumber,
+					HTTPStatus:    a.HTTPStatus,
+					ResponseBody:  a.ResponseBody,
+					ErrorMessage:  a.ErrorMessage,
+					AttemptedAt:   a.CreatedAt,
+				})
+			}
+		}
 	}
 
-	e.dlqHook(ctx, message.TenantID.String(), message.EndpointID.String(), message.DeliveryID.String(), payloadJSON, headersJSON, []DLQAttemptDetail{attempt}, errMsg)
+	e.dlqHook(ctx, message.TenantID.String(), message.EndpointID.String(), message.DeliveryID.String(), payloadJSON, headersJSON, attempts, errMsg)
 }
