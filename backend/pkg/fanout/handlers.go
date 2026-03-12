@@ -1,9 +1,10 @@
 package fanout
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -49,13 +50,13 @@ func (h *Handler) CreateTopic(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	var req CreateTopicRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -72,7 +73,7 @@ func (h *Handler) ListTopics(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
@@ -96,13 +97,13 @@ func (h *Handler) GetTopic(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid topic ID"})
 		return
 	}
 
@@ -119,25 +120,25 @@ func (h *Handler) UpdateTopic(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid topic ID"})
 		return
 	}
 
 	var req UpdateTopicRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	topic, err := h.service.UpdateTopic(c.Request.Context(), tid, topicID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "UPDATE_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -148,13 +149,13 @@ func (h *Handler) DeleteTopic(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid topic ID"})
 		return
 	}
 
@@ -170,25 +171,25 @@ func (h *Handler) Subscribe(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid topic ID"})
 		return
 	}
 
 	var req SubscribeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	endpointID, err := uuid.Parse(req.EndpointID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ENDPOINT", "message": "invalid endpoint ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ENDPOINT", Message: "invalid endpoint ID"})
 		return
 	}
 
@@ -204,7 +205,7 @@ func (h *Handler) Subscribe(c *gin.Context) {
 func (h *Handler) Unsubscribe(c *gin.Context) {
 	subID, err := uuid.Parse(c.Param("subId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid subscription ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid subscription ID"})
 		return
 	}
 
@@ -219,7 +220,7 @@ func (h *Handler) Unsubscribe(c *gin.Context) {
 func (h *Handler) ListSubscriptions(c *gin.Context) {
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid topic ID"})
 		return
 	}
 
@@ -243,26 +244,26 @@ func (h *Handler) PublishEvent(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid topic ID"})
 		return
 	}
 
 	var req PublishRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	// Look up the topic to get its name
 	topic, err := h.service.GetTopic(c.Request.Context(), tid, topicID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "TOPIC_NOT_FOUND", "message": err.Error()}})
+		c.JSON(http.StatusNotFound, httputil.APIErrorResponse{Code: "TOPIC_NOT_FOUND", Message: err.Error()})
 		return
 	}
 
@@ -279,25 +280,25 @@ func (h *Handler) FanOutDeliver(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid topic ID"})
 		return
 	}
 
 	var req FanOutDeliveryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	result, err := h.service.FanOutDelivery(c.Request.Context(), tid, topicID, req.Payload, req.Headers)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "DELIVERY_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "DELIVERY_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -307,7 +308,7 @@ func (h *Handler) FanOutDeliver(c *gin.Context) {
 func (h *Handler) ListEvents(c *gin.Context) {
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid topic ID"})
 		return
 	}
 
@@ -347,19 +348,19 @@ func (h *Handler) CreateRoutingRule(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid topic ID"})
 		return
 	}
 
 	var req CreateRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -376,13 +377,13 @@ func (h *Handler) ListRoutingRules(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	topicID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid topic ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid topic ID"})
 		return
 	}
 
@@ -399,13 +400,13 @@ func (h *Handler) GetRoutingRule(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	ruleID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid rule ID"})
 		return
 	}
 
@@ -422,25 +423,25 @@ func (h *Handler) UpdateRoutingRule(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	ruleID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid rule ID"})
 		return
 	}
 
 	var req CreateRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	rule, err := h.service.UpdateRoutingRule(c.Request.Context(), tid, ruleID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "UPDATE_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -451,13 +452,13 @@ func (h *Handler) DeleteRoutingRule(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	ruleID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid rule ID"})
 		return
 	}
 
@@ -473,25 +474,25 @@ func (h *Handler) TestRule(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	ruleID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid rule ID"})
 		return
 	}
 
 	var req RuleTestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	result, err := h.service.TestRule(c.Request.Context(), tid, ruleID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "TEST_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "TEST_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -502,25 +503,25 @@ func (h *Handler) RollbackRule(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_TENANT", "message": "invalid tenant ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_TENANT", Message: "invalid tenant ID"})
 		return
 	}
 
 	ruleID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid rule ID"})
 		return
 	}
 
 	var req RollbackRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	rule, err := h.service.RollbackRule(c.Request.Context(), tid, ruleID, req.Version)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "ROLLBACK_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "ROLLBACK_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -530,7 +531,7 @@ func (h *Handler) RollbackRule(c *gin.Context) {
 func (h *Handler) GetRuleVersions(c *gin.Context) {
 	ruleID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "invalid rule ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "invalid rule ID"})
 		return
 	}
 

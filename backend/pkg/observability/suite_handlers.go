@@ -1,8 +1,9 @@
 package observability
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -99,13 +100,13 @@ func (h *SuiteHandler) CreateSmartAlert(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateSmartAlertRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	alert, err := h.suite.CreateSmartAlert(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
 		return
 	}
 

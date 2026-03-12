@@ -72,13 +72,7 @@ func NewTenantHandler(tenantRepo repository.TenantRepository, logger *utils.Logg
 func (h *TenantHandler) CreateTenant(c *gin.Context) {
 	var req CreateTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": gin.H{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request format",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
 		return
 	}
 
@@ -99,12 +93,7 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 		h.logger.Error("Failed to generate API key", map[string]interface{}{
 			"error": err.Error(),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "API_KEY_GENERATION_FAILED",
-				"message": "Failed to generate API key",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "API_KEY_GENERATION_FAILED", Message: "Failed to generate API key"})
 		return
 	}
 
@@ -113,6 +102,7 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 		ID:                 uuid.New(),
 		Name:               req.Name,
 		APIKeyHash:         apiKeyHash,
+		APIKeyLookupHash:   auth.LookupHash(apiKey),
 		SubscriptionTier:   req.SubscriptionTier,
 		RateLimitPerMinute: rateLimitPerMinute,
 		MonthlyQuota:       monthlyQuota,
@@ -123,12 +113,7 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 			"error":       err.Error(),
 			"tenant_name": req.Name,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "TENANT_CREATION_FAILED",
-				"message": "Failed to create tenant",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "TENANT_CREATION_FAILED", Message: "Failed to create tenant"})
 		return
 	}
 
@@ -158,12 +143,7 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 func (h *TenantHandler) GetTenant(c *gin.Context) {
 	tenant, exists := auth.GetTenantFromContext(c)
 	if !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "MISSING_TENANT_CONTEXT",
-				"message": "Tenant context not found",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "MISSING_TENANT_CONTEXT", Message: "Tenant context not found"})
 		return
 	}
 
@@ -188,24 +168,13 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 	tenant, exists := auth.GetTenantFromContext(c)
 	if !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "MISSING_TENANT_CONTEXT",
-				"message": "Tenant context not found",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "MISSING_TENANT_CONTEXT", Message: "Tenant context not found"})
 		return
 	}
 
 	var req UpdateTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": gin.H{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request format",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
 		return
 	}
 
@@ -223,12 +192,7 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 			"error":     err.Error(),
 			"tenant_id": tenant.ID.String(),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "TENANT_UPDATE_FAILED",
-				"message": "Failed to update tenant",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "TENANT_UPDATE_FAILED", Message: "Failed to update tenant"})
 		return
 	}
 
@@ -255,12 +219,7 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 func (h *TenantHandler) RegenerateAPIKey(c *gin.Context) {
 	tenant, exists := auth.GetTenantFromContext(c)
 	if !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "MISSING_TENANT_CONTEXT",
-				"message": "Tenant context not found",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "MISSING_TENANT_CONTEXT", Message: "Tenant context not found"})
 		return
 	}
 
@@ -271,28 +230,19 @@ func (h *TenantHandler) RegenerateAPIKey(c *gin.Context) {
 			"error":     err.Error(),
 			"tenant_id": tenant.ID.String(),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "API_KEY_GENERATION_FAILED",
-				"message": "Failed to generate new API key",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "API_KEY_GENERATION_FAILED", Message: "Failed to generate new API key"})
 		return
 	}
 
 	// Update tenant with new API key hash
 	tenant.APIKeyHash = apiKeyHash
+	tenant.APIKeyLookupHash = auth.LookupHash(apiKey)
 	if err := h.tenantRepo.Update(c.Request.Context(), tenant); err != nil {
 		h.logger.Error("Failed to update tenant with new API key", map[string]interface{}{
 			"error":     err.Error(),
 			"tenant_id": tenant.ID.String(),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "API_KEY_UPDATE_FAILED",
-				"message": "Failed to update API key",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "API_KEY_UPDATE_FAILED", Message: "Failed to update API key"})
 		return
 	}
 
@@ -326,12 +276,7 @@ func (h *TenantHandler) ListTenants(c *gin.Context) {
 		h.logger.Error("Failed to list tenants", map[string]interface{}{
 			"error": err.Error(),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "TENANT_LIST_FAILED",
-				"message": "Failed to retrieve tenants",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "TENANT_LIST_FAILED", Message: "Failed to retrieve tenants"})
 		return
 	}
 
@@ -346,57 +291,31 @@ func (h *TenantHandler) ListTenants(c *gin.Context) {
 func (h *TenantHandler) AdminUpdateTenant(c *gin.Context) {
 	tenantID := c.Param("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": gin.H{
-				"code":    "MISSING_TENANT_ID",
-				"message": "Tenant ID is required",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "MISSING_TENANT_ID", Message: "Tenant ID is required"})
 		return
 	}
 
 	tid, err := uuid.Parse(tenantID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": gin.H{
-				"code":    "INVALID_TENANT_ID",
-				"message": "Invalid tenant ID format",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_TENANT_ID", Message: "Invalid tenant ID format"})
 		return
 	}
 
 	tenant, err := h.tenantRepo.GetByID(c.Request.Context(), tid)
 	if err != nil || tenant == nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"code":    "TENANT_NOT_FOUND",
-				"message": "Tenant not found",
-			},
-		})
+		c.JSON(http.StatusNotFound, ErrorResponse{Code: "TENANT_NOT_FOUND", Message: "Tenant not found"})
 		return
 	}
 
 	var req AdminUpdateTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": gin.H{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request format",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
 		return
 	}
 
 	if req.SubscriptionTier != "" {
 		if !validSubscriptionTiers[req.SubscriptionTier] {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": gin.H{
-					"code":    "INVALID_SUBSCRIPTION_TIER",
-					"message": "Subscription tier must be one of: free, basic, premium, enterprise",
-				},
-			})
+			c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_SUBSCRIPTION_TIER", Message: "Subscription tier must be one of: free, basic, premium, enterprise"})
 			return
 		}
 		tenant.SubscriptionTier = req.SubscriptionTier
@@ -422,12 +341,7 @@ func (h *TenantHandler) AdminUpdateTenant(c *gin.Context) {
 			"error":     err.Error(),
 			"tenant_id": tenant.ID.String(),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"code":    "TENANT_UPDATE_FAILED",
-				"message": "Failed to update tenant",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "TENANT_UPDATE_FAILED", Message: "Failed to update tenant"})
 		return
 	}
 

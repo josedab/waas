@@ -45,7 +45,7 @@ func (h *Handler) GenerateReport(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req GenerateReportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -194,7 +194,7 @@ func (h *Handler) SetAlertThreshold(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req SetAlertThresholdRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 

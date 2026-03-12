@@ -2,8 +2,9 @@ package catalog
 
 import (
 	"encoding/json"
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -69,13 +70,13 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 func (h *Handler) CreateEventType(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
 	var req CreateEventTypeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -96,7 +97,7 @@ func (h *Handler) CreateEventType(c *gin.Context) {
 func (h *Handler) ListEventTypes(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
@@ -131,13 +132,13 @@ func (h *Handler) ListEventTypes(c *gin.Context) {
 func (h *Handler) GetEventType(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 
 	et, err := h.service.GetEventType(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": "Event type not found"}})
+		c.JSON(http.StatusNotFound, httputil.APIErrorResponse{Code: "NOT_FOUND", Message: "Event type not found"})
 		return
 	}
 
@@ -154,13 +155,13 @@ func (h *Handler) GetEventType(c *gin.Context) {
 func (h *Handler) UpdateEventType(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 
 	var req UpdateEventTypeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -183,13 +184,13 @@ func (h *Handler) UpdateEventType(c *gin.Context) {
 func (h *Handler) PublishVersion(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 
 	var req PublishVersionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -211,7 +212,7 @@ func (h *Handler) PublishVersion(c *gin.Context) {
 func (h *Handler) GetVersions(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 
@@ -234,13 +235,13 @@ func (h *Handler) GetVersions(c *gin.Context) {
 func (h *Handler) ValidatePayload(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 
 	var payload json.RawMessage
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -262,13 +263,13 @@ func (h *Handler) ValidatePayload(c *gin.Context) {
 func (h *Handler) ValidatePayloadByEventType(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
 	var req ValidatePayloadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -291,13 +292,13 @@ func (h *Handler) ValidatePayloadByEventType(c *gin.Context) {
 func (h *Handler) DeprecateEventType(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 
 	var req DeprecateEventTypeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -320,13 +321,13 @@ func (h *Handler) DeprecateEventType(c *gin.Context) {
 func (h *Handler) SubscribeEndpoint(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 
 	var req SubscribeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -348,7 +349,7 @@ func (h *Handler) SubscribeEndpoint(c *gin.Context) {
 func (h *Handler) ListSubscribers(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 
@@ -371,7 +372,7 @@ func (h *Handler) ListSubscribers(c *gin.Context) {
 func (h *Handler) GenerateSDKTypes(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 
@@ -397,7 +398,7 @@ func (h *Handler) GenerateSDKTypes(c *gin.Context) {
 func (h *Handler) SearchCatalog(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
@@ -418,7 +419,7 @@ func (h *Handler) SearchCatalog(c *gin.Context) {
 func (h *Handler) GetChangelog(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 	changelog, err := h.service.GenerateChangelog(c.Request.Context(), id)
@@ -432,7 +433,7 @@ func (h *Handler) GetChangelog(c *gin.Context) {
 func (h *Handler) GetDocPortal(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 	portal, err := h.service.GenerateDocPortal(c.Request.Context(), id)
@@ -446,7 +447,7 @@ func (h *Handler) GetDocPortal(c *gin.Context) {
 func (h *Handler) ValidatePayloadWithMode(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 	var req struct {
@@ -454,7 +455,7 @@ func (h *Handler) ValidatePayloadWithMode(c *gin.Context) {
 		Mode    string          `json:"mode"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	mode := ValidationMode(req.Mode)
@@ -468,7 +469,7 @@ func (h *Handler) ValidatePayloadWithMode(c *gin.Context) {
 func (h *Handler) GetBreakingChangeNotifications(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 	notifications, err := h.service.GetBreakingChangeNotifications(c.Request.Context(), tenantID)
@@ -482,7 +483,7 @@ func (h *Handler) GetBreakingChangeNotifications(c *gin.Context) {
 func (h *Handler) GetValidationConfig(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 	config := h.service.GetValidationConfig(c.Request.Context(), tenantID)
@@ -498,13 +499,13 @@ func (h *Handler) GetValidationConfig(c *gin.Context) {
 func (h *Handler) UpdateValidationConfig(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
 	var config SchemaValidationConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	config.TenantID = tenantID
@@ -520,7 +521,7 @@ func (h *Handler) UpdateValidationConfig(c *gin.Context) {
 func (h *Handler) DeleteEventType(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 	if err := h.service.DeleteEventType(c.Request.Context(), id); err != nil {
@@ -533,7 +534,7 @@ func (h *Handler) DeleteEventType(c *gin.Context) {
 func (h *Handler) ListCategories(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 	categories, err := h.service.ListCategories(c.Request.Context(), tenantID)
@@ -547,12 +548,12 @@ func (h *Handler) ListCategories(c *gin.Context) {
 func (h *Handler) CreateCategory(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 	var req CreateCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	cat, err := h.service.CreateCategory(c.Request.Context(), tenantID, &req)
@@ -566,12 +567,12 @@ func (h *Handler) CreateCategory(c *gin.Context) {
 func (h *Handler) UnsubscribeEndpoint(c *gin.Context) {
 	eventTypeID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 	endpointID, err := uuid.Parse(c.Param("endpointId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid endpoint ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid endpoint ID"})
 		return
 	}
 	if err := h.service.Unsubscribe(c.Request.Context(), eventTypeID, endpointID); err != nil {
@@ -584,7 +585,7 @@ func (h *Handler) UnsubscribeEndpoint(c *gin.Context) {
 func (h *Handler) GetDocumentation(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 	docs, err := h.service.GetDocumentation(c.Request.Context(), id)
@@ -598,7 +599,7 @@ func (h *Handler) GetDocumentation(c *gin.Context) {
 func (h *Handler) SaveDocumentation(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_ID", "message": "Invalid event type ID"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_ID", Message: "Invalid event type ID"})
 		return
 	}
 	section := c.Param("section")
@@ -606,7 +607,7 @@ func (h *Handler) SaveDocumentation(c *gin.Context) {
 		Content string `json:"content" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	if err := h.service.SaveDocumentation(c.Request.Context(), id, section, req.Content); err != nil {
@@ -619,7 +620,7 @@ func (h *Handler) SaveDocumentation(c *gin.Context) {
 func (h *Handler) GenerateOpenAPISpec(c *gin.Context) {
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Invalid tenant"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 	spec, err := h.service.GenerateOpenAPISpec(c.Request.Context(), tenantID)

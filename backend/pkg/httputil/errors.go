@@ -10,6 +10,13 @@ import (
 
 var errorLogger = utils.NewLogger("httputil")
 
+// APIErrorResponse is the standard error response format.
+type APIErrorResponse struct {
+	Code    string      `json:"code"`
+	Message string      `json:"message"`
+	Details interface{} `json:"details,omitempty"`
+}
+
 // InternalErrorGeneric logs the full error server-side and returns a generic
 // error message with a correlation ID. This prevents leaking internal details
 // (stack traces, SQL errors, etc.) to API consumers.
@@ -33,10 +40,5 @@ func InternalError(c *gin.Context, code string, err error) {
 		"error": err.Error(),
 		"path":  c.Request.URL.Path,
 	})
-	c.JSON(http.StatusInternalServerError, gin.H{
-		"error": gin.H{
-			"code":    code,
-			"message": "An internal error occurred. Correlation ID: " + correlationID,
-		},
-	})
+	c.JSON(http.StatusInternalServerError, APIErrorResponse{Code: code, Message: "An internal error occurred. Correlation ID: " + correlationID})
 }

@@ -5,12 +5,13 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -512,13 +513,13 @@ func (h *Handler) getTenantID(c *gin.Context) string {
 func (h *Handler) ListEntries(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
 	var filter DLQFilter
 	if err := c.ShouldBindQuery(&filter); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	filter.TenantID = tenantID
@@ -544,7 +545,7 @@ func (h *Handler) ListEntries(c *gin.Context) {
 func (h *Handler) GetEntry(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
@@ -561,7 +562,7 @@ func (h *Handler) GetEntry(c *gin.Context) {
 func (h *Handler) ReplayEntry(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
@@ -578,13 +579,13 @@ func (h *Handler) ReplayEntry(c *gin.Context) {
 func (h *Handler) BulkRetry(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
 	var req BulkRetryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -601,7 +602,7 @@ func (h *Handler) BulkRetry(c *gin.Context) {
 func (h *Handler) GetStats(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
@@ -618,7 +619,7 @@ func (h *Handler) GetStats(c *gin.Context) {
 func (h *Handler) ListAlertRules(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
@@ -635,13 +636,13 @@ func (h *Handler) ListAlertRules(c *gin.Context) {
 func (h *Handler) CreateAlertRule(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
 	var rule AlertRule
 	if err := c.ShouldBindJSON(&rule); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -658,7 +659,7 @@ func (h *Handler) CreateAlertRule(c *gin.Context) {
 func (h *Handler) GetRetentionPolicy(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
@@ -675,13 +676,13 @@ func (h *Handler) GetRetentionPolicy(c *gin.Context) {
 func (h *Handler) UpdateRetentionPolicy(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
 	var policy RetentionPolicy
 	if err := c.ShouldBindJSON(&policy); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -698,13 +699,13 @@ func (h *Handler) UpdateRetentionPolicy(c *gin.Context) {
 func (h *Handler) ExportEntries(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
 	var req ExportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -726,13 +727,13 @@ func (h *Handler) ExportEntries(c *gin.Context) {
 func (h *Handler) SearchEntries(c *gin.Context) {
 	tenantID := h.getTenantID(c)
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "Tenant not found in context"}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "Tenant not found in context"})
 		return
 	}
 
 	q := c.Query("q")
 	if q == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": "query parameter 'q' is required"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: "query parameter 'q' is required"})
 		return
 	}
 

@@ -14,8 +14,9 @@ var errorLogger = utils.NewLogger("api-handlers")
 
 // ErrorResponse represents a lightweight error response with a code and message.
 type ErrorResponse struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code    string      `json:"code"`
+	Message string      `json:"message"`
+	Details interface{} `json:"details,omitempty"`
 }
 
 // RespondWithError writes a structured error response using a WebhookError.
@@ -45,26 +46,27 @@ func InternalError(c *gin.Context, code string, err error) {
 func RequireTenantID(c *gin.Context) (uuid.UUID, bool) {
 	val, exists := c.Get("tenant_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Code: "UNAUTHORIZED", Message: "Missing authentication"})
 		return uuid.Nil, false
 	}
 	tid, ok := val.(uuid.UUID)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid tenant context"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant context"})
 		return uuid.Nil, false
 	}
 	return tid, true
 }
 
-// InternalErrorGeneric is like InternalError but uses gin.H for handlers that
-// don't use the ErrorResponse struct.
+// InternalErrorGeneric is like InternalError but accepts a bare error without
+// a domain code. Produces the same ErrorResponse shape for consistency.
 func InternalErrorGeneric(c *gin.Context, err error) {
 	correlationID := uuid.New().String()
 	errorLogger.ErrorWithCorrelation("Internal error", correlationID, map[string]interface{}{
 		"error": err.Error(),
 	})
-	c.JSON(http.StatusInternalServerError, gin.H{
-		"error": "An internal error occurred. Correlation ID: " + correlationID,
+	c.JSON(http.StatusInternalServerError, ErrorResponse{
+		Code:    "INTERNAL_ERROR",
+		Message: "An internal error occurred. Correlation ID: " + correlationID,
 	})
 }
 

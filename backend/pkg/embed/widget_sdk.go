@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // WidgetType constants
@@ -288,12 +289,12 @@ func (h *WidgetSDKHandler) CreateWidgetSDK(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateWidgetSDKRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	config, err := h.service.CreateWidgetSDK(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, config)

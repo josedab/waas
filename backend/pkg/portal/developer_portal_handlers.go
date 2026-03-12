@@ -1,8 +1,9 @@
 package portal
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -61,7 +62,7 @@ func (h *Handler) StartOnboarding(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req StartOnboardingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -85,7 +86,7 @@ func (h *Handler) CompleteOnboardingStep(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CompleteStepRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -149,7 +150,7 @@ func (h *Handler) TryAPIEndpoint(c *gin.Context) {
 
 	var req TryEndpointRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -172,13 +173,13 @@ func (h *Handler) TryAPIEndpoint(c *gin.Context) {
 func (h *Handler) GenerateSDKCode(c *gin.Context) {
 	var req SDKCodeGenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	resp, err := h.service.GenerateSDKCode(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "GENERATION_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "GENERATION_FAILED", Message: err.Error()})
 		return
 	}
 

@@ -1,10 +1,11 @@
 package inbound
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"io"
 	"net/http"
 	"strconv"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -66,7 +67,7 @@ func (h *Handler) CreateSource(c *gin.Context) {
 
 	var req CreateSourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -157,13 +158,13 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 
 	var req UpdateSourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	source, err := h.service.UpdateSource(c.Request.Context(), tenantID, sourceID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "UPDATE_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -272,7 +273,7 @@ func (h *Handler) ReceiveWebhook(c *gin.Context) {
 
 	payload, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "READ_FAILED", "message": "failed to read request body"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "READ_FAILED", Message: "failed to read request body"})
 		return
 	}
 
@@ -287,7 +288,7 @@ func (h *Handler) ReceiveWebhook(c *gin.Context) {
 		if event == nil {
 			status = http.StatusNotFound
 		}
-		c.JSON(status, gin.H{"error": gin.H{"code": "WEBHOOK_FAILED", "message": err.Error()}})
+		c.JSON(status, httputil.APIErrorResponse{Code: "WEBHOOK_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -381,13 +382,13 @@ func (h *Handler) CreateContentRoute(c *gin.Context) {
 
 	var req CreateContentRouteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	route, err := h.service.CreateContentRoute(c.Request.Context(), tenantID, sourceID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, route)
@@ -400,13 +401,13 @@ func (h *Handler) CreateTransformRule(c *gin.Context) {
 
 	var req CreateTransformRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	rule, err := h.service.CreateTransformRule(c.Request.Context(), tenantID, sourceID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "CREATE_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "CREATE_FAILED", Message: err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, rule)

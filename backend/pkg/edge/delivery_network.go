@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // EdgeDeliveryNetwork manages the global edge delivery infrastructure
@@ -374,12 +375,12 @@ func (h *EdgeNetworkHandler) ListNodes(c *gin.Context) {
 func (h *EdgeNetworkHandler) RouteDelivery(c *gin.Context) {
 	var req EdgeDeliveryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	decision, err := h.network.RouteDelivery(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": gin.H{"code": "NO_NODES", "message": err.Error()}})
+		c.JSON(http.StatusServiceUnavailable, httputil.APIErrorResponse{Code: "NO_NODES", Message: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, decision)

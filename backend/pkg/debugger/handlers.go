@@ -1,9 +1,10 @@
 package debugger
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -111,7 +112,7 @@ func (h *Handler) ReplayWithMods(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req ReplayWithModRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -135,7 +136,7 @@ func (h *Handler) BulkReplay(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req BulkReplayRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -159,7 +160,7 @@ func (h *Handler) CreateDebugSession(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateDebugSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 

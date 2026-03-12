@@ -1,8 +1,9 @@
 package livemigration
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -65,7 +66,7 @@ func (h *Handler) CreateMigration(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateMigrationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -185,7 +186,7 @@ func (h *Handler) StartParallelDelivery(c *gin.Context) {
 
 	var req StartParallelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	req.JobID = jobID
@@ -287,7 +288,7 @@ func (h *Handler) DryRunMigration(c *gin.Context) {
 
 	var config ImporterConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -312,7 +313,7 @@ func (h *Handler) ImportFromSvix(c *gin.Context) {
 
 	var config ImporterConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -337,7 +338,7 @@ func (h *Handler) ImportFromConvoy(c *gin.Context) {
 
 	var config ImporterConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -362,7 +363,7 @@ func (h *Handler) ImportFromCSV(c *gin.Context) {
 
 	var config ImporterConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -405,7 +406,7 @@ func (h *Handler) SvixCreateEndpoint(c *gin.Context) {
 
 	var endpoint SvixEndpointIn
 	if err := c.ShouldBindJSON(&endpoint); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -447,7 +448,7 @@ func (h *Handler) ConvoyCreateEndpoint(c *gin.Context) {
 
 	var endpoint ConvoyEndpointIn
 	if err := c.ShouldBindJSON(&endpoint); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 

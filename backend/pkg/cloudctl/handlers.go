@@ -1,9 +1,10 @@
 package cloudctl
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -56,7 +57,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 func (h *Handler) ProvisionTenant(c *gin.Context) {
 	var req ProvisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -122,7 +123,7 @@ func (h *Handler) UpdatePlan(c *gin.Context) {
 
 	var req UpdatePlanRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -254,7 +255,7 @@ func (h *Handler) UpdateScalingConfig(c *gin.Context) {
 
 	var req UpdateScalingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 

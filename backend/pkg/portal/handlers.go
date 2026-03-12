@@ -1,9 +1,10 @@
 package portal
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -68,7 +69,7 @@ func (h *Handler) CreatePortal(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreatePortalRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -131,7 +132,7 @@ func (h *Handler) UpdatePortal(c *gin.Context) {
 
 	var req CreatePortalRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -172,7 +173,7 @@ func (h *Handler) CreateToken(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -292,7 +293,7 @@ func (h *Handler) UpdatePortalConfig(c *gin.Context) {
 
 	var req UpdatePortalConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -318,7 +319,7 @@ func (h *Handler) GetEmbedCode(c *gin.Context) {
 	format := c.DefaultQuery("format", "html")
 
 	if portalID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": "portal_id query parameter is required"}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: "portal_id query parameter is required"})
 		return
 	}
 

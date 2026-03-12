@@ -1,8 +1,9 @@
 package gitops
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -52,7 +53,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 func (h *Handler) ValidateManifest(c *gin.Context) {
 	var req ValidateManifestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -80,13 +81,13 @@ func (h *Handler) UploadManifest(c *gin.Context) {
 		Content string `json:"content" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	manifest, err := h.service.UploadManifest(c.Request.Context(), tenantID, req.Name, req.Content)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "UPLOAD_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "UPLOAD_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -267,7 +268,7 @@ func (h *Handler) ValidateDeclarativeConfig(c *gin.Context) {
 		Content string `json:"content" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -288,13 +289,13 @@ func (h *Handler) ApplyDeclarativeConfig(c *gin.Context) {
 		DryRun  bool   `json:"dry_run"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	result, err := h.service.ApplyDeclarativeConfig(c.Request.Context(), tenantID, req.Content, req.DryRun)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "APPLY_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "APPLY_FAILED", Message: err.Error()})
 		return
 	}
 

@@ -1,8 +1,9 @@
 package tfprovider
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -49,13 +50,13 @@ func (h *Handler) ImportResource(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req StateImportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	export, err := h.service.ImportResource(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "IMPORT_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusNotFound, httputil.APIErrorResponse{Code: "IMPORT_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -96,7 +97,7 @@ func (h *Handler) RegisterResource(c *gin.Context) {
 		ManagedBy    string            `json:"managed_by"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 

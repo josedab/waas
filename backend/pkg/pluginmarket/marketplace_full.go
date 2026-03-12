@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Extended plugin type constants (beyond what exists in models.go)
@@ -357,7 +358,7 @@ func (h *FullMarketplaceHandler) SearchPlugins(c *gin.Context) {
 func (h *FullMarketplaceHandler) GetPlugin(c *gin.Context) {
 	plugin, err := h.service.GetPlugin(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"code": "NOT_FOUND", "message": err.Error()}})
+		c.JSON(http.StatusNotFound, httputil.APIErrorResponse{Code: "NOT_FOUND", Message: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, plugin)
@@ -369,7 +370,7 @@ func (h *FullMarketplaceHandler) InstallPlugin(c *gin.Context) {
 	c.ShouldBindJSON(req)
 	install, err := h.service.InstallPlugin(c.Request.Context(), tenantID, req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INSTALL_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INSTALL_FAILED", Message: err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, install)
@@ -379,12 +380,12 @@ func (h *FullMarketplaceHandler) CreateReview(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateMarketplaceReviewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	review, err := h.service.CreateReview(c.Request.Context(), tenantID, c.Param("id"), &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "REVIEW_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "REVIEW_FAILED", Message: err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, review)
@@ -394,12 +395,12 @@ func (h *FullMarketplaceHandler) SubmitPlugin(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req SubmitPluginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	submission, err := h.service.SubmitPlugin(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "SUBMIT_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "SUBMIT_FAILED", Message: err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, submission)

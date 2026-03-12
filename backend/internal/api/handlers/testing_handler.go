@@ -27,6 +27,8 @@ type TestingHandler struct {
 	publisher           queue.PublisherInterface
 	logger              *utils.Logger
 	upgrader            websocket.Upgrader
+	urlValidator        URLValidatorInterface
+	httpClientFactory   func(timeout time.Duration) *http.Client
 }
 
 // TestWebhookRequest represents a webhook test request
@@ -139,7 +141,19 @@ func NewTestingHandler(webhookRepo repository.WebhookEndpointRepository, deliver
 		publisher:           publisher,
 		logger:              logger,
 		upgrader:            upgrader,
+		urlValidator:        utils.NewURLValidator(),
+		httpClientFactory:   httputil.NewSSRFSafeClient,
 	}
+}
+
+// SetURLValidator replaces the URL validator (useful for testing).
+func (h *TestingHandler) SetURLValidator(v URLValidatorInterface) {
+	h.urlValidator = v
+}
+
+// SetHTTPClientFactory replaces the HTTP client factory (useful for testing).
+func (h *TestingHandler) SetHTTPClientFactory(f func(timeout time.Duration) *http.Client) {
+	h.httpClientFactory = f
 }
 
 // TestWebhook tests a webhook endpoint with a custom payload
@@ -158,13 +172,7 @@ func NewTestingHandler(webhookRepo repository.WebhookEndpointRepository, deliver
 func (h *TestingHandler) TestWebhook(c *gin.Context) {
 	var req TestWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request format",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
 		return
 	}
 
@@ -175,28 +183,15 @@ func (h *TestingHandler) TestWebhook(c *gin.Context) {
 	}
 
 	// Validate URL
-	urlValidator := utils.NewURLValidator()
-	if err := urlValidator.ValidateWebhookURL(req.URL); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_URL",
-				"message": "Invalid webhook URL",
-				"details": err.Error(),
-			},
-		})
+	if err := h.urlValidator.ValidateWebhookURL(req.URL); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_URL", Message: "Invalid webhook URL", Details: err.Error()})
 		return
 	}
 
 	// Validate payload
 	var payloadTest interface{}
 	if err := json.Unmarshal(req.Payload, &payloadTest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_PAYLOAD",
-				"message": "Webhook payload must be valid JSON",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_PAYLOAD", Message: "Webhook payload must be valid JSON", Details: err.Error()})
 		return
 	}
 
@@ -241,13 +236,7 @@ func (h *TestingHandler) TestWebhook(c *gin.Context) {
 func (h *TestingHandler) CreateTestEndpoint(c *gin.Context) {
 	var req CreateTestEndpointRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request format",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
 		return
 	}
 
@@ -315,12 +304,7 @@ func (h *TestingHandler) InspectDelivery(c *gin.Context) {
 	deliveryIDStr := c.Param("id")
 	deliveryID, err := uuid.Parse(deliveryIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_ID",
-				"message": "Invalid delivery ID format",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_ID", Message: "Invalid delivery ID format"})
 		return
 	}
 
@@ -334,12 +318,7 @@ func (h *TestingHandler) InspectDelivery(c *gin.Context) {
 	attempts, err := h.deliveryAttemptRepo.GetDeliveryAttemptsByDeliveryID(c.Request.Context(), deliveryID, tenantID)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": map[string]interface{}{
-					"code":    "DELIVERY_NOT_FOUND",
-					"message": "Delivery not found",
-				},
-			})
+			c.JSON(http.StatusNotFound, ErrorResponse{Code: "DELIVERY_NOT_FOUND", Message: "Delivery not found"})
 			return
 		}
 
@@ -347,22 +326,12 @@ func (h *TestingHandler) InspectDelivery(c *gin.Context) {
 			"error":       err.Error(),
 			"delivery_id": deliveryID,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve delivery information",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve delivery information"})
 		return
 	}
 
 	if len(attempts) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DELIVERY_NOT_FOUND",
-				"message": "Delivery not found",
-			},
-		})
+		c.JSON(http.StatusNotFound, ErrorResponse{Code: "DELIVERY_NOT_FOUND", Message: "Delivery not found"})
 		return
 	}
 
@@ -376,12 +345,7 @@ func (h *TestingHandler) InspectDelivery(c *gin.Context) {
 			"error":       err.Error(),
 			"endpoint_id": latestAttempt.EndpointID,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve endpoint information",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve endpoint information"})
 		return
 	}
 
@@ -397,12 +361,7 @@ func (h *TestingHandler) GetDeliveryLogs(c *gin.Context) {
 	deliveryIDStr := c.Param("id")
 	deliveryID, err := uuid.Parse(deliveryIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_ID",
-				"message": "Invalid delivery ID format",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_ID", Message: "Invalid delivery ID format"})
 		return
 	}
 
@@ -419,12 +378,7 @@ func (h *TestingHandler) GetDeliveryLogs(c *gin.Context) {
 			"error":       err.Error(),
 			"delivery_id": deliveryID,
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve delivery logs",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve delivery logs"})
 		return
 	}
 
@@ -488,8 +442,8 @@ func (h *TestingHandler) performWebhookTest(ctx context.Context, req *TestWebhoo
 		TestedAt:  startTime,
 	}
 
-	// Create SSRF-safe HTTP client with timeout
-	client := httputil.NewSSRFSafeClient(time.Duration(req.Timeout) * time.Second)
+	// Create HTTP client with timeout
+	client := h.httpClientFactory(time.Duration(req.Timeout) * time.Second)
 
 	// Create HTTP request
 	httpReq, err := http.NewRequestWithContext(ctx, req.Method, req.URL, strings.NewReader(string(req.Payload)))
@@ -512,6 +466,8 @@ func (h *TestingHandler) performWebhookTest(ctx context.Context, req *TestWebhoo
 	// Perform the request
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
+		latency := time.Since(startTime).Milliseconds()
+		response.Latency = &latency
 		response.Status = "failed"
 		errorMsg := fmt.Sprintf("HTTP request failed: %v", err)
 		response.ErrorMessage = &errorMsg

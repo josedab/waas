@@ -1,8 +1,9 @@
 package analyticsembed
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,7 +52,7 @@ func (h *Handler) CreateWidget(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateWidgetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -114,7 +115,7 @@ func (h *Handler) UpdateWidget(c *gin.Context) {
 
 	var req CreateWidgetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -193,7 +194,7 @@ func (h *Handler) GenerateEmbedToken(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateEmbedTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -218,13 +219,13 @@ func (h *Handler) ValidateEmbedToken(c *gin.Context) {
 		Scope string `json:"scope"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	token, err := h.service.ValidateEmbedToken(c.Request.Context(), req.Token, req.Scope)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "INVALID_TOKEN", "message": err.Error()}})
+		c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "INVALID_TOKEN", Message: err.Error()})
 		return
 	}
 
@@ -260,7 +261,7 @@ func (h *Handler) UpdateTheme(c *gin.Context) {
 
 	var req UpdateThemeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 

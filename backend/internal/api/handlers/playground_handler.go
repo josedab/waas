@@ -78,7 +78,13 @@ func (h *PlaygroundHandler) CreateSession(c *gin.Context) {
 	}
 
 	var req CreateSessionRequest
-	c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// Allow empty body since name is optional, but reject malformed JSON
+		if c.Request.ContentLength > 0 {
+			c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
+			return
+		}
+	}
 
 	session, err := h.service.CreateSession(c.Request.Context(), tenantID, req.Name)
 	if err != nil {

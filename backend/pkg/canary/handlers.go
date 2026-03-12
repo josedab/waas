@@ -1,9 +1,10 @@
 package canary
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"net/http"
 	"strconv"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -50,7 +51,7 @@ func (h *Handler) CreateDeployment(c *gin.Context) {
 
 	var req CreateCanaryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -143,13 +144,13 @@ func (h *Handler) UpdateTraffic(c *gin.Context) {
 
 	var req UpdateTrafficRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
 	deployment, err := h.service.UpdateTraffic(c.Request.Context(), tenantID, deploymentID, req.TrafficPct)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "UPDATE_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "UPDATE_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -283,7 +284,7 @@ func (h *Handler) RecordMetrics(c *gin.Context) {
 
 	var metrics CanaryMetrics
 	if err := c.ShouldBindJSON(&metrics); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 

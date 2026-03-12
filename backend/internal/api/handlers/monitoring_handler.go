@@ -133,13 +133,7 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 			"tenant_id":  tenantID.String(),
 			"request_id": c.GetHeader("X-Request-ID"),
 		})
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request parameters",
-				"details": err.Error(),
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request parameters", Details: err.Error()})
 		return
 	}
 
@@ -195,12 +189,7 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 			"tenant_id":  tenantID.String(),
 			"request_id": c.GetHeader("X-Request-ID"),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve delivery history",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve delivery history"})
 		return
 	}
 
@@ -272,12 +261,7 @@ func (h *MonitoringHandler) GetDeliveryDetails(c *gin.Context) {
 			"error":       err.Error(),
 			"request_id":  c.GetHeader("X-Request-ID"),
 		})
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_ID",
-				"message": "Invalid delivery ID format",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_ID", Message: "Invalid delivery ID format"})
 		return
 	}
 
@@ -306,12 +290,7 @@ func (h *MonitoringHandler) GetDeliveryDetails(c *gin.Context) {
 			"tenant_id":   tenantID.String(),
 			"request_id":  c.GetHeader("X-Request-ID"),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve delivery details",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve delivery details"})
 		return
 	}
 
@@ -321,12 +300,7 @@ func (h *MonitoringHandler) GetDeliveryDetails(c *gin.Context) {
 			"tenant_id":   tenantID.String(),
 			"request_id":  c.GetHeader("X-Request-ID"),
 		})
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DELIVERY_NOT_FOUND",
-				"message": "Delivery not found",
-			},
-		})
+		c.JSON(http.StatusNotFound, ErrorResponse{Code: "DELIVERY_NOT_FOUND", Message: "Delivery not found"})
 		return
 	}
 
@@ -385,12 +359,7 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 			"error":       err.Error(),
 			"request_id":  c.GetHeader("X-Request-ID"),
 		})
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_ID",
-				"message": "Invalid endpoint ID format",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_ID", Message: "Invalid endpoint ID format"})
 		return
 	}
 
@@ -409,12 +378,7 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 				"tenant_id":   tenantID.String(),
 				"request_id":  c.GetHeader("X-Request-ID"),
 			})
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": map[string]interface{}{
-					"code":    "ENDPOINT_NOT_FOUND",
-					"message": "Webhook endpoint not found",
-				},
-			})
+			c.JSON(http.StatusNotFound, ErrorResponse{Code: "ENDPOINT_NOT_FOUND", Message: "Webhook endpoint not found"})
 			return
 		}
 
@@ -423,12 +387,7 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 			"endpoint_id": endpointID.String(),
 			"request_id":  c.GetHeader("X-Request-ID"),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve webhook endpoint"})
 		return
 	}
 
@@ -440,12 +399,7 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 			"endpoint_owner_id": endpoint.TenantID.String(),
 			"request_id":        c.GetHeader("X-Request-ID"),
 		})
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": map[string]interface{}{
-				"code":    "FORBIDDEN",
-				"message": "Access denied to this webhook endpoint",
-			},
-		})
+		c.JSON(http.StatusForbidden, ErrorResponse{Code: "FORBIDDEN", Message: "Access denied to this webhook endpoint"})
 		return
 	}
 
@@ -494,12 +448,7 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 			"tenant_id":   tenantID.String(),
 			"request_id":  c.GetHeader("X-Request-ID"),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "DATABASE_ERROR",
-				"message": "Failed to retrieve delivery history",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "DATABASE_ERROR", Message: "Failed to retrieve delivery history"})
 		return
 	}
 
@@ -604,12 +553,7 @@ func (h *MonitoringHandler) buildDeliverySummary(attempts []*models.DeliveryAtte
 // @Router /health [get]
 func (h *MonitoringHandler) GetHealthStatus(c *gin.Context) {
 	if h.healthChecker == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "HEALTH_CHECKER_NOT_AVAILABLE",
-				"message": "Health checker not initialized",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "HEALTH_CHECKER_NOT_AVAILABLE", Message: "Health checker not initialized"})
 		return
 	}
 
@@ -668,12 +612,7 @@ func (h *MonitoringHandler) GetLivenessStatus(c *gin.Context) {
 // @Router /alerts/active [get]
 func (h *MonitoringHandler) GetActiveAlerts(c *gin.Context) {
 	if h.alertManager == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "ALERT_MANAGER_NOT_AVAILABLE",
-				"message": "Alert manager not initialized",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "ALERT_MANAGER_NOT_AVAILABLE", Message: "Alert manager not initialized"})
 		return
 	}
 
@@ -698,12 +637,7 @@ func (h *MonitoringHandler) GetActiveAlerts(c *gin.Context) {
 // @Router /alerts/history [get]
 func (h *MonitoringHandler) GetAlertHistory(c *gin.Context) {
 	if h.alertManager == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": map[string]interface{}{
-				"code":    "ALERT_MANAGER_NOT_AVAILABLE",
-				"message": "Alert manager not initialized",
-			},
-		})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Code: "ALERT_MANAGER_NOT_AVAILABLE", Message: "Alert manager not initialized"})
 		return
 	}
 
@@ -718,12 +652,7 @@ func (h *MonitoringHandler) GetAlertHistory(c *gin.Context) {
 	severity := monitoring.AlertSeverity(c.Query("severity"))
 	if severity != "" && severity != monitoring.AlertSeverityCritical &&
 		severity != monitoring.AlertSeverityWarning && severity != monitoring.AlertSeverityInfo {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": map[string]interface{}{
-				"code":    "INVALID_SEVERITY",
-				"message": "Invalid severity. Must be one of: critical, warning, info",
-			},
-		})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_SEVERITY", Message: "Invalid severity. Must be one of: critical, warning, info"})
 		return
 	}
 

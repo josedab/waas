@@ -20,21 +20,21 @@ func (h *Handler) PortalTokenMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "missing authorization header"}})
+			c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "missing authorization header"})
 			c.Abort()
 			return
 		}
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "invalid authorization format"}})
+			c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "invalid authorization format"})
 			c.Abort()
 			return
 		}
 
 		tokenValue := parts[1]
 		if !strings.HasPrefix(tokenValue, "wpt_") {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"code": "UNAUTHORIZED", "message": "invalid portal token format"}})
+			c.JSON(http.StatusUnauthorized, httputil.APIErrorResponse{Code: "UNAUTHORIZED", Message: "invalid portal token format"})
 			c.Abort()
 			return
 		}
@@ -57,20 +57,20 @@ func RequireScope(scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenVal, exists := c.Get(PortalTokenKey)
 		if !exists {
-			c.JSON(http.StatusForbidden, gin.H{"error": gin.H{"code": "FORBIDDEN", "message": "no portal token in context"}})
+			c.JSON(http.StatusForbidden, httputil.APIErrorResponse{Code: "FORBIDDEN", Message: "no portal token in context"})
 			c.Abort()
 			return
 		}
 
 		embedToken, ok := tokenVal.(*EmbedToken)
 		if !ok {
-			c.JSON(http.StatusForbidden, gin.H{"error": gin.H{"code": "FORBIDDEN", "message": "invalid token in context"}})
+			c.JSON(http.StatusForbidden, httputil.APIErrorResponse{Code: "FORBIDDEN", Message: "invalid token in context"})
 			c.Abort()
 			return
 		}
 
 		if !HasScope(embedToken, scope) {
-			c.JSON(http.StatusForbidden, gin.H{"error": gin.H{"code": "INSUFFICIENT_SCOPE", "message": "token missing required scope: " + scope}})
+			c.JSON(http.StatusForbidden, httputil.APIErrorResponse{Code: "INSUFFICIENT_SCOPE", Message: "token missing required scope: " + scope})
 			c.Abort()
 			return
 		}

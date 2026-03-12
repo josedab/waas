@@ -9,20 +9,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // EventCatalogEntry represents a cataloged event type with schema binding.
 type EventCatalogEntry struct {
-	ID          string   `json:"id" db:"id"`
-	TenantID    string   `json:"tenant_id" db:"tenant_id"`
-	EventType   string   `json:"event_type" db:"event_type"`
-	Description string   `json:"description,omitempty" db:"description"`
-	SchemaID    string   `json:"schema_id,omitempty" db:"schema_id"`
-	Version     string   `json:"version" db:"version"`
-	Status      string   `json:"status" db:"status"`
-	Owner       string   `json:"owner,omitempty" db:"owner"`
-	Tags        []string `json:"tags,omitempty"`
-	Examples    []string `json:"examples,omitempty"`
+	ID          string    `json:"id" db:"id"`
+	TenantID    string    `json:"tenant_id" db:"tenant_id"`
+	EventType   string    `json:"event_type" db:"event_type"`
+	Description string    `json:"description,omitempty" db:"description"`
+	SchemaID    string    `json:"schema_id,omitempty" db:"schema_id"`
+	Version     string    `json:"version" db:"version"`
+	Status      string    `json:"status" db:"status"`
+	Owner       string    `json:"owner,omitempty" db:"owner"`
+	Tags        []string  `json:"tags,omitempty"`
+	Examples    []string  `json:"examples,omitempty"`
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
@@ -40,10 +41,10 @@ type CreateCatalogEntryRequest struct {
 
 // ValidationResult represents the result of validating a payload against a schema.
 type ValidationResult struct {
-	IsValid    bool     `json:"is_valid"`
-	Errors     []string `json:"errors,omitempty"`
-	SchemaID   string   `json:"schema_id"`
-	EventType  string   `json:"event_type"`
+	IsValid     bool      `json:"is_valid"`
+	Errors      []string  `json:"errors,omitempty"`
+	SchemaID    string    `json:"schema_id"`
+	EventType   string    `json:"event_type"`
 	ValidatedAt time.Time `json:"validated_at"`
 }
 
@@ -267,7 +268,7 @@ func (h *Handler) CreateCatalogEntry(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateCatalogEntryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -284,7 +285,7 @@ func (h *Handler) ValidatePayload(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req ValidatePayloadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -306,7 +307,7 @@ func (h *Handler) DetectBreakingChanges(c *gin.Context) {
 		SchemaContent string `json:"schema_content" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 

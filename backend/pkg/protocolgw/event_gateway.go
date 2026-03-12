@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/josedab/waas/pkg/httputil"
 )
 
 // Protocol constants (extending existing ones)
@@ -426,14 +427,14 @@ func (h *GatewayHandler) ListProtocols(c *gin.Context) {
 func (h *GatewayHandler) IngestEvent(c *gin.Context) {
 	var msg GatewayMessage
 	if err := c.ShouldBindJSON(&msg); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	msg.TenantID = c.GetString("tenant_id")
 
 	results, err := h.gateway.IngestEvent(c.Request.Context(), &msg)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INGEST_FAILED", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INGEST_FAILED", Message: err.Error()})
 		return
 	}
 
@@ -443,7 +444,7 @@ func (h *GatewayHandler) IngestEvent(c *gin.Context) {
 func (h *GatewayHandler) AddRoutingRule(c *gin.Context) {
 	var rule RoutingRule
 	if err := c.ShouldBindJSON(&rule); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	rule.TenantID = c.GetString("tenant_id")
@@ -462,7 +463,7 @@ func (h *GatewayHandler) TranslateMessage(c *gin.Context) {
 		TargetProtocol string         `json:"target_protocol" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	translated := h.gateway.translator.Translate(&req.Message, req.TargetProtocol)

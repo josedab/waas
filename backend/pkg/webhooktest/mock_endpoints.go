@@ -1,7 +1,6 @@
 package webhooktest
 
 import (
-	"github.com/josedab/waas/pkg/httputil"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -10,6 +9,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -470,7 +471,7 @@ func (h *MockEndpointHandler) CreateTestEndpoint(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateTestEndpointRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	baseURL := c.GetString("api_url")
@@ -494,7 +495,7 @@ func (h *MockEndpointHandler) GetCapturedRequests(c *gin.Context) {
 func (h *MockEndpointHandler) RunAssertions(c *gin.Context) {
 	var req AssertionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	result := h.service.RunAssertions(&req)
@@ -509,7 +510,7 @@ func (h *MockEndpointHandler) CreateChaosExperiment(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	var req CreateChaosRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 
@@ -532,7 +533,7 @@ func (h *MockEndpointHandler) CreateChaosExperiment(c *gin.Context) {
 func (h *MockEndpointHandler) RunCITests(c *gin.Context) {
 	var config CITestConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"code": "INVALID_REQUEST", "message": err.Error()}})
+		c.JSON(http.StatusBadRequest, httputil.APIErrorResponse{Code: "INVALID_REQUEST", Message: err.Error()})
 		return
 	}
 	result := h.service.RunCITests(c.Request.Context(), &config)
