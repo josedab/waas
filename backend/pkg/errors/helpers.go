@@ -30,8 +30,26 @@ func AbortWithError(c *gin.Context, err *WebhookError) {
 		}
 	}
 
+	// Sanitize internal errors in production mode
+	if gin.Mode() == gin.ReleaseMode {
+		sanitizeForProduction(err)
+	}
+
 	c.JSON(err.GetHTTPStatus(), ErrorResponse{Error: err})
 	c.Abort()
+}
+
+// sanitizeForProduction removes sensitive information from errors
+func sanitizeForProduction(err *WebhookError) {
+	if err.Details != nil {
+		delete(err.Details, "stack_trace")
+		delete(err.Details, "panic_value")
+	}
+
+	if err.Category == CategoryInternal && err.Code != "PANIC_RECOVERED" {
+		err.Message = "An internal server error occurred"
+		err.Details = nil
+	}
 }
 
 // AbortWithValidationError creates and aborts with a validation error
@@ -42,12 +60,12 @@ func AbortWithValidationError(c *gin.Context, field, reason string) {
 
 // AbortWithUnauthorized aborts with an unauthorized error
 func AbortWithUnauthorized(c *gin.Context) {
-	AbortWithError(c, ErrUnauthorized)
+	AbortWithError(c, ErrUnauthorized.Clone())
 }
 
 // AbortWithForbidden aborts with a forbidden error
 func AbortWithForbidden(c *gin.Context) {
-	AbortWithError(c, ErrForbidden)
+	AbortWithError(c, ErrForbidden.Clone())
 }
 
 // AbortWithNotFound aborts with a not found error
@@ -64,7 +82,7 @@ func AbortWithNotFound(c *gin.Context, resource string) {
 
 // AbortWithInternalError aborts with an internal server error
 func AbortWithInternalError(c *gin.Context, cause error) {
-	err := ErrInternalServer.WithCause(cause)
+	err := ErrInternalServer.Clone().WithCause(cause)
 	AbortWithError(c, err)
 }
 
@@ -83,6 +101,7 @@ func AbortWithQueueError(c *gin.Context, cause error) {
 // AbortWithRateLimit aborts with a rate limit error
 func AbortWithRateLimit(c *gin.Context, retryAfter int) {
 	err := NewRateLimitError(retryAfter)
+	c.Header("Retry-After", fmt.Sprintf("%d", retryAfter))
 	AbortWithError(c, err)
 }
 

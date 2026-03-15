@@ -101,7 +101,7 @@ func TestErrorHandlingSystemIntegration(t *testing.T) {
 			path:           "/example",
 			body:           map[string]string{"email": "dberror@example.com", "name": "Test User"},
 			expectedStatus: http.StatusInternalServerError,
-			expectedCode:   "DATABASE_ERROR",
+			expectedCode:   "DB_CONNECTION_FAILED",
 		},
 		{
 			name:           "forbidden error",
@@ -477,7 +477,7 @@ func TestErrorHandlingDeliveryEngineIntegration(t *testing.T) {
 		},
 		{
 			name:         "delivery failure",
-			endpointURL:  "https://example.com/webhook",
+			endpointURL:  "https://example.com/webhook-fail",
 			expectError:  true,
 			expectedCode: "WEBHOOK_SERVER_ERROR",
 		},

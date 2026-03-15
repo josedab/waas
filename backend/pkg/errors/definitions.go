@@ -307,7 +307,7 @@ var (
 
 // NewValidationError creates a validation error with specific details
 func NewValidationError(field, reason string) *WebhookError {
-	return ErrInvalidRequest.WithDetails(map[string]interface{}{
+	return ErrInvalidRequest.Clone().WithDetails(map[string]interface{}{
 		"field":  field,
 		"reason": reason,
 	})
@@ -315,7 +315,7 @@ func NewValidationError(field, reason string) *WebhookError {
 
 // NewPayloadTooLargeError creates a payload size error with specific limits
 func NewPayloadTooLargeError(actualSize, maxSize int) *WebhookError {
-	return ErrPayloadTooLarge.WithDetails(map[string]interface{}{
+	return ErrPayloadTooLarge.Clone().WithDetails(map[string]interface{}{
 		"actual_size_bytes": actualSize,
 		"max_size_bytes":    maxSize,
 	})
@@ -323,14 +323,14 @@ func NewPayloadTooLargeError(actualSize, maxSize int) *WebhookError {
 
 // NewRateLimitError creates a rate limit error with retry information
 func NewRateLimitError(retryAfter int) *WebhookError {
-	return ErrRateLimitExceeded.WithDetails(map[string]interface{}{
+	return ErrRateLimitExceeded.Clone().WithDetails(map[string]interface{}{
 		"retry_after_seconds": retryAfter,
 	})
 }
 
 // NewQuotaExceededError creates a quota error with usage information
 func NewQuotaExceededError(currentUsage, limit int) *WebhookError {
-	return ErrQuotaExceeded.WithDetails(map[string]interface{}{
+	return ErrQuotaExceeded.Clone().WithDetails(map[string]interface{}{
 		"current_usage": currentUsage,
 		"monthly_limit": limit,
 	})
@@ -342,11 +342,11 @@ func NewDeliveryError(endpointID, deliveryID string, httpStatus int, responseBod
 		"endpoint_id": endpointID,
 		"delivery_id": deliveryID,
 	}
-	
+
 	if httpStatus > 0 {
 		details["http_status"] = httpStatus
 	}
-	
+
 	if responseBody != "" {
 		// Truncate response body if too long
 		if len(responseBody) > 500 {
@@ -354,8 +354,8 @@ func NewDeliveryError(endpointID, deliveryID string, httpStatus int, responseBod
 		}
 		details["response_body"] = responseBody
 	}
-	
-	return ErrDeliveryFailed.WithDetails(details)
+
+	return ErrDeliveryFailed.Clone().WithDetails(details)
 }
 
 // WrapError wraps a generic error into a WebhookError

@@ -40,5 +40,7 @@ func InternalError(c *gin.Context, code string, err error) {
 		"error": err.Error(),
 		"path":  c.Request.URL.Path,
 	})
-	c.JSON(http.StatusInternalServerError, APIErrorResponse{Code: code, Message: "An internal error occurred. Correlation ID: " + correlationID})
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"error": APIErrorResponse{Code: code, Message: "An internal error occurred. Correlation ID: " + correlationID},
+	})
 }

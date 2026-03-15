@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
 	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -28,9 +30,9 @@ func (m *MockAlerter) SendAlert(ctx context.Context, err *WebhookError) error {
 func TestNewErrorHandler(t *testing.T) {
 	logger := utils.NewLogger("test")
 	alerter := &MockAlerter{}
-	
+
 	handler := NewErrorHandler(logger, alerter)
-	
+
 	assert.NotNil(t, handler)
 	assert.Equal(t, logger, handler.logger)
 	assert.Equal(t, alerter, handler.alerter)
@@ -38,7 +40,7 @@ func TestNewErrorHandler(t *testing.T) {
 
 func TestErrorHandler_HandleError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	tests := []struct {
 		name           string
 		err            error
@@ -80,38 +82,39 @@ func TestErrorHandler_HandleError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := utils.NewLogger("test")
 			alerter := &MockAlerter{}
-			
+
 			if tt.shouldAlert {
 				alerter.On("SendAlert", mock.Anything, mock.AnythingOfType("*errors.WebhookError")).Return(nil)
 			}
-			
+
 			handler := NewErrorHandler(logger, alerter)
-			
+
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest("GET", "/test", nil)
 			c.Set("request_id", "req_123")
 			c.Set("trace_id", "trace_456")
-			
+
 			handler.HandleError(c, tt.err)
-			
+
 			if tt.err == nil {
 				assert.Equal(t, 200, w.Code) // Default status when no error
 				return
 			}
-			
+
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			assert.True(t, c.IsAborted())
-			
+
 			var response ErrorResponse
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
-			
+
 			assert.Equal(t, tt.expectedCode, response.Error.Code)
 			assert.Equal(t, "req_123", response.Error.RequestID)
 			assert.Equal(t, "trace_456", response.Error.TraceID)
-			
+
 			if tt.shouldAlert {
+				time.Sleep(100 * time.Millisecond) // Allow async goroutine to complete
 				alerter.AssertExpectations(t)
 			}
 		})
@@ -121,7 +124,7 @@ func TestErrorHandler_HandleError(t *testing.T) {
 func TestErrorHandler_categorizeError(t *testing.T) {
 	logger := utils.NewLogger("test")
 	handler := NewErrorHandler(logger, nil)
-	
+
 	tests := []struct {
 		name             string
 		err              error
@@ -142,7 +145,7 @@ func TestErrorHandler_categorizeError(t *testing.T) {
 		},
 		{
 			name:             "connection error",
-			err:              errors.New("connection refused"),
+			err:              errors.New("database connection lost"),
 			expectedCategory: CategoryDatabase,
 			expectedCode:     "DATABASE_ERROR",
 		},
@@ -223,7 +226,7 @@ func TestErrorHandler_categorizeError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			webhookErr := handler.categorizeError(tt.err)
-			
+
 			assert.Equal(t, tt.expectedCategory, webhookErr.Category)
 			assert.Equal(t, tt.expectedCode, webhookErr.Code)
 			assert.Equal(t, tt.err, webhookErr.Cause)
@@ -234,10 +237,10 @@ func TestErrorHandler_categorizeError(t *testing.T) {
 func TestErrorHandler_sanitizeErrorForProduction(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 	defer gin.SetMode(gin.TestMode)
-	
+
 	logger := utils.NewLogger("test")
 	handler := NewErrorHandler(logger, nil)
-	
+
 	tests := []struct {
 		name        string
 		err         *WebhookError
@@ -307,9 +310,9 @@ func TestErrorHandler_sanitizeErrorForProduction(t *testing.T) {
 					originalDetails[k] = v
 				}
 			}
-			
+
 			handler.sanitizeErrorForProduction(tt.err)
-			
+
 			if tt.expectClean {
 				if tt.err.Category == CategoryInternal && tt.err.Code != "PANIC_RECOVERED" {
 					assert.Equal(t, "An internal server error occurred", tt.err.Message)
@@ -318,7 +321,7 @@ func TestErrorHandler_sanitizeErrorForProduction(t *testing.T) {
 					assert.NotContains(t, tt.err.Details, "query")
 					assert.NotContains(t, tt.err.Details, "connection_string")
 				}
-				
+
 				// Stack traces should always be removed
 				if tt.err.Details != nil {
 					assert.NotContains(t, tt.err.Details, "stack_trace")
@@ -336,10 +339,10 @@ func TestErrorHandler_sanitizeErrorForProduction(t *testing.T) {
 func TestErrorHandler_setErrorHeaders(t *testing.T) {
 	logger := utils.NewLogger("test")
 	handler := NewErrorHandler(logger, nil)
-	
+
 	tests := []struct {
-		name        string
-		err         *WebhookError
+		name            string
+		err             *WebhookError
 		expectedHeaders map[string]string
 	}{
 		{
@@ -350,12 +353,12 @@ func TestErrorHandler_setErrorHeaders(t *testing.T) {
 				Category:  CategoryValidation,
 			},
 			expectedHeaders: map[string]string{
-				"Content-Type":    "application/json",
-				"X-Request-ID":    "req_123",
-				"X-Trace-ID":      "trace_456",
-				"Cache-Control":   "no-cache, no-store, must-revalidate",
-				"Pragma":          "no-cache",
-				"Expires":         "0",
+				"Content-Type":  "application/json",
+				"X-Request-ID":  "req_123",
+				"X-Trace-ID":    "trace_456",
+				"Cache-Control": "no-cache, no-store, must-revalidate",
+				"Pragma":        "no-cache",
+				"Expires":       "0",
 			},
 		},
 		{
@@ -393,9 +396,9 @@ func TestErrorHandler_setErrorHeaders(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			
+
 			handler.setErrorHeaders(c, tt.err)
-			
+
 			for key, expectedValue := range tt.expectedHeaders {
 				assert.Equal(t, expectedValue, w.Header().Get(key))
 			}
@@ -405,20 +408,20 @@ func TestErrorHandler_setErrorHeaders(t *testing.T) {
 
 func TestRequestIDMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	tests := []struct {
-		name           string
-		existingHeader string
+		name            string
+		existingHeader  string
 		expectGenerated bool
 	}{
 		{
-			name:           "generates new request ID when none provided",
-			existingHeader: "",
+			name:            "generates new request ID when none provided",
+			existingHeader:  "",
 			expectGenerated: true,
 		},
 		{
-			name:           "uses existing request ID from header",
-			existingHeader: "req_existing_123",
+			name:            "uses existing request ID from header",
+			existingHeader:  "req_existing_123",
 			expectGenerated: false,
 		},
 	}
@@ -427,26 +430,26 @@ func TestRequestIDMiddleware(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			
+
 			req := httptest.NewRequest("GET", "/test", nil)
 			if tt.existingHeader != "" {
 				req.Header.Set("X-Request-ID", tt.existingHeader)
 			}
 			c.Request = req
-			
+
 			middleware := RequestIDMiddleware()
 			middleware(c)
-			
+
 			requestID, exists := c.Get("request_id")
 			assert.True(t, exists)
-			
+
 			if tt.expectGenerated {
 				assert.Contains(t, requestID.(string), "req_")
 				assert.NotEqual(t, tt.existingHeader, requestID.(string))
 			} else {
 				assert.Equal(t, tt.existingHeader, requestID.(string))
 			}
-			
+
 			assert.Equal(t, requestID.(string), w.Header().Get("X-Request-ID"))
 		})
 	}
@@ -454,20 +457,20 @@ func TestRequestIDMiddleware(t *testing.T) {
 
 func TestTraceIDMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	tests := []struct {
-		name           string
-		existingHeader string
+		name            string
+		existingHeader  string
 		expectGenerated bool
 	}{
 		{
-			name:           "generates new trace ID when none provided",
-			existingHeader: "",
+			name:            "generates new trace ID when none provided",
+			existingHeader:  "",
 			expectGenerated: true,
 		},
 		{
-			name:           "uses existing trace ID from header",
-			existingHeader: "trace_existing_123",
+			name:            "uses existing trace ID from header",
+			existingHeader:  "trace_existing_123",
 			expectGenerated: false,
 		},
 	}
@@ -476,26 +479,26 @@ func TestTraceIDMiddleware(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			
+
 			req := httptest.NewRequest("GET", "/test", nil)
 			if tt.existingHeader != "" {
 				req.Header.Set("X-Trace-ID", tt.existingHeader)
 			}
 			c.Request = req
-			
+
 			middleware := TraceIDMiddleware()
 			middleware(c)
-			
+
 			traceID, exists := c.Get("trace_id")
 			assert.True(t, exists)
-			
+
 			if tt.expectGenerated {
 				assert.Contains(t, traceID.(string), "trace_")
 				assert.NotEqual(t, tt.existingHeader, traceID.(string))
 			} else {
 				assert.Equal(t, tt.existingHeader, traceID.(string))
 			}
-			
+
 			assert.Equal(t, traceID.(string), w.Header().Get("X-Trace-ID"))
 		})
 	}
@@ -503,79 +506,80 @@ func TestTraceIDMiddleware(t *testing.T) {
 
 func TestErrorHandler_Middleware_PanicRecovery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	logger := utils.NewLogger("test")
 	alerter := &MockAlerter{}
-	
+
 	// Expect alert to be sent for panic
 	alerter.On("SendAlert", mock.Anything, mock.AnythingOfType("*errors.WebhookError")).Return(nil)
-	
+
 	handler := NewErrorHandler(logger, alerter)
-	
+
 	w := httptest.NewRecorder()
 	c, engine := gin.CreateTestContext(w)
-	
+
 	// Add the error handling middleware
 	engine.Use(handler.Middleware())
-	
+
 	// Add a route that panics
 	engine.GET("/panic", func(c *gin.Context) {
 		panic("test panic")
 	})
-	
+
 	req := httptest.NewRequest("GET", "/panic", nil)
 	c.Request = req
-	
+
 	// This should not panic the test, but should be handled by the middleware
 	engine.ServeHTTP(w, req)
-	
+
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	
+
 	var response ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	
+
 	assert.Equal(t, "PANIC_RECOVERED", response.Error.Code)
 	assert.Equal(t, CategoryInternal, response.Error.Category)
 	assert.Equal(t, SeverityCritical, response.Error.Severity)
 	assert.Contains(t, response.Error.Details, "panic_value")
 	assert.Contains(t, response.Error.Details, "stack_trace")
-	
+
+	time.Sleep(100 * time.Millisecond) // Allow async alert goroutine to complete
 	alerter.AssertExpectations(t)
 }
 
 func TestErrorHandler_getRequestID(t *testing.T) {
 	logger := utils.NewLogger("test")
 	handler := NewErrorHandler(logger, nil)
-	
+
 	tests := []struct {
-		name           string
-		contextValue   interface{}
-		headerValue    string
+		name            string
+		contextValue    interface{}
+		headerValue     string
 		expectGenerated bool
 	}{
 		{
-			name:           "gets from context",
-			contextValue:   "req_context_123",
-			headerValue:    "",
+			name:            "gets from context",
+			contextValue:    "req_context_123",
+			headerValue:     "",
 			expectGenerated: false,
 		},
 		{
-			name:           "gets from header when no context",
-			contextValue:   nil,
-			headerValue:    "req_header_123",
+			name:            "gets from header when no context",
+			contextValue:    nil,
+			headerValue:     "req_header_123",
 			expectGenerated: false,
 		},
 		{
-			name:           "generates when neither available",
-			contextValue:   nil,
-			headerValue:    "",
+			name:            "generates when neither available",
+			contextValue:    nil,
+			headerValue:     "",
 			expectGenerated: true,
 		},
 		{
-			name:           "ignores invalid context type",
-			contextValue:   123, // invalid type
-			headerValue:    "req_header_123",
+			name:            "ignores invalid context type",
+			contextValue:    123, // invalid type
+			headerValue:     "req_header_123",
 			expectGenerated: false,
 		},
 	}
@@ -584,19 +588,19 @@ func TestErrorHandler_getRequestID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			
+
 			req := httptest.NewRequest("GET", "/test", nil)
 			if tt.headerValue != "" {
 				req.Header.Set("X-Request-ID", tt.headerValue)
 			}
 			c.Request = req
-			
+
 			if tt.contextValue != nil {
 				c.Set("request_id", tt.contextValue)
 			}
-			
+
 			requestID := handler.getRequestID(c)
-			
+
 			if tt.expectGenerated {
 				assert.Contains(t, requestID, "req_")
 			} else if tt.contextValue != nil && tt.name == "gets from context" {
@@ -611,35 +615,35 @@ func TestErrorHandler_getRequestID(t *testing.T) {
 func TestErrorHandler_getTraceID(t *testing.T) {
 	logger := utils.NewLogger("test")
 	handler := NewErrorHandler(logger, nil)
-	
+
 	tests := []struct {
-		name           string
-		contextValue   interface{}
-		headerValue    string
+		name            string
+		contextValue    interface{}
+		headerValue     string
 		expectGenerated bool
 	}{
 		{
-			name:           "gets from context",
-			contextValue:   "trace_context_123",
-			headerValue:    "",
+			name:            "gets from context",
+			contextValue:    "trace_context_123",
+			headerValue:     "",
 			expectGenerated: false,
 		},
 		{
-			name:           "gets from header when no context",
-			contextValue:   nil,
-			headerValue:    "trace_header_123",
+			name:            "gets from header when no context",
+			contextValue:    nil,
+			headerValue:     "trace_header_123",
 			expectGenerated: false,
 		},
 		{
-			name:           "generates when neither available",
-			contextValue:   nil,
-			headerValue:    "",
+			name:            "generates when neither available",
+			contextValue:    nil,
+			headerValue:     "",
 			expectGenerated: true,
 		},
 		{
-			name:           "ignores invalid context type",
-			contextValue:   123, // invalid type
-			headerValue:    "trace_header_123",
+			name:            "ignores invalid context type",
+			contextValue:    123, // invalid type
+			headerValue:     "trace_header_123",
 			expectGenerated: false,
 		},
 	}
@@ -648,19 +652,19 @@ func TestErrorHandler_getTraceID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			
+
 			req := httptest.NewRequest("GET", "/test", nil)
 			if tt.headerValue != "" {
 				req.Header.Set("X-Trace-ID", tt.headerValue)
 			}
 			c.Request = req
-			
+
 			if tt.contextValue != nil {
 				c.Set("trace_id", tt.contextValue)
 			}
-			
+
 			traceID := handler.getTraceID(c)
-			
+
 			if tt.expectGenerated {
 				assert.Contains(t, traceID, "trace_")
 			} else if tt.contextValue != nil && tt.name == "gets from context" {

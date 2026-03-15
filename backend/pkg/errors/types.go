@@ -68,9 +68,9 @@ type WebhookError struct {
 	RequestID string                 `json:"request_id,omitempty"`
 	TraceID   string                 `json:"trace_id,omitempty"`
 
-	// Internal fields (not exposed in JSON)
+	// Internal fields
 	HTTPStatus int           `json:"-"`
-	Severity   ErrorSeverity `json:"-"`
+	Severity   ErrorSeverity `json:"severity"`
 	Cause      error         `json:"-"`
 
 	// Debugging information
@@ -89,6 +89,33 @@ func (e *WebhookError) Error() string {
 // Unwrap returns the underlying cause error
 func (e *WebhookError) Unwrap() error {
 	return e.Cause
+}
+
+// Clone creates a deep copy of the WebhookError to avoid mutating package-level singletons
+func (e *WebhookError) Clone() *WebhookError {
+	clone := &WebhookError{
+		Code:          e.Code,
+		Message:       e.Message,
+		Category:      e.Category,
+		Timestamp:     e.Timestamp,
+		RequestID:     e.RequestID,
+		TraceID:       e.TraceID,
+		HTTPStatus:    e.HTTPStatus,
+		Severity:      e.Severity,
+		Cause:         e.Cause,
+		Documentation: e.Documentation,
+	}
+	if e.Details != nil {
+		clone.Details = make(map[string]interface{}, len(e.Details))
+		for k, v := range e.Details {
+			clone.Details[k] = v
+		}
+	}
+	if e.DebuggingHints != nil {
+		clone.DebuggingHints = make([]string, len(e.DebuggingHints))
+		copy(clone.DebuggingHints, e.DebuggingHints)
+	}
+	return clone
 }
 
 // WithDetails adds additional details to the error

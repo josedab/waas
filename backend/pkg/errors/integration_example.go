@@ -3,8 +3,10 @@ package errors
 import (
 	"context"
 	stderrors "errors"
-	"github.com/josedab/waas/pkg/utils"
 	"net/http"
+	"strings"
+
+	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -253,11 +255,17 @@ type User struct {
 	Email string `json:"email"`
 }
 
-// ExampleErrorHandlingInDeliveryEngine demonstrates error handling in delivery engine
+// ExampleErrorHandlingInDeliveryEngine demonstrates error handling in delivery engine.
+// It simulates an HTTP delivery where the status code depends on the endpoint URL.
 func ExampleErrorHandlingInDeliveryEngine(endpointURL string, payload []byte) error {
-	// Simulate HTTP client call
-	statusCode := 500
-	responseBody := "Internal Server Error"
+	// Simulate HTTP client call — use endpoint URL to differentiate scenarios
+	statusCode := 200
+	responseBody := "OK"
+
+	if strings.Contains(endpointURL, "fail") || strings.Contains(endpointURL, "error") {
+		statusCode = 500
+		responseBody = "Internal Server Error"
+	}
 
 	// Handle HTTP errors with structured error response
 	if statusCode >= 400 {
