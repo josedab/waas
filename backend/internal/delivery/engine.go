@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -185,15 +186,25 @@ func (e *DeliveryEngine) Start() error {
 	return nil
 }
 
-// Stop gracefully stops the delivery engine
+// Stop gracefully stops the delivery engine with a 30-second timeout.
 func (e *DeliveryEngine) Stop() {
 	e.logger.Info("Stopping delivery engine", nil)
 
 	e.consumer.Stop()
 	e.cancel()
-	e.wg.Wait()
 
-	e.logger.Info("Delivery engine stopped", nil)
+	done := make(chan struct{})
+	go func() {
+		e.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		e.logger.Info("Delivery engine stopped", nil)
+	case <-time.After(30 * time.Second):
+		e.logger.Error("Delivery engine shutdown timed out after 30s; some workers may still be running", nil)
+	}
 }
 
 // HandleDelivery implements the MessageHandler interface.
@@ -223,6 +234,17 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 		"attempt_number": message.AttemptNumber,
 	})
 
+	// Validate payload is present
+	if len(message.Payload) == 0 {
+		errMsg := "payload is empty"
+		return &queue.DeliveryResult{
+			DeliveryID:    message.DeliveryID,
+			Status:        queue.StatusFailed,
+			ErrorMessage:  &errMsg,
+			AttemptNumber: message.AttemptNumber,
+		}, nil
+	}
+
 	// Get webhook endpoint details
 	endpoint, err := e.webhookRepo.GetByID(ctx, message.EndpointID)
 	if err != nil {
@@ -232,6 +254,26 @@ func (e *DeliveryEngine) HandleDelivery(ctx context.Context, message *queue.Deli
 			"error":       err.Error(),
 		})
 		errMsg := fmt.Sprintf("endpoint not found: %v", err)
+		return &queue.DeliveryResult{
+			DeliveryID:    message.DeliveryID,
+			Status:        queue.StatusFailed,
+			ErrorMessage:  &errMsg,
+			AttemptNumber: message.AttemptNumber,
+		}, nil
+	}
+
+	// Validate endpoint URL is present and parseable
+	if endpoint.URL == "" {
+		errMsg := "endpoint URL is empty"
+		return &queue.DeliveryResult{
+			DeliveryID:    message.DeliveryID,
+			Status:        queue.StatusFailed,
+			ErrorMessage:  &errMsg,
+			AttemptNumber: message.AttemptNumber,
+		}, nil
+	}
+	if u, parseErr := url.Parse(endpoint.URL); parseErr != nil || u.Scheme == "" || u.Host == "" {
+		errMsg := fmt.Sprintf("endpoint URL is invalid: %s", endpoint.URL)
 		return &queue.DeliveryResult{
 			DeliveryID:    message.DeliveryID,
 			Status:        queue.StatusFailed,
@@ -592,6 +634,13 @@ func isRetryableError(err error) bool {
 		return true
 	}
 
+	// String-based fallback for wrapped errors
+	errMsg := err.Error()
+	if strings.Contains(errMsg, "no such host") ||
+		strings.Contains(errMsg, "connection refused") {
+		return true
+	}
+
 	return false
 }
 
@@ -612,6 +661,10 @@ func isRetryableStatusCode(statusCode int) bool {
 
 // applyTransformations applies all transformations configured for an endpoint
 func (e *DeliveryEngine) applyTransformations(ctx context.Context, endpointID uuid.UUID, payload json.RawMessage) (json.RawMessage, error) {
+	if e.transformRepo == nil {
+		return nil, nil
+	}
+
 	// Get transformations for this endpoint
 	transformations, err := e.transformRepo.GetByEndpointID(ctx, endpointID)
 	if err != nil {
@@ -721,9 +774,16 @@ func (e *DeliveryEngine) SetDLQHook(hook DLQHook) {
 // routeToDeadLetter invokes the DLQ hook if configured.
 func (e *DeliveryEngine) routeToDeadLetter(ctx context.Context, message *queue.DeliveryMessage, result *queue.DeliveryResult) {
 	if e.dlqHook == nil {
-		e.logger.Warn("DLQ hook not configured; permanently failed delivery has no DLQ destination", map[string]interface{}{
-			"delivery_id": message.DeliveryID,
-			"endpoint_id": message.EndpointID,
+		errMsg := ""
+		if result.ErrorMessage != nil {
+			errMsg = *result.ErrorMessage
+		}
+		e.logger.Error("DLQ hook not configured; permanently failed delivery cannot be routed to dead-letter queue", map[string]interface{}{
+			"delivery_id":    message.DeliveryID,
+			"endpoint_id":    message.EndpointID,
+			"attempt_number": message.AttemptNumber,
+			"max_attempts":   message.MaxAttempts,
+			"error":          errMsg,
 		})
 		return
 	}

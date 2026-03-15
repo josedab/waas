@@ -129,6 +129,21 @@ func (m *MockDeliveryRepository) GetDeliveryHistoryWithFilters(ctx context.Conte
 	return args.Get(0).([]*models.DeliveryAttempt), args.Int(1), args.Error(2)
 }
 
+// createTestHTTPClient creates an HTTP client for testing that allows localhost connections
+func createTestHTTPClient() *http.Client {
+	config := getDeliveryConfig()
+	return &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:          config.MaxIdleConns,
+			MaxIdleConnsPerHost:   config.MaxIdleConnsPerHost,
+			IdleConnTimeout:       config.IdleConnTimeout,
+			TLSHandshakeTimeout:   config.TLSHandshakeTimeout,
+			ResponseHeaderTimeout: config.ResponseHeaderTimeout,
+		},
+		Timeout: config.RequestTimeout,
+	}
+}
+
 // createTestEngine creates a delivery engine with mocked dependencies for testing
 func createTestEngine() (*DeliveryEngine, *MockWebhookRepository, *MockDeliveryRepository) {
 	mockWebhookRepo := &MockWebhookRepository{}
@@ -138,7 +153,7 @@ func createTestEngine() (*DeliveryEngine, *MockWebhookRepository, *MockDeliveryR
 	engine := &DeliveryEngine{
 		webhookRepo:   mockWebhookRepo,
 		deliveryRepo:  mockDeliveryRepo,
-		httpClient:    createHTTPClient(getDeliveryConfig()),
+		httpClient:    createTestHTTPClient(),
 		healthMonitor: NewEndpointHealthMonitor(mockWebhookRepo, logger),
 		logger:        logger,
 	}
@@ -312,6 +327,55 @@ func TestDeliveryEngine_HandleDelivery_EndpointNotFound(t *testing.T) {
 	assert.Contains(t, *result.ErrorMessage, "endpoint not found")
 
 	mockWebhookRepo.AssertExpectations(t)
+}
+
+func TestDeliveryEngine_HandleDelivery_EmptyPayload(t *testing.T) {
+	engine, _, _ := createTestEngine()
+
+	message := &queue.DeliveryMessage{
+		DeliveryID:    uuid.New(),
+		EndpointID:    uuid.New(),
+		Payload:       nil,
+		AttemptNumber: 1,
+		MaxAttempts:   3,
+		ScheduledAt:   time.Now(),
+	}
+
+	result, err := engine.HandleDelivery(context.Background(), message)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, queue.StatusFailed, result.Status)
+	assert.Contains(t, *result.ErrorMessage, "payload is empty")
+}
+
+func TestDeliveryEngine_HandleDelivery_InvalidURL(t *testing.T) {
+	engine, mockWebhookRepo, _ := createTestEngine()
+
+	endpointID := uuid.New()
+	endpoint := &models.WebhookEndpoint{
+		ID:       endpointID,
+		URL:      "",
+		IsActive: true,
+	}
+
+	message := &queue.DeliveryMessage{
+		DeliveryID:    uuid.New(),
+		EndpointID:    endpointID,
+		Payload:       json.RawMessage(`{"event": "test"}`),
+		AttemptNumber: 1,
+		MaxAttempts:   3,
+		ScheduledAt:   time.Now(),
+	}
+
+	mockWebhookRepo.On("GetByID", mock.Anything, endpointID).Return(endpoint, nil)
+
+	result, err := engine.HandleDelivery(context.Background(), message)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, queue.StatusFailed, result.Status)
+	assert.Contains(t, *result.ErrorMessage, "endpoint URL is empty")
 }
 
 func TestDeliveryEngine_HandleDelivery_NetworkError(t *testing.T) {
