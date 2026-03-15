@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -89,14 +90,27 @@ func (c *Consumer) worker(ctx context.Context, workerID int) {
 		case <-ctx.Done():
 			return
 		default:
-			// Try to get a message from the queue
-			if err := c.processNextMessage(ctx, workerID); err != nil {
+			if err := c.safeProcessNextMessage(ctx, workerID); err != nil {
 				c.logger.Error("Worker error", map[string]interface{}{"worker_id": workerID, "error": err.Error()})
-				// Brief pause on error to avoid tight loop
 				time.Sleep(100 * time.Millisecond)
 			}
 		}
 	}
+}
+
+// safeProcessNextMessage wraps processNextMessage with panic recovery to
+// prevent a single bad message from killing a worker goroutine permanently.
+func (c *Consumer) safeProcessNextMessage(ctx context.Context, workerID int) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic recovered in worker %d: %v", workerID, r)
+			c.logger.Error("Worker panic recovered", map[string]interface{}{
+				"worker_id": workerID,
+				"panic":     fmt.Sprintf("%v", r),
+			})
+		}
+	}()
+	return c.processNextMessage(ctx, workerID)
 }
 
 // processNextMessage processes the next available message
@@ -115,9 +129,19 @@ func (c *Consumer) processNextMessage(ctx context.Context, workerID int) error {
 	// Parse the message
 	var message DeliveryMessage
 	if err := message.FromJSON([]byte(result)); err != nil {
-		c.logger.Warn("Failed to parse message", map[string]interface{}{"worker_id": workerID, "error": err.Error()})
-		// Remove invalid message from processing queue
-		c.redis.Client.LRem(ctx, ProcessingQueue, 1, result)
+		c.logger.Error("Failed to parse message; routing to DLQ", map[string]interface{}{
+			"worker_id": workerID,
+			"error":     err.Error(),
+		})
+		// Route unparseable message to DLQ for audit trail
+		c.routeMalformedToDLQ(ctx, result, err)
+		// Remove from processing queue
+		if remErr := c.redis.Client.LRem(ctx, ProcessingQueue, 1, result).Err(); remErr != nil {
+			c.logger.Error("Failed to remove malformed message from processing queue", map[string]interface{}{
+				"worker_id": workerID,
+				"error":     remErr.Error(),
+			})
+		}
 		return nil
 	}
 
@@ -142,7 +166,13 @@ func (c *Consumer) processNextMessage(ctx context.Context, workerID int) error {
 	}
 
 	// Remove message from processing queue
-	c.redis.Client.LRem(ctx, ProcessingQueue, 1, result)
+	if err := c.redis.Client.LRem(ctx, ProcessingQueue, 1, result).Err(); err != nil {
+		c.logger.Error("Failed to remove message from processing queue", map[string]interface{}{
+			"worker_id":   workerID,
+			"delivery_id": message.DeliveryID.String(),
+			"error":       err.Error(),
+		})
+	}
 
 	return nil
 }
@@ -218,5 +248,28 @@ func (c *Consumer) calculateRetryDelay(attemptNumber int) time.Duration {
 	jitterMultiplier := 2*rand.Float64() - 1
 	delay = delay + time.Duration(float64(jitter)*jitterMultiplier)
 
+	// Ensure delay doesn't exceed max after jitter
+	if delay > maxDelay {
+		delay = maxDelay
+	}
+
 	return delay
+}
+
+// routeMalformedToDLQ sends an unparseable raw message to the dead-letter queue
+// so it can be inspected later.
+func (c *Consumer) routeMalformedToDLQ(ctx context.Context, rawMessage string, parseErr error) {
+	entry := map[string]interface{}{
+		"raw_message": rawMessage,
+		"reason":      fmt.Sprintf("JSON parsing failed: %s", parseErr.Error()),
+		"timestamp":   time.Now().UTC().Format(time.RFC3339),
+	}
+	data, err := json.Marshal(entry)
+	if err != nil {
+		c.logger.Error("Failed to marshal malformed DLQ entry", map[string]interface{}{"error": err.Error()})
+		return
+	}
+	if err := c.redis.Client.LPush(ctx, DeadLetterQueue, data).Err(); err != nil {
+		c.logger.Error("Failed to push malformed message to DLQ", map[string]interface{}{"error": err.Error()})
+	}
 }
