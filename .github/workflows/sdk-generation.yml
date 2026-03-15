@@ -66,7 +66,7 @@ jobs:
             echo "version=0.0.0-dev.$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: openapi-spec
           path: backend/docs/openapi.json
@@ -120,7 +120,7 @@ jobs:
         run: |
           cp backend/sdk/${{ matrix.language }}/verify/* sdk/${{ matrix.language }}/generated/verify/ 2>/dev/null || true
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sdk-${{ matrix.language }}
           path: sdk/${{ matrix.language }}/generated/
