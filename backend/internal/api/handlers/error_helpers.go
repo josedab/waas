@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	webhookerrors "github.com/josedab/waas/pkg/errors"
+	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/utils"
 )
 
@@ -84,4 +85,22 @@ func ParseQueryInt(c *gin.Context, param string, defaultVal int) int {
 		return defaultVal
 	}
 	return val
+}
+
+// getEndpointLimitForTier returns the maximum number of endpoints allowed
+// based on the tenant's subscription tier stored in the gin context.
+func getEndpointLimitForTier(c *gin.Context) int {
+	if val, exists := c.Get("tenant"); exists {
+		if tenant, ok := val.(*models.Tenant); ok {
+			switch tenant.SubscriptionTier {
+			case "basic":
+				return 25
+			case "premium", "pro":
+				return 100
+			case "enterprise":
+				return 10000
+			}
+		}
+	}
+	return 5 // free tier default
 }

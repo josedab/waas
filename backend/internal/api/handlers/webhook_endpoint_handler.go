@@ -161,6 +161,24 @@ func (h *WebhookHandler) CreateWebhookEndpoint(c *gin.Context) {
 		return
 	}
 
+	// Enforce per-tier endpoint limit
+	endpointCount, err := h.webhookRepo.CountByTenantID(c.Request.Context(), tenantID)
+	if err != nil {
+		h.logger.Error("Failed to count endpoints", map[string]interface{}{
+			"tenant_id": tenantID,
+			"error":     err.Error(),
+		})
+	} else {
+		maxEndpoints := getEndpointLimitForTier(c)
+		if endpointCount >= maxEndpoints {
+			c.JSON(http.StatusForbidden, ErrorResponse{
+				Code:    "ENDPOINT_LIMIT_EXCEEDED",
+				Message: fmt.Sprintf("Endpoint limit (%d) reached for your subscription tier", maxEndpoints),
+			})
+			return
+		}
+	}
+
 	// Check URL accessibility (optional - can be disabled for testing)
 	if err := h.urlValidator.CheckURLAccessibility(c.Request.Context(), req.URL); err != nil {
 		h.logger.Warn("Webhook URL accessibility check failed", map[string]interface{}{
