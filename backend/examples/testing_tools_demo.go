@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -14,12 +15,26 @@ import (
 func main() {
 	fmt.Println("Webhook Testing Tools Demo")
 	fmt.Println("==========================")
+	fmt.Println()
+	fmt.Println("Prerequisites:")
+	fmt.Println("  1. Start the API: make run-api")
+	fmt.Println("  2. Create a tenant and get an API key:")
+	fmt.Println("     curl -s -X POST http://localhost:8080/api/v1/tenants \\")
+	fmt.Println("       -H 'Content-Type: application/json' \\")
+	fmt.Println("       -d '{\"name\":\"demo\",\"subscription_tier\":\"free\"}'")
+	fmt.Println("  3. Set WAAS_API_KEY=wh_... from the response")
+	fmt.Println()
 
 	// Base URL for the webhook platform API
 	baseURL := "http://localhost:8080/api/v1"
-	
-	// Example API key (in real usage, this would be obtained from tenant registration)
-	apiKey := "your-api-key-here"
+
+	// Read API key from environment (or use placeholder)
+	apiKey := os.Getenv("WAAS_API_KEY")
+	if apiKey == "" {
+		fmt.Println("⚠ WAAS_API_KEY not set. Set it to run this demo against a live API.")
+		fmt.Println("  export WAAS_API_KEY=wh_your_key_here")
+		return
+	}
 
 	// 1. Create a test endpoint for receiving webhooks
 	fmt.Println("\n1. Creating a test endpoint...")
@@ -79,12 +94,12 @@ type TestEndpointResponse struct {
 }
 
 type TestWebhookResponse struct {
-	TestID      string  `json:"test_id"`
-	URL         string  `json:"url"`
-	Status      string  `json:"status"`
-	HTTPStatus  *int    `json:"http_status"`
-	Latency     *int64  `json:"latency_ms"`
-	RequestID   string  `json:"request_id"`
+	TestID       string  `json:"test_id"`
+	URL          string  `json:"url"`
+	Status       string  `json:"status"`
+	HTTPStatus   *int    `json:"http_status"`
+	Latency      *int64  `json:"latency_ms"`
+	RequestID    string  `json:"request_id"`
 	ErrorMessage *string `json:"error_message"`
 }
 
@@ -99,7 +114,7 @@ func createTestEndpoint(baseURL, apiKey string) *TestEndpointResponse {
 	}
 
 	jsonBody, _ := json.Marshal(reqBody)
-	
+
 	req, err := http.NewRequest("POST", baseURL+"/webhooks/test/endpoints", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		fmt.Printf("✗ Error creating request: %v\n", err)
@@ -151,7 +166,7 @@ func testWebhookDelivery(baseURL, apiKey, targetURL string) *TestWebhookResponse
 	}
 
 	jsonBody, _ := json.Marshal(reqBody)
-	
+
 	req, err := http.NewRequest("POST", baseURL+"/webhooks/test", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		fmt.Printf("✗ Error creating request: %v\n", err)

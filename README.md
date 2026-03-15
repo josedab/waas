@@ -42,7 +42,7 @@ Expected response:
 # Create a tenant (returns your API key)
 curl -s -X POST http://localhost:8080/api/v1/tenants \
   -H "Content-Type: application/json" \
-  -d '{"name": "my-test-tenant", "email": "test@example.com"}'
+  -d '{"name": "my-test-tenant", "subscription_tier": "free"}'
 ```
 
 Expected response:
@@ -58,7 +58,7 @@ Expected response:
     "created_at": "2025-01-01T00:00:00Z",
     "updated_at": "2025-01-01T00:00:00Z"
   },
-  "api_key": "whk_..."
+  "api_key": "wh_..."
 }
 ```
 

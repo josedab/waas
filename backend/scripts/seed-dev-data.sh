@@ -31,10 +31,10 @@ echo ""
 
 # --- Helper ------------------------------------------------------------------
 create_tenant() {
-  local name="$1" email="$2"
+  local name="$1" tier="${2:-free}"
   RESP=$(curl -sf -X POST "${API_V1}/tenants" \
     -H "Content-Type: application/json" \
-    -d "{\"name\": \"${name}\", \"email\": \"${email}\"}" 2>/dev/null) || {
+    -d "{\"name\": \"${name}\", \"subscription_tier\": \"${tier}\"}" 2>/dev/null) || {
     echo "  ⚠️  Could not create tenant '${name}' (may already exist)"
     return 1
   }
@@ -70,7 +70,7 @@ send_webhook() {
 
 # --- Tenant 1: demo-shop ----------------------------------------------------
 echo "Creating tenant: demo-shop..."
-if create_tenant "demo-shop" "shop@example.com"; then
+if create_tenant "demo-shop" "free"; then
   SHOP_KEY="${API_KEY}"
   SHOP_ID="${TENANT_ID}"
 
@@ -94,7 +94,7 @@ echo ""
 
 # --- Tenant 2: demo-saas ----------------------------------------------------
 echo "Creating tenant: demo-saas..."
-if create_tenant "demo-saas" "saas@example.com"; then
+if create_tenant "demo-saas" "premium"; then
   SAAS_KEY="${API_KEY}"
 
   echo "Creating endpoints for demo-saas..."
@@ -112,7 +112,7 @@ echo ""
 
 # --- Tenant 3: demo-ci (no endpoints — shows empty state) -------------------
 echo "Creating tenant: demo-ci (empty, no endpoints)..."
-create_tenant "demo-ci" "ci@example.com" || true
+create_tenant "demo-ci" "basic" || true
 
 echo ""
 echo "Seed complete! 🌱"

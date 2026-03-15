@@ -507,8 +507,8 @@ smoke-test: ## Quick smoke test against running API (requires make run-api)
 	@printf "  %-30s" "Create tenant:" ; \
 		RESP=$$(curl -s -X POST http://localhost:8080/api/v1/tenants \
 			-H "Content-Type: application/json" \
-			-d '{"name": "smoke-test-tenant", "email": "smoke@test.com"}' 2>/dev/null); \
-		if echo "$$RESP" | grep -q "api_key\|id"; then echo "✅ OK"; else echo "❌ FAIL: $$RESP"; exit 1; fi
+			-d '{"name": "smoke-test-tenant", "subscription_tier": "free"}' 2>/dev/null); \
+		if echo "$$RESP" | grep -q "api_key"; then echo "✅ OK"; else echo "❌ FAIL: $$RESP"; exit 1; fi
 	@printf "  %-30s" "Swagger docs:" ; \
 		STATUS=$$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/docs/index.html 2>/dev/null); \
 		if [ "$$STATUS" = "200" ]; then echo "✅ OK"; else echo "⚠️  Not available (HTTP $$STATUS)"; fi

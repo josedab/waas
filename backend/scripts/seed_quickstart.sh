@@ -10,27 +10,38 @@ echo "Seeding sample data..."
 
 psql "$DB_URL" <<'SQL'
 -- Create a demo tenant
-INSERT INTO tenants (id, name, email, api_key_hash, subscription_tier, is_active, rate_limit, monthly_quota, created_at, updated_at)
+INSERT INTO tenants (id, name, api_key_hash, subscription_tier, rate_limit_per_minute, monthly_quota, created_at, updated_at)
 VALUES (
-  'demo-tenant-001',
+  uuid_generate_v4(),
   'Quickstart Demo',
-  'demo@waas-quickstart.local',
-  'quickstart_demo_key_hash',
-  'starter',
-  true,
+  '$2a$10$quickstart_placeholder_hash_not_for_production',
+  'free',
   100,
   10000,
   NOW(),
   NOW()
-) ON CONFLICT (id) DO NOTHING;
+) ON CONFLICT DO NOTHING;
 
--- Create sample webhook endpoints
-INSERT INTO webhook_endpoints (id, tenant_id, url, secret_hash, is_active, retry_max_attempts, retry_initial_delay_ms, retry_max_delay_ms, created_at, updated_at)
-VALUES
-  ('ep-httpbin-001', 'demo-tenant-001', 'https://httpbin.org/post', 'demo_secret_hash', true, 3, 1000, 30000, NOW(), NOW()),
-  ('ep-webhook-002', 'demo-tenant-001', 'https://webhook.site/demo', 'demo_secret_hash_2', true, 3, 1000, 30000, NOW(), NOW()),
-  ('ep-inactive-003', 'demo-tenant-001', 'https://example.com/webhook', 'demo_secret_hash_3', false, 3, 1000, 30000, NOW(), NOW())
-ON CONFLICT (id) DO NOTHING;
+-- Create sample webhook endpoints (using the first tenant)
+INSERT INTO webhook_endpoints (id, tenant_id, url, secret_hash, is_active, retry_config, custom_headers, created_at, updated_at)
+SELECT
+  uuid_generate_v4(),
+  t.id,
+  ep.url,
+  ep.secret_hash,
+  ep.is_active,
+  '{"max_attempts":3,"initial_delay_ms":1000,"max_delay_ms":30000,"backoff_multiplier":2}'::jsonb,
+  '{}'::jsonb,
+  NOW(),
+  NOW()
+FROM tenants t
+CROSS JOIN (VALUES
+  ('https://httpbin.org/post', 'demo_secret_hash_1', true),
+  ('https://httpbin.org/anything', 'demo_secret_hash_2', true),
+  ('https://example.com/webhook', 'demo_secret_hash_3', false)
+) AS ep(url, secret_hash, is_active)
+WHERE t.name = 'Quickstart Demo'
+ON CONFLICT DO NOTHING;
 
 SQL
 
