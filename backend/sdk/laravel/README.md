@@ -28,18 +28,67 @@ php artisan vendor:publish --tag=waas-config
 
 ```env
 WAAS_API_URL=http://localhost:8080
-WAAS_API_KEY=your-api-key
+WAAS_API_KEY=wh_your_api_key
+WAAS_SIGNING_SECRET=your_signing_secret
 ```
 
 3. Send webhooks:
 
 ```php
-use WaaS\Laravel\Facades\WaaS;
+use WaaS\Laravel\WaaS;
 
-WaaS::send('your-endpoint-id', [
-    'event' => 'order.created',
-    'data'  => ['id' => 123, 'total' => 49.99],
+// Send to a specific endpoint
+WaaS::sendWebhook('endpoint-uuid', 'order.created', [
+    'id' => 123,
+    'total' => 49.99,
 ]);
+
+// Broadcast to all active endpoints
+WaaS::broadcastWebhook('user.created', ['user_id' => 42]);
+
+// List endpoints
+$endpoints = WaaS::listEndpoints();
+```
+
+## Receiving Webhooks
+
+Use the verification middleware to protect your webhook routes:
+
+```php
+// In routes/api.php
+Route::post('/webhooks', [WebhookController::class, 'handle'])
+    ->middleware(\WaaS\Laravel\Middleware\VerifyWebhookSignature::class);
+```
+
+Or register the middleware alias in `app/Http/Kernel.php`:
+
+```php
+protected $middlewareAliases = [
+    'waas.verify' => \WaaS\Laravel\Middleware\VerifyWebhookSignature::class,
+];
+```
+
+## API Reference
+
+```php
+$client = app(\WaaS\Laravel\WaaSClient::class);
+
+// Endpoints
+$client->createEndpoint('https://example.com/webhook');
+$client->listEndpoints($limit, $offset);
+$client->getEndpoint($endpointId);
+$client->deleteEndpoint($endpointId);
+
+// Sending
+$client->sendWebhook($endpointId, $eventType, $payload);
+$client->broadcastWebhook($eventType, $payload);
+
+// Deliveries
+$client->getDelivery($deliveryId);
+$client->listDeliveries($filters, $limit, $offset);
+
+// Tenant
+$client->getTenant();
 ```
 
 ## Documentation
