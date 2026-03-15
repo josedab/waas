@@ -9,14 +9,15 @@ import (
 )
 
 type Config struct {
-	DatabaseURL   string
-	RedisURL      string
-	APIPort       string
-	AnalyticsPort string
-	JWTSecret     string
-	Environment   string
-	LogLevel      string
-	LogFormat     string
+	DatabaseURL        string
+	RedisURL           string
+	APIPort            string
+	AnalyticsPort      string
+	JWTSecret          string
+	Environment        string
+	LogLevel           string
+	LogFormat          string
+	CORSAllowedOrigins string
 }
 
 func LoadConfig() (*Config, error) {
@@ -30,14 +31,15 @@ func LoadConfig() (*Config, error) {
 	}
 
 	cfg := &Config{
-		DatabaseURL:   requireEnv("DATABASE_URL"),
-		RedisURL:      requireEnv("REDIS_URL"),
-		APIPort:       getEnv("API_PORT", "8080"),
-		AnalyticsPort: getEnv("ANALYTICS_PORT", "8082"),
-		JWTSecret:     requireEnv("JWT_SECRET"),
-		Environment:   getEnv("ENVIRONMENT", "development"),
-		LogLevel:      getEnv("LOG_LEVEL", "info"),
-		LogFormat:     getEnv("LOG_FORMAT", "json"),
+		DatabaseURL:        requireEnv("DATABASE_URL"),
+		RedisURL:           requireEnv("REDIS_URL"),
+		APIPort:            getEnv("API_PORT", "8080"),
+		AnalyticsPort:      getEnv("ANALYTICS_PORT", "8082"),
+		JWTSecret:          requireEnv("JWT_SECRET"),
+		Environment:        getEnvWithFallback("ENVIRONMENT", "APP_ENV", "development"),
+		LogLevel:           getEnv("LOG_LEVEL", "info"),
+		LogFormat:          getEnv("LOG_FORMAT", "json"),
+		CORSAllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", ""),
 	}
 
 	if len(missing) > 0 {
@@ -109,6 +111,18 @@ func joinStrings(ss []string, sep string) string {
 
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// getEnvWithFallback tries the primary key first, then falls back to the
+// alternate key, and finally returns the default value.
+func getEnvWithFallback(key, fallbackKey, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	if value := os.Getenv(fallbackKey); value != "" {
 		return value
 	}
 	return defaultValue

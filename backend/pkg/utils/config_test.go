@@ -70,3 +70,54 @@ func TestValidateRedisURL(t *testing.T) {
 		})
 	}
 }
+
+func TestGetEnvWithFallback(t *testing.T) {
+	tests := []struct {
+		name        string
+		primary     string
+		primaryVal  string
+		fallback    string
+		fallbackVal string
+		defaultVal  string
+		expected    string
+	}{
+		{
+			name:    "primary set",
+			primary: "TEST_PRIMARY_1", primaryVal: "primary-value",
+			fallback: "TEST_FALLBACK_1", fallbackVal: "",
+			defaultVal: "default", expected: "primary-value",
+		},
+		{
+			name:    "primary empty, fallback set",
+			primary: "TEST_PRIMARY_2", primaryVal: "",
+			fallback: "TEST_FALLBACK_2", fallbackVal: "fallback-value",
+			defaultVal: "default", expected: "fallback-value",
+		},
+		{
+			name:    "both empty, use default",
+			primary: "TEST_PRIMARY_3", primaryVal: "",
+			fallback: "TEST_FALLBACK_3", fallbackVal: "",
+			defaultVal: "default", expected: "default",
+		},
+		{
+			name:    "both set, primary wins",
+			primary: "TEST_PRIMARY_4", primaryVal: "primary-value",
+			fallback: "TEST_FALLBACK_4", fallbackVal: "fallback-value",
+			defaultVal: "default", expected: "primary-value",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.primaryVal != "" {
+				t.Setenv(tt.primary, tt.primaryVal)
+			}
+			if tt.fallbackVal != "" {
+				t.Setenv(tt.fallback, tt.fallbackVal)
+			}
+			got := getEnvWithFallback(tt.primary, tt.fallback, tt.defaultVal)
+			if got != tt.expected {
+				t.Errorf("getEnvWithFallback() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}

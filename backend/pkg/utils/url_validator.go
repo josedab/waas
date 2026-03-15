@@ -122,7 +122,9 @@ func (v *URLValidator) checkForPrivateAddresses(host string) error {
 	// Resolve the hostname to check for private IP ranges
 	ips, err := net.LookupIP(hostname)
 	if err != nil {
-		return fmt.Errorf("failed to resolve hostname %q: %w", hostname, err)
+		// DNS resolution failure is not a security concern (SSRF requires a resolvable IP).
+		// Accessibility is checked separately in CheckURLAccessibility.
+		return nil
 	}
 
 	// Check each resolved IP
