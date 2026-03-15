@@ -35,7 +35,7 @@ jobs:
       spec-changed: ${{ steps.check.outputs.changed }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v5
         with:
@@ -80,7 +80,7 @@ jobs:
       matrix:
         language: [go, python, nodejs, java, ruby, php, rust, csharp]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/download-artifact@v4
         with:
@@ -146,7 +146,7 @@ jobs:
           - language: php
             test-cmd: cd sdk/php/generated && composer install && vendor/bin/phpunit
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/download-artifact@v4
         with:
