@@ -2,12 +2,12 @@ package api
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	_ "github.com/josedab/waas/docs"
 	"github.com/josedab/waas/internal/api/handlers"
+	"github.com/josedab/waas/pkg/aibuilder"
 	"github.com/josedab/waas/pkg/analyticsembed"
 	"github.com/josedab/waas/pkg/auth"
 	"github.com/josedab/waas/pkg/autoremediation"
@@ -15,6 +15,7 @@ import (
 	"github.com/josedab/waas/pkg/blockchain"
 	"github.com/josedab/waas/pkg/callback"
 	"github.com/josedab/waas/pkg/canary"
+	"github.com/josedab/waas/pkg/capacityplanner"
 	"github.com/josedab/waas/pkg/catalog"
 	"github.com/josedab/waas/pkg/cdc"
 	"github.com/josedab/waas/pkg/chaos"
@@ -31,14 +32,19 @@ import (
 	"github.com/josedab/waas/pkg/dataplane"
 	"github.com/josedab/waas/pkg/debugger"
 	"github.com/josedab/waas/pkg/deliveryreceipt"
+	"github.com/josedab/waas/pkg/depgraph"
 	"github.com/josedab/waas/pkg/dlq"
 	"github.com/josedab/waas/pkg/docgen"
+	"github.com/josedab/waas/pkg/e2ee"
 	"github.com/josedab/waas/pkg/edge"
+	"github.com/josedab/waas/pkg/edgenetwork"
 	"github.com/josedab/waas/pkg/embed"
-	"github.com/josedab/waas/pkg/eventmesh"
+	"github.com/josedab/waas/pkg/endpointmesh"
 	"github.com/josedab/waas/pkg/eventcorrelation"
 	"github.com/josedab/waas/pkg/eventlineage"
+	"github.com/josedab/waas/pkg/eventmesh"
 	"github.com/josedab/waas/pkg/experiment"
+	"github.com/josedab/waas/pkg/faas"
 	"github.com/josedab/waas/pkg/fanout"
 	"github.com/josedab/waas/pkg/federation"
 	"github.com/josedab/waas/pkg/flow"
@@ -49,66 +55,59 @@ import (
 	"github.com/josedab/waas/pkg/inbound"
 	"github.com/josedab/waas/pkg/intelligence"
 	"github.com/josedab/waas/pkg/livemigration"
+	"github.com/josedab/waas/pkg/loadtest"
 	"github.com/josedab/waas/pkg/marketplacetpl"
 	"github.com/josedab/waas/pkg/metaevents"
 	"github.com/josedab/waas/pkg/metrics"
+	"github.com/josedab/waas/pkg/migrationwizard"
+	"github.com/josedab/waas/pkg/mobileapp"
+	"github.com/josedab/waas/pkg/mobileinspector"
 	"github.com/josedab/waas/pkg/mobilesdk"
 	"github.com/josedab/waas/pkg/mocking"
 	"github.com/josedab/waas/pkg/monetization"
 	"github.com/josedab/waas/pkg/monitoring"
 	"github.com/josedab/waas/pkg/mtls"
 	"github.com/josedab/waas/pkg/multicloud"
-	"github.com/josedab/waas/pkg/observability"
+	"github.com/josedab/waas/pkg/nlbuilder"
 	"github.com/josedab/waas/pkg/obscodepipeline"
+	"github.com/josedab/waas/pkg/observability"
 	"github.com/josedab/waas/pkg/onboarding"
 	"github.com/josedab/waas/pkg/openapigen"
 	"github.com/josedab/waas/pkg/otel"
+	"github.com/josedab/waas/pkg/piidetection"
 	"github.com/josedab/waas/pkg/pipeline"
 	"github.com/josedab/waas/pkg/playground"
+	"github.com/josedab/waas/pkg/pluginecosystem"
 	"github.com/josedab/waas/pkg/pluginmarket"
+	"github.com/josedab/waas/pkg/policyengine"
 	"github.com/josedab/waas/pkg/portal"
 	"github.com/josedab/waas/pkg/portalsdk"
-	"github.com/josedab/waas/pkg/receiverdash"
-	"github.com/josedab/waas/pkg/nlbuilder"
-	"github.com/josedab/waas/pkg/depgraph"
-	"github.com/josedab/waas/pkg/e2ee"
-	"github.com/josedab/waas/pkg/selfhealing"
-	"github.com/josedab/waas/pkg/loadtest"
-	"github.com/josedab/waas/pkg/routingpolicy"
-	"github.com/josedab/waas/pkg/schemachangelog"
-	"github.com/josedab/waas/pkg/mobileinspector"
-	"github.com/josedab/waas/pkg/aibuilder"
-	"github.com/josedab/waas/pkg/capacityplanner"
-	"github.com/josedab/waas/pkg/edgenetwork"
-	"github.com/josedab/waas/pkg/endpointmesh"
-	"github.com/josedab/waas/pkg/faas"
-	"github.com/josedab/waas/pkg/migrationwizard"
-	"github.com/josedab/waas/pkg/mobileapp"
-	"github.com/josedab/waas/pkg/piidetection"
-	"github.com/josedab/waas/pkg/pluginecosystem"
-	"github.com/josedab/waas/pkg/policyengine"
-	"github.com/josedab/waas/pkg/progressive"
-	"github.com/josedab/waas/pkg/securityintel"
-	"github.com/josedab/waas/pkg/standardwebhooks"
-	"github.com/josedab/waas/pkg/topologysim"
 	"github.com/josedab/waas/pkg/prediction"
+	"github.com/josedab/waas/pkg/progressive"
 	"github.com/josedab/waas/pkg/protocolgw"
 	"github.com/josedab/waas/pkg/protocols"
 	"github.com/josedab/waas/pkg/pushbridge"
 	"github.com/josedab/waas/pkg/queue"
+	"github.com/josedab/waas/pkg/receiverdash"
 	"github.com/josedab/waas/pkg/reliability"
 	"github.com/josedab/waas/pkg/remediation"
 	"github.com/josedab/waas/pkg/repository"
+	"github.com/josedab/waas/pkg/routingpolicy"
 	"github.com/josedab/waas/pkg/sandbox"
+	"github.com/josedab/waas/pkg/schemachangelog"
 	"github.com/josedab/waas/pkg/schemaregistry"
 	"github.com/josedab/waas/pkg/sdkgen"
 	"github.com/josedab/waas/pkg/security"
+	"github.com/josedab/waas/pkg/securityintel"
+	"github.com/josedab/waas/pkg/selfhealing"
 	"github.com/josedab/waas/pkg/signatures"
 	"github.com/josedab/waas/pkg/sla"
 	"github.com/josedab/waas/pkg/smartlimit"
+	"github.com/josedab/waas/pkg/standardwebhooks"
 	"github.com/josedab/waas/pkg/streaming"
 	"github.com/josedab/waas/pkg/tfprovider"
 	"github.com/josedab/waas/pkg/timetravel"
+	"github.com/josedab/waas/pkg/topologysim"
 	"github.com/josedab/waas/pkg/tracing"
 	"github.com/josedab/waas/pkg/transform"
 	"github.com/josedab/waas/pkg/utils"
@@ -209,22 +208,22 @@ type Server struct {
 	playgroundService   *playground.Service
 	pipelineService     *pipeline.Service
 	// DLQ & Observability
-	dlqService              *dlq.Service
-	openapigenService       *openapigen.Service
-	obscodepipelineService  *obscodepipeline.Service
-	compliancevaultService  *compliancevault.Service
-	portalsdkService        *portalsdk.Service
+	dlqService             *dlq.Service
+	openapigenService      *openapigen.Service
+	obscodepipelineService *obscodepipeline.Service
+	compliancevaultService *compliancevault.Service
+	portalsdkService       *portalsdk.Service
 	// Next-gen features v8
-	receiverdashService     *receiverdash.Service
-	nlbuilderService        *nlbuilder.Service
-	depgraphService         *depgraph.Service
-	e2eeService             *e2ee.Service
-	selfhealingService      *selfhealing.Service
-	loadtestService         *loadtest.Service
-	routingpolicyService    *routingpolicy.Service
-	schemachangelogService  *schemachangelog.Service
-	mobileinspectorService  *mobileinspector.Service
-	topologysimService      *topologysim.Service
+	receiverdashService    *receiverdash.Service
+	nlbuilderService       *nlbuilder.Service
+	depgraphService        *depgraph.Service
+	e2eeService            *e2ee.Service
+	selfhealingService     *selfhealing.Service
+	loadtestService        *loadtest.Service
+	routingpolicyService   *routingpolicy.Service
+	schemachangelogService *schemachangelog.Service
+	mobileinspectorService *mobileinspector.Service
+	topologysimService     *topologysim.Service
 	// Next-gen features v9
 	piidetectionService     *piidetection.Service
 	standardwebhooksService *standardwebhooks.Service
@@ -238,18 +237,18 @@ type Server struct {
 	dataplaneService        *dataplane.Service
 	onboardingWizardService *onboarding.Service
 	// Next-gen features v12
-	reliabilityService      *reliability.Service
+	reliabilityService *reliability.Service
 	// Next-gen features v11
-	aibuilderService        *aibuilder.Service
-	edgenetworkService      *edgenetwork.Service
-	migrationwizardService  *migrationwizard.Service
-	securityintelService    *securityintel.Service
-	pluginecosystemService  *pluginecosystem.Service
-	faasService             *faas.Service
-	progressiveService      *progressive.Service
-	endpointmeshService     *endpointmesh.Service
-	mobileappService        *mobileapp.Service
-	capacityplannerService  *capacityplanner.Service
+	aibuilderService       *aibuilder.Service
+	edgenetworkService     *edgenetwork.Service
+	migrationwizardService *migrationwizard.Service
+	securityintelService   *securityintel.Service
+	pluginecosystemService *pluginecosystem.Service
+	faasService            *faas.Service
+	progressiveService     *progressive.Service
+	endpointmeshService    *endpointmesh.Service
+	mobileappService       *mobileapp.Service
+	capacityplannerService *capacityplanner.Service
 }
 
 // NewServer constructs and wires the entire API server. Initialization
@@ -611,8 +610,8 @@ func NewServer() (*Server, error) {
 
 	// CORS middleware
 	allowedOrigins := []string{}
-	if origins := os.Getenv("CORS_ALLOWED_ORIGINS"); origins != "" {
-		allowedOrigins = strings.Split(origins, ",")
+	if config.CORSAllowedOrigins != "" {
+		allowedOrigins = strings.Split(config.CORSAllowedOrigins, ",")
 	}
 
 	// Validate CORS configuration: AllowCredentials with wildcard or empty origins is insecure
@@ -646,82 +645,82 @@ func NewServer() (*Server, error) {
 	router.Use(auth.MaxBodySize(auth.DefaultMaxBodySize))
 
 	server := &Server{
-		router:                 router,
-		db:                     db,
-		sqlxDB:                 sqlxDB,
-		redisClient:            redisClient,
-		logger:                 logger,
-		config:                 config,
-		healthChecker:          healthChecker,
-		alertManager:           alertManager,
-		metricsRecorder:        metricsRecorder,
-		tracer:                 tracer,
-		flowService:            flowService,
-		metaService:            metaService,
-		geoService:             geoService,
-		embedService:           embedService,
-		mockService:            mockService,
-		costService:            costService,
-		otelService:            otelService,
-		protocolService:        protocolService,
-		observabilityService:   observabilityService,
-		smartlimitService:      smartlimitService,
-		chaosService:           chaosService,
-		cdcService:             cdcService,
-		workflowService:        workflowService,
-		signaturesService:      signaturesService,
-		pushbridgeService:      pushbridgeService,
-		billingService:         billingService,
-		versioningService:      versioningService,
-		federationService:      federationService,
-		streamingService:       streamingService,
-		remediationService:     remediationService,
-		edgeService:            edgeService,
-		blockchainService:      blockchainService,
-		complianceService:      complianceService,
-		predictionService:      predictionService,
-		graphqlsubService:      graphqlsubService,
-		monetizationService:    monetizationService,
-		multicloudService:      multicloudService,
-		slaService:             slaService,
-		mtlsService:            mtlsService,
-		contractsService:       contractsService,
-		marketplaceService:     marketplaceService,
-		eventmeshService:       eventmeshService,
-		debuggerService:        debuggerService,
-		cloudService:           cloudBillingService,
-		cloudTeamService:       cloudTeamService,
-		cloudAuditService:      cloudAuditService,
-		cloudOnboardService:    cloudOnboardService,
-		cloudctlService:        cloudctlService,
-		tfproviderService:      tfproviderService,
-		portalService:          portalService,
-		tracingService:         tracingService,
-		canaryService:          canaryService,
-		autoremediationService: autoremediationService,
-		schemaregistryService:  schemaregistryService,
-		catalogService:         catalogService,
-		sandboxService:         sandboxService,
-		protocolgwService:      protocolgwService,
-		analyticsembedService:  analyticsembedService,
-		costengineService:      costengineService,
-		gitopsService:          gitopsService,
-		livemigrationService:   livemigrationService,
-		inboundService:         inboundService,
-		fanoutService:          fanoutService,
-		mobilesdkService:       mobilesdkService,
-		pluginmarketService:    pluginmarketService,
-		intelligenceService:    intelligenceService,
-		flowbuilderService:     flowbuilderService,
-		timetravelService:      timetravelService,
-		cloudmanagedService:    cloudmanagedService,
-		callbackService:        callbackService,
-		collabdebugService:     collabdebugService,
-		wafService:             wafService,
-		docgenService:          docgenService,
-		whitelabelService:      whitelabelService,
-		playgroundService:      playgroundService,
-		pipelineService:        pipelineService,
+		router:                  router,
+		db:                      db,
+		sqlxDB:                  sqlxDB,
+		redisClient:             redisClient,
+		logger:                  logger,
+		config:                  config,
+		healthChecker:           healthChecker,
+		alertManager:            alertManager,
+		metricsRecorder:         metricsRecorder,
+		tracer:                  tracer,
+		flowService:             flowService,
+		metaService:             metaService,
+		geoService:              geoService,
+		embedService:            embedService,
+		mockService:             mockService,
+		costService:             costService,
+		otelService:             otelService,
+		protocolService:         protocolService,
+		observabilityService:    observabilityService,
+		smartlimitService:       smartlimitService,
+		chaosService:            chaosService,
+		cdcService:              cdcService,
+		workflowService:         workflowService,
+		signaturesService:       signaturesService,
+		pushbridgeService:       pushbridgeService,
+		billingService:          billingService,
+		versioningService:       versioningService,
+		federationService:       federationService,
+		streamingService:        streamingService,
+		remediationService:      remediationService,
+		edgeService:             edgeService,
+		blockchainService:       blockchainService,
+		complianceService:       complianceService,
+		predictionService:       predictionService,
+		graphqlsubService:       graphqlsubService,
+		monetizationService:     monetizationService,
+		multicloudService:       multicloudService,
+		slaService:              slaService,
+		mtlsService:             mtlsService,
+		contractsService:        contractsService,
+		marketplaceService:      marketplaceService,
+		eventmeshService:        eventmeshService,
+		debuggerService:         debuggerService,
+		cloudService:            cloudBillingService,
+		cloudTeamService:        cloudTeamService,
+		cloudAuditService:       cloudAuditService,
+		cloudOnboardService:     cloudOnboardService,
+		cloudctlService:         cloudctlService,
+		tfproviderService:       tfproviderService,
+		portalService:           portalService,
+		tracingService:          tracingService,
+		canaryService:           canaryService,
+		autoremediationService:  autoremediationService,
+		schemaregistryService:   schemaregistryService,
+		catalogService:          catalogService,
+		sandboxService:          sandboxService,
+		protocolgwService:       protocolgwService,
+		analyticsembedService:   analyticsembedService,
+		costengineService:       costengineService,
+		gitopsService:           gitopsService,
+		livemigrationService:    livemigrationService,
+		inboundService:          inboundService,
+		fanoutService:           fanoutService,
+		mobilesdkService:        mobilesdkService,
+		pluginmarketService:     pluginmarketService,
+		intelligenceService:     intelligenceService,
+		flowbuilderService:      flowbuilderService,
+		timetravelService:       timetravelService,
+		cloudmanagedService:     cloudmanagedService,
+		callbackService:         callbackService,
+		collabdebugService:      collabdebugService,
+		wafService:              wafService,
+		docgenService:           docgenService,
+		whitelabelService:       whitelabelService,
+		playgroundService:       playgroundService,
+		pipelineService:         pipelineService,
 		dlqService:              dlqService,
 		openapigenService:       openapigenService,
 		obscodepipelineService:  obscodepipelineService,
@@ -757,7 +756,7 @@ func NewServer() (*Server, error) {
 		endpointmeshService:     endpointmeshService,
 		mobileappService:        mobileappService,
 		capacityplannerService:  capacityplannerService,
-		reliabilityService:     reliabilityService,
+		reliabilityService:      reliabilityService,
 	}
 
 	server.setupRoutes()
@@ -777,6 +776,8 @@ func (s *Server) setupRoutes() {
 	// Initialize middleware
 	authMiddleware := auth.NewAuthMiddleware(tenantRepo)
 	rateLimiter := auth.NewRateLimiter(s.redisClient.Client)
+	quotaRepo := repository.NewQuotaRepository(s.db.Pool)
+	quotaMiddleware := auth.NewQuotaMiddleware(quotaRepo, s.redisClient.Client)
 
 	// Initialize handlers
 	tenantHandler := handlers.NewTenantHandler(tenantRepo, s.logger)
@@ -843,9 +844,9 @@ func (s *Server) setupRoutes() {
 		protected.PUT("/webhooks/endpoints/:id", webhookHandler.UpdateWebhookEndpoint)
 		protected.DELETE("/webhooks/endpoints/:id", webhookHandler.DeleteWebhookEndpoint)
 
-		// Webhook sending
-		protected.POST("/webhooks/send", webhookHandler.SendWebhook)
-		protected.POST("/webhooks/send/batch", webhookHandler.BatchSendWebhook)
+		// Webhook sending (with quota enforcement)
+		protected.POST("/webhooks/send", quotaMiddleware.EnforceQuota(), webhookHandler.SendWebhook)
+		protected.POST("/webhooks/send/batch", quotaMiddleware.EnforceQuota(), webhookHandler.BatchSendWebhook)
 
 		// Webhook testing and debugging tools
 		protected.POST("/webhooks/test", testingHandler.TestWebhook)
