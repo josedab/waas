@@ -513,13 +513,22 @@ func (e *DeliveryEngine) performDelivery(ctx context.Context, endpoint *models.W
 	defer resp.Body.Close()
 
 	// Read response body (limit to MaxResponseBodySize)
-	bodyReader := io.LimitReader(resp.Body, MaxResponseBodySize)
+	bodyReader := io.LimitReader(resp.Body, MaxResponseBodySize+1) // +1 to detect truncation
 	responseBody, err := io.ReadAll(bodyReader)
 	if err != nil {
 		e.logger.Warn("Failed to read response body", map[string]interface{}{
 			"delivery_id": message.DeliveryID,
 			"error":       err.Error(),
 		})
+	}
+
+	if len(responseBody) > MaxResponseBodySize {
+		e.logger.Warn("Response body truncated", map[string]interface{}{
+			"delivery_id": message.DeliveryID,
+			"endpoint_id": message.EndpointID,
+			"max_bytes":   MaxResponseBodySize,
+		})
+		responseBody = responseBody[:MaxResponseBodySize]
 	}
 
 	responseBodyStr := string(responseBody)

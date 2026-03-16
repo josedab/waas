@@ -52,6 +52,7 @@ import (
 	"github.com/josedab/waas/pkg/georouting"
 	"github.com/josedab/waas/pkg/gitops"
 	"github.com/josedab/waas/pkg/graphqlsub"
+	"github.com/josedab/waas/pkg/httputil"
 	"github.com/josedab/waas/pkg/inbound"
 	"github.com/josedab/waas/pkg/intelligence"
 	"github.com/josedab/waas/pkg/livemigration"
@@ -605,6 +606,9 @@ func NewServer() (*Server, error) {
 	// Setup Gin with monitoring middleware
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(httputil.RequestIDMiddleware())
+	router.Use(httputil.APIVersionMiddleware())
+	router.Use(httputil.RequestLoggerMiddleware(logger))
 	router.Use(tracer.TracingMiddleware())
 	router.Use(metrics.EnhancedMetricsMiddleware(metricsRecorder, alertManager))
 
@@ -841,7 +845,7 @@ func (s *Server) setupRoutes() {
 		protected.POST("/webhooks/endpoints", webhookHandler.CreateWebhookEndpoint)
 		protected.GET("/webhooks/endpoints", webhookHandler.GetWebhookEndpoints)
 		protected.GET("/webhooks/endpoints/:id", webhookHandler.GetWebhookEndpoint)
-		protected.PUT("/webhooks/endpoints/:id", webhookHandler.UpdateWebhookEndpoint)
+		protected.PATCH("/webhooks/endpoints/:id", webhookHandler.UpdateWebhookEndpoint)
 		protected.DELETE("/webhooks/endpoints/:id", webhookHandler.DeleteWebhookEndpoint)
 
 		// Webhook sending (with quota enforcement)

@@ -48,6 +48,10 @@ func main() {
 		healthPort = "8081"
 	}
 	startTime := time.Now()
+	// draining is set to true after a shutdown signal is received, causing
+	// the /ready endpoint to return 503 so load balancers stop sending traffic.
+	draining := false
+
 	healthMux := http.NewServeMux()
 	healthMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -64,6 +68,11 @@ func main() {
 	})
 	healthMux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		if draining {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			json.NewEncoder(w).Encode(map[string]string{"status": "draining"})
+			return
+		}
 		json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
 	})
 
@@ -81,6 +90,9 @@ func main() {
 	sig := <-quit
 
 	logger.Info("Received signal, shutting down...", map[string]interface{}{"signal": sig.String()})
+
+	// Mark as draining so /ready returns 503 and load balancers stop routing.
+	draining = true
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

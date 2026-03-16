@@ -129,6 +129,11 @@ func (m *MockDeliveryRepository) GetDeliveryHistoryWithFilters(ctx context.Conte
 	return args.Get(0).([]*models.DeliveryAttempt), args.Int(1), args.Error(2)
 }
 
+func (m *MockDeliveryRepository) DeleteOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
+	args := m.Called(ctx, cutoff)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 // createTestHTTPClient creates an HTTP client for testing that allows localhost connections
 func createTestHTTPClient() *http.Client {
 	config := getDeliveryConfig()
@@ -515,6 +520,68 @@ func TestCreateHTTPClient(t *testing.T) {
 	assert.Equal(t, config.IdleConnTimeout, transport.IdleConnTimeout)
 	assert.Equal(t, config.TLSHandshakeTimeout, transport.TLSHandshakeTimeout)
 	assert.Equal(t, config.ResponseHeaderTimeout, transport.ResponseHeaderTimeout)
+}
+
+// TestDeliveryEngine_SSRFProtection_BlocksPrivateIPs verifies that the real
+// production HTTP client (with ssrfSafeDialContext) blocks delivery to private
+// IP addresses at the engine level and marks them as failed.
+func TestDeliveryEngine_SSRFProtection_BlocksPrivateIPs(t *testing.T) {
+	t.Parallel()
+
+	privateURLs := []struct {
+		name string
+		url  string
+	}{
+		{"localhost", "http://127.0.0.1:9999/webhook"},
+		{"private_10", "http://10.0.0.1:9999/webhook"},
+		{"private_192", "http://192.168.1.1:9999/webhook"},
+		{"metadata", "http://169.254.169.254/latest/meta-data/"},
+	}
+
+	for _, tt := range privateURLs {
+		t.Run(tt.name, func(t *testing.T) {
+			mockWebhookRepo := &MockWebhookRepository{}
+			mockDeliveryRepo := &MockDeliveryRepository{}
+			logger := utils.NewLogger("test-ssrf")
+
+			engine := &DeliveryEngine{
+				webhookRepo:   mockWebhookRepo,
+				deliveryRepo:  mockDeliveryRepo,
+				httpClient:    createHTTPClient(getDeliveryConfig()), // real SSRF client
+				healthMonitor: NewEndpointHealthMonitor(mockWebhookRepo, logger),
+				logger:        logger,
+			}
+
+			endpointID := uuid.New()
+			endpoint := &models.WebhookEndpoint{
+				ID:       endpointID,
+				URL:      tt.url,
+				IsActive: true,
+			}
+
+			message := &queue.DeliveryMessage{
+				DeliveryID:    uuid.New(),
+				EndpointID:    endpointID,
+				Payload:       json.RawMessage(`{"event":"test"}`),
+				AttemptNumber: 1,
+				MaxAttempts:   1,
+				ScheduledAt:   time.Now(),
+			}
+
+			mockWebhookRepo.On("GetByID", mock.Anything, endpointID).Return(endpoint, nil)
+			mockDeliveryRepo.On("Create", mock.Anything, mock.AnythingOfType("*models.DeliveryAttempt")).Return(nil)
+			mockDeliveryRepo.On("Update", mock.Anything, mock.AnythingOfType("*models.DeliveryAttempt")).Return(nil)
+
+			result, err := engine.HandleDelivery(context.Background(), message)
+
+			assert.NoError(t, err)
+			assert.NotNil(t, result)
+			assert.Equal(t, queue.StatusFailed, result.Status, "delivery to %s should fail", tt.url)
+			if result.ErrorMessage != nil {
+				assert.NotContains(t, *result.ErrorMessage, "pq:", "error should not leak DB details")
+			}
+		})
+	}
 }
 
 // --- Benchmarks ---
