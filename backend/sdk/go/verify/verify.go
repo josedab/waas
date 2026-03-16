@@ -81,14 +81,20 @@ func (v *Verifier) Verify(payload []byte, signatureHeader, timestamp string) err
 
 	signedPayload := fmt.Sprintf("%s.%s", timestamp, string(payload))
 
+	// Check all secrets without early return to avoid leaking which secret
+	// position matched via timing side-channel.
+	matched := false
 	for _, secret := range v.secrets {
 		expected := computeHMAC([]byte(secret), []byte(signedPayload))
 		if hmac.Equal(sig, expected) {
-			return nil
+			matched = true
 		}
 	}
 
-	return ErrInvalidSignature
+	if !matched {
+		return ErrInvalidSignature
+	}
+	return nil
 }
 
 // Sign generates a signature for the given payload. Used for testing.
