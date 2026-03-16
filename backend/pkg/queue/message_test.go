@@ -70,11 +70,11 @@ func TestDeliveryMessage_EmptyPayload(t *testing.T) {
 
 func TestDeliveryMessage_InvalidJSON(t *testing.T) {
 	var message DeliveryMessage
-	
+
 	// Test invalid JSON
 	err := message.FromJSON([]byte(`{invalid json`))
 	assert.Error(t, err)
-	
+
 	// Test empty data
 	err = message.FromJSON([]byte(``))
 	assert.Error(t, err)
@@ -171,4 +171,58 @@ func TestConstants(t *testing.T) {
 		assert.False(t, uniqueStatuses[status], "Status %s is not unique", status)
 		uniqueStatuses[status] = true
 	}
+}
+
+func TestDeliveryMessage_VersionSetOnSerialize(t *testing.T) {
+	msg := &DeliveryMessage{
+		DeliveryID:    uuid.New(),
+		EndpointID:    uuid.New(),
+		TenantID:      uuid.New(),
+		Payload:       json.RawMessage(`{"test":true}`),
+		AttemptNumber: 1,
+		MaxAttempts:   3,
+		ScheduledAt:   time.Now(),
+	}
+
+	data, err := msg.ToJSON()
+	assert.NoError(t, err)
+	assert.Equal(t, 1, msg.Version, "ToJSON should set Version to 1")
+
+	// Verify version in raw JSON
+	var raw map[string]interface{}
+	err = json.Unmarshal(data, &raw)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(1), raw["version"])
+}
+
+func TestDeliveryMessage_VersionDefaultsOnDeserialize(t *testing.T) {
+	// Simulate a pre-versioning message (no version field)
+	oldMessage := `{"delivery_id":"` + uuid.New().String() + `","endpoint_id":"` + uuid.New().String() + `","tenant_id":"` + uuid.New().String() + `","payload":{"x":1},"attempt_number":1,"max_attempts":3,"scheduled_at":"2025-01-01T00:00:00Z","signature":"sig"}`
+
+	var msg DeliveryMessage
+	err := msg.FromJSON([]byte(oldMessage))
+	assert.NoError(t, err)
+	assert.Equal(t, 1, msg.Version, "FromJSON should default missing version to 1")
+}
+
+func TestDeliveryMessage_EventTypeRoundTrip(t *testing.T) {
+	msg := &DeliveryMessage{
+		DeliveryID:    uuid.New(),
+		EndpointID:    uuid.New(),
+		TenantID:      uuid.New(),
+		EventType:     "order.created",
+		Payload:       json.RawMessage(`{"order_id":"123"}`),
+		AttemptNumber: 1,
+		MaxAttempts:   3,
+		ScheduledAt:   time.Now(),
+	}
+
+	data, err := msg.ToJSON()
+	assert.NoError(t, err)
+
+	var decoded DeliveryMessage
+	err = decoded.FromJSON(data)
+	assert.NoError(t, err)
+	assert.Equal(t, "order.created", decoded.EventType)
+	assert.Equal(t, 1, decoded.Version)
 }

@@ -83,6 +83,12 @@ func (c *Consumer) worker(ctx context.Context, workerID int) {
 	c.logger.Info("Worker started", map[string]interface{}{"worker_id": workerID})
 	defer c.logger.Info("Worker stopped", map[string]interface{}{"worker_id": workerID})
 
+	var backoff time.Duration
+	const (
+		minBackoff = 100 * time.Millisecond
+		maxBackoff = 30 * time.Second
+	)
+
 	for {
 		select {
 		case <-c.stopCh:
@@ -92,7 +98,17 @@ func (c *Consumer) worker(ctx context.Context, workerID int) {
 		default:
 			if err := c.safeProcessNextMessage(ctx, workerID); err != nil {
 				c.logger.Error("Worker error", map[string]interface{}{"worker_id": workerID, "error": err.Error()})
-				time.Sleep(100 * time.Millisecond)
+				if backoff == 0 {
+					backoff = minBackoff
+				} else {
+					backoff *= 2
+					if backoff > maxBackoff {
+						backoff = maxBackoff
+					}
+				}
+				time.Sleep(backoff)
+			} else {
+				backoff = 0 // reset on success
 			}
 		}
 	}

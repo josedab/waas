@@ -9,6 +9,7 @@ import (
 
 // DeliveryMessage represents a webhook delivery message in the queue
 type DeliveryMessage struct {
+	Version       int               `json:"version"`
 	DeliveryID    uuid.UUID         `json:"delivery_id"`
 	EndpointID    uuid.UUID         `json:"endpoint_id"`
 	TenantID      uuid.UUID         `json:"tenant_id"`
@@ -21,14 +22,24 @@ type DeliveryMessage struct {
 	MaxAttempts   int               `json:"max_attempts"`
 }
 
-// ToJSON serializes the message to JSON
+const currentMessageVersion = 1
+
+// ToJSON serializes the message to JSON, setting the version field.
 func (dm *DeliveryMessage) ToJSON() ([]byte, error) {
+	dm.Version = currentMessageVersion
 	return json.Marshal(dm)
 }
 
-// FromJSON deserializes JSON to DeliveryMessage
+// FromJSON deserializes JSON to DeliveryMessage. Messages without a version
+// field (pre-versioning) are treated as version 1.
 func (dm *DeliveryMessage) FromJSON(data []byte) error {
-	return json.Unmarshal(data, dm)
+	if err := json.Unmarshal(data, dm); err != nil {
+		return err
+	}
+	if dm.Version == 0 {
+		dm.Version = 1
+	}
+	return nil
 }
 
 // DeliveryResult represents the result of a webhook delivery attempt
