@@ -23,19 +23,19 @@ const (
 
 // ComponentHealth represents the health of a single component
 type ComponentHealth struct {
-	Status      HealthStatus `json:"status"`
-	Message     string       `json:"message,omitempty"`
-	LastChecked time.Time    `json:"last_checked"`
-	ResponseTime string      `json:"response_time,omitempty"`
+	Status       HealthStatus `json:"status"`
+	Message      string       `json:"message,omitempty"`
+	LastChecked  time.Time    `json:"last_checked"`
+	ResponseTime string       `json:"response_time,omitempty"`
 }
 
 // HealthCheckResponse represents the complete health check response
 type HealthCheckResponse struct {
-	Status     HealthStatus                   `json:"status"`
-	Timestamp  time.Time                      `json:"timestamp"`
-	Version    string                         `json:"version"`
-	Components map[string]ComponentHealth     `json:"components"`
-	Uptime     string                         `json:"uptime"`
+	Status     HealthStatus               `json:"status"`
+	Timestamp  time.Time                  `json:"timestamp"`
+	Version    string                     `json:"version"`
+	Components map[string]ComponentHealth `json:"components"`
+	Uptime     string                     `json:"uptime"`
 }
 
 // HealthChecker provides health check functionality
@@ -65,7 +65,7 @@ func (hc *HealthChecker) HealthCheckHandler() gin.HandlerFunc {
 		defer cancel()
 
 		response := hc.performHealthCheck(ctx)
-		
+
 		// Set appropriate HTTP status based on overall health
 		var httpStatus int
 		switch response.Status {
@@ -91,17 +91,17 @@ func (hc *HealthChecker) ReadinessHandler() gin.HandlerFunc {
 
 		// Check critical components for readiness
 		dbHealth := hc.checkDatabase(ctx)
-		
+
 		if dbHealth.Status == HealthStatusHealthy {
 			c.JSON(http.StatusOK, gin.H{
-				"status": "ready",
+				"status":    "ready",
 				"timestamp": time.Now(),
 			})
 		} else {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"status": "not ready",
+				"status":    "not ready",
 				"timestamp": time.Now(),
-				"reason": dbHealth.Message,
+				"reason":    dbHealth.Message,
 			})
 		}
 	}
@@ -112,9 +112,9 @@ func (hc *HealthChecker) LivenessHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Simple liveness check - if we can respond, we're alive
 		c.JSON(http.StatusOK, gin.H{
-			"status": "alive",
+			"status":    "alive",
 			"timestamp": time.Now(),
-			"uptime": time.Since(hc.startTime).String(),
+			"uptime":    time.Since(hc.startTime).String(),
 		})
 	}
 }
@@ -122,13 +122,13 @@ func (hc *HealthChecker) LivenessHandler() gin.HandlerFunc {
 // performHealthCheck performs a comprehensive health check
 func (hc *HealthChecker) performHealthCheck(ctx context.Context) HealthCheckResponse {
 	components := make(map[string]ComponentHealth)
-	
+
 	// Check database
 	components["database"] = hc.checkDatabase(ctx)
-	
+
 	// Check Redis
 	components["redis"] = hc.checkRedis(ctx)
-	
+
 	// Check system resources
 	components["system"] = hc.checkSystem(ctx)
 
@@ -147,12 +147,13 @@ func (hc *HealthChecker) performHealthCheck(ctx context.Context) HealthCheckResp
 // checkDatabase checks database connectivity and performance
 func (hc *HealthChecker) checkDatabase(ctx context.Context) ComponentHealth {
 	start := time.Now()
-	
+
 	if hc.db == nil {
 		return ComponentHealth{
-			Status:      HealthStatusUnhealthy,
-			Message:     "Database connection not initialized",
-			LastChecked: time.Now(),
+			Status:       HealthStatusUnhealthy,
+			Message:      "Database connection not initialized",
+			LastChecked:  time.Now(),
+			ResponseTime: time.Since(start).String(),
 		}
 	}
 
@@ -162,7 +163,7 @@ func (hc *HealthChecker) checkDatabase(ctx context.Context) ComponentHealth {
 
 	if err != nil {
 		hc.logger.Error("Database health check failed", map[string]interface{}{
-			"error": err.Error(),
+			"error":         err.Error(),
 			"response_time": responseTime.String(),
 		})
 		return ComponentHealth{
@@ -176,7 +177,7 @@ func (hc *HealthChecker) checkDatabase(ctx context.Context) ComponentHealth {
 	// Check if response time is acceptable (< 1 second is healthy, < 5 seconds is degraded)
 	status := HealthStatusHealthy
 	message := "Database is healthy"
-	
+
 	if responseTime > 5*time.Second {
 		status = HealthStatusUnhealthy
 		message = "Database response time too slow"
@@ -196,7 +197,7 @@ func (hc *HealthChecker) checkDatabase(ctx context.Context) ComponentHealth {
 // checkRedis checks Redis connectivity and performance
 func (hc *HealthChecker) checkRedis(ctx context.Context) ComponentHealth {
 	start := time.Now()
-	
+
 	if hc.redisClient == nil {
 		return ComponentHealth{
 			Status:      HealthStatusDegraded, // Redis is not critical for basic functionality
@@ -211,7 +212,7 @@ func (hc *HealthChecker) checkRedis(ctx context.Context) ComponentHealth {
 
 	if err != nil {
 		hc.logger.Warn("Redis health check failed", map[string]interface{}{
-			"error": err.Error(),
+			"error":         err.Error(),
 			"response_time": responseTime.String(),
 		})
 		return ComponentHealth{
@@ -225,7 +226,7 @@ func (hc *HealthChecker) checkRedis(ctx context.Context) ComponentHealth {
 	// Check if response time is acceptable
 	status := HealthStatusHealthy
 	message := "Redis is healthy"
-	
+
 	if responseTime > 2*time.Second {
 		status = HealthStatusDegraded
 		message = "Redis response time is slow"
@@ -247,7 +248,7 @@ func (hc *HealthChecker) checkSystem(ctx context.Context) ComponentHealth {
 	// - CPU usage
 	// - Disk space
 	// - Network connectivity
-	
+
 	return ComponentHealth{
 		Status:      HealthStatusHealthy,
 		Message:     "System is healthy",
