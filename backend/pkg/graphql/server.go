@@ -4,9 +4,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/josedab/waas/pkg/utils"
 	"net/http"
 	"sync"
-	"github.com/josedab/waas/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -83,8 +83,9 @@ func (s *Server) HandleQuery(c *gin.Context) {
 		return
 	}
 
-	// Execute the query
-	result := s.executeQuery(c.Request.Context(), tenantID, req)
+	// Execute the query using the QueryExecutor
+	executor := NewQueryExecutor(s.resolver)
+	result := executor.Execute(c.Request.Context(), tenantID, req)
 	c.JSON(http.StatusOK, result)
 }
 
@@ -267,20 +268,6 @@ func searchSubstring(s, substr string) bool {
 		}
 	}
 	return false
-}
-
-func (s *Server) executeQuery(ctx interface{}, tenantID string, req GraphQLRequest) GraphQLResponse {
-	// Simplified query execution - in production, use a full GraphQL executor
-	// This is a placeholder that demonstrates the structure
-	return GraphQLResponse{
-		Errors: []GraphQLError{{
-			Message: "GraphQL execution engine not implemented - use gqlgen in production",
-			Extensions: map[string]interface{}{
-				"code": "NOT_IMPLEMENTED",
-				"hint": "Run 'go get github.com/99designs/gqlgen' and generate resolvers",
-			},
-		}},
-	}
 }
 
 // HandlePlayground serves the GraphQL Playground UI

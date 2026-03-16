@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -110,7 +111,7 @@ func TestQueryExecutor_Introspection(t *testing.T) {
 
 func TestExtractTopLevelFields(t *testing.T) {
 	tests := []struct {
-		query   string
+		query     string
 		minFields int
 	}{
 		{"query {\n  tenant {\n    id\n  }\n}", 1},
@@ -145,7 +146,7 @@ func TestSubscriptionManager(t *testing.T) {
 		if len(msg) == 0 {
 			t.Error("expected non-empty message")
 		}
-	default:
+	case <-time.After(500 * time.Millisecond):
 		t.Error("expected message in channel")
 	}
 
@@ -168,15 +169,15 @@ func TestSubscriptionManagerTenantIsolation(t *testing.T) {
 	select {
 	case <-sub1.Messages:
 		// Expected
-	default:
+	case <-time.After(500 * time.Millisecond):
 		t.Error("tenant-1 should receive the message")
 	}
 
 	select {
 	case <-sub2.Messages:
 		t.Error("tenant-2 should NOT receive tenant-1's message")
-	default:
-		// Expected
+	case <-time.After(50 * time.Millisecond):
+		// Expected — no message for tenant-2
 	}
 
 	mgr.Unsubscribe(sub1)
@@ -287,6 +288,18 @@ func TestServer_HandleQuery_ValidQuery(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Errorf("expected 200, got %d", w.Code)
 	}
+
+	// Verify response contains actual data, not a NOT_IMPLEMENTED error
+	var resp GraphQLResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	if len(resp.Errors) > 0 {
+		t.Errorf("expected no errors, got: %s", resp.Errors[0].Message)
+	}
+	if resp.Data == nil {
+		t.Error("expected data in response")
+	}
 }
 
 func TestServer_AuthenticateToken(t *testing.T) {
@@ -353,7 +366,7 @@ func TestSubscriptionManager_PublishSubscribe(t *testing.T) {
 		if decoded.ID != "d1" {
 			t.Errorf("expected ID d1, got %s", decoded.ID)
 		}
-	default:
+	case <-time.After(500 * time.Millisecond):
 		t.Error("expected message")
 	}
 
@@ -373,7 +386,7 @@ func TestSubscriptionManager_FilterMatching(t *testing.T) {
 	select {
 	case <-sub.Messages:
 		// Expected
-	default:
+	case <-time.After(500 * time.Millisecond):
 		t.Error("expected message for matching filter")
 	}
 
@@ -383,11 +396,20 @@ func TestSubscriptionManager_FilterMatching(t *testing.T) {
 	select {
 	case <-sub.Messages:
 		t.Error("should NOT receive message for non-matching filter")
-	default:
-		// Expected
+	case <-time.After(50 * time.Millisecond):
+		// Expected — no message for non-matching filter
 	}
 
 	mgr.Unsubscribe(sub)
+}
+
+func TestSubscriptionManager_DoubleUnsubscribe(t *testing.T) {
+	mgr := NewSubscriptionManager()
+	ctx := context.Background()
+
+	sub := mgr.Subscribe(ctx, "t1", ChannelDeliveryUpdated, nil)
+	mgr.Unsubscribe(sub)
+	mgr.Unsubscribe(sub) // Should not panic
 }
 
 func TestSubscriptionManager_Stats(t *testing.T) {
@@ -443,7 +465,7 @@ func TestResolver_NotifyDeliveryUpdate(t *testing.T) {
 		if event.Status != "success" {
 			t.Errorf("expected success, got %s", event.Status)
 		}
-	default:
+	case <-time.After(500 * time.Millisecond):
 		t.Error("expected delivery update message")
 	}
 

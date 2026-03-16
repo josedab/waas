@@ -15,6 +15,7 @@ type Subscriber struct {
 	Filter   map[string]interface{}
 	Messages chan []byte
 	Done     chan struct{}
+	once     sync.Once
 }
 
 // SubscriptionManager manages GraphQL subscriptions
@@ -64,7 +65,7 @@ func (m *SubscriptionManager) Unsubscribe(sub *Subscriber) {
 		}
 	}
 
-	close(sub.Done)
+	sub.once.Do(func() { close(sub.Done) })
 }
 
 // Publish sends a message to all matching subscribers
@@ -155,12 +156,12 @@ type AnomalyDetectedEvent struct {
 
 // MetricsUpdateEvent represents a metrics update subscription event
 type MetricsUpdateEvent struct {
-	TotalDeliveries       int     `json:"totalDeliveries"`
-	SuccessfulDeliveries  int     `json:"successfulDeliveries"`
-	FailedDeliveries      int     `json:"failedDeliveries"`
-	SuccessRate           float64 `json:"successRate"`
-	AvgLatencyMs          float64 `json:"avgLatencyMs"`
-	DeliveryRatePerMinute float64 `json:"deliveryRatePerMinute"`
+	TotalDeliveries       int       `json:"totalDeliveries"`
+	SuccessfulDeliveries  int       `json:"successfulDeliveries"`
+	FailedDeliveries      int       `json:"failedDeliveries"`
+	SuccessRate           float64   `json:"successRate"`
+	AvgLatencyMs          float64   `json:"avgLatencyMs"`
+	DeliveryRatePerMinute float64   `json:"deliveryRatePerMinute"`
 	Timestamp             time.Time `json:"timestamp"`
 }
 
