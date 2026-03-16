@@ -3,11 +3,13 @@ package billing
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/josedab/waas/pkg/httputil"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/josedab/waas/pkg/httputil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -234,6 +236,10 @@ func (h *Handler) GetBudget(c *gin.Context) {
 
 	budget, err := h.service.GetBudget(c.Request.Context(), tenantID, budgetID)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Budget not found"})
+			return
+		}
 		httputil.InternalErrorGeneric(c, err)
 		return
 	}
@@ -489,6 +495,10 @@ func (h *Handler) GetInvoice(c *gin.Context) {
 
 	invoice, err := h.service.GetInvoice(c.Request.Context(), tenantID, invoiceID)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invoice not found"})
+			return
+		}
 		httputil.InternalErrorGeneric(c, err)
 		return
 	}
