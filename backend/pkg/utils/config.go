@@ -9,15 +9,28 @@ import (
 )
 
 type Config struct {
-	DatabaseURL        string
-	RedisURL           string
+	// Core infrastructure
+	DatabaseURL string
+	RedisURL    string
+
+	// Service ports
 	APIPort            string
 	AnalyticsPort      string
-	JWTSecret          string
-	Environment        string
-	LogLevel           string
-	LogFormat          string
-	CORSAllowedOrigins string
+	DeliveryHealthPort string
+
+	// Security
+	JWTSecret      string
+	AdminTenantIDs []string
+
+	// Runtime
+	Environment string
+	LogLevel    string
+	LogFormat   string
+
+	// Network
+	CORSAllowedOrigins      string
+	WebSocketAllowedOrigins string
+	AllowInsecureTLS        bool
 }
 
 func LoadConfig() (*Config, error) {
@@ -31,15 +44,19 @@ func LoadConfig() (*Config, error) {
 	}
 
 	cfg := &Config{
-		DatabaseURL:        requireEnv("DATABASE_URL"),
-		RedisURL:           requireEnv("REDIS_URL"),
-		APIPort:            getEnv("API_PORT", "8080"),
-		AnalyticsPort:      getEnv("ANALYTICS_PORT", "8082"),
-		JWTSecret:          requireEnv("JWT_SECRET"),
-		Environment:        getEnvWithFallback("ENVIRONMENT", "APP_ENV", "development"),
-		LogLevel:           getEnv("LOG_LEVEL", "info"),
-		LogFormat:          getEnv("LOG_FORMAT", "json"),
-		CORSAllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", ""),
+		DatabaseURL:             requireEnv("DATABASE_URL"),
+		RedisURL:                requireEnv("REDIS_URL"),
+		APIPort:                 getEnv("API_PORT", "8080"),
+		AnalyticsPort:           getEnv("ANALYTICS_PORT", "8082"),
+		DeliveryHealthPort:      getEnv("DELIVERY_HEALTH_PORT", "8081"),
+		JWTSecret:               requireEnv("JWT_SECRET"),
+		AdminTenantIDs:          splitCSV(getEnv("ADMIN_TENANT_IDS", "")),
+		Environment:             getEnvWithFallback("ENVIRONMENT", "APP_ENV", "development"),
+		LogLevel:                getEnv("LOG_LEVEL", "info"),
+		LogFormat:               getEnv("LOG_FORMAT", "json"),
+		CORSAllowedOrigins:      getEnv("CORS_ALLOWED_ORIGINS", ""),
+		WebSocketAllowedOrigins: getEnv("WEBSOCKET_ALLOWED_ORIGINS", ""),
+		AllowInsecureTLS:        getEnv("ALLOW_INSECURE_TLS", "false") == "true",
 	}
 
 	if len(missing) > 0 {
@@ -52,6 +69,9 @@ func LoadConfig() (*Config, error) {
 		configErrors = append(configErrors, err.Error())
 	}
 	if err := validatePort(cfg.AnalyticsPort, "ANALYTICS_PORT"); err != nil {
+		configErrors = append(configErrors, err.Error())
+	}
+	if err := validatePort(cfg.DeliveryHealthPort, "DELIVERY_HEALTH_PORT"); err != nil {
 		configErrors = append(configErrors, err.Error())
 	}
 
@@ -166,4 +186,26 @@ func validateRedisURL(rawURL string) error {
 		return fmt.Errorf("REDIS_URL is not a valid URL: %v", err)
 	}
 	return nil
+}
+
+// IsProd returns true when the environment is production.
+func (c *Config) IsProd() bool {
+	return c.Environment == "production"
+}
+
+// splitCSV splits a comma-separated string into a trimmed slice,
+// filtering out empty entries.
+func splitCSV(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	var result []string
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }

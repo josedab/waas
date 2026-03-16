@@ -121,3 +121,72 @@ func TestGetEnvWithFallback(t *testing.T) {
 		})
 	}
 }
+
+func TestSplitCSV(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected []string
+	}{
+		{"", nil},
+		{"a,b,c", []string{"a", "b", "c"}},
+		{" a , b , c ", []string{"a", "b", "c"}},
+		{"single", []string{"single"}},
+		{"a,,b", []string{"a", "b"}},
+		{",", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := splitCSV(tt.input)
+			if len(got) != len(tt.expected) {
+				t.Fatalf("splitCSV(%q) = %v (len %d), want %v (len %d)", tt.input, got, len(got), tt.expected, len(tt.expected))
+			}
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("splitCSV(%q)[%d] = %q, want %q", tt.input, i, got[i], tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func TestLoadConfig_RequiredVars(t *testing.T) {
+	// All required vars missing → error
+	_, err := LoadConfig()
+	if err == nil {
+		t.Fatal("LoadConfig() should fail when required vars are missing")
+	}
+}
+
+func TestLoadConfig_Success(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://localhost:5432/waas")
+	t.Setenv("REDIS_URL", "redis://localhost:6379")
+	t.Setenv("JWT_SECRET", "test-secret-for-unit-tests")
+	t.Setenv("ADMIN_TENANT_IDS", "tid-1, tid-2")
+	t.Setenv("DELIVERY_HEALTH_PORT", "8081")
+	t.Setenv("ALLOW_INSECURE_TLS", "true")
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.DeliveryHealthPort != "8081" {
+		t.Errorf("DeliveryHealthPort = %q, want %q", cfg.DeliveryHealthPort, "8081")
+	}
+	if len(cfg.AdminTenantIDs) != 2 || cfg.AdminTenantIDs[0] != "tid-1" {
+		t.Errorf("AdminTenantIDs = %v, want [tid-1 tid-2]", cfg.AdminTenantIDs)
+	}
+	if !cfg.AllowInsecureTLS {
+		t.Error("AllowInsecureTLS should be true")
+	}
+}
+
+func TestConfig_IsProd(t *testing.T) {
+	c := &Config{Environment: "production"}
+	if !c.IsProd() {
+		t.Error("IsProd() should be true for production")
+	}
+	c.Environment = "development"
+	if c.IsProd() {
+		t.Error("IsProd() should be false for development")
+	}
+}
