@@ -155,7 +155,7 @@ func testHealthCheckValidation(t *testing.T) {
 	// System should be healthy
 	systemHealth := healthStatus.Components["system"]
 	assert.Equal(t, HealthStatusHealthy, systemHealth.Status)
-	assert.Equal(t, "System is healthy", systemHealth.Message)
+	assert.Contains(t, systemHealth.Message, "goroutines=")
 
 	// Overall status should be unhealthy due to database
 	assert.Equal(t, HealthStatusUnhealthy, healthStatus.Status)

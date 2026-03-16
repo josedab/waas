@@ -3,7 +3,9 @@ package monitoring
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/josedab/waas/pkg/utils"
@@ -89,19 +91,27 @@ func (hc *HealthChecker) ReadinessHandler() gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
 
-		// Check critical components for readiness
 		dbHealth := hc.checkDatabase(ctx)
+		redisHealth := hc.checkRedis(ctx)
 
-		if dbHealth.Status == HealthStatusHealthy {
+		// Both DB and Redis must be healthy for the service to be ready.
+		if dbHealth.Status == HealthStatusHealthy && redisHealth.Status != HealthStatusUnhealthy {
 			c.JSON(http.StatusOK, gin.H{
 				"status":    "ready",
 				"timestamp": time.Now(),
 			})
 		} else {
+			reasons := []string{}
+			if dbHealth.Status != HealthStatusHealthy {
+				reasons = append(reasons, "database: "+dbHealth.Message)
+			}
+			if redisHealth.Status == HealthStatusUnhealthy {
+				reasons = append(reasons, "redis: "+redisHealth.Message)
+			}
 			c.JSON(http.StatusServiceUnavailable, gin.H{
 				"status":    "not ready",
 				"timestamp": time.Now(),
-				"reason":    dbHealth.Message,
+				"reasons":   reasons,
 			})
 		}
 	}
@@ -242,16 +252,22 @@ func (hc *HealthChecker) checkRedis(ctx context.Context) ComponentHealth {
 
 // checkSystem checks system-level health indicators
 func (hc *HealthChecker) checkSystem(ctx context.Context) ComponentHealth {
-	// For now, this is a simple check that the service is running
-	// In a production environment, you might check:
-	// - Memory usage
-	// - CPU usage
-	// - Disk space
-	// - Network connectivity
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	// Flag degraded if the process is using more than 1 GB of heap.
+	const heapThreshold = 1 << 30
+	status := HealthStatusHealthy
+	message := fmt.Sprintf("goroutines=%d heap_mb=%d", runtime.NumGoroutine(), m.HeapAlloc/(1<<20))
+
+	if m.HeapAlloc > heapThreshold {
+		status = HealthStatusDegraded
+		message = "high memory usage: " + message
+	}
 
 	return ComponentHealth{
-		Status:      HealthStatusHealthy,
-		Message:     "System is healthy",
+		Status:      status,
+		Message:     message,
 		LastChecked: time.Now(),
 	}
 }
