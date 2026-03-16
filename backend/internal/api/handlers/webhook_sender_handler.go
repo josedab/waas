@@ -18,6 +18,7 @@ import (
 // SendWebhookRequest represents a single webhook send request
 type SendWebhookRequest struct {
 	EndpointID *uuid.UUID        `json:"endpoint_id,omitempty"`
+	EventType  string            `json:"event_type,omitempty"`
 	Payload    json.RawMessage   `json:"payload" binding:"required"`
 	Headers    map[string]string `json:"headers,omitempty"`
 }
@@ -25,6 +26,7 @@ type SendWebhookRequest struct {
 // BatchSendWebhookRequest represents a batch webhook send request
 type BatchSendWebhookRequest struct {
 	EndpointIDs []uuid.UUID       `json:"endpoint_ids,omitempty"` // If empty, send to all active endpoints
+	EventType   string            `json:"event_type,omitempty"`
 	Payload     json.RawMessage   `json:"payload" binding:"required"`
 	Headers     map[string]string `json:"headers,omitempty"`
 }
@@ -33,6 +35,7 @@ type BatchSendWebhookRequest struct {
 type SendWebhookResponse struct {
 	DeliveryID  uuid.UUID `json:"delivery_id"`
 	EndpointID  uuid.UUID `json:"endpoint_id"`
+	EventType   string    `json:"event_type,omitempty"`
 	Status      string    `json:"status"`
 	ScheduledAt time.Time `json:"scheduled_at"`
 }
@@ -63,7 +66,7 @@ type BatchSendWebhookResponse struct {
 func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 	var req SendWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -90,8 +93,16 @@ func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 	// Validate payload is valid JSON
 	var payloadTest interface{}
 	if err := json.Unmarshal(req.Payload, &payloadTest); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_PAYLOAD", Message: "Webhook payload must be valid JSON", Details: err.Error()})
+		BadRequest(c, "INVALID_PAYLOAD", "Webhook payload must be valid JSON")
 		return
+	}
+
+	// Validate event type if provided
+	if req.EventType != "" {
+		if err := models.ValidateEventType(req.EventType); err != nil {
+			BadRequest(c, "INVALID_EVENT_TYPE", "Event type must be non-empty, ≤255 chars, no whitespace")
+			return
+		}
 	}
 
 	var endpoints []*models.WebhookEndpoint
@@ -148,7 +159,7 @@ func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 	// Process each endpoint
 	var responses []SendWebhookResponse
 	for _, endpoint := range endpoints {
-		response, err := h.queueWebhookDelivery(c.Request.Context(), endpoint, req.Payload, req.Headers)
+		response, err := h.queueWebhookDelivery(c.Request.Context(), endpoint, req.Payload, req.Headers, req.EventType)
 		if err != nil {
 			h.logger.Error("Failed to queue webhook delivery", map[string]interface{}{
 				"error":       err.Error(),
@@ -195,7 +206,7 @@ func (h *WebhookHandler) SendWebhook(c *gin.Context) {
 func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 	var req BatchSendWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -232,8 +243,16 @@ func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 	// Validate payload is valid JSON
 	var payloadTest interface{}
 	if err := json.Unmarshal(req.Payload, &payloadTest); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_PAYLOAD", Message: "Webhook payload must be valid JSON", Details: err.Error()})
+		BadRequest(c, "INVALID_PAYLOAD", "Webhook payload must be valid JSON")
 		return
+	}
+
+	// Validate event type if provided
+	if req.EventType != "" {
+		if err := models.ValidateEventType(req.EventType); err != nil {
+			BadRequest(c, "INVALID_EVENT_TYPE", "Event type must be non-empty, ≤255 chars, no whitespace")
+			return
+		}
 	}
 
 	var endpoints []*models.WebhookEndpoint
@@ -241,6 +260,7 @@ func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 
 	if len(req.EndpointIDs) > 0 {
 		// Send to specific endpoints
+		var skipped []string
 		for _, endpointID := range req.EndpointIDs {
 			endpoint, err := h.webhookRepo.GetByID(c.Request.Context(), endpointID)
 			if err != nil {
@@ -248,22 +268,30 @@ func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 					"error":       err.Error(),
 					"endpoint_id": endpointID,
 				})
-				continue // Skip invalid endpoints
+				skipped = append(skipped, endpointID.String())
+				continue
 			}
 
-			// Verify tenant ownership
 			if endpoint.TenantID != tenantID {
 				h.logger.Warn("Skipping endpoint not owned by tenant", map[string]interface{}{
 					"endpoint_id": endpointID,
 					"tenant_id":   tenantID,
 				})
+				skipped = append(skipped, endpointID.String())
 				continue
 			}
 
-			// Only include active endpoints
 			if endpoint.IsActive {
 				endpoints = append(endpoints, endpoint)
+			} else {
+				skipped = append(skipped, endpointID.String())
 			}
+		}
+		if len(skipped) > 0 {
+			h.logger.Info("Batch send skipped endpoints", map[string]interface{}{
+				"skipped":   skipped,
+				"tenant_id": tenantID,
+			})
 		}
 	} else {
 		// Send to all active endpoints for the tenant
@@ -288,7 +316,7 @@ func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 	var queued, failed int
 
 	for _, endpoint := range endpoints {
-		response, err := h.queueWebhookDelivery(c.Request.Context(), endpoint, req.Payload, req.Headers)
+		response, err := h.queueWebhookDelivery(c.Request.Context(), endpoint, req.Payload, req.Headers, req.EventType)
 		if err != nil {
 			h.logger.Error("Failed to queue webhook delivery in batch", map[string]interface{}{
 				"error":       err.Error(),
@@ -315,7 +343,7 @@ func (h *WebhookHandler) BatchSendWebhook(c *gin.Context) {
 // Helper methods
 
 // queueWebhookDelivery queues a webhook delivery for processing
-func (h *WebhookHandler) queueWebhookDelivery(ctx context.Context, endpoint *models.WebhookEndpoint, payload json.RawMessage, headers map[string]string) (*SendWebhookResponse, error) {
+func (h *WebhookHandler) queueWebhookDelivery(ctx context.Context, endpoint *models.WebhookEndpoint, payload json.RawMessage, headers map[string]string, eventType string) (*SendWebhookResponse, error) {
 	// Generate delivery ID
 	deliveryID := uuid.New()
 
@@ -347,6 +375,7 @@ func (h *WebhookHandler) queueWebhookDelivery(ctx context.Context, endpoint *mod
 		DeliveryID:    deliveryID,
 		EndpointID:    endpoint.ID,
 		TenantID:      endpoint.TenantID,
+		EventType:     eventType,
 		Payload:       payload,
 		Headers:       headers,
 		AttemptNumber: 1,
@@ -355,8 +384,11 @@ func (h *WebhookHandler) queueWebhookDelivery(ctx context.Context, endpoint *mod
 		MaxAttempts:   endpoint.RetryConfig.MaxAttempts,
 	}
 
-	// Publish to delivery queue
-	if err := h.publisher.PublishDelivery(ctx, message); err != nil {
+	// Publish to delivery queue with a bounded timeout to avoid blocking
+	// the HTTP request if the queue is slow.
+	pubCtx, pubCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer pubCancel()
+	if err := h.publisher.PublishDelivery(pubCtx, message); err != nil {
 		return nil, fmt.Errorf("failed to publish delivery message: %w", err)
 	}
 
@@ -369,6 +401,7 @@ func (h *WebhookHandler) queueWebhookDelivery(ctx context.Context, endpoint *mod
 	return &SendWebhookResponse{
 		DeliveryID:  deliveryID,
 		EndpointID:  endpoint.ID,
+		EventType:   eventType,
 		Status:      queue.StatusPending,
 		ScheduledAt: attempt.ScheduledAt,
 	}, nil
