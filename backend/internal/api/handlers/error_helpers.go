@@ -20,6 +20,53 @@ type ErrorResponse struct {
 	Details interface{} `json:"details,omitempty"`
 }
 
+// BadRequest writes a 400 response with the given code and a safe message.
+// Use this instead of exposing raw err.Error() from ShouldBindJSON.
+func BadRequest(c *gin.Context, code, message string) {
+	c.JSON(http.StatusBadRequest, ErrorResponse{Code: code, Message: message})
+}
+
+// ValidationError writes a 400 response for input validation failures.
+// The details field may carry field-level information that is already safe
+// to expose (e.g. "url is required", "max_attempts exceeds 50").
+func ValidationError(c *gin.Context, message string, details interface{}) {
+	c.JSON(http.StatusBadRequest, ErrorResponse{
+		Code:    "VALIDATION_ERROR",
+		Message: message,
+		Details: details,
+	})
+}
+
+// BindJSON binds the JSON body into dest and writes a safe 400 response on
+// failure. Returns true if binding succeeded; the caller should return early
+// when it returns false.
+func BindJSON(c *gin.Context, dest interface{}) bool {
+	if err := c.ShouldBindJSON(dest); err != nil {
+		errorLogger.Debug("JSON binding failed", map[string]interface{}{
+			"error": err.Error(),
+			"path":  c.Request.URL.Path,
+		})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
+		return false
+	}
+	return true
+}
+
+// NotFound writes a 404 response.
+func NotFound(c *gin.Context, code, message string) {
+	c.JSON(http.StatusNotFound, ErrorResponse{Code: code, Message: message})
+}
+
+// Forbidden writes a 403 response.
+func Forbidden(c *gin.Context, code, message string) {
+	c.JSON(http.StatusForbidden, ErrorResponse{Code: code, Message: message})
+}
+
+// Conflict writes a 409 response.
+func Conflict(c *gin.Context, code, message string) {
+	c.JSON(http.StatusConflict, ErrorResponse{Code: code, Message: message})
+}
+
 // RespondWithError writes a structured error response using a WebhookError.
 // It derives the HTTP status from the error and renders the standard shape.
 func RespondWithError(c *gin.Context, err *webhookerrors.WebhookError) {

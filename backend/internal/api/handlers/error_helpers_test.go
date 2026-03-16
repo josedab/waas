@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -271,4 +272,79 @@ func TestParseQueryInt(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestBadRequest(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	BadRequest(c, "TEST_CODE", "test message")
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp ErrorResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "TEST_CODE", resp.Code)
+	assert.Equal(t, "test message", resp.Message)
+}
+
+func TestNotFound(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	NotFound(c, "RESOURCE_NOT_FOUND", "item not found")
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestForbidden(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	Forbidden(c, "FORBIDDEN", "access denied")
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestConflict(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	Conflict(c, "DUPLICATE", "already exists")
+	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
+func TestValidationError(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	ValidationError(c, "bad input", map[string]string{"field": "url is required"})
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp ErrorResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "VALIDATION_ERROR", resp.Code)
+	assert.NotNil(t, resp.Details)
+}
+
+func TestBindJSON_Success(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/", strings.NewReader(`{"name":"test"}`))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	var dest struct {
+		Name string `json:"name"`
+	}
+	ok := BindJSON(c, &dest)
+	assert.True(t, ok)
+	assert.Equal(t, "test", dest.Name)
+}
+
+func TestBindJSON_InvalidJSON(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("POST", "/", strings.NewReader(`{invalid`))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	var dest struct {
+		Name string `json:"name"`
+	}
+	ok := BindJSON(c, &dest)
+	assert.False(t, ok)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// Verify the response does NOT contain the raw parse error
+	body := w.Body.String()
+	assert.NotContains(t, body, "invalid character")
+	assert.Contains(t, body, "INVALID_REQUEST")
 }
