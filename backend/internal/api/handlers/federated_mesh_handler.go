@@ -123,13 +123,13 @@ func (h *FederatedMeshHandler) SetupTenantRegion(c *gin.Context) {
 
 	var req models.CreateTenantRegionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	tenantRegion, err := h.service.SetupTenantRegion(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "OPERATION_FAILED", err)
 		return
 	}
 
@@ -161,13 +161,13 @@ func (h *FederatedMeshHandler) CreateRoutingRule(c *gin.Context) {
 
 	var req models.CreateGeoRoutingRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	rule, err := h.service.CreateRoutingRule(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "OPERATION_FAILED", err)
 		return
 	}
 
@@ -199,13 +199,13 @@ func (h *FederatedMeshHandler) RouteEvent(c *gin.Context) {
 
 	var req models.RouteEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	decision, err := h.service.RouteEvent(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "OPERATION_FAILED", err)
 		return
 	}
 
@@ -221,13 +221,13 @@ func (h *FederatedMeshHandler) CreateReplicationStream(c *gin.Context) {
 
 	var req models.CreateReplicationStreamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	stream, err := h.service.CreateReplicationStream(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "OPERATION_FAILED", err)
 		return
 	}
 
@@ -254,13 +254,13 @@ func (h *FederatedMeshHandler) GetReplicationStreams(c *gin.Context) {
 func (h *FederatedMeshHandler) InitiateFailover(c *gin.Context) {
 	var req models.InitiateFailoverRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	event, err := h.service.InitiateFailover(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "OPERATION_FAILED", err)
 		return
 	}
 
@@ -281,7 +281,7 @@ func (h *FederatedMeshHandler) CheckDataResidencyCompliance(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -299,7 +299,7 @@ func (h *FederatedMeshHandler) CheckDataResidencyCompliance(c *gin.Context) {
 
 	audit, err := h.service.CheckDataResidencyCompliance(c.Request.Context(), tenantID, sourceRegionID, targetRegionID, req.DataType)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "OPERATION_FAILED", err)
 		return
 	}
 

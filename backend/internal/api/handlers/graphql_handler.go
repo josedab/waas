@@ -40,7 +40,7 @@ func (h *GraphQLHandler) CreateSchema(c *gin.Context) {
 
 	var req models.CreateGraphQLSchemaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -91,13 +91,13 @@ func (h *GraphQLHandler) GetSchema(c *gin.Context) {
 
 	schemaID, err := uuid.Parse(c.Param("schema_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid schema_id"})
+		BadRequest(c, "INVALID_ID", "Invalid schema ID")
 		return
 	}
 
 	schema, err := h.service.GetSchema(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "schema not found"})
+		NotFound(c, "SCHEMA_NOT_FOUND", "Schema not found")
 		return
 	}
 
@@ -118,13 +118,13 @@ func (h *GraphQLHandler) ParseSchema(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	parsed, err := h.service.ParseSchema(c.Request.Context(), req.SchemaSDL)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "SCHEMA_PARSE_FAILED", "Failed to parse GraphQL schema")
 		return
 	}
 
@@ -147,7 +147,7 @@ func (h *GraphQLHandler) CreateSubscription(c *gin.Context) {
 
 	var req models.CreateGraphQLSubscriptionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -198,13 +198,13 @@ func (h *GraphQLHandler) GetSubscription(c *gin.Context) {
 
 	subID, err := uuid.Parse(c.Param("subscription_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid subscription_id"})
+		BadRequest(c, "INVALID_ID", "Invalid subscription ID")
 		return
 	}
 
 	sub, err := h.service.GetSubscription(c.Request.Context(), tenantID, subID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "subscription not found"})
+		NotFound(c, "SUBSCRIPTION_NOT_FOUND", "Subscription not found")
 		return
 	}
 
@@ -223,7 +223,7 @@ func (h *GraphQLHandler) GetSubscription(c *gin.Context) {
 func (h *GraphQLHandler) IngestEvent(c *gin.Context) {
 	subID, err := uuid.Parse(c.Param("subscription_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid subscription_id"})
+		BadRequest(c, "INVALID_ID", "Invalid subscription ID")
 		return
 	}
 
@@ -233,7 +233,7 @@ func (h *GraphQLHandler) IngestEvent(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -268,7 +268,7 @@ func (h *GraphQLHandler) AddFederationSource(c *gin.Context) {
 
 	var req models.AddFederationSourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -297,13 +297,13 @@ func (h *GraphQLHandler) GetFederationSources(c *gin.Context) {
 
 	schemaID, err := uuid.Parse(c.Param("schema_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid schema_id"})
+		BadRequest(c, "INVALID_ID", "Invalid schema ID")
 		return
 	}
 
 	sources, err := h.service.GetFederationSources(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "FEDERATION_SOURCES_NOT_FOUND", "Federation sources not found")
 		return
 	}
 
@@ -326,7 +326,7 @@ func (h *GraphQLHandler) CreateTypeMapping(c *gin.Context) {
 
 	var req models.CreateTypeMappingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -355,13 +355,13 @@ func (h *GraphQLHandler) GetTypeMappings(c *gin.Context) {
 
 	schemaID, err := uuid.Parse(c.Param("schema_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid schema_id"})
+		BadRequest(c, "INVALID_ID", "Invalid schema ID")
 		return
 	}
 
 	mappings, err := h.service.GetTypeMappings(c.Request.Context(), tenantID, schemaID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "TYPE_MAPPINGS_NOT_FOUND", "Type mappings not found")
 		return
 	}
 

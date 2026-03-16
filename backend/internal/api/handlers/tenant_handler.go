@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"github.com/josedab/waas/pkg/auth"
+	"github.com/josedab/waas/pkg/httputil"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/utils"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -72,7 +72,7 @@ func NewTenantHandler(tenantRepo repository.TenantRepository, logger *utils.Logg
 func (h *TenantHandler) CreateTenant(c *gin.Context) {
 	var req CreateTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -174,7 +174,7 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 
 	var req UpdateTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -258,20 +258,9 @@ func (h *TenantHandler) RegenerateAPIKey(c *gin.Context) {
 
 // ListTenants lists all tenants (admin endpoint)
 func (h *TenantHandler) ListTenants(c *gin.Context) {
-	limitStr := c.DefaultQuery("limit", "50")
-	offsetStr := c.DefaultQuery("offset", "0")
+	p := httputil.ParsePagination(c)
 
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit <= 0 || limit > 100 {
-		limit = 50
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil || offset < 0 {
-		offset = 0
-	}
-
-	tenants, err := h.tenantRepo.List(c.Request.Context(), limit, offset)
+	tenants, err := h.tenantRepo.List(c.Request.Context(), p.Limit, p.Offset)
 	if err != nil {
 		h.logger.Error("Failed to list tenants", map[string]interface{}{
 			"error": err.Error(),
@@ -280,11 +269,13 @@ func (h *TenantHandler) ListTenants(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"tenants": tenants,
-		"limit":   limit,
-		"offset":  offset,
-	})
+	// Use -1 as total when count is unavailable; clients can check has_more.
+	total := p.Offset + len(tenants)
+	if len(tenants) == p.Limit {
+		total++ // signal there may be more
+	}
+
+	httputil.RespondWithList(c, "tenants", tenants, httputil.NewPaginationMeta(p, total))
 }
 
 // AdminUpdateTenant updates any tenant field including subscription tier (admin only)
@@ -309,7 +300,7 @@ func (h *TenantHandler) AdminUpdateTenant(c *gin.Context) {
 
 	var req AdminUpdateTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

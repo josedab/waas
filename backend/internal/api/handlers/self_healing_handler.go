@@ -69,7 +69,7 @@ func (h *SelfHealingHandler) PredictHealth(c *gin.Context) {
 
 	var features models.MLFeatureVector
 	if err := c.ShouldBindJSON(&features); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *SelfHealingHandler) GetEndpointAnalysis(c *gin.Context) {
 
 	analysis, err := h.service.GetEndpointHealthAnalysis(c.Request.Context(), tenantID, endpointID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "NOT_FOUND", "Resource not found")
 		return
 	}
 
@@ -151,7 +151,7 @@ func (h *SelfHealingHandler) CreateRemediationRule(c *gin.Context) {
 
 	var req models.CreateRemediationRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -203,7 +203,7 @@ func (h *SelfHealingHandler) TriggerRemediation(c *gin.Context) {
 
 	var req models.TriggerRemediationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -255,7 +255,7 @@ func (h *SelfHealingHandler) UpdateCircuitBreaker(c *gin.Context) {
 
 	var req models.UpdateCircuitBreakerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

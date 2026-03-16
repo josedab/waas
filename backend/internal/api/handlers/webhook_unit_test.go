@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -165,6 +166,10 @@ func (m *mockDeliveryAttemptRepo) GetDeliveryHistoryWithFilters(_ context.Contex
 
 func (m *mockDeliveryAttemptRepo) GetDeliveryAttemptsByDeliveryID(_ context.Context, _, _ uuid.UUID) ([]*models.DeliveryAttempt, error) {
 	return nil, nil
+}
+
+func (m *mockDeliveryAttemptRepo) DeleteOlderThan(_ context.Context, _ time.Time) (int64, error) {
+	return 0, nil
 }
 
 func setupWebhookUnitTest(repo *mockWebhookRepo, deliveryRepo *mockDeliveryAttemptRepo) (*WebhookHandler, *gin.Engine, uuid.UUID) {

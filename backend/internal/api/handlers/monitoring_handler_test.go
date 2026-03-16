@@ -571,6 +571,10 @@ func (m *MockDeliveryAttemptRepositoryWithFilters) SetDeliveryHistoryForEndpoint
 	m.deliveryHistoryWithFilters[key] = attempts
 }
 
+func (m *MockDeliveryAttemptRepositoryWithFilters) DeleteOlderThan(_ context.Context, _ time.Time) (int64, error) {
+	return 0, nil
+}
+
 // TestMonitoringHandler_HealthEndpoints tests health check endpoints
 func TestMonitoringHandler_HealthEndpoints(t *testing.T) {
 	gin.SetMode(gin.TestMode)

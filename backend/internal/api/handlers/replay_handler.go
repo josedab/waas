@@ -73,7 +73,7 @@ type ReplayFromSnapshotRequest struct {
 func (h *ReplayHandler) ReplayDelivery(c *gin.Context) {
 	var req SingleReplayRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *ReplayHandler) ReplayDelivery(c *gin.Context) {
 func (h *ReplayHandler) BulkReplay(c *gin.Context) {
 	var req BulkReplayRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -149,7 +149,7 @@ func (h *ReplayHandler) BulkReplay(c *gin.Context) {
 func (h *ReplayHandler) ReplayTimeRange(c *gin.Context) {
 	var req TimeRangeReplayRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -224,7 +224,7 @@ func (h *ReplayHandler) ListReplays(c *gin.Context) {
 func (h *ReplayHandler) CreateSnapshot(c *gin.Context) {
 	var req CreateSnapshotRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

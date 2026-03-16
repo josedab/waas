@@ -245,7 +245,7 @@ func (h *AnomalyHandler) UpdateDetectionConfig(c *gin.Context) {
 
 	var req UpdateConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -324,7 +324,7 @@ func (h *AnomalyHandler) CreateAlertConfig(c *gin.Context) {
 
 	var req CreateAlertConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -413,14 +413,14 @@ func (h *AnomalyHandler) GetAnomalyStats(c *gin.Context) {
 
 	// In production, calculate from database
 	stats := gin.H{
-		"total_anomalies":    45,
-		"open":               5,
-		"acknowledged":       8,
-		"resolved":           32,
-		"critical":           3,
-		"warning":            12,
-		"info":               30,
-		"alerts_sent":        67,
+		"total_anomalies":     45,
+		"open":                5,
+		"acknowledged":        8,
+		"resolved":            32,
+		"critical":            3,
+		"warning":             12,
+		"info":                30,
+		"alerts_sent":         67,
 		"avg_resolution_time": "4h 23m",
 	}
 

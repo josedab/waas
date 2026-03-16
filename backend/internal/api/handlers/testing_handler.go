@@ -172,7 +172,7 @@ func (h *TestingHandler) SetHTTPClientFactory(f func(timeout time.Duration) *htt
 func (h *TestingHandler) TestWebhook(c *gin.Context) {
 	var req TestWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -184,14 +184,14 @@ func (h *TestingHandler) TestWebhook(c *gin.Context) {
 
 	// Validate URL
 	if err := h.urlValidator.ValidateWebhookURL(req.URL); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_URL", Message: "Invalid webhook URL", Details: err.Error()})
+		BadRequest(c, "INVALID_URL", "Invalid webhook URL format")
 		return
 	}
 
 	// Validate payload
 	var payloadTest interface{}
 	if err := json.Unmarshal(req.Payload, &payloadTest); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_PAYLOAD", Message: "Webhook payload must be valid JSON", Details: err.Error()})
+		BadRequest(c, "INVALID_PAYLOAD", "Webhook payload must be valid JSON")
 		return
 	}
 
@@ -236,7 +236,7 @@ func (h *TestingHandler) TestWebhook(c *gin.Context) {
 func (h *TestingHandler) CreateTestEndpoint(c *gin.Context) {
 	var req CreateTestEndpointRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

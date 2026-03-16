@@ -130,6 +130,10 @@ func (m *MockDeliveryAttemptRepo) GetDeliveryAttemptsByDeliveryID(ctx context.Co
 	return args.Get(0).([]*models.DeliveryAttempt), args.Error(1)
 }
 
+func (m *MockDeliveryAttemptRepo) DeleteOlderThan(_ context.Context, _ time.Time) (int64, error) {
+	return 0, nil
+}
+
 type MockPublisher struct {
 	mock.Mock
 }

@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	apperrors "github.com/josedab/waas/pkg/errors"
+	"github.com/josedab/waas/pkg/httputil"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/queue"
 	"github.com/josedab/waas/pkg/repository"
 	"github.com/josedab/waas/pkg/utils"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -145,7 +145,7 @@ func (h *WebhookHandler) SetURLValidator(v URLValidatorInterface) {
 func (h *WebhookHandler) CreateWebhookEndpoint(c *gin.Context) {
 	var req CreateWebhookEndpointRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -157,7 +157,7 @@ func (h *WebhookHandler) CreateWebhookEndpoint(c *gin.Context) {
 
 	// Validate URL format and accessibility
 	if err := h.urlValidator.ValidateWebhookURL(req.URL); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_URL", Message: "Invalid webhook URL", Details: err.Error()})
+		BadRequest(c, "INVALID_URL", "Invalid webhook URL format")
 		return
 	}
 
@@ -247,7 +247,7 @@ func (h *WebhookHandler) CreateWebhookEndpoint(c *gin.Context) {
 
 	// Validate the endpoint
 	if err := models.ValidateWebhookEndpoint(endpoint); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "VALIDATION_ERROR", Message: "Invalid webhook endpoint data", Details: err.Error()})
+		BadRequest(c, "VALIDATION_ERROR", "Invalid webhook endpoint data")
 		return
 	}
 
@@ -297,41 +297,23 @@ func (h *WebhookHandler) CreateWebhookEndpoint(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Router /webhooks/endpoints [get]
 func (h *WebhookHandler) GetWebhookEndpoints(c *gin.Context) {
-	// Get tenant from context
 	tenantID, ok := RequireTenantID(c)
 	if !ok {
 		return
 	}
 
-	// Parse pagination parameters
-	limit := 50 // default
-	offset := 0 // default
+	p := httputil.ParsePagination(c)
 
-	if limitStr := c.Query("limit"); limitStr != "" {
-		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 && parsedLimit <= 100 {
-			limit = parsedLimit
-		}
-	}
-
-	if offsetStr := c.Query("offset"); offsetStr != "" {
-		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
-			offset = parsedOffset
-		}
-	}
-
-	// Get total count for pagination
 	totalCount, err := h.webhookRepo.CountByTenantID(c.Request.Context(), tenantID)
 	if err != nil {
 		h.logger.Error("Failed to count webhook endpoints", map[string]interface{}{
 			"error":     err.Error(),
 			"tenant_id": tenantID,
 		})
-		// Non-fatal: proceed with count=0
 		totalCount = 0
 	}
 
-	// Get endpoints from database
-	endpoints, err := h.webhookRepo.GetByTenantID(c.Request.Context(), tenantID, limit, offset)
+	endpoints, err := h.webhookRepo.GetByTenantID(c.Request.Context(), tenantID, p.Limit, p.Offset)
 	if err != nil {
 		h.logger.Error("Failed to get webhook endpoints", map[string]interface{}{
 			"error":     err.Error(),
@@ -341,7 +323,6 @@ func (h *WebhookHandler) GetWebhookEndpoints(c *gin.Context) {
 		return
 	}
 
-	// Convert to response format (without secrets)
 	responses := make([]WebhookEndpointResponse, len(endpoints))
 	for i, endpoint := range endpoints {
 		responses[i] = WebhookEndpointResponse{
@@ -355,16 +336,7 @@ func (h *WebhookHandler) GetWebhookEndpoints(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"endpoints": responses,
-		"pagination": gin.H{
-			"limit":    limit,
-			"offset":   offset,
-			"count":    len(responses),
-			"total":    totalCount,
-			"has_more": offset+limit < totalCount,
-		},
-	})
+	httputil.RespondWithList(c, "endpoints", responses, httputil.NewPaginationMeta(p, totalCount))
 }
 
 // GetWebhookEndpoint retrieves a specific webhook endpoint by ID
@@ -448,7 +420,7 @@ func (h *WebhookHandler) GetWebhookEndpoint(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{} "Webhook endpoint not found"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
 // @Security ApiKeyAuth
-// @Router /webhooks/endpoints/{id} [put]
+// @Router /webhooks/endpoints/{id} [patch]
 func (h *WebhookHandler) UpdateWebhookEndpoint(c *gin.Context) {
 	// Parse endpoint ID
 	endpointIDStr := c.Param("id")
@@ -460,7 +432,7 @@ func (h *WebhookHandler) UpdateWebhookEndpoint(c *gin.Context) {
 
 	var req UpdateWebhookEndpointRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request format", Details: err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -495,7 +467,7 @@ func (h *WebhookHandler) UpdateWebhookEndpoint(c *gin.Context) {
 	// Update fields if provided
 	if req.URL != nil {
 		if err := h.urlValidator.ValidateWebhookURL(*req.URL); err != nil {
-			c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_URL", Message: "Invalid webhook URL", Details: err.Error()})
+			BadRequest(c, "INVALID_URL", "Invalid webhook URL format")
 			return
 		}
 
@@ -543,7 +515,13 @@ func (h *WebhookHandler) UpdateWebhookEndpoint(c *gin.Context) {
 
 	// Validate updated endpoint
 	if err := models.ValidateWebhookEndpoint(endpoint); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "VALIDATION_ERROR", Message: "Invalid webhook endpoint data", Details: err.Error()})
+		BadRequest(c, "VALIDATION_ERROR", "Invalid webhook endpoint data")
+		return
+	}
+
+	// Ensure retry delay relationship is valid after partial update
+	if endpoint.RetryConfig.InitialDelayMs > endpoint.RetryConfig.MaxDelayMs && endpoint.RetryConfig.MaxDelayMs > 0 {
+		BadRequest(c, "INVALID_RETRY_CONFIG", "initial_delay_ms must not exceed max_delay_ms")
 		return
 	}
 

@@ -103,7 +103,7 @@ func (h *ConnectorsHandler) GetConnectorDetails(c *gin.Context) {
 func (h *ConnectorsHandler) InstallConnector(c *gin.Context) {
 	var req InstallConnectorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -186,7 +186,7 @@ func (h *ConnectorsHandler) UpdateInstalledConnector(c *gin.Context) {
 
 	var req UpdateConnectorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -273,7 +273,7 @@ func (h *ConnectorsHandler) TestConnector(c *gin.Context) {
 
 	var payload map[string]interface{}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

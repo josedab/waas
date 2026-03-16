@@ -70,7 +70,7 @@ type ValidatePayloadRequest struct {
 func (h *SchemaHandler) CreateSchema(c *gin.Context) {
 	var req CreateSchemaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *SchemaHandler) UpdateSchema(c *gin.Context) {
 
 	var req UpdateSchemaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *SchemaHandler) CreateSchemaVersion(c *gin.Context) {
 
 	var req CreateVersionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -280,7 +280,7 @@ func (h *SchemaHandler) AssignSchemaToEndpoint(c *gin.Context) {
 
 	var req AssignSchemaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -330,7 +330,7 @@ func (h *SchemaHandler) ValidatePayload(c *gin.Context) {
 
 	var req ValidatePayloadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -363,7 +363,7 @@ func (h *SchemaHandler) ValidateForEndpoint(c *gin.Context) {
 
 	var req ValidatePayloadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

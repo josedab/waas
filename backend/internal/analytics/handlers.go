@@ -2,11 +2,11 @@ package analytics
 
 import (
 	"fmt"
+	"github.com/josedab/waas/pkg/models"
+	"github.com/josedab/waas/pkg/repository"
 	"net/http"
 	"strconv"
 	"time"
-	"github.com/josedab/waas/pkg/models"
-	"github.com/josedab/waas/pkg/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -15,6 +15,12 @@ import (
 // Handlers contains the HTTP handlers for analytics endpoints
 type Handlers struct {
 	analyticsRepo repository.AnalyticsRepositoryInterface
+}
+
+// errorResponse is a structured error response for analytics API endpoints.
+type errorResponse struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 // NewHandlers creates a new analytics handlers instance
@@ -41,7 +47,7 @@ func (h *Handlers) RegisterRoutes(router *gin.Engine) {
 func (h *Handlers) GetDashboard(c *gin.Context) {
 	tenantID, err := h.getTenantIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid tenant"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
@@ -49,13 +55,13 @@ func (h *Handlers) GetDashboard(c *gin.Context) {
 	timeWindowStr := c.DefaultQuery("window", "24h")
 	timeWindow, err := time.ParseDuration(timeWindowStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid time window format"})
+		c.JSON(http.StatusBadRequest, errorResponse{Code: "INVALID_REQUEST", Message: "Invalid time window format"})
 		return
 	}
 
 	dashboard, err := h.analyticsRepo.GetDashboardMetrics(c.Request.Context(), tenantID, timeWindow)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get dashboard metrics"})
+		c.JSON(http.StatusInternalServerError, errorResponse{Code: "INTERNAL_ERROR", Message: "Failed to get dashboard metrics"})
 		return
 	}
 
@@ -66,7 +72,7 @@ func (h *Handlers) GetDashboard(c *gin.Context) {
 func (h *Handlers) GetMetrics(c *gin.Context) {
 	tenantID, err := h.getTenantIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid tenant"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
@@ -78,14 +84,14 @@ func (h *Handlers) GetMetrics(c *gin.Context) {
 
 	metrics, err := h.analyticsRepo.GetDeliveryMetrics(c.Request.Context(), query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get metrics"})
+		c.JSON(http.StatusInternalServerError, errorResponse{Code: "INTERNAL_ERROR", Message: "Failed to get metrics"})
 		return
 	}
 
 	// Get summary for the same query
 	summary, err := h.analyticsRepo.GetMetricsSummary(c.Request.Context(), query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get metrics summary"})
+		c.JSON(http.StatusInternalServerError, errorResponse{Code: "INTERNAL_ERROR", Message: "Failed to get metrics summary"})
 		return
 	}
 
@@ -106,7 +112,7 @@ func (h *Handlers) GetMetrics(c *gin.Context) {
 func (h *Handlers) GetMetricsSummary(c *gin.Context) {
 	tenantID, err := h.getTenantIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid tenant"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
@@ -118,7 +124,7 @@ func (h *Handlers) GetMetricsSummary(c *gin.Context) {
 
 	summary, err := h.analyticsRepo.GetMetricsSummary(c.Request.Context(), query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get metrics summary"})
+		c.JSON(http.StatusInternalServerError, errorResponse{Code: "INTERNAL_ERROR", Message: "Failed to get metrics summary"})
 		return
 	}
 
@@ -129,7 +135,7 @@ func (h *Handlers) GetMetricsSummary(c *gin.Context) {
 func (h *Handlers) GetHourlyMetrics(c *gin.Context) {
 	tenantID, err := h.getTenantIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid tenant"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
@@ -141,7 +147,7 @@ func (h *Handlers) GetHourlyMetrics(c *gin.Context) {
 
 	metrics, err := h.analyticsRepo.GetHourlyMetrics(c.Request.Context(), query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get hourly metrics"})
+		c.JSON(http.StatusInternalServerError, errorResponse{Code: "INTERNAL_ERROR", Message: "Failed to get hourly metrics"})
 		return
 	}
 
@@ -161,7 +167,7 @@ func (h *Handlers) GetHourlyMetrics(c *gin.Context) {
 func (h *Handlers) GetRealtimeMetrics(c *gin.Context) {
 	tenantID, err := h.getTenantIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid tenant"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
@@ -172,10 +178,10 @@ func (h *Handlers) GetRealtimeMetrics(c *gin.Context) {
 
 	// Get metrics from the last 5 minutes
 	since := time.Now().Add(-5 * time.Minute)
-	
+
 	metrics, err := h.analyticsRepo.GetRealtimeMetrics(c.Request.Context(), tenantID, metricType, since)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get real-time metrics"})
+		c.JSON(http.StatusInternalServerError, errorResponse{Code: "INTERNAL_ERROR", Message: "Failed to get real-time metrics"})
 		return
 	}
 
@@ -190,14 +196,14 @@ func (h *Handlers) GetRealtimeMetrics(c *gin.Context) {
 func (h *Handlers) GetEndpointMetrics(c *gin.Context) {
 	tenantID, err := h.getTenantIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid tenant"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "Invalid tenant"})
 		return
 	}
 
 	endpointIDStr := c.Param("endpoint_id")
 	endpointID, err := uuid.Parse(endpointIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid endpoint ID"})
+		c.JSON(http.StatusBadRequest, errorResponse{Code: "INVALID_REQUEST", Message: "Invalid endpoint ID"})
 		return
 	}
 
@@ -212,13 +218,13 @@ func (h *Handlers) GetEndpointMetrics(c *gin.Context) {
 
 	metrics, err := h.analyticsRepo.GetDeliveryMetrics(c.Request.Context(), query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get endpoint metrics"})
+		c.JSON(http.StatusInternalServerError, errorResponse{Code: "INTERNAL_ERROR", Message: "Failed to get endpoint metrics"})
 		return
 	}
 
 	summary, err := h.analyticsRepo.GetMetricsSummary(c.Request.Context(), query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get endpoint summary"})
+		c.JSON(http.StatusInternalServerError, errorResponse{Code: "INTERNAL_ERROR", Message: "Failed to get endpoint summary"})
 		return
 	}
 

@@ -95,7 +95,7 @@ func (h *CloudHandler) GetPlan(c *gin.Context) {
 
 	plan := cloud.GetPlanByID(id)
 	if plan == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "plan not found"})
+		NotFound(c, "PLAN_NOT_FOUND", "Plan not found")
 		return
 	}
 
@@ -117,7 +117,7 @@ func (h *CloudHandler) GetSubscription(c *gin.Context) {
 
 	sub, err := h.billingService.GetSubscription(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "subscription not found"})
+		NotFound(c, "SUBSCRIPTION_NOT_FOUND", "Subscription not found")
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *CloudHandler) CreateSubscription(c *gin.Context) {
 
 	var req CreateSubscriptionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *CloudHandler) ChangePlan(c *gin.Context) {
 
 	var req ChangePlanRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -230,7 +230,7 @@ func (h *CloudHandler) GetUsage(c *gin.Context) {
 		// Current month
 		usage, err := h.billingService.GetSubscription(c.Request.Context(), tenantID)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "usage not found"})
+			NotFound(c, "USAGE_NOT_FOUND", "Usage not found")
 			return
 		}
 		c.JSON(http.StatusOK, usage)
@@ -239,7 +239,7 @@ func (h *CloudHandler) GetUsage(c *gin.Context) {
 
 	usage, err := h.repo.GetUsage(c.Request.Context(), tenantID, period)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "usage not found"})
+		NotFound(c, "USAGE_NOT_FOUND", "Usage not found")
 		return
 	}
 
@@ -308,7 +308,7 @@ func (h *CloudHandler) GetInvoice(c *gin.Context) {
 
 	invoice, err := h.repo.GetInvoice(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "invoice not found"})
+		NotFound(c, "INVOICE_NOT_FOUND", "Invoice not found")
 		return
 	}
 
@@ -330,7 +330,7 @@ func (h *CloudHandler) GetCustomer(c *gin.Context) {
 
 	customer, err := h.repo.GetCustomer(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "customer not found"})
+		NotFound(c, "CUSTOMER_NOT_FOUND", "Customer not found")
 		return
 	}
 
@@ -354,13 +354,13 @@ func (h *CloudHandler) UpdateCustomer(c *gin.Context) {
 
 	var req UpdateCustomerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	customer, err := h.repo.GetCustomer(c.Request.Context(), tenantID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "customer not found"})
+		NotFound(c, "CUSTOMER_NOT_FOUND", "Customer not found")
 		return
 	}
 
@@ -507,7 +507,7 @@ func (h *CloudHandler) InviteMember(c *gin.Context) {
 
 	var req InviteMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -534,7 +534,7 @@ func (h *CloudHandler) UpdateMember(c *gin.Context) {
 
 	var req UpdateMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

@@ -39,20 +39,20 @@ func NewMultiRegionHandler(
 
 // CreateRegionRequest represents region creation request
 type CreateRegionRequest struct {
-	Name     string                    `json:"name" binding:"required"`
-	Code     string                    `json:"code" binding:"required"`
-	Endpoint string                    `json:"endpoint" binding:"required"`
-	Priority int                       `json:"priority"`
-	Metadata multiregion.Metadata      `json:"metadata"`
+	Name     string               `json:"name" binding:"required"`
+	Code     string               `json:"code" binding:"required"`
+	Endpoint string               `json:"endpoint" binding:"required"`
+	Priority int                  `json:"priority"`
+	Metadata multiregion.Metadata `json:"metadata"`
 }
 
 // UpdateRegionRequest represents region update request
 type UpdateRegionRequest struct {
-	Name      string               `json:"name"`
-	Endpoint  string               `json:"endpoint"`
-	Priority  *int                 `json:"priority"`
-	IsActive  *bool                `json:"is_active"`
-	IsPrimary *bool                `json:"is_primary"`
+	Name      string                `json:"name"`
+	Endpoint  string                `json:"endpoint"`
+	Priority  *int                  `json:"priority"`
+	IsActive  *bool                 `json:"is_active"`
+	IsPrimary *bool                 `json:"is_primary"`
 	Metadata  *multiregion.Metadata `json:"metadata"`
 }
 
@@ -65,11 +65,11 @@ type TriggerFailoverRequest struct {
 
 // CreateRoutingPolicyRequest represents routing policy creation
 type CreateRoutingPolicyRequest struct {
-	PolicyType      string              `json:"policy_type" binding:"required"`
-	PrimaryRegion   string              `json:"primary_region" binding:"required"`
-	FallbackRegions []string            `json:"fallback_regions"`
+	PolicyType      string                `json:"policy_type" binding:"required"`
+	PrimaryRegion   string                `json:"primary_region" binding:"required"`
+	FallbackRegions []string              `json:"fallback_regions"`
 	GeoRules        []multiregion.GeoRule `json:"geo_rules"`
-	Weights         map[string]int      `json:"weights"`
+	Weights         map[string]int        `json:"weights"`
 }
 
 // CreateReplicationConfigRequest represents replication config creation
@@ -139,7 +139,7 @@ func (h *MultiRegionHandler) GetRegion(c *gin.Context) {
 func (h *MultiRegionHandler) CreateRegion(c *gin.Context) {
 	var req CreateRegionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -175,7 +175,7 @@ func (h *MultiRegionHandler) UpdateRegion(c *gin.Context) {
 
 	var req UpdateRegionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -270,7 +270,7 @@ func (h *MultiRegionHandler) GetSingleRegionHealth(c *gin.Context) {
 func (h *MultiRegionHandler) TriggerFailover(c *gin.Context) {
 	var req TriggerFailoverRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -361,7 +361,7 @@ func (h *MultiRegionHandler) CreateRoutingPolicy(c *gin.Context) {
 
 	var req CreateRoutingPolicyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -401,7 +401,7 @@ func (h *MultiRegionHandler) UpdateRoutingPolicy(c *gin.Context) {
 
 	var req CreateRoutingPolicyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -472,7 +472,7 @@ func (h *MultiRegionHandler) ListReplicationConfigs(c *gin.Context) {
 func (h *MultiRegionHandler) CreateReplicationConfig(c *gin.Context) {
 	var req CreateReplicationConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

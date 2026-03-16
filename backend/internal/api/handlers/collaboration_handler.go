@@ -44,7 +44,7 @@ func (h *CollaborationHandler) CreateTeam(c *gin.Context) {
 
 	var req models.CreateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -139,7 +139,7 @@ func (h *CollaborationHandler) InviteMember(c *gin.Context) {
 
 	var req models.InviteMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -214,7 +214,7 @@ func (h *CollaborationHandler) CreateChangeRequest(c *gin.Context) {
 
 	var req models.CreateChangeRequestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -307,7 +307,7 @@ func (h *CollaborationHandler) ReviewChangeRequest(c *gin.Context) {
 
 	var req models.ReviewChangeRequestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

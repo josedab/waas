@@ -40,7 +40,7 @@ func (h *ComplianceHandler) CreateProfile(c *gin.Context) {
 
 	var req models.CreateComplianceProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -91,13 +91,13 @@ func (h *ComplianceHandler) GetProfile(c *gin.Context) {
 
 	profileID, err := uuid.Parse(c.Param("profile_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid profile_id"})
+		BadRequest(c, "INVALID_ID", "Invalid profile ID")
 		return
 	}
 
 	profile, err := h.service.GetProfile(c.Request.Context(), tenantID, profileID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "profile not found"})
+		NotFound(c, "PROFILE_NOT_FOUND", "Profile not found")
 		return
 	}
 
@@ -120,7 +120,7 @@ func (h *ComplianceHandler) ScanForPII(c *gin.Context) {
 
 	var req models.ScanForPIIRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -150,7 +150,7 @@ func (h *ComplianceHandler) GenerateReport(c *gin.Context) {
 
 	var req models.GenerateReportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -201,13 +201,13 @@ func (h *ComplianceHandler) GetReport(c *gin.Context) {
 
 	reportID, err := uuid.Parse(c.Param("report_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid report_id"})
+		BadRequest(c, "INVALID_ID", "Invalid report ID")
 		return
 	}
 
 	report, err := h.service.GetReport(c.Request.Context(), tenantID, reportID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "report not found"})
+		NotFound(c, "REPORT_NOT_FOUND", "Report not found")
 		return
 	}
 
@@ -229,13 +229,13 @@ func (h *ComplianceHandler) GetFindings(c *gin.Context) {
 
 	reportID, err := uuid.Parse(c.Param("report_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid report_id"})
+		BadRequest(c, "INVALID_ID", "Invalid report ID")
 		return
 	}
 
 	findings, err := h.service.GetFindings(c.Request.Context(), tenantID, reportID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "FINDINGS_NOT_FOUND", "Findings not found")
 		return
 	}
 
@@ -258,7 +258,7 @@ func (h *ComplianceHandler) CreateDSR(c *gin.Context) {
 
 	var req models.CreateDSRRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -311,13 +311,13 @@ func (h *ComplianceHandler) GetDSR(c *gin.Context) {
 
 	dsrID, err := uuid.Parse(c.Param("dsr_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dsr_id"})
+		BadRequest(c, "INVALID_ID", "Invalid DSR ID")
 		return
 	}
 
 	dsr, err := h.service.GetDSR(c.Request.Context(), tenantID, dsrID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "DSR not found"})
+		NotFound(c, "DSR_NOT_FOUND", "Data subject request not found")
 		return
 	}
 
@@ -339,7 +339,7 @@ func (h *ComplianceHandler) ProcessDSR(c *gin.Context) {
 
 	dsrID, err := uuid.Parse(c.Param("dsr_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid dsr_id"})
+		BadRequest(c, "INVALID_ID", "Invalid DSR ID")
 		return
 	}
 
@@ -384,11 +384,11 @@ func (h *ComplianceHandler) GetAuditLogs(c *gin.Context) {
 		return true
 	}
 	if query.Action != "" && !validParam(query.Action) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid action parameter"})
+		BadRequest(c, "INVALID_PARAMETER", "Invalid action parameter")
 		return
 	}
 	if query.ResourceType != "" && !validParam(query.ResourceType) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid resource_type parameter"})
+		BadRequest(c, "INVALID_PARAMETER", "Invalid resource_type parameter")
 		return
 	}
 
@@ -440,7 +440,7 @@ func (h *ComplianceHandler) CreateRetentionPolicy(c *gin.Context) {
 
 	var req models.CreateRetentionPolicyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

@@ -294,6 +294,10 @@ func (m *MockDeliveryAttemptRepository) GetDeliveryAttemptsByDeliveryID(ctx cont
 	return results, nil
 }
 
+func (m *MockDeliveryAttemptRepository) DeleteOlderThan(_ context.Context, _ time.Time) (int64, error) {
+	return 0, nil
+}
+
 // WebhookMockPublisher implements the PublisherInterface for testing
 type WebhookMockPublisher struct {
 	deliveryMessages []queue.DeliveryMessage

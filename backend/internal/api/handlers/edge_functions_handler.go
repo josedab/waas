@@ -72,13 +72,13 @@ func (h *EdgeFunctionsHandler) CreateFunction(c *gin.Context) {
 
 	var req models.CreateEdgeFunctionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	fn, err := h.service.CreateFunction(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "FUNCTION_CREATION_FAILED", err)
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *EdgeFunctionsHandler) GetFunction(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
@@ -118,7 +118,7 @@ func (h *EdgeFunctionsHandler) GetFunction(c *gin.Context) {
 	if c.Query("details") == "true" {
 		fn, err := h.service.GetFunctionWithDetails(c.Request.Context(), tenantID, functionID)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			NotFound(c, "FUNCTION_NOT_FOUND", "Function not found")
 			return
 		}
 		c.JSON(http.StatusOK, fn)
@@ -127,7 +127,7 @@ func (h *EdgeFunctionsHandler) GetFunction(c *gin.Context) {
 
 	fn, err := h.service.GetFunction(c.Request.Context(), tenantID, functionID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "FUNCTION_NOT_FOUND", "Function not found")
 		return
 	}
 
@@ -143,19 +143,19 @@ func (h *EdgeFunctionsHandler) UpdateFunction(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
 	var req models.UpdateEdgeFunctionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	fn, err := h.service.UpdateFunction(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "FUNCTION_UPDATE_FAILED", err)
 		return
 	}
 
@@ -171,12 +171,12 @@ func (h *EdgeFunctionsHandler) DeleteFunction(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
 	if err := h.service.DeleteFunction(c.Request.Context(), tenantID, functionID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "FUNCTION_DELETE_FAILED", err)
 		return
 	}
 
@@ -192,19 +192,19 @@ func (h *EdgeFunctionsHandler) DeployFunction(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
 	var req models.DeployEdgeFunctionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	deployments, err := h.service.DeployFunction(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "DEPLOY_FAILED", err)
 		return
 	}
 
@@ -223,13 +223,13 @@ func (h *EdgeFunctionsHandler) GetDeployments(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
 	deployments, err := h.service.GetDeployments(c.Request.Context(), tenantID, functionID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "DEPLOYMENTS_NOT_FOUND", "Deployments not found")
 		return
 	}
 
@@ -245,19 +245,19 @@ func (h *EdgeFunctionsHandler) InvokeFunction(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
 	var req models.InvokeFunctionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	result, err := h.service.InvokeFunction(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "INVOCATION_FAILED", err)
 		return
 	}
 
@@ -273,7 +273,7 @@ func (h *EdgeFunctionsHandler) GetInvocations(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
@@ -289,7 +289,7 @@ func (h *EdgeFunctionsHandler) GetInvocations(c *gin.Context) {
 
 	invocations, err := h.service.GetInvocations(c.Request.Context(), tenantID, functionID, limit)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "INVOCATIONS_NOT_FOUND", "Invocations not found")
 		return
 	}
 
@@ -305,19 +305,19 @@ func (h *EdgeFunctionsHandler) CreateTrigger(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
 	var req models.CreateTriggerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	trigger, err := h.service.CreateTrigger(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "TRIGGER_CREATION_FAILED", err)
 		return
 	}
 
@@ -333,13 +333,13 @@ func (h *EdgeFunctionsHandler) GetTriggers(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
 	triggers, err := h.service.GetTriggers(c.Request.Context(), tenantID, functionID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "TRIGGERS_NOT_FOUND", "Triggers not found")
 		return
 	}
 
@@ -355,13 +355,13 @@ func (h *EdgeFunctionsHandler) GetVersions(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
 	versions, err := h.service.GetVersions(c.Request.Context(), tenantID, functionID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "VERSIONS_NOT_FOUND", "Versions not found")
 		return
 	}
 
@@ -377,7 +377,7 @@ func (h *EdgeFunctionsHandler) RollbackFunction(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
@@ -386,13 +386,13 @@ func (h *EdgeFunctionsHandler) RollbackFunction(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	fn, err := h.service.RollbackFunction(c.Request.Context(), tenantID, functionID, req.Version)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "ROLLBACK_FAILED", err)
 		return
 	}
 
@@ -408,19 +408,19 @@ func (h *EdgeFunctionsHandler) RunTest(c *gin.Context) {
 
 	functionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid function id"})
+		BadRequest(c, "INVALID_ID", "Invalid function ID")
 		return
 	}
 
 	var req models.RunTestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	test, err := h.service.RunTest(c.Request.Context(), tenantID, functionID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "TEST_FAILED", err)
 		return
 	}
 

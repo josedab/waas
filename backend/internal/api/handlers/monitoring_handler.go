@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	apperrors "github.com/josedab/waas/pkg/errors"
+	"github.com/josedab/waas/pkg/httputil"
 	"github.com/josedab/waas/pkg/models"
 	"github.com/josedab/waas/pkg/monitoring"
 	"github.com/josedab/waas/pkg/repository"
@@ -133,7 +134,7 @@ func (h *MonitoringHandler) GetDeliveryHistory(c *gin.Context) {
 			"tenant_id":  tenantID.String(),
 			"request_id": c.GetHeader("X-Request-ID"),
 		})
-		c.JSON(http.StatusBadRequest, ErrorResponse{Code: "INVALID_REQUEST", Message: "Invalid request parameters", Details: err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request parameters")
 		return
 	}
 
@@ -404,21 +405,8 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 	}
 
 	// Parse pagination and filters
-	limit := 50
-	offset := 0
+	p := httputil.ParsePagination(c)
 	var statuses []string
-
-	if limitStr := c.Query("limit"); limitStr != "" {
-		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 && parsedLimit <= 100 {
-			limit = parsedLimit
-		}
-	}
-
-	if offsetStr := c.Query("offset"); offsetStr != "" {
-		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
-			offset = parsedOffset
-		}
-	}
 
 	if statusStr := c.Query("status"); statusStr != "" {
 		statuses = strings.Split(statusStr, ",")
@@ -427,8 +415,8 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 	h.logger.InfoWithCorrelation("Fetching endpoint delivery history", correlationID, map[string]interface{}{
 		"endpoint_id": endpointID.String(),
 		"tenant_id":   tenantID.String(),
-		"limit":       limit,
-		"offset":      offset,
+		"limit":       p.Limit,
+		"offset":      p.Offset,
 		"statuses":    statuses,
 		"request_id":  c.GetHeader("X-Request-ID"),
 	})
@@ -438,8 +426,8 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 		c.Request.Context(),
 		endpointID,
 		statuses,
-		limit,
-		offset,
+		p.Limit,
+		p.Offset,
 	)
 	if err != nil {
 		h.logger.ErrorWithCorrelation("Failed to get endpoint delivery history", correlationID, map[string]interface{}{
@@ -473,11 +461,11 @@ func (h *MonitoringHandler) GetEndpointDeliveryHistory(c *gin.Context) {
 
 	response := gin.H{
 		"deliveries": deliveries,
-		"pagination": gin.H{
-			"limit":    limit,
-			"offset":   offset,
-			"count":    len(deliveries),
-			"has_more": len(deliveries) == limit, // Simple heuristic
+		"pagination": httputil.PaginationMeta{
+			Limit:   p.Limit,
+			Offset:  p.Offset,
+			Total:   -1, // total unknown without a count query
+			HasMore: len(deliveries) == p.Limit,
 		},
 	}
 

@@ -45,7 +45,7 @@ func (h *AIComposerHandler) Compose(c *gin.Context) {
 
 	var req models.AIComposerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *AIComposerHandler) GetTemplates(c *gin.Context) {
 func (h *AIComposerHandler) SubmitFeedback(c *gin.Context) {
 	var req FeedbackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 

@@ -65,13 +65,13 @@ func (h *BidirectionalSyncHandler) CreateConfig(c *gin.Context) {
 
 	var req models.CreateSyncConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	config, err := h.service.CreateConfig(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "CONFIG_CREATION_FAILED", err)
 		return
 	}
 
@@ -103,13 +103,13 @@ func (h *BidirectionalSyncHandler) GetConfig(c *gin.Context) {
 
 	configID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid config id"})
+		BadRequest(c, "INVALID_ID", "Invalid config ID")
 		return
 	}
 
 	config, err := h.service.GetConfig(c.Request.Context(), tenantID, configID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "CONFIG_NOT_FOUND", "Sync configuration not found")
 		return
 	}
 
@@ -125,13 +125,13 @@ func (h *BidirectionalSyncHandler) SendSyncRequest(c *gin.Context) {
 
 	var req models.SendSyncRequestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	tx, err := h.service.SendSyncRequest(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "SYNC_REQUEST_FAILED", err)
 		return
 	}
 
@@ -147,13 +147,13 @@ func (h *BidirectionalSyncHandler) ReceiveSyncResponse(c *gin.Context) {
 
 	var req models.ReceiveSyncResponseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	tx, err := h.service.ReceiveSyncResponse(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "SYNC_RESPONSE_FAILED", err)
 		return
 	}
 
@@ -169,13 +169,13 @@ func (h *BidirectionalSyncHandler) GetTransaction(c *gin.Context) {
 
 	txID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid transaction id"})
+		BadRequest(c, "INVALID_ID", "Invalid transaction ID")
 		return
 	}
 
 	tx, err := h.service.GetTransaction(c.Request.Context(), tenantID, txID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "TRANSACTION_NOT_FOUND", "Transaction not found")
 		return
 	}
 
@@ -191,14 +191,14 @@ func (h *BidirectionalSyncHandler) GetTransactions(c *gin.Context) {
 
 	configID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid config id"})
+		BadRequest(c, "INVALID_ID", "Invalid config ID")
 		return
 	}
 
 	limit := 20
 	transactions, err := h.service.GetTransactions(c.Request.Context(), tenantID, configID, limit)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "TRANSACTIONS_NOT_FOUND", "Transactions not found")
 		return
 	}
 
@@ -214,13 +214,13 @@ func (h *BidirectionalSyncHandler) SendAcknowledgment(c *gin.Context) {
 
 	var req models.SendAcknowledgmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	ack, err := h.service.SendAcknowledgment(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "ACKNOWLEDGMENT_FAILED", err)
 		return
 	}
 
@@ -234,12 +234,12 @@ func (h *BidirectionalSyncHandler) ConfirmAcknowledgment(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	if err := h.service.ConfirmAcknowledgment(c.Request.Context(), req.CorrelationID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "CONFIRM_FAILED", err)
 		return
 	}
 
@@ -255,13 +255,13 @@ func (h *BidirectionalSyncHandler) UpdateState(c *gin.Context) {
 
 	var req models.UpdateStateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	record, err := h.service.UpdateState(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "STATE_UPDATE_FAILED", err)
 		return
 	}
 
@@ -283,19 +283,19 @@ func (h *BidirectionalSyncHandler) ReceiveRemoteState(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	configID, err := uuid.Parse(req.ConfigID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid config_id"})
+		BadRequest(c, "INVALID_ID", "Invalid config ID")
 		return
 	}
 
 	record, err := h.service.ReceiveRemoteState(c.Request.Context(), tenantID, configID, req.ResourceType, req.ResourceID, req.RemoteState)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "REMOTE_STATE_FAILED", err)
 		return
 	}
 
@@ -327,13 +327,13 @@ func (h *BidirectionalSyncHandler) ResolveConflict(c *gin.Context) {
 
 	var req models.ResolveConflictRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
 	record, err := h.service.ResolveConflict(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		InternalError(c, "RESOLVE_CONFLICT_FAILED", err)
 		return
 	}
 

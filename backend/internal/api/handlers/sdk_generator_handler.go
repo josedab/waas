@@ -40,7 +40,7 @@ func (h *SDKGeneratorHandler) CreateConfig(c *gin.Context) {
 
 	var req models.CreateSDKConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -120,7 +120,7 @@ func (h *SDKGeneratorHandler) GenerateSDK(c *gin.Context) {
 
 	var req models.GenerateSDKRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -158,7 +158,7 @@ func (h *SDKGeneratorHandler) GetGenerations(c *gin.Context) {
 
 	generations, err := h.service.GetGenerations(c.Request.Context(), tenantID, configID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		NotFound(c, "NOT_FOUND", "Resource not found")
 		return
 	}
 

@@ -42,9 +42,9 @@ type UpdateProviderRequest struct {
 
 // CreateRoutingRuleRequest represents routing rule creation request
 type HandlerCreateRoutingRuleRequest struct {
-	ProviderID   string                    `json:"provider_id" binding:"required"`
-	Name         string                    `json:"name" binding:"required"`
-	Description  string                    `json:"description"`
+	ProviderID   string                       `json:"provider_id" binding:"required"`
+	Name         string                       `json:"name" binding:"required"`
+	Description  string                       `json:"description"`
 	Conditions   []gateway.RoutingCondition   `json:"conditions"`
 	Destinations []gateway.RoutingDestination `json:"destinations" binding:"required"`
 	Transform    json.RawMessage              `json:"transform"`
@@ -62,7 +62,7 @@ type HandlerCreateRoutingRuleRequest struct {
 func (h *GatewayHandler) CreateProvider(c *gin.Context) {
 	var req CreateProviderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -145,7 +145,7 @@ func (h *GatewayHandler) UpdateProvider(c *gin.Context) {
 
 	var req UpdateProviderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -212,7 +212,7 @@ func (h *GatewayHandler) CreateRoutingRule(c *gin.Context) {
 
 	var req HandlerCreateRoutingRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -308,15 +308,15 @@ func (h *GatewayHandler) ReceiveWebhook(c *gin.Context) {
 	result, err := h.service.ProcessInboundWebhook(c.Request.Context(), tenantID, providerID, body, headers)
 	if err != nil {
 		h.logger.Error("Failed to process inbound webhook", map[string]interface{}{"error": err.Error(), "provider_id": providerID})
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to process inbound webhook"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"inbound_id":    result.InboundID,
-		"total_routed":  result.TotalRouted,
-		"total_failed":  result.TotalFailed,
-		"destinations":  result.Destinations,
+		"inbound_id":   result.InboundID,
+		"total_routed": result.TotalRouted,
+		"total_failed": result.TotalFailed,
+		"destinations": result.Destinations,
 	})
 }
 

@@ -8,6 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// errorResponse represents a structured error returned by flow handlers.
+type errorResponse struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 // Handler provides HTTP handlers for flow management
 type Handler struct {
 	service *Service
@@ -64,7 +70,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 func (h *Handler) CreateFlow(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
@@ -98,7 +104,7 @@ func (h *Handler) CreateFlow(c *gin.Context) {
 func (h *Handler) ListFlows(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
@@ -140,7 +146,7 @@ func (h *Handler) ListFlows(c *gin.Context) {
 func (h *Handler) GetFlow(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
@@ -151,7 +157,7 @@ func (h *Handler) GetFlow(c *gin.Context) {
 		return
 	}
 	if flow == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "flow not found"})
+		c.JSON(http.StatusNotFound, errorResponse{Code: "FLOW_NOT_FOUND", Message: "flow not found"})
 		return
 	}
 
@@ -175,7 +181,7 @@ func (h *Handler) GetFlow(c *gin.Context) {
 func (h *Handler) UpdateFlow(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
@@ -209,7 +215,7 @@ func (h *Handler) UpdateFlow(c *gin.Context) {
 func (h *Handler) DeleteFlow(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
@@ -239,7 +245,7 @@ func (h *Handler) DeleteFlow(c *gin.Context) {
 func (h *Handler) ExecuteFlow(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
@@ -275,7 +281,7 @@ func (h *Handler) ExecuteFlow(c *gin.Context) {
 func (h *Handler) ListExecutions(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
@@ -318,7 +324,7 @@ func (h *Handler) ListExecutions(c *gin.Context) {
 func (h *Handler) GetExecution(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
@@ -329,7 +335,7 @@ func (h *Handler) GetExecution(c *gin.Context) {
 		return
 	}
 	if execution == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "execution not found"})
+		c.JSON(http.StatusNotFound, errorResponse{Code: "EXECUTION_NOT_FOUND", Message: "execution not found"})
 		return
 	}
 
@@ -403,7 +409,7 @@ type AssignFlowRequest struct {
 func (h *Handler) AssignFlow(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
@@ -436,7 +442,7 @@ func (h *Handler) AssignFlow(c *gin.Context) {
 func (h *Handler) GetEndpointFlows(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
@@ -465,7 +471,7 @@ func (h *Handler) GetEndpointFlows(c *gin.Context) {
 func (h *Handler) RemoveFlow(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	if tenantID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, errorResponse{Code: "UNAUTHORIZED", Message: "unauthorized"})
 		return
 	}
 
