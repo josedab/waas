@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -45,11 +46,11 @@ func NewConnection() (*DB, error) {
 		return nil, fmt.Errorf("failed to parse database URL: %w", err)
 	}
 
-	// Configure connection pool
-	config.MaxConns = DefaultMaxConns
-	config.MinConns = DefaultMinConns
-	config.MaxConnLifetime = DefaultMaxConnLifetime
-	config.MaxConnIdleTime = DefaultMaxConnIdleTime
+	// Configure connection pool — honour env overrides for production tuning.
+	config.MaxConns = int32(getEnvInt("DB_MAX_CONNS", int(DefaultMaxConns)))
+	config.MinConns = int32(getEnvInt("DB_MIN_CONNS", int(DefaultMinConns)))
+	config.MaxConnLifetime = getEnvDuration("DB_CONN_MAX_LIFETIME", DefaultMaxConnLifetime)
+	config.MaxConnIdleTime = getEnvDuration("DB_CONN_MAX_IDLE_TIME", DefaultMaxConnIdleTime)
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
@@ -129,4 +130,25 @@ func (db *DB) GetConnectionString() string {
 	// This is a simplified version for testing
 	// In production, you might want to store this or reconstruct it properly
 	return os.Getenv("DATABASE_URL")
+}
+
+// getEnvInt reads an env var as an int, falling back to defaultVal.
+func getEnvInt(key string, defaultVal int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return defaultVal
+}
+
+// getEnvDuration reads an env var as a Go duration string (e.g. "1h", "30m"),
+// falling back to defaultVal.
+func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			return d
+		}
+	}
+	return defaultVal
 }
