@@ -3,9 +3,9 @@ package repository
 import (
 	"crypto/sha256"
 	"fmt"
+	"github.com/josedab/waas/pkg/models"
 	"testing"
 	"time"
-	"github.com/josedab/waas/pkg/models"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ func TestDeliveryAttemptRepositoryLogic(t *testing.T) {
 	t.Run("delivery attempt creation logic", func(t *testing.T) {
 		payload := `{"event": "user.created", "data": {"id": "123", "email": "test@example.com"}}`
 		payloadHash := fmt.Sprintf("sha256-%x", sha256.Sum256([]byte(payload)))
-		
+
 		attempt := &models.DeliveryAttempt{
 			EndpointID:    uuid.New(),
 			PayloadHash:   payloadHash,
@@ -53,7 +53,7 @@ func TestDeliveryAttemptRepositoryLogic(t *testing.T) {
 		httpStatus := 200
 		responseBody := "OK"
 		deliveredAt := time.Now()
-		
+
 		attempt := &models.DeliveryAttempt{
 			ID:            uuid.New(),
 			EndpointID:    uuid.New(),
@@ -83,7 +83,7 @@ func TestDeliveryAttemptRepositoryLogic(t *testing.T) {
 	t.Run("delivery attempt failure logic", func(t *testing.T) {
 		httpStatus := 500
 		errorMessage := "Internal Server Error"
-		
+
 		attempt := &models.DeliveryAttempt{
 			ID:            uuid.New(),
 			EndpointID:    uuid.New(),
@@ -107,28 +107,28 @@ func TestDeliveryAttemptRepositoryLogic(t *testing.T) {
 
 	t.Run("delivery status transitions", func(t *testing.T) {
 		validStatuses := []string{"pending", "retrying", "delivered", "failed"}
-		
+
 		for _, status := range validStatuses {
 			attempt := &models.DeliveryAttempt{
 				ID:         uuid.New(),
 				EndpointID: uuid.New(),
 				Status:     status,
 			}
-			
+
 			assert.Contains(t, validStatuses, attempt.Status)
 		}
 
 		// Test status transition logic
 		attempt := &models.DeliveryAttempt{Status: "pending"}
-		
+
 		// pending -> retrying
 		attempt.Status = "retrying"
 		assert.Equal(t, "retrying", attempt.Status)
-		
+
 		// retrying -> delivered
 		attempt.Status = "delivered"
 		assert.Equal(t, "delivered", attempt.Status)
-		
+
 		// pending -> failed
 		attempt.Status = "failed"
 		assert.Equal(t, "failed", attempt.Status)
@@ -145,12 +145,12 @@ func TestDeliveryAttemptRepositoryLogic(t *testing.T) {
 			t.Run(fmt.Sprintf("payload_%d", i), func(t *testing.T) {
 				hash := sha256.Sum256([]byte(payload))
 				payloadHash := fmt.Sprintf("sha256-%x", hash)
-				
+
 				attempt := &models.DeliveryAttempt{
 					PayloadHash: payloadHash,
 					PayloadSize: len(payload),
 				}
-				
+
 				assert.Contains(t, attempt.PayloadHash, "sha256-")
 				assert.Equal(t, len(payload), attempt.PayloadSize)
 				assert.Len(t, attempt.PayloadHash, 71) // "sha256-" + 64 hex characters
@@ -158,8 +158,6 @@ func TestDeliveryAttemptRepositoryLogic(t *testing.T) {
 		}
 	})
 }
-
-
 
 // TestDeliveryAttemptRepositoryErrorHandling tests error handling scenarios
 func TestDeliveryAttemptRepositoryErrorHandling(t *testing.T) {
@@ -221,7 +219,7 @@ func TestDeliveryAttemptRepositoryErrorHandling(t *testing.T) {
 		for i, attempt := range invalidAttempts {
 			t.Run(fmt.Sprintf("invalid_attempt_%d", i), func(t *testing.T) {
 				hasError := false
-				
+
 				if attempt.EndpointID == uuid.Nil {
 					hasError = true
 				}
@@ -243,7 +241,7 @@ func TestDeliveryAttemptRepositoryErrorHandling(t *testing.T) {
 				if attempt.AttemptNumber <= 0 {
 					hasError = true
 				}
-				
+
 				assert.True(t, hasError, "attempt should be invalid")
 			})
 		}
@@ -264,10 +262,10 @@ func TestDeliveryAttemptFiltering(t *testing.T) {
 		// Filter by status
 		pendingAttempts := filterAttemptsByStatus(attempts, "pending")
 		assert.Len(t, pendingAttempts, 2)
-		
+
 		deliveredAttempts := filterAttemptsByStatus(attempts, "delivered")
 		assert.Len(t, deliveredAttempts, 1)
-		
+
 		failedAttempts := filterAttemptsByStatus(attempts, "failed")
 		assert.Len(t, failedAttempts, 1)
 	})
@@ -300,7 +298,7 @@ func TestDeliveryAttemptFiltering(t *testing.T) {
 		// Filter pending deliveries ready for processing
 		readyAttempts := filterPendingDeliveries(attempts, now)
 		assert.Len(t, readyAttempts, 2)
-		
+
 		for _, attempt := range readyAttempts {
 			assert.Contains(t, []string{"pending", "retrying"}, attempt.Status)
 			assert.True(t, attempt.ScheduledAt.Before(now) || attempt.ScheduledAt.Equal(now))
@@ -319,7 +317,7 @@ func TestDeliveryAttemptFiltering(t *testing.T) {
 		// Filter by endpoint ID
 		endpointAttempts := filterAttemptsByEndpoint(attempts, endpointID)
 		assert.Len(t, endpointAttempts, 3)
-		
+
 		// Filter by endpoint ID and status
 		deliveredForEndpoint := filterAttemptsByEndpointAndStatuses(attempts, endpointID, []string{"delivered", "failed"})
 		assert.Len(t, deliveredForEndpoint, 2)
@@ -357,8 +355,8 @@ func filterAttemptsByStatus(attempts []*models.DeliveryAttempt, status string) [
 func filterPendingDeliveries(attempts []*models.DeliveryAttempt, now time.Time) []*models.DeliveryAttempt {
 	var filtered []*models.DeliveryAttempt
 	for _, attempt := range attempts {
-		if (attempt.Status == "pending" || attempt.Status == "retrying") && 
-		   (attempt.ScheduledAt.Before(now) || attempt.ScheduledAt.Equal(now)) {
+		if (attempt.Status == "pending" || attempt.Status == "retrying") &&
+			(attempt.ScheduledAt.Before(now) || attempt.ScheduledAt.Equal(now)) {
 			filtered = append(filtered, attempt)
 		}
 	}
@@ -399,14 +397,14 @@ func TestDeliveryHistoryFiltering(t *testing.T) {
 	t.Run("delivery history filters validation", func(t *testing.T) {
 		endpointID1 := uuid.New()
 		endpointID2 := uuid.New()
-		
+
 		// Test empty filters
 		emptyFilters := DeliveryHistoryFilters{}
 		assert.Empty(t, emptyFilters.EndpointIDs)
 		assert.Empty(t, emptyFilters.Statuses)
 		assert.True(t, emptyFilters.StartDate.IsZero())
 		assert.True(t, emptyFilters.EndDate.IsZero())
-		
+
 		// Test filters with values
 		startDate := time.Now().Add(-24 * time.Hour)
 		endDate := time.Now()
@@ -416,7 +414,7 @@ func TestDeliveryHistoryFiltering(t *testing.T) {
 			StartDate:   startDate,
 			EndDate:     endDate,
 		}
-		
+
 		assert.Len(t, filters.EndpointIDs, 2)
 		assert.Contains(t, filters.EndpointIDs, endpointID1)
 		assert.Contains(t, filters.EndpointIDs, endpointID2)
@@ -456,10 +454,10 @@ func TestDeliveryHistoryFiltering(t *testing.T) {
 		// Filter by date range (last hour)
 		startDate := now.Add(-1 * time.Hour)
 		endDate := now
-		
+
 		filteredAttempts := filterAttemptsByDateRange(attempts, startDate, endDate)
 		assert.Len(t, filteredAttempts, 3) // Should exclude the 2-hour-old attempt
-		
+
 		for _, attempt := range filteredAttempts {
 			assert.True(t, attempt.CreatedAt.After(startDate) || attempt.CreatedAt.Equal(startDate))
 			assert.True(t, attempt.CreatedAt.Before(endDate) || attempt.CreatedAt.Equal(endDate))
@@ -470,7 +468,7 @@ func TestDeliveryHistoryFiltering(t *testing.T) {
 		endpoint1 := uuid.New()
 		endpoint2 := uuid.New()
 		endpoint3 := uuid.New()
-		
+
 		attempts := []*models.DeliveryAttempt{
 			{ID: uuid.New(), EndpointID: endpoint1, Status: "delivered"},
 			{ID: uuid.New(), EndpointID: endpoint2, Status: "failed"},
@@ -482,9 +480,9 @@ func TestDeliveryHistoryFiltering(t *testing.T) {
 		// Filter by multiple endpoints
 		targetEndpoints := []uuid.UUID{endpoint1, endpoint2}
 		filteredAttempts := filterAttemptsByMultipleEndpoints(attempts, targetEndpoints)
-		
+
 		assert.Len(t, filteredAttempts, 4) // Should exclude endpoint3 attempts
-		
+
 		for _, attempt := range filteredAttempts {
 			assert.Contains(t, targetEndpoints, attempt.EndpointID)
 		}
@@ -494,7 +492,7 @@ func TestDeliveryHistoryFiltering(t *testing.T) {
 		endpoint1 := uuid.New()
 		endpoint2 := uuid.New()
 		now := time.Now()
-		
+
 		attempts := []*models.DeliveryAttempt{
 			{
 				ID:         uuid.New(),
@@ -522,17 +520,17 @@ func TestDeliveryHistoryFiltering(t *testing.T) {
 			},
 		}
 
-		// Apply combined filters: endpoint1, delivered/failed status, last 25 minutes
+		// Apply combined filters: endpoint1, delivered/failed status, last 35 minutes
 		filters := DeliveryHistoryFilters{
 			EndpointIDs: []uuid.UUID{endpoint1},
 			Statuses:    []string{"delivered", "failed"},
-			StartDate:   now.Add(-25 * time.Minute),
+			StartDate:   now.Add(-35 * time.Minute),
 			EndDate:     now,
 		}
-		
+
 		filteredAttempts := applyCombinedFilters(attempts, filters)
 		assert.Len(t, filteredAttempts, 2) // Should match 2 attempts
-		
+
 		for _, attempt := range filteredAttempts {
 			assert.Equal(t, endpoint1, attempt.EndpointID)
 			assert.Contains(t, []string{"delivered", "failed"}, attempt.Status)
@@ -547,7 +545,7 @@ func TestDeliveryAttemptsByDeliveryID(t *testing.T) {
 	t.Run("delivery attempts grouping logic", func(t *testing.T) {
 		deliveryID := uuid.New()
 		endpointID := uuid.New()
-		
+
 		attempts := []*models.DeliveryAttempt{
 			{
 				ID:            deliveryID,
@@ -582,10 +580,10 @@ func TestDeliveryAttemptsByDeliveryID(t *testing.T) {
 		// Verify attempt progression
 		assert.Equal(t, "pending", attempts[0].Status)
 		assert.Equal(t, 1, attempts[0].AttemptNumber)
-		
+
 		assert.Equal(t, "retrying", attempts[1].Status)
 		assert.Equal(t, 2, attempts[1].AttemptNumber)
-		
+
 		assert.Equal(t, "delivered", attempts[2].Status)
 		assert.Equal(t, 3, attempts[2].AttemptNumber)
 		assert.NotNil(t, attempts[2].HTTPStatus)
@@ -598,7 +596,7 @@ func TestDeliveryAttemptsByDeliveryID(t *testing.T) {
 
 	t.Run("delivery summary calculation logic", func(t *testing.T) {
 		deliveryID := uuid.New()
-		
+
 		// Test successful delivery after retries
 		successfulAttempts := []*models.DeliveryAttempt{
 			{
@@ -668,7 +666,7 @@ func filterAttemptsByDateRange(attempts []*models.DeliveryAttempt, startDate, en
 	var filtered []*models.DeliveryAttempt
 	for _, attempt := range attempts {
 		if (attempt.CreatedAt.After(startDate) || attempt.CreatedAt.Equal(startDate)) &&
-		   (attempt.CreatedAt.Before(endDate) || attempt.CreatedAt.Equal(endDate)) {
+			(attempt.CreatedAt.Before(endDate) || attempt.CreatedAt.Equal(endDate)) {
 			filtered = append(filtered, attempt)
 		}
 	}
@@ -690,7 +688,7 @@ func filterAttemptsByMultipleEndpoints(attempts []*models.DeliveryAttempt, endpo
 
 func applyCombinedFilters(attempts []*models.DeliveryAttempt, filters DeliveryHistoryFilters) []*models.DeliveryAttempt {
 	var filtered []*models.DeliveryAttempt
-	
+
 	for _, attempt := range attempts {
 		// Check endpoint filter
 		if len(filters.EndpointIDs) > 0 {
@@ -705,12 +703,12 @@ func applyCombinedFilters(attempts []*models.DeliveryAttempt, filters DeliveryHi
 				continue
 			}
 		}
-		
+
 		// Check status filter
 		if len(filters.Statuses) > 0 && !contains(filters.Statuses, attempt.Status) {
 			continue
 		}
-		
+
 		// Check date range filter
 		if !filters.StartDate.IsZero() && attempt.CreatedAt.Before(filters.StartDate) {
 			continue
@@ -718,49 +716,49 @@ func applyCombinedFilters(attempts []*models.DeliveryAttempt, filters DeliveryHi
 		if !filters.EndDate.IsZero() && attempt.CreatedAt.After(filters.EndDate) {
 			continue
 		}
-		
+
 		filtered = append(filtered, attempt)
 	}
-	
+
 	return filtered
 }
 
 type DeliverySummary struct {
-	TotalAttempts       int        `json:"total_attempts"`
-	FinalStatus         string     `json:"final_status"`
-	FirstAttemptAt      time.Time  `json:"first_attempt_at"`
-	LastAttemptAt       time.Time  `json:"last_attempt_at"`
-	FinalHTTPStatus     *int       `json:"final_http_status,omitempty"`
-	FinalErrorMessage   *string    `json:"final_error_message,omitempty"`
-	DeliveredAt         *time.Time `json:"delivered_at,omitempty"`
+	TotalAttempts     int        `json:"total_attempts"`
+	FinalStatus       string     `json:"final_status"`
+	FirstAttemptAt    time.Time  `json:"first_attempt_at"`
+	LastAttemptAt     time.Time  `json:"last_attempt_at"`
+	FinalHTTPStatus   *int       `json:"final_http_status,omitempty"`
+	FinalErrorMessage *string    `json:"final_error_message,omitempty"`
+	DeliveredAt       *time.Time `json:"delivered_at,omitempty"`
 }
 
 func calculateDeliverySummary(attempts []*models.DeliveryAttempt) DeliverySummary {
 	if len(attempts) == 0 {
 		return DeliverySummary{}
 	}
-	
+
 	firstAttempt := attempts[0]
 	lastAttempt := attempts[len(attempts)-1]
-	
+
 	summary := DeliverySummary{
 		TotalAttempts:  len(attempts),
 		FinalStatus:    lastAttempt.Status,
 		FirstAttemptAt: firstAttempt.CreatedAt,
 		LastAttemptAt:  lastAttempt.CreatedAt,
 	}
-	
+
 	if lastAttempt.HTTPStatus != nil {
 		summary.FinalHTTPStatus = lastAttempt.HTTPStatus
 	}
-	
+
 	if lastAttempt.ErrorMessage != nil {
 		summary.FinalErrorMessage = lastAttempt.ErrorMessage
 	}
-	
+
 	if lastAttempt.DeliveredAt != nil {
 		summary.DeliveredAt = lastAttempt.DeliveredAt
 	}
-	
+
 	return summary
 }
