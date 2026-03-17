@@ -82,7 +82,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: openapi-spec
           path: backend/docs/
@@ -148,7 +148,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: sdk-${{ matrix.language }}
           path: sdk/${{ matrix.language }}/generated/
@@ -199,7 +199,7 @@ jobs:
             publish-cmd: echo "Packagist auto-updates from GitHub"
             secret-env: ""
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: sdk-${{ matrix.language }}
           path: sdk/${{ matrix.language }}/generated/
