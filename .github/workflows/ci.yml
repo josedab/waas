@@ -77,7 +77,7 @@ jobs:
       run: go mod download
 
     - name: Run unit tests with coverage
-      run: go test -race -coverprofile=coverage.out -covermode=atomic ./pkg/... ./internal/...
+      run: go test -race -coverprofile=coverage.out -covermode=atomic ./pkg/... ./internal/... ./cmd/...
 
     - name: Check coverage threshold
       run: |

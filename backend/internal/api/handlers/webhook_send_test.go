@@ -276,3 +276,103 @@ func TestBatchSendWebhookUnit(t *testing.T) {
 		assert.Len(t, messages, 2)
 	})
 }
+
+func TestSendWebhookWithEventType(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mockWebhookRepo := NewMockWebhookRepository()
+	mockDeliveryRepo := NewMockDeliveryAttemptRepository()
+	mockPublisher := queue.NewTestPublisher()
+	logger := utils.NewLogger("test")
+
+	handler := NewWebhookHandler(mockWebhookRepo, mockDeliveryRepo, mockPublisher, logger)
+
+	tenantID := uuid.New()
+	endpointID := uuid.New()
+
+	endpoint := &models.WebhookEndpoint{
+		ID:         endpointID,
+		TenantID:   tenantID,
+		URL:        "https://api.example.com/webhook",
+		SecretHash: "secret-hash",
+		IsActive:   true,
+		RetryConfig: models.RetryConfiguration{
+			MaxAttempts:       3,
+			InitialDelayMs:    1000,
+			MaxDelayMs:        60000,
+			BackoffMultiplier: 2,
+		},
+	}
+	mockWebhookRepo.Create(context.Background(), endpoint)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("tenant_id", tenantID)
+		c.Next()
+	})
+	router.POST("/webhooks/send", handler.SendWebhook)
+
+	t.Run("valid event type echoed in response", func(t *testing.T) {
+		mockPublisher.Reset()
+
+		body, _ := json.Marshal(map[string]interface{}{
+			"endpoint_id": endpointID,
+			"event_type":  "order.created",
+			"payload":     map[string]string{"order_id": "123"},
+		})
+
+		req, _ := http.NewRequest("POST", "/webhooks/send", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusAccepted, w.Code)
+
+		var resp SendWebhookResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		assert.Equal(t, "order.created", resp.EventType)
+
+		messages := mockPublisher.GetDeliveryMessages()
+		require.Len(t, messages, 1)
+		assert.Equal(t, "order.created", messages[0].EventType)
+	})
+
+	t.Run("invalid event type rejected", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]interface{}{
+			"endpoint_id": endpointID,
+			"event_type":  "has spaces invalid",
+			"payload":     map[string]string{"data": "test"},
+		})
+
+		req, _ := http.NewRequest("POST", "/webhooks/send", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var resp ErrorResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		assert.Equal(t, "INVALID_EVENT_TYPE", resp.Code)
+	})
+
+	t.Run("empty event type allowed", func(t *testing.T) {
+		mockPublisher.Reset()
+
+		body, _ := json.Marshal(map[string]interface{}{
+			"endpoint_id": endpointID,
+			"payload":     map[string]string{"data": "test"},
+		})
+
+		req, _ := http.NewRequest("POST", "/webhooks/send", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusAccepted, w.Code)
+
+		var resp SendWebhookResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		assert.Empty(t, resp.EventType)
+	})
+}

@@ -383,3 +383,107 @@ func TestContainsHelper(t *testing.T) {
 		assert.False(t, contains(slice, "a"))
 	})
 }
+
+func TestValidateTenant_AllTiers(t *testing.T) {
+	t.Parallel()
+	validTiers := []string{"free", "basic", "premium", "pro", "enterprise"}
+	for _, tier := range validTiers {
+		t.Run("valid_tier_"+tier, func(t *testing.T) {
+			tenant := &Tenant{
+				Name:               "Test",
+				APIKeyHash:         "hash",
+				SubscriptionTier:   tier,
+				RateLimitPerMinute: 10,
+				MonthlyQuota:       100,
+			}
+			assert.NoError(t, ValidateTenant(tenant))
+		})
+	}
+
+	invalidTiers := []string{"", "gold", "unlimited", "FREE", "BASIC"}
+	for _, tier := range invalidTiers {
+		t.Run("invalid_tier_"+tier, func(t *testing.T) {
+			tenant := &Tenant{
+				Name:               "Test",
+				APIKeyHash:         "hash",
+				SubscriptionTier:   tier,
+				RateLimitPerMinute: 10,
+				MonthlyQuota:       100,
+			}
+			assert.Error(t, ValidateTenant(tenant))
+		})
+	}
+}
+
+func TestValidateRetryConfiguration_Bounds(t *testing.T) {
+	t.Parallel()
+
+	t.Run("initial_delay_exceeds_max_delay", func(t *testing.T) {
+		cfg := &RetryConfiguration{
+			MaxAttempts:       3,
+			InitialDelayMs:    5000,
+			MaxDelayMs:        1000,
+			BackoffMultiplier: 2,
+		}
+		err := ValidateRetryConfiguration(cfg)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "max delay")
+	})
+
+	t.Run("equal_delays_valid", func(t *testing.T) {
+		cfg := &RetryConfiguration{
+			MaxAttempts:       3,
+			InitialDelayMs:    1000,
+			MaxDelayMs:        1000,
+			BackoffMultiplier: 2,
+		}
+		assert.NoError(t, ValidateRetryConfiguration(cfg))
+	})
+
+	t.Run("backoff_multiplier_must_exceed_one", func(t *testing.T) {
+		cfg := &RetryConfiguration{
+			MaxAttempts:       3,
+			InitialDelayMs:    100,
+			MaxDelayMs:        10000,
+			BackoffMultiplier: 1,
+		}
+		assert.Error(t, ValidateRetryConfiguration(cfg))
+	})
+}
+
+func TestValidateDeliveryAttempt_HashFormat(t *testing.T) {
+	t.Parallel()
+
+	t.Run("valid_hash", func(t *testing.T) {
+		a := &DeliveryAttempt{
+			EndpointID:    uuid.New(),
+			PayloadHash:   "sha256-" + "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+			PayloadSize:   42,
+			Status:        "pending",
+			AttemptNumber: 1,
+		}
+		assert.NoError(t, ValidateDeliveryAttempt(a))
+	})
+
+	t.Run("wrong_prefix", func(t *testing.T) {
+		a := &DeliveryAttempt{
+			EndpointID:    uuid.New(),
+			PayloadHash:   "md5-abc123",
+			PayloadSize:   42,
+			Status:        "pending",
+			AttemptNumber: 1,
+		}
+		assert.Error(t, ValidateDeliveryAttempt(a))
+	})
+
+	t.Run("invalid_status", func(t *testing.T) {
+		a := &DeliveryAttempt{
+			EndpointID:    uuid.New(),
+			PayloadHash:   "sha256-" + "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+			PayloadSize:   42,
+			Status:        "cancelled",
+			AttemptNumber: 1,
+		}
+		assert.Error(t, ValidateDeliveryAttempt(a))
+	})
+}

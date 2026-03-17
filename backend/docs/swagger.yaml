@@ -429,7 +429,7 @@ paths:
           schema:
             type: object
             additionalProperties: true
-    put:
+    patch:
       security:
       - ApiKeyAuth: []
       description: Update configuration of an existing webhook endpoint

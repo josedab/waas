@@ -359,10 +359,39 @@ kubectl patch ingress webhook-platform-ingress -n webhook-platform \
 
 ### Database Optimization
 
-- Connection pooling configured
+- Connection pooling configured via environment variables (see below)
 - Query optimization with indexes
 - Regular VACUUM and ANALYZE operations
 - Monitoring slow queries
+
+#### Connection Pool Tuning
+
+The API and delivery engine maintain a PostgreSQL connection pool. Tune these
+settings based on your workload:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_MAX_CONNS` | 30 | Maximum open connections per service instance |
+| `DB_MIN_CONNS` | 5 | Minimum idle connections kept warm |
+| `DB_CONN_MAX_LIFETIME` | `1h` | Maximum time a connection is reused |
+| `DB_CONN_MAX_IDLE_TIME` | `30m` | Close idle connections after this duration |
+
+**Sizing guidance:**
+
+```
+max_conns = (num_service_instances × DB_MAX_CONNS) ≤ PostgreSQL max_connections
+```
+
+For a 3-replica API deployment with the default 30, you need at least 90
+server-side connections. Managed databases (RDS, Cloud SQL) typically default to
+100–500; adjust accordingly.
+
+**Monitoring query:**
+
+```sql
+SELECT count(*) AS active FROM pg_stat_activity WHERE state = 'active';
+SELECT count(*) AS idle   FROM pg_stat_activity WHERE state = 'idle';
+```
 
 ### Application Optimization
 
@@ -571,6 +600,21 @@ kubectl -n waas logs -l app=waas-api --tail=50
 |----------|----------|---------|-------------|
 | `TEST_DATABASE_URL` | No | — | PostgreSQL connection string for test database |
 | `TEST_REDIS_URL` | No | — | Redis connection string for test database (use a separate DB index) |
+
+#### Database Connection Pool
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DB_MAX_CONNS` | No | 30 | Maximum open connections per instance |
+| `DB_MIN_CONNS` | No | 5 | Minimum idle connections kept warm |
+| `DB_CONN_MAX_LIFETIME` | No | `1h` | Maximum time a connection is reused (Go duration) |
+| `DB_CONN_MAX_IDLE_TIME` | No | `30m` | Close idle connections after this duration (Go duration) |
+
+#### Delivery Engine
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DELIVERY_HEALTH_PORT` | No | 8081 | Health check HTTP port for the delivery engine |
 
 
 This deployment guide ensures a secure, scalable, and maintainable production deployment of the Webhook Service Platform.

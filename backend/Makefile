@@ -508,7 +508,27 @@ smoke-test: ## Quick smoke test against running API (requires make run-api)
 		RESP=$$(curl -s -X POST http://localhost:8080/api/v1/tenants \
 			-H "Content-Type: application/json" \
 			-d '{"name": "smoke-test-tenant", "subscription_tier": "free"}' 2>/dev/null); \
-		if echo "$$RESP" | grep -q "api_key"; then echo "✅ OK"; else echo "❌ FAIL: $$RESP"; exit 1; fi
+		API_KEY=$$(echo "$$RESP" | grep -o '"api_key":"[^"]*"' | cut -d'"' -f4); \
+		if [ -n "$$API_KEY" ]; then echo "✅ OK"; else echo "❌ FAIL: $$RESP"; exit 1; fi
+	@printf "  %-30s" "Create endpoint:" ; \
+		RESP=$$(curl -s -X POST http://localhost:8080/api/v1/tenants \
+			-H "Content-Type: application/json" \
+			-d '{"name": "smoke-ep-tenant", "subscription_tier": "free"}' 2>/dev/null); \
+		KEY=$$(echo "$$RESP" | grep -o '"api_key":"[^"]*"' | cut -d'"' -f4); \
+		EP_RESP=$$(curl -s -X POST http://localhost:8080/api/v1/webhooks/endpoints \
+			-H "Content-Type: application/json" \
+			-H "Authorization: Bearer $$KEY" \
+			-d '{"url": "https://httpbin.org/post"}' 2>/dev/null); \
+		if echo "$$EP_RESP" | grep -q '"id"'; then echo "✅ OK"; else echo "❌ FAIL: $$EP_RESP"; exit 1; fi
+	@printf "  %-30s" "Auth rejection:" ; \
+		STATUS=$$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/v1/webhooks/endpoints 2>/dev/null); \
+		if [ "$$STATUS" = "401" ]; then echo "✅ OK (401)"; else echo "❌ FAIL (expected 401, got $$STATUS)"; exit 1; fi
+	@printf "  %-30s" "Request ID header:" ; \
+		RID=$$(curl -s -D- -o /dev/null http://localhost:8080/health 2>/dev/null | grep -i 'X-Request-ID' | tr -d '\r'); \
+		if [ -n "$$RID" ]; then echo "✅ OK"; else echo "⚠️  Missing X-Request-ID header"; fi
+	@printf "  %-30s" "API version header:" ; \
+		VER=$$(curl -s -D- -o /dev/null http://localhost:8080/health 2>/dev/null | grep -i 'X-API-Version' | tr -d '\r'); \
+		if [ -n "$$VER" ]; then echo "✅ OK"; else echo "⚠️  Missing X-API-Version header"; fi
 	@printf "  %-30s" "Swagger docs:" ; \
 		STATUS=$$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/docs/index.html 2>/dev/null); \
 		if [ "$$STATUS" = "200" ]; then echo "✅ OK"; else echo "⚠️  Not available (HTTP $$STATUS)"; fi

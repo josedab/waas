@@ -633,7 +633,75 @@
           }
         }
       },
-      "put": {
+      "delete": {
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "description": "Delete a webhook endpoint and stop all future deliveries to it",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "Delete webhook endpoint",
+        "parameters": [
+          {
+            "type": "string",
+            "format": "uuid",
+            "description": "Webhook endpoint ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Webhook endpoint deleted successfully"
+          },
+          "400": {
+            "description": "Invalid endpoint ID format",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing API key",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "403": {
+            "description": "Forbidden - access denied to this endpoint",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "404": {
+            "description": "Webhook endpoint not found",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "patch": {
         "security": [
           {
             "ApiKeyAuth": []
@@ -678,74 +746,6 @@
           },
           "400": {
             "description": "Invalid request format or validation error",
-            "schema": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          },
-          "401": {
-            "description": "Unauthorized - invalid or missing API key",
-            "schema": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          },
-          "403": {
-            "description": "Forbidden - access denied to this endpoint",
-            "schema": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          },
-          "404": {
-            "description": "Webhook endpoint not found",
-            "schema": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "schema": {
-              "type": "object",
-              "additionalProperties": true
-            }
-          }
-        }
-      },
-      "delete": {
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "description": "Delete a webhook endpoint and stop all future deliveries to it",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "webhooks"
-        ],
-        "summary": "Delete webhook endpoint",
-        "parameters": [
-          {
-            "type": "string",
-            "format": "uuid",
-            "description": "Webhook endpoint ID",
-            "name": "id",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Webhook endpoint deleted successfully"
-          },
-          "400": {
-            "description": "Invalid endpoint ID format",
             "schema": {
               "type": "object",
               "additionalProperties": true

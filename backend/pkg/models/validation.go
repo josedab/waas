@@ -22,7 +22,7 @@ func ValidateTenant(tenant *Tenant) error {
 		return fmt.Errorf("API key hash cannot be empty")
 	}
 
-	validTiers := []string{"basic", "premium", "enterprise"}
+	validTiers := []string{"free", "basic", "premium", "pro", "enterprise"}
 	if !contains(validTiers, tenant.SubscriptionTier) {
 		return fmt.Errorf("invalid subscription tier: %s, must be one of %v", tenant.SubscriptionTier, validTiers)
 	}
