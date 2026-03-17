@@ -11,8 +11,6 @@ import (
 	"net/url"
 	"os"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -163,18 +161,26 @@ func (c *Client) makeRequest(ctx context.Context, method, path string, body inte
 		var apiErr APIError
 		apiErr.StatusCode = resp.StatusCode
 
-		// Try to parse error response
+		// Try flat format first: {code, message, details}
+		// This is the format returned by the WaaS API.
+		if err := json.Unmarshal(respBody, &apiErr); err == nil && apiErr.Code != "" {
+			apiErr.StatusCode = resp.StatusCode
+			return &apiErr
+		}
+
+		// Try nested format for backwards compatibility: {"error": {code, message}}
 		var errorResp struct {
 			Error APIError `json:"error"`
 		}
-		if err := json.Unmarshal(respBody, &errorResp); err == nil {
+		if err := json.Unmarshal(respBody, &errorResp); err == nil && errorResp.Error.Code != "" {
 			apiErr = errorResp.Error
 			apiErr.StatusCode = resp.StatusCode
-		} else {
-			// Fallback for non-JSON error responses
-			apiErr.Code = "UNKNOWN_ERROR"
-			apiErr.Message = string(respBody)
+			return &apiErr
 		}
+
+		// Fallback for non-JSON error responses
+		apiErr.Code = "UNKNOWN_ERROR"
+		apiErr.Message = string(respBody)
 
 		return &apiErr
 	}
