@@ -295,6 +295,10 @@ func (m *MockDeliveryAttemptRepository) GetDeliveryAttemptsByDeliveryID(ctx cont
 	return m.GetByEndpointID(ctx, deliveryID, 100, 0)
 }
 
+func (m *MockDeliveryAttemptRepository) DeleteOlderThan(_ context.Context, _ time.Time) (int64, error) {
+	return 0, nil
+}
+
 // ──────────────────────────────────────────────
 // MockPublisher
 // ──────────────────────────────────────────────

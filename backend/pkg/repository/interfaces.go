@@ -53,6 +53,9 @@ type DeliveryAttemptRepository interface {
 	GetDeliveryHistory(ctx context.Context, endpointID uuid.UUID, statuses []string, limit, offset int) ([]*models.DeliveryAttempt, error)
 	GetDeliveryHistoryWithFilters(ctx context.Context, tenantID uuid.UUID, filters DeliveryHistoryFilters, limit, offset int) ([]*models.DeliveryAttempt, int, error)
 	GetDeliveryAttemptsByDeliveryID(ctx context.Context, deliveryID uuid.UUID, tenantID uuid.UUID) ([]*models.DeliveryAttempt, error)
+	// DeleteOlderThan removes delivery attempts created before the given
+	// cutoff time. Returns the number of rows deleted.
+	DeleteOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
 // QuotaRepository defines the interface for quota and billing data operations

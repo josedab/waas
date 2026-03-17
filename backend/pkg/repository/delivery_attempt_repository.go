@@ -343,3 +343,14 @@ func (r *deliveryAttemptRepository) scanAttempts(rows pgx.Rows) ([]*models.Deliv
 
 	return attempts, nil
 }
+
+// DeleteOlderThan removes delivery attempts whose created_at is before the
+// given cutoff. This is used by retention policies to keep the table bounded.
+func (r *deliveryAttemptRepository) DeleteOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
+	query := `DELETE FROM delivery_attempts WHERE created_at < $1`
+	result, err := r.db.Pool.Exec(ctx, query, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete old delivery attempts: %w", err)
+	}
+	return result.RowsAffected(), nil
+}
